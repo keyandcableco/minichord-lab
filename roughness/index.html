@@ -1,0 +1,333 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Roughness · Minichord Lab</title>
+<meta name="description" content="How rough each chord the minichord plays sounds, in every temperament: one number per chord, the sweet and sour keys, and the dissonance curve behind them.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>〰️</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Caveat:wght@700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../core/lab.css">
+<style>
+.grid2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.25fr);gap:18px;margin-top:14px}
+@media (max-width:900px){.grid2{grid-template-columns:1fr}}
+.gauge .name{font-family:var(--hand);font-size:3rem;line-height:1;margin:0}
+.gauge .num{font-size:4.2rem;font-weight:700;line-height:1;margin:.5rem 0 .1rem}
+.gauge .num small{font-size:1rem;font-weight:400;color:var(--muted);margin-left:.4rem}
+.gauge .vs{font-size:1.1rem;font-weight:700;min-height:1.5em}
+.smoother{color:var(--v1)} .rougher{color:var(--v2)}
+.tnote{font-size:.95rem;color:var(--muted);margin:.8rem 0 0;max-width:60ch}
+.temps{display:grid;gap:4px;margin-top:.4rem}
+.temps button{display:grid;grid-template-columns:9.6rem 1fr 4.2rem;align-items:center;gap:10px;text-align:left;font-weight:400;padding:.25rem .5rem;border-color:transparent;background:transparent}
+.temps button:hover{border-color:var(--rule)}
+.temps button[aria-checked="true"]{border-color:var(--ink);background:var(--board);font-weight:700}
+.temps .lab{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.temps .val{text-align:right;font-size:.9rem}
+.div{position:relative;height:14px}
+.div::before{content:"";position:absolute;left:50%;top:-2px;bottom:-2px;border-left:1px solid var(--muted);opacity:.6}
+.div i{position:absolute;top:0;bottom:0;border-radius:3px}
+.div i.s{background:var(--v1)} .div i.r{background:var(--v2)}
+.axis{display:grid;grid-template-columns:9.6rem 1fr 4.2rem;gap:10px;font-size:.8rem;color:var(--muted);padding:0 .5rem}
+.axis span:nth-child(2){display:flex;justify-content:space-between}
+svg.chart{display:block;width:100%;height:auto}
+svg.chart .ax{stroke:var(--muted);stroke-width:1;opacity:.6}
+svg.chart .t{fill:var(--muted);font:12px var(--ui)}
+svg.chart .th{fill:var(--ink);font:700 16px var(--hand);text-anchor:middle}
+svg.chart .curve{fill:none;stroke:var(--ink);stroke-width:2}
+svg.chart .etline{stroke:var(--rule);stroke-width:1}
+svg.chart .mark{fill:var(--accent);stroke:var(--panel);stroke-width:2}
+svg.chart .just{fill:var(--muted);font:700 11px var(--ui);text-anchor:middle}
+svg.chart .bar{fill:var(--accent)}
+svg.chart .ghost{fill:none;stroke:var(--ink);stroke-width:1.2;stroke-dasharray:3 3;opacity:.7}
+.keys{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:4px;align-items:end;height:150px;margin-top:.6rem}
+.keys div{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;position:relative}
+.keys .col{position:relative;width:100%;flex:1}
+.keys .col::before{content:"";position:absolute;left:0;right:0;top:50%;border-top:1px solid var(--muted);opacity:.6}
+.keys .col i{position:absolute;left:18%;right:18%;border-radius:3px}
+.keys .col i.s{background:var(--v1)} .keys .col i.r{background:var(--v2)}
+.keys b{font-size:.85rem;margin-top:4px}
+.keys div.here b{color:var(--accent);text-decoration:underline}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:.5rem}
+label.inline{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:.95rem}
+</style>
+</head>
+<body>
+<main>
+  <div class="labbar">
+    <a class="crumb" href="../">Minichord Lab</a>
+    <div class="connect">
+      <button id="connect" class="primary">Connect minichord</button>
+      <select id="input" aria-label="MIDI input" disabled><option>No MIDI yet</option></select>
+    </div>
+  </div>
+
+  <h1>Roughness</h1>
+  <p class="lede">How rough a chord sounds comes from its overtones rubbing against each other. Tune the notes a little differently and some keys get calmer while others turn sour. One number per chord, in every temperament the minichord knows.</p>
+  <p class="status" id="status">Connect the minichord, or try the test chords below.</p>
+  <p class="device-line" id="device"></p>
+
+  <div class="grid2">
+    <section class="panel gauge" aria-live="polite">
+      <p class="name" id="chordName">Play a chord</p>
+      <p class="num"><span id="rough">–</span><small>roughness</small></p>
+      <p class="vs" id="vs"></p>
+      <p class="tnote" id="tnote"></p>
+    </section>
+    <section class="panel">
+      <h2>This chord in every temperament</h2>
+      <div class="axis" aria-hidden="true"><span></span><span><span>smoother</span><span>equal</span><span>rougher</span></span><span></span></div>
+      <div class="temps" id="temps" role="radiogroup" aria-label="Temperament"></div>
+      <p class="fine" id="tempsHint">Choose a temperament to hear it: with the minichord connected, it switches too.</p>
+    </section>
+  </div>
+
+  <section class="panel" style="margin-top:18px">
+    <div class="row" style="justify-content:space-between">
+      <h2 style="margin:0">Chord by chord</h2>
+      <span class="fine">Solid: as tuned now. Dashed: the same notes in equal temperament.</span>
+    </div>
+    <svg class="chart" id="timeline" viewBox="0 0 1000 220" role="img" aria-label="Roughness of recent chords"></svg>
+  </section>
+
+  <div class="grid2">
+    <section class="panel">
+      <div class="row" style="justify-content:space-between">
+        <h2 style="margin:0">Sweet and sour keys</h2>
+        <select id="keyQuality" aria-label="Triad quality"><option value="M">Major triads</option><option value="m">Minor triads</option></select>
+      </div>
+      <div class="keys" id="keys" aria-label="Every triad compared with equal temperament"></div>
+      <p class="fine" id="keysNote">Each triad against the same triad in equal temperament. A temperament is tied to the keys, not to the key signature, so it favours some chords over others.</p>
+    </section>
+    <section class="panel">
+      <h2>Where the roughness comes from</h2>
+      <svg class="chart" id="curve" viewBox="0 0 640 300" role="img" aria-label="Roughness of two tones against the interval between them"></svg>
+      <p class="fine">Two tones swept apart by an octave. The dips are where overtones line up: the pure ratios. The dots are the intervals in your chord, as tuned now.</p>
+    </section>
+  </div>
+
+  <div class="grid2">
+    <section class="panel">
+      <h2>Test chords</h2>
+      <div class="chips" id="tests"></div>
+      <div class="row" style="margin-top:10px"><button id="prog">Play every major triad</button><button id="clear">Clear</button></div>
+      <p class="fine">These only draw; the minichord makes its own sound. Without a minichord, the temperament list above decides the tuning.</p>
+    </section>
+    <section class="panel">
+      <h2>Tone</h2>
+      <label class="inline">Overtones
+        <select id="timbre">
+          <option value="6,0.88">A voice: six harmonics</option>
+          <option value="10,0.94">Bright: ten harmonics</option>
+          <option value="1,1">Pure tone: no overtones</option>
+        </select>
+      </label>
+      <p class="fine">Try the pure tone: tuning barely matters without overtones to collide, which is why temperaments sound different on real instruments. The measure is William Sethares's model of sensory roughness.</p>
+    </section>
+  </div>
+
+  <footer>
+    <p>Part of <a href="../">Minichord Lab</a>. The minichord is <a href="https://github.com/BenjaminPoilve/minichord">Benjamin Poilve's open-source instrument</a>; the temperaments and their notes come from the unofficial <a href="https://github.com/keyandcableco/minichord/tree/test-allFeatures">test-allFeatures firmware</a>.</p>
+    <p>Made by <a href="https://keyandcable.com">The Key &amp; Cable Company</a>. Source on <a href="https://github.com/keyandcableco/minichord-lab">GitHub</a>.</p>
+  </footer>
+</main>
+
+<script type="module">
+import {Minichord} from "../core/minichord.js";
+import {chordName, roughness} from "../core/theory.js";
+import {TEMPERAMENT_TABLE, tune} from "../core/temperaments.js";
+
+const mc = new Minichord();
+window.mc = mc;
+const $ = id => document.getElementById(id);
+const NS="http://www.w3.org/2000/svg";
+const el=(tag,attrs={},parent)=>{ const e=document.createElementNS(NS,tag); for(const k in attrs) e.setAttribute(k,attrs[k]); if(parent) parent.appendChild(e); return e; };
+
+let pageTemp=0, timbre=[6,0.88];
+const activeTemp = () => mc.temperament!=null && mc.sysex ? mc.temperament : pageTemp;
+const R = pitches => roughness(pitches, timbre[0], timbre[1]);
+const keyF = () => mc.keyFifths;
+
+/** the chord's notes as they sound: exact MPE pitches when the minichord sends them, otherwise tuned from the table */
+function sounding(voices){
+  const bent = mc.mpe && voices.some(v=>Math.abs(v.pitch-Math.round(v.pitch))>0.004);
+  return bent ? voices.map(v=>v.pitch) : voices.map(v=>tune(v.note, activeTemp(), keyF()));
+}
+const pct = (t,e) => e>0 ? (t/e-1)*100 : 0;
+
+// ---------- the gauge (live, follows glides) ----------
+let last=null;   // the most recent chord: {notes, name}
+function gauge(){
+  const vs=mc.voices;
+  if(vs.length) last={notes:vs.map(v=>v.note), voices:vs, name:chordName(vs.map(v=>v.pitch), keyF())};
+  if(!last){ return; }
+  const tuned = vs.length ? sounding(vs) : last.notes.map(n=>tune(n,activeTemp(),keyF()));
+  const r=R(tuned), e=R(last.notes);
+  $("chordName").textContent = last.name || "This chord";
+  $("rough").textContent = r.toFixed(2);
+  const d=pct(r,e), vsEl=$("vs");
+  vsEl.className="vs "+(d<-0.5?"smoother":d>0.5?"rougher":"");
+  const equal = tuned.every((p,k)=>Math.abs(p-Math.round(p))<0.005);
+  vsEl.textContent = equal ? "Equal temperament: the reference." :
+    Math.abs(d)<0.5 ? "The same as in equal temperament." :
+    `${Math.abs(d).toFixed(0)}% ${d<0?"smoother":"rougher"} than in equal temperament.`;
+}
+
+// ---------- the chord in every temperament ----------
+function temps(){
+  const box=$("temps"); box.innerHTML="";
+  const notes = last ? last.notes : null;
+  const e = notes ? R(notes) : null;
+  TEMPERAMENT_TABLE.forEach((t,i)=>{
+    const b=document.createElement("button"); b.setAttribute("role","radio"); b.setAttribute("aria-checked", i===activeTemp());
+    const lab=document.createElement("span"); lab.className="lab"; lab.textContent=t.label;
+    const bar=document.createElement("span"); bar.className="div";
+    const val=document.createElement("span"); val.className="val";
+    if(notes){
+      const d=pct(R(notes.map(n=>tune(n,i,keyF()))), e), w=Math.min(50, Math.abs(d)/25*50);
+      const bi=document.createElement("i"); bi.className=d<0?"s":"r";
+      bi.style.left = d<0 ? `${50-w}%` : "50%"; bi.style.width=`${w}%`; bar.appendChild(bi);
+      val.textContent = i===0 ? "0%" : `${d>0?"+":d<0?"−":""}${Math.abs(d).toFixed(0)}%`;
+    }
+    b.append(lab,bar,val);
+    b.onclick=()=>choose(i);
+    box.appendChild(b);
+  });
+  const t=TEMPERAMENT_TABLE[activeTemp()];
+  $("tnote").textContent = t ? `${t.label}: ${t.note}` : "";
+}
+function choose(i){
+  if(mc.sysex && mc.out) mc.writeParam(237, i); else pageTemp=i;
+  refresh();
+}
+
+// ---------- sweet and sour keys ----------
+const ROOTS=["C","D♭","D","E♭","E","F","F♯","G","A♭","A","B♭","B"];
+function keys(){
+  const q=$("keyQuality").value, third = q==="M" ? 4 : 3, box=$("keys"); box.innerHTML="";
+  const here = last && last.name ? last.name : "";
+  for(let r=0;r<12;r++){
+    const base=57+((r+3)%12);   // every triad in the same register, A3 up to G#4
+    const notes=[base, base+third, base+7];
+    const d=pct(R(notes.map(n=>tune(n,activeTemp(),0))), R(notes));
+    const h=Math.min(50, Math.abs(d)/25*50);
+    const col=document.createElement("div");
+    const name=ROOTS[r];
+    if(here && (here===name+(q==="M"?"":"m") || here.startsWith(name+(q==="M"?"/":"m/")))) col.className="here";
+    col.title=`${ROOTS[r]}${q==="M"?" major":" minor"}: ${d>0?"+":""}${d.toFixed(1)}% against equal`;
+    const c=document.createElement("span"); c.className="col";
+    const i=document.createElement("i"); i.className=d<0?"s":"r";
+    if(d<0){ i.style.top="50%"; i.style.height=`${h}%`; } else { i.style.bottom="50%"; i.style.height=`${h}%`; }
+    c.appendChild(i);
+    const b=document.createElement("b"); b.textContent=ROOTS[r]+(q==="M"?"":"m");
+    col.append(c,b); box.appendChild(col);
+  }
+  $("keysNote").textContent = activeTemp()===0 ?
+    "In equal temperament every triad is the same, so every bar is flat. Choose another temperament to see which keys it favours." :
+    `Each triad in ${TEMPERAMENT_TABLE[activeTemp()].label} against the same triad in equal temperament: green is calmer, red rougher.`;
+}
+
+// ---------- chord by chord ----------
+const history=[];
+function timeline(){
+  const s=$("timeline"); s.innerHTML="";
+  const W=1000, Hh=220, top=14, base=180, n=16;
+  el("line",{class:"ax",x1:0,y1:base,x2:W,y2:base},s);
+  if(!history.length){ const t=el("text",{class:"t",x:W/2,y:base/2,"text-anchor":"middle"},s); t.textContent="Each chord you play adds a bar here."; return; }
+  const h=history.slice(-n).map(c=>({name:c.name, r:R(c.tuned), e:R(c.notes)}));
+  const max=Math.max(.5,...h.map(c=>Math.max(c.r,c.e)))*1.1;
+  const slot=W/n;
+  h.forEach((c,k)=>{
+    const x=k*slot+slot*.2, w=slot*.6;
+    const hr=(c.r/max)*(base-top), he=(c.e/max)*(base-top);
+    el("rect",{class:"bar",x,y:base-hr,width:w,height:hr,rx:3},s);
+    el("rect",{class:"ghost",x:x-2,y:base-he,width:w+4,height:he,rx:3},s);
+    const t=el("text",{class:"th",x:x+w/2,y:base+26},s); t.textContent=c.name||"·";
+  });
+}
+
+// ---------- the dissonance curve ----------
+function curve(){
+  const s=$("curve"); s.innerHTML="";
+  const W=640, Hh=300, L=40, Rm=12, T=16, B=250;
+  const pts=[], base=60;   // two tones from middle C
+  let max=0;
+  for(let c=0;c<=1200;c+=4){ const d=R([base, base+c/100]); pts.push([c,d]); if(d>max) max=d; }
+  const X=c=>L+c/1200*(W-L-Rm), Y=d=>B-d/max*(B-T);
+  for(let k=0;k<=12;k++){ el("line",{class:"etline",x1:X(k*100),y1:T,x2:X(k*100),y2:B},s); }
+  el("line",{class:"ax",x1:L,y1:B,x2:W-Rm,y2:B},s);
+  el("path",{class:"curve",d:"M"+pts.map(([c,d])=>`${X(c).toFixed(1)},${Y(d).toFixed(1)}`).join("L")},s);
+  for(const [lab,ratio] of [["6:5",6/5],["5:4",5/4],["4:3",4/3],["3:2",3/2],["5:3",5/3],["2:1",2]]){
+    const c=1200*Math.log2(ratio), t=el("text",{class:"just",x:X(c),y:B+16},s); t.textContent=lab;
+  }
+  const lbl=el("text",{class:"t",x:L,y:B+36},s); lbl.textContent="interval, from unison to an octave";
+  // the chord's intervals, as tuned now, folded into one octave
+  if(last){
+    const tuned=(mc.voices.length ? sounding(mc.voices) : last.notes.map(n=>tune(n,activeTemp(),keyF()))).sort((a,b)=>a-b);
+    const seen=new Set();
+    for(let i=0;i<tuned.length;i++) for(let j=i+1;j<tuned.length;j++){
+      let c=(tuned[j]-tuned[i])*100; while(c>1200.5) c-=1200;
+      if(c<1) continue;
+      const k=Math.round(c); if(seen.has(k)) continue; seen.add(k);
+      el("circle",{class:"mark",cx:X(c),cy:Y(R([base,base+c/100])),r:6},s);
+    }
+  }
+}
+
+function refresh(){ gauge(); temps(); keys(); curve(); timeline(); }
+
+// ---------- events ----------
+mc.addEventListener("voices", ()=>{ gauge(); curve(); });
+mc.addEventListener("chord", e=>{
+  const vs=e.detail;
+  last={notes:vs.map(v=>v.note), voices:vs, name:chordName(vs.map(v=>v.pitch), keyF())};
+  const tuned=sounding(vs);
+  history.push({name:last.name, tuned, notes:last.notes}); if(history.length>40) history.shift();
+  refresh();
+});
+mc.addEventListener("status", e=>$("status").textContent=e.detail);
+mc.addEventListener("device", ()=>{
+  const parts=[];
+  if(mc.keyName) parts.push(`Key of <b>${mc.keyName}</b>`);
+  if(mc.temperament!=null) parts.push(`the minichord is in <b>${TEMPERAMENT_TABLE[mc.temperament]?.label||mc.temperament}</b>`);
+  parts.push(mc.mpe ? "MPE on, so the exact tuning comes through" : "MPE off, so the tuning is worked out from the temperament");
+  $("device").innerHTML=parts.join(", ")+".";
+  $("tempsHint").textContent = mc.sysex && mc.out ? "Choose a temperament and the minichord switches to it. The change lasts until the preset changes; save it in Sound Lab to keep it." : "Choose a temperament to see its effect. With the minichord connected, it switches too.";
+  refresh();
+});
+mc.addEventListener("ports", ()=>{
+  const sel=$("input"), ins=mc.inputs; sel.innerHTML=""; sel.disabled=false;
+  sel.add(new Option("Minichord chord port (auto)","auto")); sel.add(new Option("All MIDI inputs","all"));
+  ins.forEach(i=>sel.add(new Option(i.name,i.id)));
+  sel.value=[...sel.options].some(o=>o.value===mc.inputChoice)?mc.inputChoice:"auto";
+});
+$("input").onchange=e=>mc.selectInput(e.target.value);
+$("connect").onclick=async e=>{ e.target.disabled=true; if(await mc.connect()) e.target.textContent="Connected"; else e.target.disabled=false; };
+$("keyQuality").onchange=keys;
+$("timbre").onchange=e=>{ timbre=e.target.value.split(",").map(Number); refresh(); };
+$("clear").onclick=()=>{ play([]); history.length=0; refresh(); };
+
+// ---------- test chords ----------
+const TESTS={"C":[48,55,64,72],"E":[52,56,59,64],"A♭":[44,56,60,63],"B":[47,54,59,63],"Am":[45,57,60,64],"G7":[43,55,59,65],"C°7":[48,51,54,57]};
+let held=[], running=0;
+function play(notes){
+  held.forEach(([ch,n])=>mc.handle([0x80|ch,n,0]));
+  held=notes.map((n,i)=>[1+i,n]);
+  held.forEach(([ch,n])=>mc.handle([0x90|ch,n,100]));
+}
+Object.entries(TESTS).forEach(([k,v])=>{ const b=document.createElement("button"); b.textContent=k; b.onclick=()=>play(v); $("tests").appendChild(b); });
+$("prog").onclick=async()=>{
+  const run=++running;
+  for(let r=0;r<12;r++){       // up the circle of fifths
+    if(run!==running) return;
+    const root=((r*7)%12), b=48+root-(root>6?12:0);
+    play([b,b+7,b+12,b+16]);
+    await new Promise(res=>setTimeout(res,900));
+  }
+};
+
+refresh();
+</script>
+</body>
+</html>

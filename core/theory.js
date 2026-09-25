@@ -141,3 +141,18 @@ export function voiceLead(prevPitches, pcs){
   }
   return best.sort((x,y)=>x-y);
 }
+
+// ---------- roughness ----------
+const hz = p => 440*Math.pow(2,(p-69)/12);
+/** Sethares's roughness for tones with the given number of harmonics, each softer by `rolloff` */
+export function roughness(pitches, partials=6, rolloff=0.88){
+  const f=[], a=[];
+  for(const p of pitches) for(let k=1;k<=partials;k++){ f.push(hz(p)*k); a.push(Math.pow(rolloff,k-1)); }
+  let d=0;
+  for(let i=0;i<f.length;i++) for(let j=i+1;j<f.length;j++){
+    const lo=Math.min(f[i],f[j]), x=Math.abs(f[i]-f[j]);
+    const s=0.24/(0.0207*lo+18.96);
+    d += Math.min(a[i],a[j]) * (Math.exp(-3.51*s*x) - Math.exp(-5.75*s*x));
+  }
+  return d;
+}
