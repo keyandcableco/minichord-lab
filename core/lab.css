@@ -1,0 +1,48 @@
+/* Minichord Lab: a classroom board. Chalkboard in dark mode, whiteboard in light. */
+:root{
+  --board:#EEF1EF; --panel:#FAFBFA; --ink:#1B2430; --muted:#58646E; --rule:#D3D9D6; --accent:#D9780B;
+  --v0:#1F5FB0; --v1:#1E8449; --v2:#C0392B; --v3:#7D3C98; --focus:#1F5FB0;
+  --ui:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --hand:"Caveat","Segoe Print","Bradley Hand",cursive;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+  color-scheme:light dark;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --board:#1F2B25; --panel:#25332C; --ink:#ECEADF; --muted:#A9B3A9; --rule:#3A4A40; --accent:#F2D16B;
+    --v0:#8EC5E8; --v1:#A8D98A; --v2:#F29CB0; --v3:#D9B8F2; --focus:#F2D16B;
+  }
+}
+:root[data-theme="dark"]{
+  --board:#1F2B25; --panel:#25332C; --ink:#ECEADF; --muted:#A9B3A9; --rule:#3A4A40; --accent:#F2D16B;
+  --v0:#8EC5E8; --v1:#A8D98A; --v2:#F29CB0; --v3:#D9B8F2; --focus:#F2D16B;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;background:var(--board);color:var(--ink);font:400 17px/1.55 var(--ui);font-variant-numeric:tabular-nums}
+main{max-width:1120px;margin:0 auto;padding:26px 20px 48px}
+a{color:var(--v0);text-underline-offset:.15em}
+button,select,input{font:inherit;color:inherit}
+button{cursor:pointer;border:1px solid var(--rule);background:var(--panel);border-radius:8px;padding:.45rem .9rem;font-weight:700}
+button.primary{background:var(--ink);color:var(--board);border-color:var(--ink)}
+button:disabled{opacity:.5;cursor:default}
+select{border:1px solid var(--rule);background:var(--panel);border-radius:8px;padding:.4rem .6rem;max-width:100%}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+
+.labbar{display:flex;flex-wrap:wrap;gap:12px 18px;align-items:center;justify-content:space-between;margin-bottom:18px}
+.crumb{font-weight:700;color:var(--muted);text-decoration:none}
+.crumb:hover{color:var(--ink)}
+.connect{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.status{font-size:.92rem;color:var(--muted);margin:0}
+h1{font-family:var(--hand);font-weight:700;font-size:3.2rem;line-height:1;margin:0}
+.lede{color:var(--muted);max-width:62ch;margin:.4rem 0 0}
+.panel{background:var(--panel);border:1px solid var(--rule);border-radius:12px;padding:16px}
+.panel h2{font-size:1.05rem;margin:0 0 .5rem}
+.fine{font-size:.9rem;color:var(--muted)}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.device-line{font-size:.95rem;color:var(--muted);margin:.3rem 0 0}
+.device-line b{color:var(--ink)}
+footer{margin-top:28px;padding-top:14px;border-top:1px solid var(--rule);color:var(--muted);font-size:.92rem}
+footer p{margin:.2rem 0;max-width:80ch}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}

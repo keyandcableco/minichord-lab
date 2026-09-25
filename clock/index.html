@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pitch-class clock · Minichord Lab</title>
+<meta name="description" content="Every chord the minichord plays, drawn as a shape on a pitch-class clock, with its set class, interval vector and how it relates to the chord before.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🕛</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Caveat:wght@700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../core/lab.css">
+<style>
+.stage{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:18px;align-items:start}
+@media (max-width:860px){.stage{grid-template-columns:1fr}}
+.clockwrap{background:var(--panel);border:1px solid var(--rule);border-radius:12px;padding:10px}
+#clock{display:block;width:100%;height:auto;max-height:78vh}
+#clock .face{fill:none;stroke:var(--ink);stroke-width:1.2;opacity:.55}
+#clock .tick{stroke:var(--ink);stroke-width:1;opacity:.55}
+#clock .tick.major{stroke-width:1.6;opacity:.9}
+#clock .lbl{fill:var(--muted);font:700 9px var(--ui);text-anchor:middle;dominant-baseline:central}
+#clock .lbl.small{font-size:6.2px}
+#clock .shape{fill:var(--accent);fill-opacity:.2;stroke:var(--accent);stroke-width:2.2;stroke-linejoin:round}
+#clock .shape.released{fill-opacity:.07;stroke-opacity:.45}
+#clock .ghost{fill:none;stroke:var(--muted);stroke-width:1.1;stroke-dasharray:3 3;opacity:.7}
+#clock .spoke{stroke:var(--accent);stroke-width:.8;opacity:.35}
+#clock .name{fill:var(--ink);font:700 30px var(--hand);text-anchor:middle;dominant-baseline:central}
+#clock .name.released{opacity:.45}
+#clock .ring{fill:none;stroke-width:2}
+.read .big{font-family:var(--hand);font-size:3rem;font-weight:700;line-height:1;margin:0 0 .3rem}
+.read dl{display:grid;grid-template-columns:auto 1fr;gap:.45rem .9rem;margin:.8rem 0 0}
+.read dt{color:var(--muted);font-size:.92rem}
+.read dd{margin:0}
+.notes span{font-weight:700;margin-right:.55rem}
+.iv{display:flex;align-items:flex-end;gap:5px;height:44px;margin-top:.2rem}
+.iv div{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:.75rem;color:var(--muted)}
+.iv i{display:block;width:16px;background:var(--accent);border-radius:2px 2px 0 0;min-height:2px}
+.history{display:flex;gap:10px;overflow-x:auto;padding-bottom:4px}
+.card{flex:0 0 auto;width:92px;text-align:center}
+.card svg{width:84px;height:84px;display:block;margin:0 auto}
+.card .n{font-family:var(--hand);font-size:1.35rem;line-height:1.1}
+.card .r{font-size:.8rem;color:var(--muted);min-height:1.2em}
+.lower{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;margin-top:18px}
+@media (max-width:860px){.lower{grid-template-columns:1fr}}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:.5rem}
+label.inline{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:.95rem}
+</style>
+</head>
+<body>
+<main>
+  <div class="labbar">
+    <a class="crumb" href="../">Minichord Lab</a>
+    <div class="connect">
+      <button id="connect" class="primary">Connect minichord</button>
+      <select id="input" aria-label="MIDI input" disabled><option>No MIDI yet</option></select>
+    </div>
+  </div>
+
+  <h1>Pitch-class clock</h1>
+  <p class="lede">Every chord as a shape. Octaves fold away, so every C sits at twelve o'clock. Moving a chord to another root turns its shape, and swapping major for minor flips it over.</p>
+  <p class="status" id="status">Connect the minichord, or try the test chords below.</p>
+  <p class="device-line" id="device"></p>
+
+  <div class="stage" style="margin-top:14px">
+    <div class="clockwrap"><svg id="clock" viewBox="-130 -130 260 260" role="img" aria-labelledby="chordName"></svg></div>
+    <section class="panel read" aria-live="polite">
+      <p class="big" id="chordName">Play a chord</p>
+      <dl>
+        <dt>Notes</dt><dd class="notes" id="notes">–</dd>
+        <dt>Shape</dt><dd id="shape">–</dd>
+        <dt>Intervals</dt><dd><div id="iv" class="iv" aria-hidden="true"></div><div class="fine" id="ivText"></div></dd>
+        <dt>Symmetry</dt><dd id="sym">–</dd>
+        <dt>From the last chord</dt><dd id="rel">–</dd>
+        <dt>Tuning</dt><dd id="tuning">–</dd>
+      </dl>
+    </section>
+  </div>
+
+  <section class="panel" style="margin-top:18px">
+    <h2>Recent chords</h2>
+    <div class="history" id="history"><p class="fine">Each chord you play lands here, with how it got there from the one before.</p></div>
+  </section>
+
+  <div class="lower">
+    <section class="panel">
+      <h2>Clock</h2>
+      <div class="row">
+        <label class="inline">Steps around the clock
+          <select id="division"><option value="follow">Follow the minichord</option><option value="12">12</option><option value="19">19</option><option value="31">31</option></select>
+        </label>
+        <label class="inline">Labels
+          <select id="labels"><option value="names">Note names</option><option value="numbers">Step numbers</option></select>
+        </label>
+      </div>
+      <p class="fine">Notes sit at their exact pitch, so in an unequal temperament they land a little off the marks. With a 19- or 31-note temperament on the minichord, the clock follows it.</p>
+    </section>
+    <section class="panel">
+      <h2>Test chords</h2>
+      <div class="chips" id="tests"></div>
+      <div class="row" style="margin-top:10px"><button id="prog">Play a progression</button><button id="clear">Clear</button></div>
+      <p class="fine">These only draw. The minichord makes its own sound.</p>
+    </section>
+  </div>
+
+  <footer>
+    <p>Part of <a href="../">Minichord Lab</a>. The minichord is <a href="https://github.com/BenjaminPoilve/minichord">Benjamin Poilve's open-source instrument</a>; key, temperament and MPE come from the unofficial <a href="https://github.com/keyandcableco/minichord/tree/test-allFeatures">test-allFeatures firmware</a>.</p>
+    <p>Made by <a href="https://keyandcable.com">The Key &amp; Cable Company</a>. Source on <a href="https://github.com/keyandcableco/minichord-lab">GitHub</a>.</p>
+  </footer>
+</main>
+
+<script type="module">
+import {Minichord, TEMPERAMENTS, spell} from "../core/minichord.js";
+import {pcOf, pcSet, intervalVector, setClass, relation, symmetry, chordName} from "../core/theory.js";
+
+const mc = new Minichord();
+window.mc = mc;   // handy from the console
+const $ = id => document.getElementById(id);
+const NS = "http://www.w3.org/2000/svg";
+const el = (tag, attrs={}, parent) => { const e=document.createElementNS(NS,tag); for(const k in attrs) e.setAttribute(k,attrs[k]); if(parent) parent.appendChild(e); return e; };
+
+let divisionChoice="follow", labelMode="names";
+let current=null, previous=null, released=false;
+const history=[];
+
+const N = () => divisionChoice==="follow" ? mc.division : +divisionChoice;
+const keyF = () => mc.keyFifths;
+const angle = pc => pc/12*2*Math.PI - Math.PI/2;           // continuous pitch class, C at the top, clockwise
+const pt = (pc,r=100) => [Math.cos(angle(pc))*r, Math.sin(angle(pc))*r];
+const voiceColor = (v,i) => `var(--v${(v??i)%4})`;
+
+// labels for the steps of each division
+const N19=["C","C♯","D♭","D","D♯","E♭","E","E♯","F","F♯","G♭","G","G♯","A♭","A","A♯","B♭","B","B♯"];
+const N31_NATURALS={0:"C",5:"D",10:"E",13:"F",18:"G",23:"A",28:"B"};
+function stepLabel(k,n){
+  if(labelMode==="numbers") return String(k);
+  if(n===12) return spell(k,keyF());
+  if(n===19) return N19[k];
+  return N31_NATURALS[k] ?? "";
+}
+
+// ---------- the clock face ----------
+const svg=$("clock");
+let face, shapeLayer, ghost, shape, dots, centre;
+function drawFace(){
+  svg.innerHTML="";
+  const n=N();
+  face=el("g",{},svg);
+  el("circle",{class:"face",r:100},face);
+  for(let k=0;k<n;k++){
+    const pc=k*12/n, [x1,y1]=pt(pc,95), [x2,y2]=pt(pc,105);
+    const major = n===12 || (n===19 ? [0,3,6,8,11,14,17].includes(k) : k in N31_NATURALS);
+    el("line",{class:"tick"+(major?" major":""),x1,y1,x2,y2},face);
+    const t=stepLabel(k,n);
+    if(t){ const [x,y]=pt(pc,116); const lab=el("text",{class:"lbl"+(n>12?" small":""),x,y},face); lab.textContent=t; }
+  }
+  shapeLayer=el("g",{},svg);
+  ghost=el("polygon",{class:"ghost",points:""},shapeLayer);
+  shape=el("polygon",{class:"shape",points:""},shapeLayer);
+  dots=el("g",{},svg);
+  centre=el("text",{class:"name",x:0,y:0},svg);
+  render();
+}
+
+function polyPoints(pitches){
+  const pcs=[...new Set(pitches.map(p=>Math.round(pcOf(p)*1000)/1000))].sort((a,b)=>a-b);
+  return pcs.map(pc=>pt(pc).map(v=>v.toFixed(2)).join(",")).join(" ");
+}
+
+// ---------- live drawing ----------
+function render(){
+  const vs = mc.voices;
+  if(vs.length){ current={pitches:vs.map(v=>v.pitch), voices:vs}; released=false; }
+  else if(current) released=true;
+  const n=N();
+  if(!current){ shape.setAttribute("points",""); dots.innerHTML=""; centre.textContent=""; return; }
+  const P=current.pitches;
+  shape.setAttribute("points", P.length>1 ? polyPoints(P) : "");
+  shape.classList.toggle("released", released);
+  ghost.setAttribute("points", previous && previous.length>1 ? polyPoints(previous) : "");
+  // voice dots: doubled pitch classes stack as rings
+  dots.innerHTML="";
+  const seen=new Map();
+  current.voices.forEach((v,i)=>{
+    const key=Math.round(pcOf(v.pitch)*100);
+    const count=seen.get(key)||0; seen.set(key,count+1);
+    const [x,y]=pt(pcOf(v.pitch));
+    if(count===0){
+      el("line",{class:"spoke",x1:0,y1:0,x2:x,y2:y},dots);
+      el("circle",{cx:x,cy:y,r:6.5,fill:voiceColor(v.voice,i),opacity:released?.45:1},dots);
+    } else {
+      el("circle",{class:"ring",cx:x,cy:y,r:6.5+count*3.6,stroke:voiceColor(v.voice,i),opacity:released?.45:1},dots);
+    }
+  });
+  const name = n===12 ? chordName(P,keyF()) : null;
+  centre.textContent = name || (P.length===1 ? spell(Math.round(pcOf(P[0]))%12,keyF()) : "");
+  centre.classList.toggle("released",released);
+  readout(P);
+}
+
+function readout(P){
+  const n=N(), set=pcSet(P,n);
+  const name = n===12 ? chordName(P,keyF()) : null;
+  $("chordName").textContent = name || (n===12 ? "Unnamed chord" : `${set.length} notes in ${n} steps`);
+  // notes, lowest first, in voice colours
+  const notes=$("notes"); notes.innerHTML="";
+  current.voices.forEach((v,i)=>{
+    const s=document.createElement("span"); s.style.color=voiceColor(v.voice,i);
+    s.textContent = n===12 ? spell(Math.round(pcOf(v.pitch))%12,keyF()) : stepLabel(Math.round(pcOf(v.pitch)*n/12)%n,n) || `step ${Math.round(pcOf(v.pitch)*n/12)%n}`;
+    notes.appendChild(s);
+  });
+  const sc=setClass(set,n);
+  $("shape").textContent = set.length<2 ? "A single note" :
+    `${sc.forte ? `Set ${sc.forte}, ` : ""}prime form ${sc.primeText}${sc.familiar ? `: ${sc.familiar}` : ""}`;
+  // interval vector as little bars
+  const iv=intervalVector(set,n), ivEl=$("iv"); ivEl.innerHTML="";
+  const max=Math.max(1,...iv);
+  iv.forEach((c,k)=>{ const d=document.createElement("div"); const bar=document.createElement("i");
+    bar.style.height=`${4+c/max*30}px`; d.append(bar, String(k+1)); d.title=`${c} × ${k+1} step${k?"s":""}`; ivEl.appendChild(d); });
+  $("ivText").textContent = set.length<2 ? "" : `⟨${iv.join(n>12?" ":"")}⟩ counts each interval between the notes, by steps apart (1 to ${Math.floor(n/2)}).`;
+  const sy=symmetry(set,n);
+  $("sym").textContent = set.length<2 ? "–" :
+    sy.turns.length ? `Looks the same turned by ${sy.turns.join(", ")} step${sy.turns.length>1||sy.turns[0]>1?"s":""}, so it has only ${n/ (sy.turns[0])} distinct versions.` + (sy.mirror?" It's its own mirror image too.":"")
+    : sy.mirror ? "Its own mirror image, so flipping it changes nothing." : "No symmetry: each turn and each flip gives a new chord.";
+  // tuning: how far each voice sits from the nearest mark
+  const offs=current.voices.map(v=>{ const f=pcOf(v.pitch)*n/12; return (f-Math.round(f))*1200/n; });
+  const big=offs.map((c,i)=>({c,i})).filter(o=>Math.abs(o.c)>=2);
+  $("tuning").textContent = !big.length ? `Every note on its mark (${n} equal steps).` :
+    big.map(o=>`${$("notes").children[o.i]?.textContent} ${o.c>0?"+":"−"}${Math.abs(o.c).toFixed(0)}¢`).join(", ") + " from the marks";
+}
+
+// ---------- settled chords: relation and history ----------
+mc.addEventListener("chord", e=>{
+  const P=e.detail.map(v=>v.pitch), n=N();
+  const last=history[history.length-1];
+  let rel=null;
+  if(last && last.n===n) rel=relation(pcSet(last.pitches,n), pcSet(P,n), n);
+  previous = last ? last.pitches : null;
+  const entry={pitches:P, n, name: n===12 ? chordName(P,keyF()) : null, rel};
+  history.push(entry); if(history.length>10) history.shift();
+  $("rel").textContent = !last ? "–" : describe(rel, last, entry);
+  drawHistory(); render();
+});
+function describe(rel,a,b){
+  if(!rel) return pcSet(a.pitches,a.n).length!==pcSet(b.pitches,b.n).length ? "A different number of notes, so a new kind of shape." : "A different shape: neither a turn nor a flip of the last one.";
+  if(rel.kind==="T") return rel.n===0 ? "The same notes, maybe revoiced." : `Same shape turned ${rel.n} step${rel.n>1?"s":""} (T${rel.n}): a transposition.`;
+  return `The last shape flipped over (T${rel.n}I): an inversion, like major to minor.`;
+}
+function drawHistory(){
+  const h=$("history"); h.innerHTML="";
+  history.forEach(en=>{
+    const card=document.createElement("div"); card.className="card";
+    const s=document.createElementNS(NS,"svg"); s.setAttribute("viewBox","-112 -112 224 224"); s.setAttribute("aria-hidden","true");
+    el("circle",{r:100,fill:"none",stroke:"var(--ink)","stroke-width":4,opacity:.4},s);
+    if(en.pitches.length>1) el("polygon",{points:polyPoints(en.pitches),fill:"var(--accent)","fill-opacity":.25,stroke:"var(--accent)","stroke-width":8,"stroke-linejoin":"round"},s);
+    const nm=document.createElement("div"); nm.className="n"; nm.textContent=en.name||`${pcSet(en.pitches,en.n).length} notes`;
+    const r=document.createElement("div"); r.className="r"; r.textContent = en.rel ? (en.rel.kind==="T" ? (en.rel.n?`T${en.rel.n}`:"same") : `T${en.rel.n}I`) : "";
+    card.append(s,nm,r); h.appendChild(card);
+  });
+  h.scrollLeft=h.scrollWidth;
+}
+
+// ---------- device and connection ----------
+mc.addEventListener("voices", render);
+mc.addEventListener("status", e=>$("status").textContent=e.detail);
+mc.addEventListener("device", ()=>{
+  const parts=[];
+  if(mc.keyName) parts.push(`Key of <b>${mc.keyName}</b>`);
+  if(mc.temperament!=null) parts.push(`temperament <b>${TEMPERAMENTS[mc.temperament]||mc.temperament}</b>`);
+  parts.push(mc.mpe ? "MPE on, so bends and exact tuning come through" : "MPE off, so notes arrive rounded to semitones");
+  $("device").innerHTML = parts.join(", ") + ".";
+  drawFace();
+});
+mc.addEventListener("ports", ()=>{
+  const sel=$("input"), ins=mc.inputs; sel.innerHTML=""; sel.disabled=false;
+  sel.add(new Option("Minichord chord port (auto)","auto")); sel.add(new Option("All MIDI inputs","all"));
+  ins.forEach(i=>sel.add(new Option(i.name,i.id)));
+  sel.value = [...sel.options].some(o=>o.value===mc.inputChoice) ? mc.inputChoice : "auto";
+});
+$("input").onchange=e=>mc.selectInput(e.target.value);
+$("connect").onclick=async e=>{ e.target.disabled=true; if(await mc.connect()) e.target.textContent="Connected"; else e.target.disabled=false; };
+$("division").onchange=e=>{ divisionChoice=e.target.value; drawFace(); if(current) readout(current.pitches); };
+$("labels").onchange=e=>{ labelMode=e.target.value; drawFace(); };
+
+// ---------- test chords, sent through the same path as the minichord ----------
+const TESTS={"C":[48,55,64,72],"Am":[45,57,60,64],"F":[53,57,60,65],"G7":[43,53,59,62],"C°7":[48,51,54,57],"C+":[48,52,56,60],"Cmaj7":[48,55,59,64],"Dm7":[50,57,60,65]};
+let held=[];
+function play(notes){
+  held.forEach(([ch,n])=>mc.handle([0x80|ch,n,0]));
+  held=notes.map((n,i)=>[1+i,n]);
+  held.forEach(([ch,n])=>mc.handle([0x90|ch,n,100]));
+}
+Object.entries(TESTS).forEach(([k,v])=>{ const b=document.createElement("button"); b.textContent=k; b.onclick=()=>play(v); $("tests").appendChild(b); });
+$("clear").onclick=()=>play([]);
+$("prog").onclick=async()=>{
+  const seq=[[48,55,64,72],[45,57,60,64],[41,57,60,65],[43,55,59,65],[48,55,60,64]];   // C Am F G7 C, voice-led
+  for(const c of seq){ play(c); await new Promise(r=>setTimeout(r,1100)); }
+};
+
+drawFace();
+</script>
+</body>
+</html>

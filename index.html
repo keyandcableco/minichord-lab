@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Minichord Lab</title>
+<meta name="description" content="Small web views that use the minichord as an interface for music theory: chord shapes, voice leading, tuning and more.">
+<meta property="og:title" content="Minichord Lab">
+<meta property="og:description" content="Small web views that use the minichord as an interface for music theory.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧪</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Caveat:wght@700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="core/lab.css">
+<style>
+.views{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;margin-top:22px}
+.view{display:block;text-decoration:none;color:inherit;background:var(--panel);border:1px solid var(--rule);border-radius:12px;padding:16px 18px}
+.view:hover{border-color:var(--ink)}
+.view h2{font-family:var(--hand);font-size:2rem;line-height:1;margin:0 0 .4rem}
+.view p{margin:0;color:var(--muted)}
+.next{margin-top:26px}
+.next p{color:var(--muted);max-width:70ch}
+</style>
+</head>
+<body>
+<main>
+  <h1>Minichord Lab</h1>
+  <p class="lede">Small web views that use the minichord as an interface for music theory. Each one listens to the chord buttons over MIDI, reading every voice's exact pitch, the key and the temperament, and draws what the chord is doing.</p>
+
+  <div class="views">
+    <a class="view" href="clock/">
+      <h2>Pitch-class clock</h2>
+      <p>Every chord as a shape on a clock face. Transposing turns it, major to minor flips it, and the clock follows 19- and 31-note temperaments.</p>
+    </a>
+    <a class="view" href="https://keyandcableco.github.io/minichord-choir/">
+      <h2>Choir</h2>
+      <p>Each voice of the chord sung by its own singer, with voice leading, glide and temperament controls and an MPE recorder.</p>
+    </a>
+  </div>
+
+  <section class="next">
+    <p>Next on the board: the Tonnetz, a roughness meter, beats and Lissajous figures for temperaments, an ear trainer, chord geometry and stage visuals.</p>
+    <p>You'll need a minichord with the unofficial <a href="https://github.com/keyandcableco/minichord/tree/test-allFeatures">test-allFeatures firmware</a> for MPE, key and temperament, and Chrome, Edge or Opera. Every view also has test chords that work without one.</p>
+  </section>
+
+  <footer>
+    <p>The minichord is <a href="https://github.com/BenjaminPoilve/minichord">Benjamin Poilve's open-source instrument</a>; its settings editor is <a href="https://keyandcableco.github.io/minichord-soundlab/">Sound Lab</a>.</p>
+    <p>Made by <a href="https://keyandcable.com">The Key &amp; Cable Company</a>. Source on <a href="https://github.com/keyandcableco/minichord-lab">GitHub</a>.</p>
+  </footer>
+</main>
+</body>
+</html>

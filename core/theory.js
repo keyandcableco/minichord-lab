@@ -1,0 +1,110 @@
+/* ============================================================================
+ * theory.js: pitch-class set tools for Minichord Lab, in any equal division N
+ * (12 for the usual chromatic, 19 and 31 for the minichord's EDO temperaments)
+ * ========================================================================== */
+import {spell} from "./minichord.js";
+
+const mod=(a,n)=>((a%n)+n)%n;
+
+/** continuous pitch class in semitones, 0 <= pc < 12 */
+export const pcOf = pitch => mod(pitch,12);
+/** nearest step of the division for a pitch, 0..N-1 */
+export const stepOf = (pitch,N=12) => mod(Math.round(pcOf(pitch)*N/12), N);
+/** sorted distinct steps of a set of pitches */
+export const pcSet = (pitches,N=12) => [...new Set(pitches.map(p=>stepOf(p,N)))].sort((a,b)=>a-b);
+
+/** how many times each interval class occurs, classes 1..floor(N/2) */
+export function intervalVector(set,N=12){
+  const v=new Array(Math.floor(N/2)).fill(0);
+  for(let i=0;i<set.length;i++) for(let j=i+1;j<set.length;j++){
+    let d=mod(set[j]-set[i],N); d=Math.min(d,N-d); if(d) v[d-1]++;
+  }
+  return v;
+}
+
+// Rahn's normal form: the rotation with the smallest span, ties broken from the right
+function normal(set,N){
+  const s=[...set].sort((a,b)=>a-b), n=s.length; if(n<2) return s.map(x=>x-s[0]||0);
+  let best=null;
+  for(let r=0;r<n;r++){
+    const rot=s.slice(r).concat(s.slice(0,r).map(x=>x+N));
+    const t=rot.map(x=>x-rot[0]);
+    if(!best || better(t,best)) best=t;
+  }
+  return best;
+}
+function better(a,b){
+  for(let i=a.length-1;i>0;i--){ if(a[i]!==b[i]) return a[i]<b[i]; }
+  return false;
+}
+/** prime form: the more compact of the set's normal form and its inversion's */
+export function primeForm(set,N=12){
+  if(!set.length) return [];
+  const a=normal(set,N), b=normal(set.map(x=>mod(-x,N)),N);
+  return better(b,a) ? b : a;
+}
+
+// Forte numbers for three- and four-note sets in twelve steps (Rahn prime forms)
+const FORTE={
+  "012":"3-1","013":"3-2","014":"3-3","015":"3-4","016":"3-5","024":"3-6","025":"3-7","026":"3-8","027":"3-9","036":"3-10","037":"3-11","048":"3-12",
+  "0123":"4-1","0124":"4-2","0134":"4-3","0125":"4-4","0126":"4-5","0127":"4-6","0145":"4-7","0156":"4-8","0167":"4-9","0235":"4-10",
+  "0135":"4-11","0236":"4-12","0136":"4-13","0237":"4-14","0146":"4-Z15","0157":"4-16","0347":"4-17","0147":"4-18","0148":"4-19",
+  "0158":"4-20","0246":"4-21","0247":"4-22","0257":"4-23","0248":"4-24","0268":"4-25","0358":"4-26","0258":"4-27","0369":"4-28","0137":"4-Z29",
+};
+const FAMILIAR={
+  "3-11":"major and minor triads","3-10":"diminished triad","3-12":"augmented triad","3-9":"sus chords, stacked fourths",
+  "3-7":"minor 7th without its 5th","3-8":"dominant 7th without its 5th","3-4":"major 7th without its 5th","3-3":"major and minor third on one root",
+  "4-26":"minor 7th and major 6th","4-27":"dominant 7th and half-diminished 7th","4-20":"major 7th","4-28":"diminished 7th",
+  "4-19":"minor-major 7th, augmented with a major 7th","4-22":"add9 chords","4-23":"7sus4, stacked fourths","4-24":"augmented 7th, 9th without a 5th",
+  "4-25":"French sixth","4-Z29":"all-interval tetrachord","4-Z15":"all-interval tetrachord","4-11":"9th chords without their 5th","4-14":"minor add9",
+};
+const fmtStep = x => x<10 ? String(x) : x===10 ? "t" : x===11 ? "e" : `(${x})`;
+export function setClass(set,N=12){
+  const pf=primeForm(set,N);
+  const key=pf.map(fmtStep).join("");
+  const forte = N===12 ? FORTE[key]||null : null;
+  return {prime:pf, primeText: N===12 ? `(${key})` : `(${pf.join(" ")})`, forte, familiar: forte ? FAMILIAR[forte]||null : null};
+}
+
+/** is b a turn (Tn) or a mirror image (TnI) of a? Returns {kind:"T"|"I", n} or null */
+export function relation(a,b,N=12){
+  if(a.length!==b.length || !a.length) return null;
+  const B=b.join(",");
+  for(let n=0;n<N;n++) if(a.map(x=>mod(x+n,N)).sort((x,y)=>x-y).join(",")===B) return {kind:"T",n};
+  for(let n=0;n<N;n++) if(a.map(x=>mod(n-x,N)).sort((x,y)=>x-y).join(",")===B) return {kind:"I",n};
+  return null;
+}
+/** turns (other than 0) that leave the set unchanged, and whether some mirror does */
+export function symmetry(set,N=12){
+  const S=set.join(","), turns=[];
+  for(let n=1;n<N;n++) if(set.map(x=>mod(x+n,N)).sort((x,y)=>x-y).join(",")===S) turns.push(n);
+  let mirror=false;
+  for(let n=0;n<N;n++) if(set.map(x=>mod(n-x,N)).sort((x,y)=>x-y).join(",")===S){ mirror=true; break; }
+  return {turns, mirror};
+}
+
+// chord names in twelve steps: interval sets above the root, in order of preference
+const QUALITIES=[
+  ["", [0,4,7]], ["m",[0,3,7]], ["°",[0,3,6]], ["+",[0,4,8]], ["sus4",[0,5,7]], ["sus2",[0,2,7]], ["5",[0,7]],
+  ["7",[0,4,7,10]], ["maj7",[0,4,7,11]], ["m7",[0,3,7,10]], ["m7♭5",[0,3,6,10]], ["°7",[0,3,6,9]],
+  ["6",[0,4,7,9]], ["m6",[0,3,7,9]], ["m(maj7)",[0,3,7,11]], ["7sus4",[0,5,7,10]], ["+7",[0,4,8,10]],
+  ["add9",[0,2,4,7]], ["m(add9)",[0,2,3,7]], ["6/9",[0,2,4,7,9]], ["9",[0,2,4,7,10]], ["maj9",[0,2,4,7,11]], ["m9",[0,2,3,7,10]],
+  ["7",[0,4,10]], ["maj7",[0,4,11]], ["m7",[0,3,10]], ["9",[0,2,4,10]], ["maj9",[0,2,4,11]], ["m9",[0,2,3,10]],
+];
+/** a chord symbol for pitches in twelve steps, spelled for the key, or null */
+export function chordName(pitches,keyFifths=0){
+  if(!pitches.length) return null;
+  const set=pcSet(pitches,12), bass=stepOf(Math.min(...pitches),12);
+  const S=set.join(",");
+  let found=null;
+  for(const [q,iv] of QUALITIES){
+    for(const root of set){
+      if(iv.map(x=>mod(root+x,12)).sort((a,b)=>a-b).join(",")!==S) continue;
+      if(!found || (root===bass && found.root!==bass)) found={root,q};
+    }
+    if(found && found.root===bass) break;
+  }
+  if(!found) return null;
+  const name=spell(found.root,keyFifths)+found.q;
+  return found.root===bass ? name : `${name}/${spell(bass,keyFifths)}`;
+}
