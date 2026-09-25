@@ -108,3 +108,36 @@ export function chordName(pitches,keyFifths=0){
   const name=spell(found.root,keyFifths)+found.q;
   return found.root===bass ? name : `${name}/${spell(bass,keyFifths)}`;
 }
+
+// ---------- voice leading ----------
+const circ = (a,b) => { const d=mod(b-a,12); return d>6 ? d-12 : d; };   // signed shortest move between pitch classes
+/** every way to give each voice one of k targets, keeping only those that use every target when there are enough voices */
+function* assignments(nVoices,k){
+  const idx=new Array(nVoices).fill(0);
+  while(true){
+    if(nVoices<k || new Set(idx).size===k) yield idx.slice();
+    let i=0; while(i<nVoices && ++idx[i]===k){ idx[i]=0; i++; }
+    if(i===nVoices) return;
+  }
+}
+/** the least total motion, in semitones, that could take these voices to the next chord's pitch classes */
+export function smoothestMotion(prevPitches, nextPitches){
+  const pcs=[...new Set(nextPitches.map(p=>Math.round(pcOf(p)*1000)/1000))];
+  if(!prevPitches.length || !pcs.length) return 0;
+  let best=Infinity;
+  for(const a of assignments(prevPitches.length, pcs.length)){
+    let s=0; a.forEach((t,v)=>{ s+=Math.abs(circ(pcOf(prevPitches[v]), pcs[t])); });
+    if(s<best) best=s;
+  }
+  return best;
+}
+/** voices moved to the next chord as smoothly as possible (every pitch class used, the rest doubled) */
+export function voiceLead(prevPitches, pcs){
+  let best=null, bestCost=Infinity;
+  for(const a of assignments(prevPitches.length, pcs.length)){
+    const next=a.map((t,v)=>prevPitches[v]+circ(pcOf(prevPitches[v]), pcs[t]));
+    const cost=next.reduce((s,p,v)=>s+Math.abs(p-prevPitches[v]),0);
+    if(cost<bestCost){ bestCost=cost; best=next; }
+  }
+  return best.sort((x,y)=>x-y);
+}

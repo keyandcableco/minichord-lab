@@ -1,0 +1,450 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tonnetz · Minichord Lab</title>
+<meta name="description" content="Every triad the minichord plays lights a triangle on the Tonnetz, and each chord change leaves a trail of P, L and R flips beside how far the voices actually moved.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔺</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Caveat:wght@700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../core/lab.css">
+<style>
+.boardwrap{background:var(--panel);border:1px solid var(--rule);border-radius:12px;overflow:hidden;margin-top:14px}
+#net{display:block;width:100%;height:auto;aspect-ratio:16/9;max-height:70vh;touch-action:none}
+#net .tri{fill:transparent;stroke:var(--rule);stroke-width:1}
+#net .tri.past{fill:var(--accent)}
+#net .tri.now.up{fill:var(--accent);fill-opacity:.55}
+#net .tri.now.down{fill:var(--v0);fill-opacity:.5}
+#net .edge{stroke:var(--accent);stroke-width:5;stroke-linecap:round}
+#net .node{fill:var(--panel);stroke:var(--ink);stroke-width:1.2;opacity:.9}
+#net .node.lit{fill:var(--ink)}
+#net .nlbl{fill:var(--ink);font:700 13px var(--ui);text-anchor:middle;dominant-baseline:central;pointer-events:none}
+#net .nlbl.lit{fill:var(--board)}
+#net .trail{fill:none;stroke:var(--ink);stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+#net .trail.jump{stroke-dasharray:6 7}
+#net .step{fill:var(--ink);font:700 22px var(--hand);text-anchor:middle;dominant-baseline:central;paint-order:stroke;stroke:var(--panel);stroke-width:6px;stroke-linejoin:round}
+.readgrid{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:18px;margin-top:18px}
+@media (max-width:860px){.readgrid{grid-template-columns:1fr}}
+.big{font-family:var(--hand);font-size:3rem;font-weight:700;line-height:1;margin:0 0 .3rem}
+.read dl{display:grid;grid-template-columns:auto 1fr;gap:.45rem .9rem;margin:.6rem 0 0}
+.read dt{color:var(--muted);font-size:.92rem}
+.read dd{margin:0}
+.chain{font-family:var(--hand);font-size:1.5rem;line-height:1.3;word-spacing:.1em;overflow-wrap:anywhere}
+.chain .m{color:var(--accent);font-size:1.1rem}
+.meter{display:grid;grid-template-columns:auto 1fr auto;gap:.3rem .7rem;align-items:center;margin-top:.4rem}
+.meter .bar{height:12px;border-radius:6px;background:var(--rule);overflow:hidden}
+.meter .bar i{display:block;height:100%;background:var(--accent)}
+.meter .bar.best i{background:var(--v1)}
+.legend dt{font-family:var(--hand);font-size:1.6rem;line-height:1;color:var(--ink)}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:.5rem}
+label.inline{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:.95rem}
+</style>
+</head>
+<body>
+<main>
+  <div class="labbar">
+    <a class="crumb" href="../">Minichord Lab</a>
+    <div class="connect">
+      <button id="connect" class="primary">Connect minichord</button>
+      <select id="input" aria-label="MIDI input" disabled><option>No MIDI yet</option></select>
+    </div>
+  </div>
+
+  <h1>Tonnetz</h1>
+  <p class="lede">A map of harmony. Every major triad is an upward triangle and every minor triad a downward one, and neighbouring triangles share two notes. The trail shows the fewest flips from one chord to the next, which is the smoothest way the voices could have moved.</p>
+  <p class="status" id="status">Connect the minichord, or try a test progression below.</p>
+  <p class="device-line" id="device"></p>
+
+  <div class="boardwrap"><svg id="net" viewBox="-480 -270 960 540" role="img" aria-labelledby="chordName"></svg></div>
+
+  <div class="readgrid">
+    <section class="panel read" aria-live="polite">
+      <p class="big" id="chordName">Play a chord</p>
+      <dl>
+        <dt>Move</dt><dd id="move">–</dd>
+        <dt>Voices</dt>
+        <dd>
+          <div class="meter">
+            <span>Moved</span><div class="bar"><i id="barActual" style="width:0"></i></div><span id="actual">–</span>
+            <span>Smoothest</span><div class="bar best"><i id="barBest" style="width:0"></i></div><span id="best">–</span>
+          </div>
+          <div class="fine" id="verdict"></div>
+        </dd>
+        <dt>So far</dt><dd id="tally">–</dd>
+      </dl>
+      <p class="chain" id="chain"></p>
+    </section>
+    <section class="panel legend">
+      <h2>The three flips</h2>
+      <dl class="read" style="margin:0">
+        <dt>P</dt><dd><b>Parallel.</b> Same root and fifth, the third moves a semitone: C to C minor.</dd>
+        <dt>L</dt><dd><b>Leading-tone.</b> The root moves a semitone: C to E minor, where C slips down to B.</dd>
+        <dt>R</dt><dd><b>Relative.</b> The fifth moves a whole step: C to A minor, where G rises to A.</dd>
+      </dl>
+      <p class="fine">Each flip moves one voice by a step or less, so a short trail means smooth voice leading is possible. Whether you took it shows in the bars: voices that leap around move far more than the trail needs.</p>
+    </section>
+  </div>
+
+  <div class="readgrid">
+    <section class="panel">
+      <h2>Test progressions</h2>
+      <div class="chips" id="tests"></div>
+      <div class="row" style="margin-top:10px">
+        <label class="inline">Voicing
+          <select id="voicing"><option value="led">Voice-led</option><option value="root">Root position</option></select>
+        </label>
+        <button id="clear">Clear the trail</button>
+      </div>
+      <p class="fine">Play the same progression both ways: the trail stays the same, but root position moves the voices much further. These only draw; the minichord makes its own sound.</p>
+    </section>
+    <section class="panel">
+      <h2>Reading the map</h2>
+      <p class="fine">Across the map notes step by fifths; up and to the right by major thirds; down and to the right by minor thirds. The same note appears many times because the map wraps around like a doughnut; the view quietly re-centres when the trail wanders far. In just intonation those copies would differ by a comma, and equal temperament is what makes them one note.</p>
+    </section>
+  </div>
+
+  <footer>
+    <p>Part of <a href="../">Minichord Lab</a>. The minichord is <a href="https://github.com/BenjaminPoilve/minichord">Benjamin Poilve's open-source instrument</a>; key, temperament and MPE come from the unofficial <a href="https://github.com/keyandcableco/minichord/tree/test-allFeatures">test-allFeatures firmware</a>.</p>
+    <p>Made by <a href="https://keyandcable.com">The Key &amp; Cable Company</a>. Source on <a href="https://github.com/keyandcableco/minichord-lab">GitHub</a>.</p>
+  </footer>
+</main>
+
+<script type="module">
+import {Minichord, TEMPERAMENTS, spell} from "../core/minichord.js";
+import {pcOf, stepOf, pcSet, chordName, smoothestMotion, voiceLead} from "../core/theory.js";
+
+const mc = new Minichord();
+window.mc = mc;
+const $ = id => document.getElementById(id);
+const NS = "http://www.w3.org/2000/svg";
+const el = (tag, attrs={}, parent) => { const e=document.createElementNS(NS,tag); for(const k in attrs) e.setAttribute(k,attrs[k]); if(parent) parent.appendChild(e); return e; };
+const mod = (a,n) => ((a%n)+n)%n;
+
+// ---------- the lattice ----------
+const S=78, H=S*Math.sqrt(3)/2;
+let N=12, F=7, T=4;                 // steps in the octave, in a fifth, in a major third
+function setDivision(n){
+  N=n; F=Math.round(n*Math.log2(3/2)); T=Math.round(n*Math.log2(5/4));
+}
+const pcAt = (i,j) => mod(F*i + T*j, N);
+const pos = (i,j) => [(i + j/2)*S, -j*H];
+const toLattice = ([x,y]) => { const j=-y/H; return [x/S - j/2, j]; };
+const verts = (i,j,up) => up ? [[i,j],[i+1,j],[i,j+1]] : [[i+1,j],[i,j+1],[i+1,j+1]];
+const centroid = pts => { const p=pts.map(([i,j])=>pos(i,j)); return [p.reduce((s,q)=>s+q[0],0)/p.length, p.reduce((s,q)=>s+q[1],0)/p.length]; };
+const triKey = t => `${t.i},${t.j},${t.up?1:0}`;
+// the three neighbours of a triangle, and which flip reaches each
+function neighbours(t){
+  const {i,j,up}=t;
+  return up ? [{i,j:j-1,up:false,m:"P"},{i:i-1,j,up:false,m:"R"},{i,j,up:false,m:"L"}]
+            : [{i,j:j+1,up:true,m:"P"},{i:i+1,j,up:true,m:"R"},{i,j,up:true,m:"L"}];
+}
+const triSet = t => verts(t.i,t.j,t.up).map(([a,b])=>pcAt(a,b)).sort((x,y)=>x-y).join(",");
+
+/** is this set of steps a major or minor triad? */
+function triadOf(set){
+  if(set.length!==3) return null;
+  const S3=set.join(",");
+  for(const r of set){
+    if([r,r+T,r+F].map(x=>mod(x,N)).sort((a,b)=>a-b).join(",")===S3) return {root:r, major:true};
+    if([r,r+F-T,r+F].map(x=>mod(x,N)).sort((a,b)=>a-b).join(",")===S3) return {root:r, major:false};
+  }
+  return null;
+}
+/** fewest flips from a triangle to any copy of the target triad */
+function route(from, target){
+  const want=target, seen=new Set([triKey(from)]);
+  let frontier=[{t:from, path:""}];
+  if(triSet(from)===want) return {t:from, path:""};
+  for(let d=0; d<8; d++){
+    const next=[];
+    for(const f of frontier) for(const n of neighbours(f.t)){
+      const k=triKey(n); if(seen.has(k)) continue; seen.add(k);
+      const step={t:{i:n.i,j:n.j,up:n.up}, path:f.path+n.m};
+      if(triSet(step.t)===want) return step;
+      next.push(step);
+    }
+    frontier=next;
+  }
+  return null;
+}
+/** the copy of a triad (or of a set of notes) nearest a point on the map */
+function nearestTriangle(want, near){
+  const [ci,cj]=toLattice(near); let best=null, bd=Infinity;
+  for(let i=Math.floor(ci)-8;i<=Math.ceil(ci)+8;i++) for(let j=Math.floor(cj)-6;j<=Math.ceil(cj)+6;j++) for(const up of [true,false]){
+    const t={i,j,up}; if(triSet(t)!==want) continue;
+    const c=centroid(verts(i,j,up)), d=Math.hypot(c[0]-near[0],c[1]-near[1]);
+    if(d<bd){ bd=d; best=t; }
+  }
+  return best;
+}
+function nearestCluster(set, near){
+  const [ci,cj]=toLattice(near);
+  const copies=pc=>{ const out=[]; for(let i=Math.floor(ci)-8;i<=Math.ceil(ci)+8;i++) for(let j=Math.floor(cj)-6;j<=Math.ceil(cj)+6;j++) if(pcAt(i,j)===pc) out.push([i,j]); return out; };
+  let best=null, bs=Infinity;
+  for(const a of copies(set[0])){
+    const pa=pos(...a), nodes=[a];
+    for(const pc of set.slice(1)){
+      let bn=null, bd=Infinity;
+      for(const c of copies(pc)){ const p=pos(...c), d=Math.hypot(p[0]-pa[0],p[1]-pa[1]); if(d<bd){ bd=d; bn=c; } }
+      nodes.push(bn);
+    }
+    const c=centroid(nodes);
+    const spread=nodes.reduce((s,n)=>{ const p=pos(...n); return s+Math.hypot(p[0]-c[0],p[1]-c[1]); },0);
+    const score=spread + .6*Math.hypot(c[0]-near[0],c[1]-near[1]);
+    if(score<bs){ bs=score; best=nodes; }
+  }
+  return best;
+}
+/** triangles whose three corners are all among these nodes */
+function trianglesIn(nodes){
+  const has=new Set(nodes.map(([i,j])=>i+","+j)), out=[], seen=new Set();
+  for(const [i,j] of nodes) for(const [di,dj] of [[0,0],[-1,0],[0,-1],[-1,-1]]) for(const up of [true,false]){
+    const t={i:i+di,j:j+dj,up}, k=triKey(t);
+    if(seen.has(k)) continue; seen.add(k);
+    if(verts(t.i,t.j,up).every(([a,b])=>has.has(a+","+b))) out.push(t);
+  }
+  return out;
+}
+
+// ---------- drawing ----------
+const svg=$("net");
+const RI=14, RJ=8;     // the drawn patch, centred on the origin; the view re-centres before the trail leaves it
+let world, triEls=new Map(), nodeEls=new Map(), trailLayer, markLayer;
+const cam={x:0,y:0,tx:0,ty:0};
+function build(){
+  svg.innerHTML=""; triEls.clear(); nodeEls.clear();
+  world=el("g",{},svg);
+  const triLayer=el("g",{},world);
+  for(let i=-RI;i<=RI;i++) for(let j=-RJ;j<=RJ;j++) for(const up of [true,false]){
+    const pts=verts(i,j,up).map(([a,b])=>pos(a,b).join(",")).join(" ");
+    triEls.set(`${i},${j},${up?1:0}`, el("polygon",{class:"tri "+(up?"up":"down"),points:pts},triLayer));
+  }
+  markLayer=el("g",{},world);
+  trailLayer=el("g",{},world);
+  const nodeLayer=el("g",{},world);
+  for(let i=-RI;i<=RI+1;i++) for(let j=-RJ;j<=RJ+1;j++){
+    const [x,y]=pos(i,j);
+    const c=el("circle",{class:"node",cx:x,cy:y,r:17},nodeLayer);
+    const t=el("text",{class:"nlbl",x,y},nodeLayer); t.textContent=label(pcAt(i,j));
+    nodeEls.set(i+","+j,{c,t});
+  }
+  draw();
+}
+const N19=["C","C♯","D♭","D","D♯","E♭","E","E♯","F","F♯","G♭","G","G♯","A♭","A","A♯","B♭","B","B♯"];
+const N31={0:"C",5:"D",10:"E",13:"F",18:"G",23:"A",28:"B"};
+function label(step){
+  if(N===12) return spell(step, mc.keyFifths);
+  if(N===19) return N19[step];
+  return N31[step] ?? String(step);
+}
+
+// ---------- chords ----------
+const trail=[];          // settled chords: {pitches, voices, name, tri|null, nodes, c:[x,y], path, flips, actual, best, jump}
+let live=null;           // the chord sounding now (drawn even before it settles)
+
+function place(pitches, prev){
+  const set=pcSet(pitches,N), want=set.join(",");
+  const near = prev ? prev.c : [0,0];
+  const tri = triadOf(set);
+  if(tri){
+    let found=null, path=null;
+    if(prev && prev.tri){ const r=route(prev.tri, want); if(r){ found=r.t; path=r.path; } }
+    if(!found) found=nearestTriangle(want, near);
+    const nodes=verts(found.i,found.j,found.up);
+    return {tri:found, nodes, tris:[found], c:centroid(nodes), path, major:tri.major};
+  }
+  const nodes = set.length ? nearestCluster(set, near) : [];
+  return {tri:null, nodes, tris:trianglesIn(nodes), c:nodes.length?centroid(nodes):near, path:null};
+}
+
+mc.addEventListener("chord", e=>{
+  const voices=e.detail, P=voices.map(v=>v.pitch);
+  const prev=trail[trail.length-1];
+  const at=place(P, prev);
+  // what the voices actually did, voice by voice (by MPE channel when there is one, otherwise low to high)
+  let actual=null, best=null;
+  if(prev){
+    const byVoice = mc.mpe && voices.every(v=>v.voice!=null) && prev.voices.every(v=>v.voice!=null);
+    if(byVoice){
+      actual=0; for(const v of voices){ const o=prev.voices.find(w=>w.voice===v.voice); actual += o ? Math.abs(v.pitch-o.pitch) : 0; }
+    } else {
+      const a=[...P].sort((x,y)=>x-y), b=[...prev.pitches].sort((x,y)=>x-y);
+      actual = a.length===b.length ? a.reduce((s,p,k)=>s+Math.abs(p-b[k]),0) : null;
+    }
+    best = smoothestMotion(prev.pitches, P);
+  }
+  const flips = at.path!=null ? at.path.length : null;
+  const jump = prev && (at.path==null || flips>2) && Math.hypot(at.c[0]-prev.c[0], at.c[1]-prev.c[1])>S*1.2;
+  trail.push({pitches:P, voices, name: N===12 ? chordName(P, mc.keyFifths) : null, ...at, flips, actual, best, jump});
+  if(trail.length>40) trail.shift();
+  recentre();
+  readout();
+  draw();
+});
+mc.addEventListener("voices", ()=>{
+  const vs=mc.voices;
+  live = vs.length ? {pitches:vs.map(v=>v.pitch)} : null;
+  draw();
+});
+
+// the map repeats, so when the trail wanders off, shift everything by one period of the pattern
+function recentre(){
+  const last=trail[trail.length-1]; if(!last) return;
+  if(Math.hypot(last.c[0],last.c[1]) < S*3.5) return;
+  let best=null, bd=Math.hypot(last.c[0],last.c[1]);
+  for(let a=-12;a<=12;a++) for(let b=-8;b<=8;b++){
+    if((a||b) && mod(F*a+T*b,N)===0){
+      const [dx,dy]=pos(a,b), d=Math.hypot(last.c[0]-dx,last.c[1]-dy);
+      if(d<bd-1){ bd=d; best=[a,b]; }
+    }
+  }
+  if(!best) return;
+  const [a,b]=best, [dx,dy]=pos(a,b);
+  for(const e of trail){
+    e.nodes=e.nodes.map(([i,j])=>[i-a,j-b]);
+    e.tris=e.tris.map(t=>({i:t.i-a,j:t.j-b,up:t.up}));
+    if(e.tri) e.tri={i:e.tri.i-a,j:e.tri.j-b,up:e.tri.up};
+    e.c=[e.c[0]-dx,e.c[1]-dy];
+  }
+  cam.x-=dx; cam.y-=dy; cam.tx-=dx; cam.ty-=dy;    // identical copy, so no visible jump
+}
+
+function draw(){
+  if(!world) return;
+  for(const e of triEls.values()){ e.setAttribute("class", e.getAttribute("class").replace(/ (now|past)/g,"")); e.style.fillOpacity=""; }
+  for(const n of nodeEls.values()){ n.c.classList.remove("lit"); n.t.classList.remove("lit"); }
+  // fading history of lit triangles
+  const recent=trail.slice(-8);
+  recent.forEach((e,k)=>{
+    const age=recent.length-1-k;
+    for(const t of e.tris){ const x=triEls.get(triKey(t)); if(x && age>0){ x.classList.add("past"); x.style.fillOpacity=Math.max(.05,.28-age*.035); } }
+  });
+  // the current chord: settled position, or the live notes before it settles
+  const cur=trail[trail.length-1];
+  const sounding = live && cur && pcSet(live.pitches,N).join(",")===pcSet(cur.pitches,N).join(",");
+  markLayer.innerHTML="";
+  if(cur){
+    for(const t of cur.tris){ const x=triEls.get(triKey(t)); if(x){ x.classList.add("now"); x.style.fillOpacity=""; if(!sounding) x.style.fillOpacity=".25"; } }
+    for(const [i,j] of cur.nodes){ const n=nodeEls.get(i+","+j); if(n){ n.c.classList.add("lit"); n.t.classList.add("lit"); } }
+    if(!cur.tri && cur.nodes.length>1){
+      // non-triads: join neighbouring notes
+      for(let a=0;a<cur.nodes.length;a++) for(let b=a+1;b<cur.nodes.length;b++){
+        const [i1,j1]=cur.nodes[a], [i2,j2]=cur.nodes[b], di=i2-i1, dj=j2-j1;
+        if([[1,0],[-1,0],[0,1],[0,-1],[1,-1],[-1,1]].some(([x,y])=>x===di&&y===dj)){
+          const [x1,y1]=pos(i1,j1), [x2,y2]=pos(i2,j2); el("line",{class:"edge",x1,y1,x2,y2},markLayer);
+        }
+      }
+    }
+  }
+  // the trail between chord centres, fading with age
+  trailLayer.innerHTML="";
+  const tr=trail.slice(-12);
+  for(let k=1;k<tr.length;k++){
+    const a=tr[k-1], b=tr[k], age=tr.length-1-k;
+    const l=el("line",{class:"trail"+(b.jump?" jump":""),x1:a.c[0],y1:a.c[1],x2:b.c[0],y2:b.c[1]},trailLayer);
+    l.style.opacity=Math.max(.12, 1-age*.12);
+    if(b.path && age<3){ const t=el("text",{class:"step",x:(a.c[0]+b.c[0])/2,y:(a.c[1]+b.c[1])/2-14},trailLayer); t.textContent=b.path; t.style.opacity=l.style.opacity; }
+  }
+  if(cur){ cam.tx=cur.c[0]; cam.ty=cur.c[1]; }
+}
+function frame(){
+  cam.x+=(cam.tx-cam.x)*.12; cam.y+=(cam.ty-cam.y)*.12;
+  if(world) world.setAttribute("transform",`translate(${(-cam.x).toFixed(1)},${(-cam.y).toFixed(1)})`);
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+
+// ---------- readout ----------
+const MEAN={P:"P (parallel)",L:"L (leading-tone)",R:"R (relative)"};
+function readout(){
+  const cur=trail[trail.length-1], prev=trail[trail.length-2];
+  $("chordName").textContent = cur.name || (cur.tri ? `${cur.tri.up?"Major":"Minor"} triad` : `${pcSet(cur.pitches,N).length} notes`);
+  let move;
+  if(!prev) move="The first chord of the trail.";
+  else if(cur.path==="") move="The same triad.";
+  else if(cur.path) move = cur.path.length===1 ? `One flip: ${MEAN[cur.path]}.` :
+    `${cur.path.length} flips: ${[...cur.path].map(m=>m).join(" then ")}.` + (cur.path.length>2 ? " A long way round, so no smooth voice leading exists." : "");
+  else move = cur.tri ? "From a chord that isn't a triad, so it lands on the nearest copy." : "Not a major or minor triad, so its notes light up with every triangle they fill.";
+  $("move").textContent=move;
+  const scale=Math.max(12, cur.actual||0, cur.best||0);
+  $("barActual").style.width = cur.actual==null ? "0" : `${cur.actual/scale*100}%`;
+  $("barBest").style.width = cur.best==null ? "0" : `${cur.best/scale*100}%`;
+  const st=v=>v==null?"–":`${+v.toFixed(v%1?1:0)} st`;
+  $("actual").textContent=st(cur.actual); $("best").textContent=st(cur.best);
+  $("verdict").textContent = cur.actual==null || cur.best==null ? "" :
+    cur.actual-cur.best < .5 ? "As smooth as possible." :
+    `${st(cur.actual-cur.best)} more than needed.`;
+  const changes=trail.slice(1).filter(e=>e.actual!=null);
+  if(changes.length){
+    const sum=k=>changes.reduce((s,e)=>s+(e[k]||0),0);
+    const flipsKnown=trail.slice(1).filter(e=>e.flips!=null);
+    $("tally").textContent = `${changes.length} change${changes.length>1?"s":""}: the voices moved ${(sum("actual")/changes.length).toFixed(1)} st per change, against ${(sum("best")/changes.length).toFixed(1)} st at best` +
+      (flipsKnown.length ? `, over ${(flipsKnown.reduce((s,e)=>s+e.flips,0)/flipsKnown.length).toFixed(1)} flips.` : ".");
+  }
+  const chain=$("chain"); chain.innerHTML="";
+  trail.slice(-10).forEach((e,k)=>{
+    if(k>0){ const m=document.createElement("span"); m.className="m"; m.textContent = e.path ? ` –${e.path}→ ` : e.path==="" ? " = " : " → "; chain.appendChild(m); }
+    chain.append(e.name || "·");
+  });
+}
+
+// ---------- device and connection ----------
+mc.addEventListener("status", e=>$("status").textContent=e.detail);
+mc.addEventListener("device", ()=>{
+  const parts=[];
+  if(mc.keyName) parts.push(`Key of <b>${mc.keyName}</b>`);
+  if(mc.temperament!=null) parts.push(`temperament <b>${TEMPERAMENTS[mc.temperament]||mc.temperament}</b>`);
+  if(mc.division!==12) parts.push(`the map uses ${mc.division} steps: fifths of ${Math.round(mc.division*Math.log2(1.5))}, major thirds of ${Math.round(mc.division*Math.log2(1.25))}`);
+  $("device").innerHTML = parts.length ? parts.join(", ")+"." : "";
+  if(mc.division!==N){ setDivision(mc.division); trail.length=0; cam.x=cam.y=cam.tx=cam.ty=0; }
+  build();
+});
+mc.addEventListener("ports", ()=>{
+  const sel=$("input"), ins=mc.inputs; sel.innerHTML=""; sel.disabled=false;
+  sel.add(new Option("Minichord chord port (auto)","auto")); sel.add(new Option("All MIDI inputs","all"));
+  ins.forEach(i=>sel.add(new Option(i.name,i.id)));
+  sel.value = [...sel.options].some(o=>o.value===mc.inputChoice) ? mc.inputChoice : "auto";
+});
+$("input").onchange=e=>mc.selectInput(e.target.value);
+$("connect").onclick=async e=>{ e.target.disabled=true; if(await mc.connect()) e.target.textContent="Connected"; else e.target.disabled=false; };
+$("clear").onclick=()=>{ trail.length=0; draw(); $("chain").textContent=""; $("tally").textContent="–"; };
+
+// ---------- test progressions ----------
+const Q={M:[0,4,7], m:[0,3,7]};
+const PROGS={
+  "C G Am F":[[0,"M"],[7,"M"],[9,"m"],[5,"M"]],
+  "Pachelbel":[[2,"M"],[9,"M"],[11,"m"],[6,"m"],[7,"M"],[2,"M"],[7,"M"],[9,"M"]],
+  "Hexatonic cycle":[[0,"M"],[0,"m"],[8,"M"],[8,"m"],[4,"M"],[4,"m"],[0,"M"]],
+  "Circle of fifths":[[0,"M"],[5,"M"],[10,"M"],[3,"M"],[8,"M"],[1,"M"]],
+  "Chromatic mediants":[[0,"M"],[4,"M"],[8,"M"],[0,"M"]],
+};
+let held=[], running=0;
+function play(notes){
+  held.forEach(([ch,n])=>mc.handle([0x80|ch,n,0]));
+  held=notes.map((n,i)=>[1+i,n]);
+  held.forEach(([ch,n])=>mc.handle([0x90|ch,n,100]));
+}
+function rootPosition([r,q]){ const b=48+r-(r>6?12:0); return [b, b+Q[q][1], b+Q[q][2], b+12]; }
+Object.entries(PROGS).forEach(([name,seq])=>{
+  const b=document.createElement("button"); b.textContent=name;
+  b.onclick=async()=>{
+    const run=++running; let prev=null;
+    for(const c of seq){
+      if(run!==running) return;
+      const pcs=Q[c[1]].map(x=>mod(c[0]+x,12));
+      const notes = $("voicing").value==="root" || !prev ? rootPosition(c) : voiceLead(prev, pcs).map(Math.round);
+      play(notes); prev=notes;
+      await new Promise(r=>setTimeout(r,1000));
+    }
+    if(run===running) play([]);
+  };
+  $("tests").appendChild(b);
+});
+
+setDivision(12);
+build();
+</script>
+</body>
+</html>
