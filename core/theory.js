@@ -91,8 +91,8 @@ const QUALITIES=[
   ["add9",[0,2,4,7]], ["m(add9)",[0,2,3,7]], ["6/9",[0,2,4,7,9]], ["9",[0,2,4,7,10]], ["maj9",[0,2,4,7,11]], ["m9",[0,2,3,7,10]],
   ["7",[0,4,10]], ["maj7",[0,4,11]], ["m7",[0,3,10]], ["9",[0,2,4,10]], ["maj9",[0,2,4,11]], ["m9",[0,2,3,10]],
 ];
-/** a chord symbol for pitches in twelve steps, spelled for the key, or null */
-export function chordName(pitches,keyFifths=0){
+/** the chord's root, quality symbol and bass (pitch classes in twelve steps), or null if it has no name here */
+export function chordId(pitches){
   if(!pitches.length) return null;
   const set=pcSet(pitches,12), bass=stepOf(Math.min(...pitches),12);
   const S=set.join(",");
@@ -104,9 +104,22 @@ export function chordName(pitches,keyFifths=0){
     }
     if(found && found.root===bass) break;
   }
-  if(!found) return null;
-  const name=spell(found.root,keyFifths)+found.q;
-  return found.root===bass ? name : `${name}/${spell(bass,keyFifths)}`;
+  return found ? {root:found.root, quality:found.q, bass} : null;
+}
+/** a chord symbol for pitches in twelve steps, spelled for the key, or null */
+export function chordName(pitches,keyFifths=0){
+  const id=chordId(pitches); if(!id) return null;
+  const name=spell(id.root,keyFifths)+id.quality;
+  return id.root===id.bass ? name : `${name}/${spell(id.bass,keyFifths)}`;
+}
+/** could these pitches be the chord with this root and quality symbol? (a missing 5th is allowed) */
+export function isChord(pitches, root, quality){
+  const S=pcSet(pitches,12).join(",");
+  return QUALITIES.some(([q,iv])=>q===quality && iv.map(x=>mod(root+x,12)).sort((a,b)=>a-b).join(",")===S);
+}
+/** the pitch classes of a chord, full form */
+export function chordTones(root, quality){
+  const q=QUALITIES.find(([name])=>name===quality); return q ? q[1].map(x=>mod(root+x,12)) : [];
 }
 
 // ---------- voice leading ----------
