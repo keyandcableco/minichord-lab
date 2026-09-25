@@ -43,3 +43,14 @@ export function tune(note, index, keyFifths=0){
   const anchorA = 9 - EDO_NATURALS[t.division].A*12/t.division;   // A keeps its pitch, as in the twelve-note ones
   return octave*12 + steps*12/t.division + anchorA;
 }
+
+/** the temperament in use: the minichord's, once its settings are known, otherwise the page's own choice */
+export function activeTemperament(mc, pageChoice=0){
+  return mc.temperament!=null && mc.sysex ? mc.temperament : pageChoice;
+}
+/** the chord's notes as they sound: exact MPE pitches when the minichord bends them, otherwise tuned from the table */
+export function soundingPitches(mc, voices, pageChoice=0){
+  const bent = mc.mpe && voices.some(v=>Math.abs(v.pitch-Math.round(v.pitch))>0.004);
+  const t = activeTemperament(mc, pageChoice);
+  return bent ? voices.map(v=>v.pitch) : voices.map(v=>tune(v.note, t, mc.keyFifths));
+}

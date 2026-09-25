@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Beats · Minichord Lab</title>
+<meta name="description" content="Two voices of a minichord chord drawn against each other like an oscilloscope, with how fast every interval beats in each temperament.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>➰</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Caveat:wght@700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../core/lab.css">
+<style>
+.grid2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px;margin-top:14px}
+@media (max-width:900px){.grid2{grid-template-columns:1fr}}
+/* the scope keeps a dark screen in either theme, like the instrument it imitates */
+.scope{background:#0E1612;border-radius:12px;padding:10px;border:1px solid var(--rule)}
+#scope{display:block;width:100%;height:auto;aspect-ratio:1}
+.scopebar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin-top:10px}
+.pairs{display:flex;flex-wrap:wrap;gap:6px}
+.pairs button{font-weight:400;padding:.3rem .6rem}
+.pairs button[aria-pressed="true"]{background:var(--ink);color:var(--board);border-color:var(--ink);font-weight:700}
+.read .big{font-family:var(--hand);font-size:2.8rem;line-height:1;margin:0}
+.read .ratio{font-size:1.05rem;color:var(--muted);margin:.3rem 0 .8rem}
+.beat{display:flex;align-items:center;gap:14px;margin:.4rem 0}
+.beat .hz{font-size:3.4rem;font-weight:700;line-height:1}
+.beat .hz small{font-size:1rem;font-weight:400;color:var(--muted);margin-left:.3rem}
+.pulse{width:34px;height:34px;border-radius:50%;background:var(--accent);flex:0 0 auto}
+.pulse.still{opacity:1}
+.pulse.fast{opacity:.55}
+.read p{margin:.4rem 0;max-width:58ch}
+table{width:100%;border-collapse:collapse;font-size:.95rem}
+th,td{text-align:left;padding:.35rem .4rem;border-bottom:1px solid var(--rule)}
+th{color:var(--muted);font-weight:400;font-size:.88rem}
+td.num{text-align:right;font-variant-numeric:tabular-nums}
+tr.sel td{font-weight:700}
+tr.pick{cursor:pointer}
+tr.pick:hover td{background:var(--board)}
+.dot{display:inline-block;width:12px;height:12px;border-radius:50%;background:var(--accent);vertical-align:middle;margin-left:6px}
+.temps{display:grid;gap:4px}
+.temps button{display:grid;grid-template-columns:9.6rem 1fr 5.4rem;align-items:center;gap:10px;text-align:left;font-weight:400;padding:.25rem .5rem;border-color:transparent;background:transparent}
+.temps button:hover{border-color:var(--rule)}
+.temps button[aria-checked="true"]{border-color:var(--ink);background:var(--board);font-weight:700}
+.temps .bar{height:12px;border-radius:6px;background:var(--rule);overflow:hidden}
+.temps .bar i{display:block;height:100%;background:var(--accent)}
+.temps .val{text-align:right;font-size:.9rem}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:.5rem}
+label.inline{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:.95rem}
+.scopebar label.inline{color:#A9B3A9}
+.scopebar select{background:#1A2520;color:#ECEADF;border-color:#33443A}
+</style>
+</head>
+<body>
+<main>
+  <div class="labbar">
+    <a class="crumb" href="../">Minichord Lab</a>
+    <div class="connect">
+      <button id="connect" class="primary">Connect minichord</button>
+      <select id="input" aria-label="MIDI input" disabled><option>No MIDI yet</option></select>
+    </div>
+  </div>
+
+  <h1>Beats</h1>
+  <p class="lede">Two notes in a pure ratio lock together, and drawn against each other they trace a still figure. Tune them a few cents apart and the figure rolls, and you hear it too: the pulsing, or beating, that piano tuners count to set a temperament.</p>
+  <p class="status" id="status">Connect the minichord, or try the test chords below.</p>
+  <p class="device-line" id="device"></p>
+
+  <div class="grid2">
+    <section>
+      <div class="scope"><canvas id="scope" width="720" height="720" role="img" aria-label="Lissajous figure of the chosen pair of voices"></canvas>
+        <div class="scopebar">
+          <div class="pairs" id="pairs" role="group" aria-label="Pair of voices"></div>
+          <label class="inline">Speed
+            <select id="speed"><option value="1">Real time</option><option value="0.25">Quarter speed</option><option value="0.0625" selected>Sixteenth speed</option></select>
+          </label>
+        </div>
+      </div>
+    </section>
+    <section class="panel read" aria-live="polite">
+      <p class="big" id="pairName">Play a chord</p>
+      <p class="ratio" id="ratio"></p>
+      <div class="beat"><div class="pulse" id="pulse" aria-hidden="true"></div><div class="hz"><span id="hz">–</span><small>beats a second</small></div></div>
+      <p id="explain"></p>
+      <p class="fine" id="shape"></p>
+      <div class="row" style="margin-top:.6rem"><button id="listen" disabled>Listen to this pair</button><span class="fine">Plays the two notes as tuned, with overtones, for four seconds.</span></div>
+    </section>
+  </div>
+
+  <section class="panel" style="margin-top:18px">
+    <h2>Every pair in the chord</h2>
+    <table><thead><tr><th>Notes</th><th>Interval</th><th>Pure ratio</th><th class="num">Off pure</th><th class="num">Beats a second</th></tr></thead><tbody id="pairTable"><tr><td colspan="5" class="fine">Play a chord to fill this in. Choose a row to draw that pair.</td></tr></tbody></table>
+  </section>
+
+  <div class="grid2">
+    <section class="panel">
+      <h2>This pair in every temperament</h2>
+      <div class="temps" id="temps" role="radiogroup" aria-label="Temperament"></div>
+      <p class="fine" id="tempsHint">Choose a temperament to see its effect. With the minichord connected, it switches too.</p>
+    </section>
+    <section class="panel">
+      <h2>Test chords</h2>
+      <div class="chips" id="tests"></div>
+      <p class="fine">These draw without a minichord, tuned in the temperament you choose. In equal temperament the major third beats about ten times a second at middle C; in meantone it's nearly still.</p>
+      <h2 style="margin-top:1rem">Reading the figure</h2>
+      <p class="fine">The low note moves the trace across, the high note up and down. A 3:2 fifth makes a figure with three loops one way and two the other; 5:4 makes five and four. The rolling you see is the beating you hear: one full roll for every few beats, slowed down here so the eye can follow.</p>
+    </section>
+  </div>
+
+  <footer>
+    <p>Part of <a href="../">Minichord Lab</a>. The minichord is <a href="https://github.com/BenjaminPoilve/minichord">Benjamin Poilve's open-source instrument</a>; exact tuning, master tuning and the temperaments come from the unofficial <a href="https://github.com/keyandcableco/minichord/tree/test-allFeatures">test-allFeatures firmware</a>.</p>
+    <p>Made by <a href="https://keyandcable.com">The Key &amp; Cable Company</a>. Source on <a href="https://github.com/keyandcableco/minichord-lab">GitHub</a>.</p>
+  </footer>
+</main>
+
+<script type="module">
+import {Minichord, spell} from "../core/minichord.js";
+import {pcOf, beatInfo, chordName} from "../core/theory.js";
+import {TEMPERAMENT_TABLE, tune, activeTemperament, soundingPitches} from "../core/temperaments.js";
+
+const mc = new Minichord();
+window.mc = mc;
+const $ = id => document.getElementById(id);
+let pageTemp=0;
+const activeTemp = () => activeTemperament(mc, pageTemp);
+
+// the chord being studied: its MIDI notes, and its pitches as tuned
+let chord=null;          // {notes:[], pitches:[], names:[]} lowest first
+let pair=[0,1];          // indices into the chord, low then high
+
+function takeChord(){
+  const vs=mc.voices;
+  if(!vs.length) return false;
+  const pitches=soundingPitches(mc, vs, pageTemp);
+  const order=pitches.map((p,i)=>i).sort((a,b)=>pitches[a]-pitches[b]);
+  chord={notes:order.map(i=>vs[i].note), pitches:order.map(i=>pitches[i]),
+         names:order.map(i=>spell(((vs[i].note%12)+12)%12, mc.keyFifths))};
+  return true;
+}
+function retune(){ if(chord) chord.pitches=chord.notes.map(n=>tune(n, activeTemp(), mc.keyFifths)); }
+const pairsOf = () => { const out=[]; if(!chord) return out; for(let i=0;i<chord.pitches.length;i++) for(let j=i+1;j<chord.pitches.length;j++) if(Math.round(chord.pitches[j])!==Math.round(chord.pitches[i])) out.push([i,j]); return out; };
+function defaultPair(){
+  const ps=pairsOf(); if(!ps.length) return [0,0];
+  // the most telling pair: a third if there is one, otherwise the widest pair short of an octave
+  const score=([i,j])=>{ const ic=Math.round(chord.pitches[j]-chord.pitches[i])%12; return ic===4||ic===3 ? 0 : ic===7 ? 1 : ic===0 ? 9 : 2; };
+  return ps.sort((a,b)=>score(a)-score(b))[0];
+}
+const info = () => chord && pair[0]!==pair[1] ? beatInfo(chord.pitches[pair[0]], chord.pitches[pair[1]], mc.aHz) : null;
+
+// ---------- readout ----------
+function fmtHz(b){ return b<0.05 ? "0" : b<20 ? b.toFixed(1) : b.toFixed(0); }
+function readout(){
+  const b=info();
+  if(!b){ $("pairName").textContent = chord ? "Choose two different notes" : "Play a chord"; $("hz").textContent="–"; return; }
+  const [i,j]=pair;
+  $("pairName").textContent = `${chord.names[i]} and ${chord.names[j]}`;
+  $("ratio").textContent = `A ${b.name}, near the pure ${b.P}:${b.Q}, ${Math.abs(b.cents)<0.5 ? "within half a cent of it" : `${Math.abs(b.cents).toFixed(1)} cents ${b.cents>0?"wide":"narrow"}`}.`;
+  $("hz").textContent = fmtHz(b.beat);
+  const ord = n => n+(n===1?"st":n===2?"nd":n===3?"rd":"th");
+  $("explain").textContent = b.beat<0.05 ? "No beating: the overtones line up exactly, so the two notes blend into one steady sound." :
+    b.beat<16 ? `The ${ord(b.lowHarmonic)} harmonic of ${chord.names[i]} (${(b.f1*b.lowHarmonic).toFixed(1)} Hz) and the ${ord(b.highHarmonic)} of ${chord.names[j]} (${(b.f2*b.highHarmonic).toFixed(1)} Hz) sit ${b.beat.toFixed(2)} Hz apart, so they swell and fade together ${fmtHz(b.beat)} times a second.` :
+    `The ${ord(b.lowHarmonic)} and ${ord(b.highHarmonic)} harmonics are ${b.beat.toFixed(0)} Hz apart: too fast to count as beats, so it's heard as roughness instead.`;
+  $("shape").textContent = `The figure has ${b.Q} loop${b.Q>1?"s":""} across and ${b.P} up and down${b.beat<0.05?", and stands still.":`, and rolls through once every ${(b.Q/b.beat).toFixed(b.Q/b.beat<10?1:0)} seconds in real time.`}`;
+  const pulse=$("pulse");
+  pulse.className = "pulse" + (b.beat<0.05 ? " still" : b.beat>=16 ? " fast" : "");
+}
+function pairsBar(){
+  const box=$("pairs"); box.innerHTML="";
+  pairsOf().forEach(([i,j])=>{
+    const bt=document.createElement("button"); bt.textContent=`${chord.names[i]}–${chord.names[j]}`;
+    bt.setAttribute("aria-pressed", i===pair[0]&&j===pair[1]);
+    bt.onclick=()=>{ pair=[i,j]; update(); };
+    box.appendChild(bt);
+  });
+}
+function table(){
+  const tb=$("pairTable"); tb.innerHTML="";
+  const ps=pairsOf();
+  if(!ps.length){ tb.innerHTML=`<tr><td colspan="5" class="fine">Play a chord with at least two different notes.</td></tr>`; return; }
+  for(const [i,j] of ps){
+    const b=beatInfo(chord.pitches[i], chord.pitches[j], mc.aHz);
+    const tr=document.createElement("tr"); tr.className="pick"+(i===pair[0]&&j===pair[1]?" sel":"");
+    tr.innerHTML=`<td>${chord.names[i]}–${chord.names[j]}</td><td>${b.name}</td><td>${b.P}:${b.Q}</td><td class="num">${b.cents>=0?"+":"−"}${Math.abs(b.cents).toFixed(1)}¢</td><td class="num">${fmtHz(b.beat)}</td>`;
+    tr.onclick=()=>{ pair=[i,j]; update(); };
+    tb.appendChild(tr);
+  }
+}
+function temps(){
+  const box=$("temps"); box.innerHTML="";
+  const ok = chord && pair[0]!==pair[1];
+  const rows = TEMPERAMENT_TABLE.map((t,k)=> ok ? beatInfo(tune(chord.notes[pair[0]],k,mc.keyFifths), tune(chord.notes[pair[1]],k,mc.keyFifths), mc.aHz).beat : null);
+  const max = Math.max(1, ...rows.filter(x=>x!=null));
+  TEMPERAMENT_TABLE.forEach((t,k)=>{
+    const bt=document.createElement("button"); bt.setAttribute("role","radio"); bt.setAttribute("aria-checked", k===activeTemp());
+    const lab=document.createElement("span"); lab.textContent=t.label;
+    const bar=document.createElement("span"); bar.className="bar"; const fill=document.createElement("i"); bar.appendChild(fill);
+    const val=document.createElement("span"); val.className="val";
+    if(rows[k]!=null){ fill.style.width=`${rows[k]/max*100}%`; val.textContent=`${fmtHz(rows[k])} Hz`; }
+    bt.append(lab,bar,val);
+    bt.onclick=()=>{ if(mc.sysex && mc.out) mc.writeParam(237,k); else { pageTemp=k; retune(); } update(); };
+    box.appendChild(bt);
+  });
+}
+function update(){ readout(); pairsBar(); table(); temps(); $("listen").disabled=!info(); }
+
+// ---------- the scope ----------
+const cv=$("scope"), g=cv.getContext("2d");
+let phase=0, lastT=performance.now();
+function frame(t){
+  requestAnimationFrame(frame);
+  const dt=Math.min(.1,(t-lastT)/1000); lastT=t;
+  const W=cv.width, H=cv.height, cx=W/2, cy=H/2, r=W*0.42;
+  // phosphor: fade the old trace rather than clearing it
+  g.fillStyle="rgba(14,22,18,0.32)"; g.fillRect(0,0,W,H);
+  g.strokeStyle="rgba(120,160,135,0.18)"; g.lineWidth=1;
+  g.beginPath(); g.moveTo(cx-r,cy); g.lineTo(cx+r,cy); g.moveTo(cx,cy-r); g.lineTo(cx,cy+r); g.stroke();
+  const b=info(); if(!b) return;
+  const speed=+$("speed").value;
+  // x follows the low note, y the high one; with f2/f1 near P/Q, the figure's phase drifts at the beat rate over Q
+  const f1=b.f1, f2=b.f2, drift=2*Math.PI*(b.Q*f2-b.P*f1)/b.Q;
+  phase += drift*dt*speed;
+  g.strokeStyle="#9CF0B0"; g.lineWidth=3; g.shadowColor="#9CF0B0"; g.shadowBlur=12;
+  g.beginPath();
+  const steps=1400;
+  for(let k=0;k<=steps;k++){
+    const th=k/steps*2*Math.PI;
+    const x=cx+r*Math.sin(b.Q*th), y=cy-r*Math.sin(b.P*th+phase);
+    k ? g.lineTo(x,y) : g.moveTo(x,y);
+  }
+  g.stroke(); g.shadowBlur=0;
+}
+requestAnimationFrame(frame);
+// the pulse dot beats in real time, whatever the scope's speed
+function pulseFrame(t){
+  requestAnimationFrame(pulseFrame);
+  const b=info(), el=$("pulse");
+  if(!b || b.beat<0.05 || b.beat>=16){ el.style.transform="scale(1)"; return; }
+  const s=0.55+0.45*(0.5+0.5*Math.cos(2*Math.PI*b.beat*t/1000));
+  el.style.transform=`scale(${s.toFixed(3)})`;
+}
+if(!matchMedia("(prefers-reduced-motion: reduce)").matches) requestAnimationFrame(pulseFrame);
+
+// ---------- listening ----------
+let actx=null;
+$("listen").onclick=()=>{
+  const b=info(); if(!b) return;
+  actx = actx || new (window.AudioContext||window.webkitAudioContext)({latencyHint:"playback"});
+  actx.resume();
+  const now=actx.currentTime, N=8, real=new Float32Array(N+1), imag=new Float32Array(N+1);
+  for(let k=1;k<=N;k++) imag[k]=Math.pow(0.8,k-1);
+  const wave=actx.createPeriodicWave(real,imag);
+  const out=actx.createGain(); out.gain.setValueAtTime(0,now); out.gain.linearRampToValueAtTime(.18,now+.08);
+  out.gain.setValueAtTime(.18,now+3.6); out.gain.linearRampToValueAtTime(0,now+4); out.connect(actx.destination);
+  for(const f of [b.f1,b.f2]){ const o=actx.createOscillator(); o.setPeriodicWave(wave); o.frequency.value=f; o.connect(out); o.start(now); o.stop(now+4.05); }
+};
+
+// ---------- events ----------
+mc.addEventListener("voices", ()=>{ if(takeChord()){ if(pair[1]>=chord.pitches.length) pair=defaultPair(); readout(); } });
+mc.addEventListener("chord", ()=>{ if(takeChord()){ pair=defaultPair(); update(); } });
+mc.addEventListener("status", e=>$("status").textContent=e.detail);
+mc.addEventListener("device", ()=>{
+  const parts=[];
+  if(mc.keyName) parts.push(`Key of <b>${mc.keyName}</b>`);
+  if(mc.temperament!=null) parts.push(`the minichord is in <b>${TEMPERAMENT_TABLE[mc.temperament]?.label||mc.temperament}</b>`);
+  parts.push(`A = ${mc.aHz.toFixed(1)} Hz`);
+  parts.push(mc.mpe ? "MPE on, so the exact tuning comes through" : "MPE off, so the tuning is worked out from the temperament");
+  $("device").innerHTML=parts.join(", ")+".";
+  $("tempsHint").textContent = mc.sysex && mc.out ? "Choose a temperament and the minichord switches to it, until the preset changes." : "Choose a temperament to see its effect. With the minichord connected, it switches too.";
+  if(chord && !mc.mpe) retune();
+  update();
+});
+mc.addEventListener("ports", ()=>{
+  const sel=$("input"), ins=mc.inputs; sel.innerHTML=""; sel.disabled=false;
+  sel.add(new Option("Minichord chord port (auto)","auto")); sel.add(new Option("All MIDI inputs","all"));
+  ins.forEach(i=>sel.add(new Option(i.name,i.id)));
+  sel.value=[...sel.options].some(o=>o.value===mc.inputChoice)?mc.inputChoice:"auto";
+});
+$("input").onchange=e=>mc.selectInput(e.target.value);
+$("connect").onclick=async e=>{ e.target.disabled=true; if(await mc.connect()) e.target.textContent="Connected"; else e.target.disabled=false; };
+
+// ---------- test chords: held, so the chord stays to study ----------
+const TESTS={"C":[48,60,64,67],"C major, close":[60,64,67,72],"A♭":[56,60,63,68],"E":[52,56,59,64],"Am":[57,60,64,69],"G7":[55,59,62,65],"C°7":[48,51,54,57]};
+let held=[];
+function play(notes){
+  held.forEach(([ch,n])=>mc.handle([0x80|ch,n,0]));
+  held=notes.map((n,i)=>[1+i,n]);
+  held.forEach(([ch,n])=>mc.handle([0x90|ch,n,100]));
+}
+Object.entries(TESTS).forEach(([k,v])=>{ const b=document.createElement("button"); b.textContent=k; b.onclick=()=>play(v); $("tests").appendChild(b); });
+update();
+</script>
+</body>
+</html>

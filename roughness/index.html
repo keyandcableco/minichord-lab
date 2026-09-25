@@ -136,7 +136,7 @@ label.inline{display:flex;align-items:center;gap:8px;color:var(--muted);font-siz
 <script type="module">
 import {Minichord} from "../core/minichord.js";
 import {chordName, roughness} from "../core/theory.js";
-import {TEMPERAMENT_TABLE, tune} from "../core/temperaments.js";
+import {TEMPERAMENT_TABLE, tune, activeTemperament, soundingPitches} from "../core/temperaments.js";
 
 const mc = new Minichord();
 window.mc = mc;
@@ -145,15 +145,11 @@ const NS="http://www.w3.org/2000/svg";
 const el=(tag,attrs={},parent)=>{ const e=document.createElementNS(NS,tag); for(const k in attrs) e.setAttribute(k,attrs[k]); if(parent) parent.appendChild(e); return e; };
 
 let pageTemp=0, timbre=[6,0.88];
-const activeTemp = () => mc.temperament!=null && mc.sysex ? mc.temperament : pageTemp;
+const activeTemp = () => activeTemperament(mc, pageTemp);
 const R = pitches => roughness(pitches, timbre[0], timbre[1]);
 const keyF = () => mc.keyFifths;
 
-/** the chord's notes as they sound: exact MPE pitches when the minichord sends them, otherwise tuned from the table */
-function sounding(voices){
-  const bent = mc.mpe && voices.some(v=>Math.abs(v.pitch-Math.round(v.pitch))>0.004);
-  return bent ? voices.map(v=>v.pitch) : voices.map(v=>tune(v.note, activeTemp(), keyF()));
-}
+const sounding = voices => soundingPitches(mc, voices, pageTemp);
 const pct = (t,e) => e>0 ? (t/e-1)*100 : 0;
 
 // ---------- the gauge (live, follows glides) ----------

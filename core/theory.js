@@ -156,3 +156,25 @@ export function roughness(pitches, partials=6, rolloff=0.88){
   }
   return d;
 }
+
+/** frequency in Hz of a pitch in semitones (69 = A4) */
+export const hzOf = (pitch, aHz=440) => aHz*Math.pow(2,(pitch-69)/12);
+
+// ---------- pure ratios and beats ----------
+const INTERVAL_NAMES=["unison","minor 2nd","major 2nd","minor 3rd","major 3rd","perfect 4th","tritone","perfect 5th","minor 6th","major 6th","minor 7th","major 7th"];
+// the pure ratio a tuner listens for, for each interval inside an octave
+const PURE={0:[1,1],1:[16,15],2:[9,8],3:[6,5],4:[5,4],5:[4,3],6:[7,5],7:[3,2],8:[8,5],9:[5,3],10:[9,5],11:[15,8]};
+const gcd=(a,b)=>b?gcd(b,a%b):a;
+/** name, nearest pure ratio, how far off it the interval is, and how fast its closest overtones beat */
+export function beatInfo(lowPitch, highPitch, aHz=440){
+  const [lo,hi] = lowPitch<=highPitch ? [lowPitch,highPitch] : [highPitch,lowPitch];
+  const semis=Math.round(hi-lo), oct=Math.floor(semis/12), ic=semis-12*oct;
+  let [P,Q]=PURE[ic];
+  if(ic===10){ const c=(hi-lo-12*oct)*100; if(Math.abs(c-968.8)<Math.abs(c-1017.6)) [P,Q]=[7,4]; }   // harmonic 7th when closer
+  P*=2**oct; const g=gcd(P,Q); P/=g; Q/=g;
+  const f1=hzOf(lo,aHz), f2=hzOf(hi,aHz);
+  const cents=1200*Math.log2((f2/f1)/(P/Q));
+  const beat=Math.abs(Q*f2-P*f1);
+  const name = oct===0 ? INTERVAL_NAMES[ic] : ic===0 ? (oct===1?"octave":`${oct} octaves`) : `${INTERVAL_NAMES[ic]} + ${oct===1?"an octave":oct+" octaves"}`;
+  return {name, P, Q, cents, beat, f1, f2, lowHarmonic:P, highHarmonic:Q};
+}
