@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Chord geometry · Minichord Lab</title>
+<meta name="description" content="Every three-note chord as a point in Tymoczko's twisted triangular prism, where the straight line between two chords is the smoothest voice leading.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔷</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Caveat:wght@700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../core/lab.css">
+<style>
+.grid{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:18px;margin-top:14px}
+@media (max-width:900px){.grid{grid-template-columns:1fr}}
+.space{background:var(--panel);border:1px solid var(--rule);border-radius:12px;padding:8px;position:relative}
+#space{display:block;width:100%;height:auto;aspect-ratio:1/1;max-height:76vh;cursor:grab;touch-action:none}
+#space:active{cursor:grabbing}
+.views{display:flex;flex-wrap:wrap;gap:8px;margin:8px 4px 4px}
+.views button[aria-pressed="true"]{background:var(--ink);color:var(--board);border-color:var(--ink)}
+.read .big{font-family:var(--hand);font-size:3rem;line-height:1;margin:0 0 .3rem}
+.read dl{display:grid;grid-template-columns:auto 1fr;gap:.5rem .9rem;margin:.6rem 0 0}
+.read dt{color:var(--muted);font-size:.92rem}
+.read dd{margin:0}
+.key{display:grid;grid-template-columns:auto 1fr;gap:.35rem .7rem;align-items:center;font-size:.95rem}
+.key i{display:inline-block;width:12px;height:12px;border-radius:50%}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:.5rem}
+.grid2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px;margin-top:18px}
+@media (max-width:900px){.grid2{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<main>
+  <div class="labbar">
+    <a class="crumb" href="../">Minichord Lab</a>
+    <div class="connect">
+      <button id="connect" class="primary">Connect minichord</button>
+      <select id="input" aria-label="MIDI input" disabled><option>No MIDI yet</option></select>
+    </div>
+  </div>
+
+  <h1>Chord geometry</h1>
+  <p class="lede">Every three-note chord is a point in a twisted prism. Going up transposes the chord; going across changes its shape. The straight line from one chord to the next is the smoothest way to move the voices, and its length is how far they have to go.</p>
+  <p class="status" id="status">Connect the minichord, or try a test progression below.</p>
+
+  <div class="grid">
+    <div class="space">
+      <canvas id="space" width="900" height="900" role="img" aria-labelledby="chordName"></canvas>
+      <div class="views" role="group" aria-label="View">
+        <button id="vSide" aria-pressed="true">From the side</button>
+        <button id="vTop" aria-pressed="false">From above</button>
+        <button id="vSpin" aria-pressed="true">Turn slowly</button>
+      </div>
+    </div>
+    <section class="panel read" aria-live="polite">
+      <p class="big" id="chordName">Play a chord</p>
+      <dl>
+        <dt>As three notes</dt><dd id="three">–</dd>
+        <dt>Shape</dt><dd id="shape">–</dd>
+        <dt>From the last chord</dt><dd id="moved">–</dd>
+        <dt>So far</dt><dd id="tally">–</dd>
+      </dl>
+      <h2 style="margin-top:1.2rem">On the map</h2>
+      <div class="key">
+        <i style="background:var(--accent)"></i><span>Major triads, spiralling up round the middle</span>
+        <i style="background:var(--v0)"></i><span>Minor triads, their mirror images</span>
+        <i style="background:var(--v3)"></i><span>Diminished triads, further out</span>
+        <i style="background:var(--v1)"></i><span>Augmented triads, on the centre line</span>
+      </div>
+      <p class="fine">Chords with a doubled note sit on the walls, and three of the same note on the corner edges. The top is glued to the bottom with a third of a turn: rising all the way transposes a chord up a major third, which has the same shape, turned.</p>
+    </section>
+  </div>
+
+  <div class="grid2">
+    <section class="panel">
+      <h2>Test progressions</h2>
+      <div class="chips" id="tests"></div>
+      <p class="fine">These only draw; the minichord makes its own sound. Drag the prism to turn it.</p>
+    </section>
+    <section class="panel">
+      <h2>Four notes and more</h2>
+      <p class="fine">Four-note chords live in a four-dimensional space that can't be drawn honestly in three. So a seventh chord is shown by its three-note core, the root, third and seventh, with the fifth left out, which is also the part that carries its voice leading. The readout always says when a chord has been reduced.</p>
+    </section>
+  </div>
+
+  <footer>
+    <p>Part of <a href="../">Minichord Lab</a>. The space is Dmitri Tymoczko's, from <i>A Geometry of Music</i>. The minichord is <a href="https://github.com/BenjaminPoilve/minichord">Benjamin Poilve's open-source instrument</a>.</p>
+    <p>Made by <a href="https://keyandcable.com">The Key &amp; Cable Company</a>. Source on <a href="https://github.com/keyandcableco/minichord-lab">GitHub</a>.</p>
+  </footer>
+</main>
+
+<script type="module">
+import {Minichord, spell} from "../core/minichord.js";
+import {pcOf, chordId, chordName, chordTones} from "../core/theory.js";
+
+const mc=new Minichord(); window.mc=mc;
+const $=id=>document.getElementById(id);
+const mod=(a,n)=>((a%n)+n)%n;
+
+// ---------- the space ----------
+// A three-note chord (as pitch classes) becomes: a height t in [0,4), its average pitch class modulo a major third,
+// and a shape (d1,d2,d3), the three intervals round the octave in order, which add to 12.
+function canon(pcs){
+  const [a,b,c]=[...pcs].map(p=>mod(p,12)).sort((x,y)=>x-y);
+  const m0=(a+b+c)/3, k=Math.min(2,Math.floor(m0/4+1e-9));
+  const r=[[a,b,c],[c-12,a,b],[b-12,c-12,a]][k];
+  return {t:(r[0]+r[1]+r[2])/3, d:[r[1]-r[0], r[2]-r[1], 12-(r[2]-r[0])], rep:r};
+}
+// the same map for an ordered triple of pitches that may sit outside the prism (for drawing paths)
+function coordsOf(triple){ const c=canon(triple.map(p=>mod(p,12))); return c; }
+/** smoothest voice leading from a lifted triple to a set of pitch classes: {cand, dist} */
+function lead(src, tgt){
+  const [a,b,c]=[...tgt].map(p=>mod(p,12)).sort((x,y)=>x-y);
+  let best=null;
+  for(const base of [[a,b,c],[b,c,a+12],[c,a+12,b+12]]) for(let o=-3;o<=3;o++){
+    const cand=base.map(x=>x+12*o), dist=cand.reduce((s,x,i)=>s+Math.abs(x-src[i]),0);
+    if(!best || dist<best.dist) best={cand,dist};
+  }
+  return best;
+}
+// shape to a point in the triangle: corners are the three triple unisons
+const R=2.3, HGT=1.25;   // zoomed in on the middle, where the triads live; the walls run off the edges
+const V=[[0,R],[-R*Math.sin(2*Math.PI/3),R*Math.cos(2*Math.PI/3)],[R*Math.sin(2*Math.PI/3),R*Math.cos(2*Math.PI/3)]];
+function world(c){
+  const [d1,d2,d3]=c.d;
+  const x=(d1*V[0][0]+d2*V[1][0]+d3*V[2][0])/12, z=(d1*V[0][1]+d2*V[1][1]+d3*V[2][1])/12;
+  return [x, (c.t/4-.5)*HGT, z];
+}
+
+// ---------- reduction to three notes ----------
+function threeOf(pitches){
+  const pcs=[...new Set(pitches.map(p=>Math.round(pcOf(p))%12))];
+  const id=chordId(pitches);
+  if(pcs.length===1) return {pcs:[pcs[0],pcs[0],pcs[0]], note:"A single note, so it sits on a corner edge."};
+  if(pcs.length===2) return {pcs:[pcs[0],pcs[0],pcs[1]], note:"Two notes, so one is counted twice and the chord sits on a wall."};
+  if(pcs.length===3) return {pcs, note:null};
+  if(id){
+    const tones=chordTones(id.root,id.quality), fifth=mod(id.root+7,12);
+    if(pcs.includes(fifth)) return {pcs:pcs.filter(p=>p!==fifth).slice(0,3), note:"Shown without its 5th."};
+    const keep=[id.root, ...tones.slice(1).filter(p=>pcs.includes(p))].slice(0,3);
+    if(keep.length===3) return {pcs:keep, note:"Shown by its root, third and seventh."};
+  }
+  const low=[...pitches].sort((a,b)=>a-b).map(p=>Math.round(pcOf(p))%12).filter((p,i,a)=>a.indexOf(p)===i).slice(0,3);
+  return {pcs:low, note:"Shown by its three lowest notes."};
+}
+
+// ---------- landmarks ----------
+const LANDMARKS=[];
+for(let r=0;r<12;r++){
+  LANDMARKS.push({kind:"M", pcs:[r,r+4,r+7], name:spell(r,0)});
+  LANDMARKS.push({kind:"m", pcs:[r,r+3,r+7], name:spell(r,0)+"m"});
+  LANDMARKS.push({kind:"d", pcs:[r,r+3,r+6], name:spell(r,0)+"°"});
+  if(r<4) LANDMARKS.push({kind:"a", pcs:[r,r+4,r+8], name:spell(r,0)+"+"});
+}
+LANDMARKS.forEach(l=>l.w=world(canon(l.pcs)));
+const KIND_COLOR={M:"--accent", m:"--v0", d:"--v3", a:"--v1"};
+
+// ---------- trail ----------
+const trail=[];   // {name, three:{pcs,note}, rep, w, path:[[x,y,z]...]|null, dist}
+function addChord(pitches){
+  const three=threeOf(pitches), c=canon(three.pcs);
+  const prev=trail[trail.length-1];
+  let path=null, dist=null;
+  if(prev){
+    const l=lead(prev.rep, three.pcs); dist=l.dist;
+    path=[];
+    for(let k=0;k<=32;k++){ const f=k/32; path.push(world(coordsOf(prev.rep.map((p,i)=>p+(l.cand[i]-p)*f)))); }
+  }
+  trail.push({name:chordName(pitches, mc.keyFifths), three, rep:c.rep, c, w:world(c), path, dist});
+  if(trail.length>14) trail.shift();
+  readout();
+}
+function readout(){
+  const cur=trail[trail.length-1]; if(!cur) return;
+  $("chordName").textContent=cur.name || "This chord";
+  const names=cur.three.pcs.map(p=>spell(p,mc.keyFifths));
+  $("three").textContent=names.join(" ")+(cur.three.note ? `. ${cur.three.note}` : "");
+  const id=chordId(cur.three.pcs.map(p=>60+p));
+  let ints=cur.c.d;
+  if(id){ const r=id.root, s=[...new Set(cur.three.pcs)].map(p=>mod(p-r,12)).sort((a,b)=>a-b); if(s.length===3) ints=[s[1]-s[0], s[2]-s[1], 12-s[2]]; }
+  const SHAPES={"4,3,5":"a major triad","3,4,5":"a minor triad","3,3,6":"a diminished triad","4,4,4":"an augmented triad, dead centre",
+    "4,6,2":"the core of a dominant 7th","4,7,1":"the core of a major 7th","3,7,2":"the core of a minor 7th","3,6,3":"the core of a diminished 7th",
+    "5,2,5":"a sus4 chord","2,5,5":"a sus2 chord","5,5,2":"stacked fourths"};
+  const kind = SHAPES[ints.join()] || (ints.includes(0) ? "a doubled note, on a wall" : "a less common shape");
+  $("shape").textContent=`${ints.join(" + ")} semitones round the octave: ${kind}.`;
+  $("moved").textContent = cur.dist==null ? "The first chord of the trail." :
+    cur.dist===0 ? "The same chord: no motion." : `${cur.dist} semitone${cur.dist>1?"s":""} of voice motion, the length of the line. No smoother way exists.`;
+  const ds=trail.map(t=>t.dist).filter(x=>x!=null);
+  $("tally").textContent = ds.length ? `${ds.length} change${ds.length>1?"s":""}, ${(ds.reduce((a,b)=>a+b,0)/ds.length).toFixed(1)} semitones each on average.` : "–";
+}
+
+// ---------- drawing ----------
+const cv=$("space"), g=cv.getContext("2d");
+const view={yaw:.6, pitch:.35, tyaw:.6, tpitch:.35, spin:true, dragging:false};
+let colors={};
+function readColors(){ const cs=getComputedStyle(document.documentElement); for(const k of ["--ink","--muted","--rule","--panel","--accent","--v0","--v1","--v3"]) colors[k]=cs.getPropertyValue(k).trim(); colors.font=cs.getPropertyValue("--ui").trim(); colors.hand=cs.getPropertyValue("--hand").trim(); }
+readColors(); matchMedia("(prefers-color-scheme: dark)").addEventListener("change",readColors);
+function project([x,y,z]){
+  const cy=Math.cos(view.yaw), sy=Math.sin(view.yaw), cp=Math.cos(view.pitch), sp=Math.sin(view.pitch);
+  const x1=x*cy - z*sy, z1=x*sy + z*cy;
+  const y2=y*cp - z1*sp, z2=y*sp + z1*cp;
+  const D=6.5, f=D/(D-z2), s=cv.width*.4;
+  return [cv.width/2 + x1*f*s, cv.height/2 - y2*f*s, z2, f];
+}
+function line(a,b,style,w=1.5,dash=[]){ const p=project(a), q=project(b); g.strokeStyle=style; g.lineWidth=w; g.setLineDash(dash); g.beginPath(); g.moveTo(p[0],p[1]); g.lineTo(q[0],q[1]); g.stroke(); g.setLineDash([]); }
+function frame(){
+  requestAnimationFrame(frame);
+  if(view.spin && !view.dragging) view.tyaw+=.0025;
+  view.yaw+=(view.tyaw-view.yaw)*.12; view.pitch+=(view.tpitch-view.pitch)*.12;
+  const W=cv.width, H=cv.height; g.clearRect(0,0,W,H);
+  const lo=-HGT/2, hi=HGT/2;
+  // the prism
+  for(let k=0;k<3;k++){
+    const a=V[k], b=V[(k+1)%3];
+    line([a[0],lo,a[1]],[b[0],lo,b[1]],colors["--muted"],1.5);
+    line([a[0],hi,a[1]],[b[0],hi,b[1]],colors["--muted"],1.5);
+    line([a[0],lo,a[1]],[a[0],hi,a[1]],colors["--rule"],1.5);
+  }
+  line([0,lo,0],[0,hi,0],colors["--v1"],1.5,[6,6]);   // augmented triads
+  // landmarks, far ones first
+  const pts=LANDMARKS.map(l=>({l,p:project(l.w)})).sort((a,b)=>a.p[2]-b.p[2]);
+  g.textAlign="center"; g.textBaseline="bottom";
+  for(const {l,p} of pts){
+    const r=(l.kind==="a"?7:5.5)*p[3];
+    g.globalAlpha=.35+.45*(p[3]-.8)/.4;
+    g.fillStyle=colors[KIND_COLOR[l.kind]]; g.beginPath(); g.arc(p[0],p[1],r,0,Math.PI*2); g.fill();
+    if(l.kind==="M"||l.kind==="m"){ g.fillStyle=colors["--muted"]; g.font=`${Math.round(15*p[3])}px ${colors.font}`; g.fillText(l.name,p[0],p[1]-r-2); }
+  }
+  g.globalAlpha=1;
+  // the trail
+  trail.forEach((t,k)=>{
+    if(!t.path) return;
+    const age=trail.length-1-k; g.globalAlpha=Math.max(.15,1-age*.1);
+    g.strokeStyle=colors["--ink"]; g.lineWidth=4; g.lineCap="round"; g.lineJoin="round";
+    g.beginPath();
+    let prev=null;
+    for(const w of t.path){
+      const p=project(w);
+      // the path leaves through the top or bottom and comes back twisted: don't join across the gap
+      if(prev && Math.abs(w[1]-prev[1])>HGT*.5){ g.stroke(); g.beginPath(); g.moveTo(p[0],p[1]); }
+      else if(!prev) g.moveTo(p[0],p[1]); else g.lineTo(p[0],p[1]);
+      prev=w;
+    }
+    g.stroke();
+  });
+  g.globalAlpha=1;
+  const cur=trail[trail.length-1];
+  if(cur){
+    const p=project(cur.w);
+    g.strokeStyle=colors["--ink"]; g.lineWidth=4; g.beginPath(); g.arc(p[0],p[1],15*p[3],0,Math.PI*2); g.stroke();
+    g.fillStyle=colors["--ink"]; g.font=`700 ${Math.round(34*p[3])}px ${colors.hand}`; g.textBaseline="middle"; g.textAlign="left";
+    g.fillText(cur.name||"",p[0]+22*p[3],p[1]);
+  }
+}
+requestAnimationFrame(frame);
+
+// turning by dragging
+let last=null;
+cv.addEventListener("pointerdown",e=>{ view.dragging=true; last=[e.clientX,e.clientY]; cv.setPointerCapture(e.pointerId); });
+cv.addEventListener("pointermove",e=>{ if(!view.dragging) return; const dx=e.clientX-last[0], dy=e.clientY-last[1]; last=[e.clientX,e.clientY];
+  view.tyaw+=dx*.008; view.tpitch=Math.max(-1.45,Math.min(1.45,view.tpitch+dy*.006)); });
+cv.addEventListener("pointerup",()=>view.dragging=false);
+cv.addEventListener("pointercancel",()=>view.dragging=false);
+function setView(which){
+  $("vSide").setAttribute("aria-pressed",which==="side"); $("vTop").setAttribute("aria-pressed",which==="top");
+  view.tpitch = which==="top" ? 1.45 : .35;
+}
+$("vSide").onclick=()=>setView("side"); $("vTop").onclick=()=>setView("top");
+$("vSpin").onclick=e=>{ view.spin=!view.spin; e.target.setAttribute("aria-pressed",view.spin); };
+if(matchMedia("(prefers-reduced-motion: reduce)").matches){ view.spin=false; $("vSpin").setAttribute("aria-pressed","false"); }
+
+// ---------- events ----------
+mc.addEventListener("chord", e=>addChord(e.detail.map(v=>v.pitch)));
+mc.addEventListener("status", e=>$("status").textContent=e.detail);
+mc.addEventListener("device", ()=>readout());
+mc.addEventListener("ports", ()=>{
+  const sel=$("input"), ins=mc.inputs; sel.innerHTML=""; sel.disabled=false;
+  sel.add(new Option("Minichord chord port (auto)","auto")); sel.add(new Option("All MIDI inputs","all"));
+  ins.forEach(i=>sel.add(new Option(i.name,i.id)));
+  sel.value=[...sel.options].some(o=>o.value===mc.inputChoice)?mc.inputChoice:"auto";
+});
+$("input").onchange=e=>mc.selectInput(e.target.value);
+$("connect").onclick=async e=>{ e.target.disabled=true; if(await mc.connect()) e.target.textContent="Connected"; else e.target.disabled=false; };
+
+// ---------- test progressions ----------
+const T=(r,q)=>{ const iv={M:[0,4,7],m:[0,3,7],"7":[0,4,7,10],d:[0,3,6],a:[0,4,8]}[q]; return iv.map(x=>48+r+x); };
+const PROGS={
+  "C Am F G":[T(0,"M"),T(9,"m"),T(5,"M"),T(7,"M"),T(0,"M")],
+  "Up by semitones":[T(0,"M"),T(1,"M"),T(2,"M"),T(3,"M"),T(4,"M")],
+  "Round the thirds: C E A♭":[T(0,"M"),T(4,"M"),T(8,"M"),T(0,"M")],
+  "Major, minor, major":[T(0,"M"),T(0,"m"),T(8,"M"),T(8,"m"),T(4,"M"),T(4,"m"),T(0,"M")],
+  "Through the centre":[T(0,"M"),T(0,"a"),T(4,"M"),T(4,"a"),T(8,"M")],
+  "G7 to C":[T(7,"7"),T(0,"M")],
+};
+let held=[], running=0;
+function play(notes){
+  held.forEach(([ch,n])=>mc.handle([0x80|ch,n,0]));
+  held=notes.map((n,i)=>[1+i,n]);
+  held.forEach(([ch,n])=>mc.handle([0x90|ch,n,100]));
+}
+Object.entries(PROGS).forEach(([name,seq])=>{
+  const b=document.createElement("button"); b.textContent=name;
+  b.onclick=async()=>{ const run=++running; trail.length=0; for(const c of seq){ if(run!==running) return; play(c); await new Promise(r=>setTimeout(r,1100)); } if(run===running) play([]); };
+  $("tests").appendChild(b);
+});
+</script>
+</body>
+</html>

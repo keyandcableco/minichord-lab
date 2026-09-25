@@ -11,6 +11,7 @@ Small web views that use the [minichord](https://github.com/BenjaminPoilve/minic
 - **[Roughness](roughness/)**: Sethares's sensory roughness for each chord as tuned, the same chord in all twelve of the minichord's temperaments (choosing one switches the minichord), every major or minor triad in the current temperament against equal, a bar per chord, and the two-tone dissonance curve with the chord's intervals marked.
 - **[Beats](beats/)**: a Lissajous figure of any two voices, still for a pure ratio and rolling when tempered, with each pair's nearest pure ratio, cents off it and beat rate from its closest overtones, the pair in every temperament, and a button to hear it. Uses the minichord's master tuning.
 - **[Ear trainer](ear/)**: plays a chord or a three- or four-chord progression in the minichord's key, then checks what you play back on the chord buttons (or answer with an on-screen picker), with the bass note too if asked. Hints say whether the root, the kind of chord or the bass was off.
+- **[Chord geometry](geometry/)**: Dmitri Tymoczko's twisted triangular prism of three-note chords, drawn in 3D to drag and turn. Height is transposition and position across is the chord's shape; the trail is the straight line between chords, the smoothest voice leading, with its length in semitones. Four-note chords are shown by their three-note core, and the page says so.
 - **[Choir](https://keyandcableco.github.io/minichord-choir/)** (its own repo): each chord voice sung by its own singer.
 
 ## Layout
