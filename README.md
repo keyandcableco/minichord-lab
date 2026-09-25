@@ -13,7 +13,7 @@ Small web views that use the [minichord](https://github.com/BenjaminPoilve/minic
 - **[Ear trainer](ear/)**: plays a chord or a three- or four-chord progression in the minichord's key, then checks what you play back on the chord buttons (or answer with an on-screen picker), with the bass note too if asked. Hints say whether the root, the kind of chord or the bass was off.
 - **[Chord geometry](geometry/)**: Dmitri Tymoczko's twisted triangular prism of three-note chords, drawn in 3D to drag and turn. Height is transposition and position across is the chord's shape; the trail is the straight line between chords, the smoothest voice leading, with its length in semitones. Four-note chords are shown by their three-note core, and the page says so.
 - **[Stage](stage/)**: full-window visuals for projection. Ribbons draws each voice scrolling by, Bloom draws each chord on the pitch-class clock blooming outward as the next arrives, and Constellation turns the Tonnetz into a star field. Rough chords shimmer and sweet ones hold still. Night, chalkboard and daylight palettes; the controls and cursor fade when idle; keys 1–3, F, N and D; a demo loop with real glides.
-- **[Choir](https://keyandcableco.github.io/minichord-choir/)** (its own repo): each chord voice sung by its own singer.
+- **[Choir](choir/)**: each voice of the chord sung by its own singer, from recorded choirs or synthesized ones, with the minichord's MPE output, voice leading, glide and temperament switched from the page, a pitch trace, a voice-motion readout, an MPE MIDI recorder, and a demo of the minichord's own voicings with voice leading off and on. It keeps its own chant-book look.
 
 ## Layout
 
@@ -23,7 +23,7 @@ Small web views that use the [minichord](https://github.com/BenjaminPoilve/minic
 - `core/sound.js`: a small sampled piano for views that play something themselves, with a synthesized fallback.
 - `core/lab.css`: the shared look, a chalkboard in dark mode and a whiteboard in light.
 - One folder per view.
-- `samples/`: sound files, with their sources and licenses in `samples/README.md`.
+- `samples/`: sound files, the piano for the ear trainer and the recorded choirs, with their sources and licenses in `samples/README.md`.
 
 ## Requirements
 

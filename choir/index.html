@@ -1,0 +1,1186 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Minichord choir</title>
+<meta name="description" content="Four MPE voices, four instruments, one chord button. A browser choir for the minichord's MPE output, with voice leading, glide, temperament and an MPE MIDI recorder.">
+<meta property="og:title" content="Minichord choir">
+<meta property="og:description" content="Four MPE voices, four instruments, one chord button.">
+<meta property="og:image" content="https://keyandcableco.github.io/minichord-lab/choir/preview.png">
+<meta property="og:url" content="https://keyandcableco.github.io/minichord-lab/choir/">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎼</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Instrument+Sans:wght@400;500;600;700&family=UnifrakturMaguntia&display=swap" rel="stylesheet">
+<style>
+/* two looks share one set of token names: Scriptorium (default) and Workbench */
+:root{
+  --paper:#EADBB8; --panel:#F3E8CF; --ink:#2A1D12; --muted:#6E5A43; --rule:#CDB88F; --rubric:#A5281B; --gilt:#B8862A;
+  --v0:#24478F; --v1:#2F6B4F; --v2:#A06A12; --v3:#6B2D5C; --focus:#24478F;
+  --body:"EB Garamond",Garamond,"Iowan Old Style",Georgia,serif; --display:"UnifrakturMaguntia","EB Garamond",Georgia,serif;
+  --radius:3px; --base:18px;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+  color-scheme:light dark;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --paper:#1C1610; --panel:#271F17; --ink:#EADCC0; --muted:#B19E80; --rule:#4A3C2C; --rubric:#DD6352; --gilt:#E0B458;
+    --v0:#86A6EE; --v1:#72C39C; --v2:#E6B452; --v3:#C98BBE; --focus:#E0B458;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#1C1610; --panel:#271F17; --ink:#EADCC0; --muted:#B19E80; --rule:#4A3C2C; --rubric:#DD6352; --gilt:#E0B458;
+  --v0:#86A6EE; --v1:#72C39C; --v2:#E6B452; --v3:#C98BBE; --focus:#E0B458;
+}
+:root[data-look="plain"]{
+  --paper:#EDF0F3; --panel:#F8FAFB; --ink:#18202B; --muted:#5A6574; --rule:#CAD1D9; --rubric:#5A6574; --gilt:#CAD1D9;
+  --v0:#3346A8; --v1:#157366; --v2:#9A690B; --v3:#B3365D; --focus:#2F6FE0;
+  --body:"Instrument Sans",system-ui,-apple-system,"Segoe UI",sans-serif; --display:"Instrument Sans",system-ui,sans-serif;
+  --radius:10px; --base:16px;
+}
+@media (prefers-color-scheme:dark){
+  :root[data-look="plain"]:not([data-theme="light"]){
+    --paper:#141920; --panel:#1C232C; --ink:#E3E8EE; --muted:#93A0AF; --rule:#2E3844; --rubric:#93A0AF; --gilt:#2E3844;
+    --v0:#8E9EF2; --v1:#58C4B2; --v2:#E2B24F; --v3:#EF82A4; --focus:#7FA8FF;
+  }
+}
+:root[data-look="plain"][data-theme="dark"]{
+  --paper:#141920; --panel:#1C232C; --ink:#E3E8EE; --muted:#93A0AF; --rule:#2E3844; --rubric:#93A0AF; --gilt:#2E3844;
+  --v0:#8E9EF2; --v1:#58C4B2; --v2:#E2B24F; --v3:#EF82A4; --focus:#7FA8FF;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;background:var(--paper);color:var(--ink);font:400 var(--base)/1.55 var(--body);font-variant-numeric:lining-nums tabular-nums}
+/* vellum: faint mottling, only in the Scriptorium look */
+:root:not([data-look="plain"]) body{
+  background-image:radial-gradient(ellipse at 20% 10%,rgba(255,255,255,.18),transparent 55%),
+    radial-gradient(ellipse at 85% 80%,rgba(120,80,30,.10),transparent 60%)}
+main{max-width:1100px;margin:0 auto;padding:30px 20px 48px}
+
+/* title and the illuminated initial */
+h1{font-family:var(--display);font-weight:400;font-size:3.6rem;line-height:1;margin:0;letter-spacing:0}
+:root[data-look="plain"] h1{font-weight:700;font-size:2.6rem;letter-spacing:-.02em}
+.initial{display:inline-grid;place-items:center;width:1.12em;height:1.18em;margin-right:.06em;vertical-align:-.12em;
+  background:#24478F;color:#EFC96A;border:3px double #EFC96A;border-radius:2px;font-size:1em}
+:root[data-look="plain"] .initial{all:unset}
+.subtitle{font-style:italic;color:var(--muted);margin:.3rem 0 0;font-size:1.05rem}
+:root[data-look="plain"] .subtitle{display:none}
+.lede{color:var(--muted);margin:.7rem 0 0;max-width:60ch}
+.home{font-size:.95rem;color:var(--muted);margin:.4rem 0 0}
+a{color:var(--rubric);text-underline-offset:.15em}
+:root[data-look="plain"] a{color:var(--v0)}
+.top{display:flex;flex-wrap:wrap;gap:20px;align-items:flex-end;justify-content:space-between;margin-bottom:18px}
+.connect{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.connect label{display:flex;align-items:center;gap:8px;font-size:.92rem;color:var(--muted)}
+.connect input[type=range]{width:110px;accent-color:var(--rubric)}
+button,select,input{font:inherit;color:inherit}
+button{cursor:pointer;border:1px solid var(--rule);background:var(--panel);border-radius:var(--radius);padding:.45rem .95rem;font-weight:600}
+button.primary{background:var(--rubric);color:var(--panel);border-color:var(--rubric)}
+:root[data-look="plain"] button.primary{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+button:disabled{opacity:.5;cursor:default}
+select{border:1px solid var(--rule);background:var(--panel);border-radius:var(--radius);padding:.4rem .6rem;max-width:100%}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.status{font-size:.95rem;color:var(--muted)}
+.status b{color:var(--ink);font-weight:600}
+.before{font-size:.95rem;margin:0 0 16px;padding:.55rem .8rem;border-left:3px solid var(--rubric);background:var(--panel);border-radius:0 var(--radius) var(--radius) 0;max-width:80ch}
+
+.panel{background:var(--panel);border:1px solid var(--rule);border-radius:var(--radius);padding:16px}
+:root:not([data-look="plain"]) .panel{box-shadow:inset 0 0 0 3px var(--panel),inset 0 0 0 4px var(--rule)}
+.panel h2{font-size:1.2rem;font-weight:600;margin:0 0 .5rem;color:var(--rubric)}
+:root[data-look="plain"] .panel h2{font-size:1.05rem;color:var(--ink)}
+.panel p{margin:.4rem 0;color:var(--muted);font-size:.95rem;max-width:60ch}
+
+.stage{position:relative;background:var(--panel);border:1px solid var(--rule);border-radius:var(--radius);overflow:hidden}
+canvas{display:block;width:100%;height:280px}
+.stage .empty[hidden]{display:none}
+.stage .caption{position:absolute;right:12px;top:10px;padding:.2rem .7rem;border-radius:var(--radius);background:var(--panel);border:1px solid var(--rule);font:italic 700 1.3rem var(--body);color:var(--rubric)}
+.stage .caption[hidden]{display:none}
+.stage .hint{position:absolute;left:14px;bottom:8px;font-size:.85rem;color:var(--muted);pointer-events:none;font-style:italic}
+.stage .empty{position:absolute;inset:0;display:grid;place-items:center;color:var(--muted);pointer-events:none;text-align:center;padding:20px;font-style:italic}
+
+.voices{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-top:14px}
+@media (max-width:820px){.voices{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:460px){.voices{grid-template-columns:1fr}}
+.voice{background:var(--panel);border:1px solid var(--rule);border-top:5px solid var(--c);border-radius:var(--radius);padding:14px;display:flex;flex-direction:column;gap:10px;transition:box-shadow .08s}
+.voice.on{box-shadow:inset 0 0 0 1px var(--c)}
+.voice .part{font-family:var(--display);font-size:1.6rem;line-height:1;color:var(--c)}
+:root[data-look="plain"] .voice .part{display:none}
+.voice .note{font-size:2.2rem;font-weight:600;line-height:1;color:var(--c);min-height:2.2rem;display:flex;align-items:baseline;gap:.4rem}
+.voice .note small{font-size:.9rem;font-weight:500;color:var(--muted)}
+.voice .route{font-size:.9rem;color:var(--muted)}
+.voice label{display:grid;grid-template-columns:3.2rem 1fr;align-items:center;gap:8px;font-size:.9rem;color:var(--muted)}
+.voice input[type=range]{width:100%;accent-color:var(--c)}
+.voice .timbre{font-weight:600}
+.toggles{display:flex;gap:8px}
+.toggles button{flex:1;padding:.3rem;font-size:.9rem}
+.toggles button[aria-pressed="true"]{background:var(--c);color:var(--panel);border-color:var(--c)}
+.moved{font-size:.9rem;color:var(--muted);min-height:1.3em;font-style:italic}
+
+.device{margin:0 0 18px}
+.device[hidden]{display:none}
+.dgrid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:14px 18px;margin-top:10px}
+@media (max-width:900px){.dgrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:460px){.dgrid{grid-template-columns:1fr}}
+.ctl{display:flex;flex-direction:column;gap:6px;font-size:.95rem}
+.ctl .lbl{font-weight:600;display:flex;justify-content:space-between;gap:8px}
+.ctl output{font-weight:500;color:var(--muted)}
+.ctl input[type=range]{width:100%;accent-color:var(--rubric)}
+.switch{min-width:4.5rem}
+.switch[aria-pressed="true"]{background:var(--v1);color:var(--panel);border-color:var(--v1)}
+.fine{font-size:.88rem;color:var(--muted);margin:.8rem 0 0}
+
+.bench{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:14px}
+@media (max-width:820px){.bench{grid-template-columns:1fr}}
+.seg{display:inline-flex;border:1px solid var(--rule);border-radius:var(--radius);overflow:hidden}
+.seg label{padding:.4rem .9rem;cursor:pointer;font-weight:600;font-size:.95rem}
+.seg input{position:absolute;opacity:0;pointer-events:none}
+.seg label:has(input:checked){background:var(--ink);color:var(--paper)}
+.seg label:has(input:focus-visible){outline:2px solid var(--focus);outline-offset:-2px}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:10px}
+.notice{min-height:1.4em;font-size:.92rem;color:var(--rubric);margin-top:8px}
+.bars{display:flex;align-items:flex-end;gap:4px;height:48px;margin:.6rem 0 .2rem}
+.bars span{flex:1;max-width:22px;background:var(--rule);border-radius:2px 2px 0 0;min-height:2px}
+.bars span:last-child{background:var(--rubric)}
+.big{font-size:1.7rem;font-weight:600;line-height:1.1;color:var(--ink)}
+button.rec[aria-pressed="true"]{background:var(--rubric);color:var(--panel);border-color:var(--rubric)}
+
+footer{margin-top:28px;padding-top:16px;border-top:1px solid var(--rule);color:var(--muted);font-size:.95rem;display:grid;gap:.4rem}
+footer p{margin:0;max-width:80ch}
+.explicit{font-family:var(--display);color:var(--rubric);font-size:1.3rem;margin-top:.4rem}
+:root[data-look="plain"] .explicit{display:none}
+@media (prefers-reduced-motion:reduce){.voice{transition:none}}
+</style>
+</head>
+<body>
+<main>
+  <div class="top">
+    <div>
+      <h1 aria-label="Minichord choir"><span class="initial" aria-hidden="true">M</span><span aria-hidden="true">inichord Choir</span></h1>
+      <p class="subtitle" lang="la">Schola cantorum ex chorda una</p>
+      <p class="lede">One chord button, four instruments. Each voice of the chord arrives on its own MPE channel, and each channel plays its own timbre, glides included.</p>
+      <p class="home"><a href="../">Minichord Lab</a> · <a href="https://keyandcableco.github.io/minichord-soundlab/">Open Sound Lab</a></p>
+    </div>
+    <div class="connect">
+      <button id="start" class="primary">Start sound and MIDI</button>
+      <select id="input" aria-label="MIDI input" disabled><option>No MIDI yet</option></select>
+      <select id="sampleSet" aria-label="Choir recording">
+        <option value="musyng">Musyng Kite choir</option><option value="fatboy">FatBoy choir</option><option value="fluid">FluidR3 choir</option>
+      </select>
+      <select id="vowel" aria-label="What the singers sing">
+        <option value="a">Sing “ah”</option><option value="e">Sing “eh”</option><option value="i">Sing “ee”</option>
+        <option value="o">Sing “oh”</option><option value="u">Sing “oo”</option><option value="kyrie">Sing “Kyrie eleison”</option>
+      </select>
+      <label>Reverb <input type="range" id="nave" min="0" max="1" step="0.01"></label>
+      <select id="look" aria-label="Page look"><option value="scriptorium">Scriptorium look</option><option value="plain">Workbench look</option></select>
+      <select id="perf" aria-label="Performance mode"><option value="standard">Standard</option><option value="light">Light, for older computers</option></select>
+    </div>
+  </div>
+  <p class="before">You'll need a minichord running the unofficial <a href="https://github.com/keyandcableco/minichord/tree/test-allFeatures">test-allFeatures firmware</a> (flash <a href="https://github.com/keyandcableco/minichord/blob/test-allFeatures/firmware/firmware.hex">firmware.hex</a> with the Teensy Loader), and Chrome, Edge or Opera. No minichord? The test buttons at the bottom play without one.</p>
+  <p class="status" id="sampleStatus" aria-live="polite"></p>
+  <p class="status" id="status">Press start, then allow MIDI access when the browser asks. Allowing system-exclusive messages lets this page switch MPE output on the minichord.</p>
+  <section class="device panel" id="device" hidden>
+    <h2>On the minichord</h2>
+    <p class="status" id="deviceNote"></p>
+    <div class="dgrid">
+      <div class="ctl"><span class="lbl">MPE output</span><button id="mpeBtn" class="switch" aria-pressed="false" disabled>Off</button></div>
+      <div class="ctl"><span class="lbl">Voice leading</span><button id="vlBtn" class="switch" aria-pressed="false" disabled>Off</button></div>
+      <label class="ctl"><span class="lbl">Leading range <output id="vlrOut"></output></span><input type="range" id="vlr" min="0" max="24" step="1" disabled></label>
+      <label class="ctl"><span class="lbl">Glide <output id="glOut"></output></span><input type="range" id="gl" min="0" max="1500" step="10" disabled></label>
+      <label class="ctl"><span class="lbl">Temperament</span><select id="temp" disabled></select></label>
+    </div>
+    <p class="fine">Changes here are live and last until the preset changes. Save the preset in Sound Lab to keep them. Voice leading and the 19- and 31-EDO temperaments need the test-allFeatures firmware.</p>
+  </section>
+
+  <div class="stage">
+    <canvas id="trace" aria-label="Pitch of each voice over the last eight seconds" role="img"></canvas>
+    <div class="empty" id="empty">Play a chord and each voice draws its own line here.</div>
+    <div class="caption" id="caption" hidden aria-live="polite"></div>
+    <div class="hint">Last 8 seconds</div>
+  </div>
+
+  <div class="voices" id="voices"></div>
+
+  <div class="bench">
+    <section class="panel">
+      <h2>How voices are assigned</h2>
+      <div class="seg" role="radiogroup" aria-label="Voice assignment">
+        <label><input type="radio" name="mode" value="channel" checked><span>By MPE channel</span></label>
+        <label><input type="radio" name="mode" value="pitch"><span>By pitch</span></label>
+      </div>
+      <p id="modeHelp"></p>
+      <p id="zoneInfo"></p>
+      <div class="notice" id="notice" aria-live="polite"></div>
+    </section>
+    <section class="panel">
+      <h2>How far the voices move</h2>
+      <p id="motionText">Play two chords in a row to see how far each voice travels between them.</p>
+      <div class="bars" id="bars" aria-hidden="true"></div>
+      <p id="motionAvg"></p>
+    </section>
+    <section class="panel">
+      <h2>Record</h2>
+      <p>Saves what the minichord sends as an MPE MIDI file, bends included, ready for an MPE-aware host.</p>
+      <div class="row">
+        <button id="recBtn" class="rec" aria-pressed="false">Start recording</button>
+        <span class="status" id="recStatus"></span>
+      </div>
+    </section>
+    <section class="panel">
+      <h2>Test without the minichord</h2>
+      <p>Both tests send MPE messages into the same path the minichord uses.</p>
+      <div class="row">
+        <button id="hold">Hold C major</button>
+        <button id="glide">Play glide demo</button>
+        <button id="vlDemo">Voice leading: off, then on</button>
+        <button id="panic">Stop all sound</button>
+      </div>
+      <p class="fine" id="vlResult">The voice leading demo plays the same eight chords twice, voiced exactly as the minichord voices them: first built up from each root, then voice-led.</p>
+    </section>
+  </div>
+  <footer>
+    <p>The minichord is <a href="https://github.com/BenjaminPoilve/minichord">Benjamin Poilve's open-source instrument</a>. MPE output, voice leading and the temperaments come from the unofficial <a href="https://github.com/keyandcableco/minichord/tree/test-allFeatures">test-allFeatures firmware</a>; its settings editor is <a href="https://keyandcableco.github.io/minichord-soundlab/">Sound Lab</a>.</p>
+    <p>Choir recordings from the FluidR3 (CC BY 3.0), Musyng Kite and FatBoy (CC BY-SA 3.0) soundfonts, as rendered by <a href="https://github.com/gleitz/midi-js-soundfonts">midi-js-soundfonts</a>. See <a href="https://github.com/keyandcableco/minichord-lab/blob/main/samples/README.md">samples/README.md</a>.</p>
+    <p>Made by <a href="https://keyandcable.com">The Key &amp; Cable Company</a>. Source on <a href="https://github.com/keyandcableco/minichord-lab">GitHub</a>.</p>
+    <p class="explicit" lang="la">Explicit.</p>
+  </footer>
+</main>
+
+<script>
+"use strict";
+// ---------- singing voices ----------
+// Five formants per vowel per voice type: [frequencies], [levels in dB], [bandwidths]
+const FORMANTS = {
+  bass:{a:[[600,1040,2250,2450,2750],[0,-7,-9,-9,-20],[60,70,110,120,130]],
+        e:[[400,1620,2400,2800,3100],[0,-12,-9,-12,-18],[40,80,100,120,120]],
+        i:[[250,1750,2600,3050,3340],[0,-30,-16,-22,-28],[60,90,100,120,120]],
+        o:[[400,750,2400,2600,2900],[0,-11,-21,-20,-40],[40,80,100,120,120]],
+        u:[[350,600,2400,2675,2950],[0,-20,-32,-28,-36],[40,80,100,120,120]]},
+  tenor:{a:[[650,1080,2650,2900,3250],[0,-6,-7,-8,-22],[80,90,120,130,140]],
+        e:[[400,1700,2600,3200,3580],[0,-14,-12,-14,-20],[70,80,100,120,120]],
+        i:[[290,1870,2800,3250,3540],[0,-15,-18,-20,-30],[40,90,100,120,120]],
+        o:[[400,800,2600,2800,3000],[0,-10,-12,-12,-26],[40,80,100,120,120]],
+        u:[[350,600,2700,2900,3300],[0,-20,-17,-14,-26],[40,60,100,120,120]]},
+  alto:{a:[[800,1150,2800,3500,4950],[0,-4,-20,-36,-60],[80,90,120,130,140]],
+        e:[[400,1600,2700,3300,4950],[0,-24,-30,-35,-60],[60,80,120,150,200]],
+        i:[[350,1700,2700,3700,4950],[0,-20,-30,-36,-60],[50,100,120,150,200]],
+        o:[[450,800,2830,3500,4950],[0,-9,-16,-28,-55],[70,80,100,130,135]],
+        u:[[325,700,2530,3500,4950],[0,-12,-30,-40,-64],[50,60,170,180,200]]},
+  soprano:{a:[[800,1150,2900,3900,4950],[0,-6,-32,-20,-50],[80,90,120,130,140]],
+        e:[[350,2000,2800,3600,4950],[0,-20,-15,-40,-56],[60,100,120,150,200]],
+        i:[[270,2140,2950,3900,4950],[0,-12,-26,-26,-44],[60,90,100,120,120]],
+        o:[[450,800,2830,3800,4950],[0,-11,-22,-22,-50],[70,80,100,130,135]],
+        u:[[325,700,2700,3800,4950],[0,-16,-35,-40,-60],[50,60,170,180,200]]},
+};
+const VOICE_LEVEL = 0.3;
+const partFor = p => p<50 ? "bass" : p<57 ? "tenor" : p<67 ? "alto" : "soprano";
+function formantSet(part, vowel, f0){
+  const [F,dB,BW]=FORMANTS[part][vowel];
+  return F.map((fr,k)=>{
+    // high voices tune the first formant up to the sung pitch, as sopranos do
+    if(k===0 && (part==="alto"||part==="soprano")) fr=Math.max(fr, f0*1.08);
+    return [fr, fr/BW[k], Math.pow(10,dB[k]/20)];
+  });
+}
+// estimated loudness of a glottal source at f0 through a formant set, to hold level across vowels
+function formantLoudness(set, f0){
+  let e=0;
+  for(let h=1; h*f0<5500; h++){
+    const fh=h*f0; let H=0;
+    for(const [fc,q,g] of set){ const r=fh/fc-fc/fh; H+=g/Math.sqrt(1+q*q*r*r); }
+    const a=Math.pow(h,-1.9)*H; e+=a*a;
+  }
+  return Math.sqrt(e);
+}
+// the words: vowels only, one syllable per chord in Kyrie mode
+const KYRIE=[["Ky-","i"],["ri-","i"],["e","e"],["e-","e"],["le-","e"],["i-","i"],["son","o"]];
+let vowelMode="a", kyrieIdx=-1, lastSyllableT=0;
+const underlay=[];
+const currentVowel = () => vowelMode==="kyrie" ? KYRIE[Math.max(0,kyrieIdx)][1] : vowelMode;
+function advanceSyllable(){
+  if(vowelMode!=="kyrie") return;
+  const now=performance.now();
+  if(now-lastSyllableT>150){
+    kyrieIdx=(kyrieIdx+1)%KYRIE.length;
+    underlay.push([now, KYRIE[kyrieIdx][0]]);
+    slots.forEach(s=>s.voice?.setVowel?.(currentVowel()));
+  }
+  lastSyllableT=now;
+}
+
+// ---------- sampled choir ----------
+const SAMPLE_SETS = {fluid:"FluidR3", musyng:"Musyng Kite", fatboy:"FatBoy"};
+const SAMPLE_NOTES = []; for(let m=36;m<=88;m+=2) SAMPLE_NOTES.push(m);   // whole tones, C2 to E6
+let sampleSet="musyng";
+const banks={};   // set -> {aah:Map(midi->entry), ooh:Map, ready, loading}
+// build a seamless loop into the buffer: the end of the loop region is crossfaded
+// with the audio just before its start, so wrapping from end to start is continuous
+function loopify(buf){
+  const sr=buf.sampleRate, L=buf.length;
+  const ls=Math.floor(1.0*sr), le=Math.min(L-1, Math.floor((buf.duration-.12)*sr)), xf=Math.floor(.3*sr);
+  let e=0, n=0;
+  for(let c=0;c<buf.numberOfChannels;c++){
+    const d=buf.getChannelData(c);
+    for(let i=0;i<xf;i++){
+      const t=i/xf, a=Math.cos(t*Math.PI/2), b=Math.sin(t*Math.PI/2);
+      d[le-xf+i] = d[le-xf+i]*a + d[ls-xf+i]*b;
+    }
+    // resampling reads a few samples past the loop end at the wrap, so continue the start there
+    for(let i=0;i<128 && le+i<L;i++) d[le+i]=d[ls+i];
+    for(let i=ls;i<le;i++){ e+=d[i]*d[i]; n++; }
+  }
+  const rms=Math.sqrt(e/Math.max(1,n));
+  return {buf, loopStart:ls/sr, loopEnd:le/sr, norm: rms>0 ? 0.2/rms : 1};
+}
+async function loadSet(set){
+  if(banks[set] && (banks[set].ready || banks[set].loading)) return;
+  const bank = banks[set] = {aah:new Map(), ooh:new Map(), ready:false, loading:true};
+  const jobs=[]; let done=0; const total=SAMPLE_NOTES.length*2;
+  const status=document.getElementById("sampleStatus");
+  for(const v of ["aah","ooh"]) for(const m of SAMPLE_NOTES){
+    jobs.push(fetch(`../samples/choir/${set}/${v}/${m}.mp3`).then(r=>{ if(!r.ok) throw new Error(r.status); return r.arrayBuffer(); })
+      .then(a=>ctx.decodeAudioData(a)).then(b=>{ bank[v].set(m, loopify(b)); done++;
+        if(set===sampleSet) status.textContent=`Loading choir samples ${done} of ${total}`; }));
+  }
+  try{ await Promise.all(jobs); bank.ready=true; if(set===sampleSet) status.textContent=""; }
+  catch(err){
+    bank.loading=false; delete banks[set];
+    status.textContent = location.protocol==="file:"
+      ? "Choir samples can't load from a file. Serve the folder (python3 -m http.server) and open it from localhost."
+      : "Some choir samples didn't load, so voices fall back to the synthesized choir. Reload to try again.";
+  }
+}
+const vowelIsOoh = v => v==="o" || v==="u";
+function makeSampled(t, dest, pitch, vel){
+  const bank=banks[sampleSet];
+  if(!bank || !bank.ready) return makeSinger(TIMBRES["Choir section"], dest, pitch, vel);
+  const now=ctx.currentTime;
+  const m=SAMPLE_NOTES.reduce((a,b)=>Math.abs(b-pitch)<Math.abs(a-pitch)?b:a);
+  const env=ctx.createGain(); env.gain.value=0; env.connect(dest);
+  env.gain.setValueAtTime(0,now); env.gain.linearRampToValueAtTime(.55+.45*vel/127, now+t.attack);
+  let vowel=currentVowel();
+  const layers=["aah","ooh"].map(v=>{
+    const e=bank[v].get(m);
+    const src=ctx.createBufferSource(); src.buffer=e.buf; src.loop=true; src.loopStart=e.loopStart; src.loopEnd=e.loopEnd;
+    src.playbackRate.value=Math.pow(2,(pitch-m)/12);
+    const g=ctx.createGain(); g.gain.value=e.norm*((v==="ooh")===vowelIsOoh(vowel)?1:0);
+    src.connect(g).connect(env); src.start(now);
+    return {v, src, g, norm:e.norm};
+  });
+  let released=false;
+  return {
+    setPitch(p){ if(released) return; const tt=ctx.currentTime;
+      for(const l of layers) glideTo(l.src.playbackRate, Math.pow(2,(p-m)/12), tt, .004); },
+    setVowel(v){ if(released) return; vowel=v; const tt=ctx.currentTime;
+      for(const l of layers) glideTo(l.g.gain, l.norm*((l.v==="ooh")===vowelIsOoh(v)?1:0), tt, .08); },
+    release(){
+      if(released) return; released=true;
+      const tt=ctx.currentTime, g=env.gain;
+      if(g.cancelAndHoldAtTime) g.cancelAndHoldAtTime(tt); else { g.cancelScheduledValues(tt); g.setValueAtTime(g.value,tt); }
+      g.setTargetAtTime(0, tt, t.release/3);
+      const stop=tt+t.release*2+.05;
+      layers.forEach(l=>l.src.stop(stop));
+      setTimeout(()=>env.disconnect(), (stop-tt)*1000+100);
+    }
+  };
+}
+
+// ---------- timbres ----------
+const TIMBRES = {
+  "Bowed string": {oscs:[{type:"sawtooth",detune:-6,gain:.35},{type:"sawtooth",detune:6,gain:.35}],
+    filter:{freq:500,track:2.2,q:.9}, attack:.16, release:.35, vib:{rate:5.4,cents:14,delay:.35}, level:.55},
+  "Clarinet": {oscs:[{type:"square",gain:.33},{type:"sine",gain:.3}],
+    filter:{freq:400,track:2.5,q:1.4}, attack:.035, release:.1, level:.5},
+  "Sampled choir": {sampled:true, attack:.04, release:.6},
+  "Choir section": {singer:true, n:3, spread:9, scoop:35, jitter:5, vib:{rate:5.3,cents:22,delay:.35},
+    breath:.02, attack:.18, release:.5, level:1},
+  "Solo singer": {singer:true, n:1, spread:0, scoop:45, jitter:7, vib:{rate:5.6,cents:38,delay:.28},
+    breath:.025, attack:.12, release:.35, level:1},
+  "Monk": {singer:true, n:3, part:"bass", spread:7, scoop:25, jitter:4, vib:{rate:4.6,cents:8,delay:.6},
+    breath:.015, attack:.25, release:.6, level:1},
+  "Flute": {oscs:[{type:"sine",gain:.6},{type:"sine",ratio:2,gain:.08},{type:"triangle",detune:4,gain:.12}],
+    noise:{freq:2600,q:1.2,gain:.03}, attack:.06, release:.14, vib:{rate:5.2,cents:10,delay:.22}, level:.5},
+  "Brass": {oscs:[{type:"sawtooth",detune:-4,gain:.35},{type:"sawtooth",detune:4,gain:.35}],
+    filter:{freq:250,track:1.4,q:2.5,env:{amount:2800,decay:.18}}, attack:.05, release:.16, vib:{rate:5.5,cents:6,delay:.4}, level:.5},
+  "Organ": {oscs:[{type:"organ",gain:.5}], attack:.008, release:.05, level:.45},
+};
+const DEFAULTS = [
+  {timbre:"Sampled choir", vol:.85, pan:-.45},
+  {timbre:"Sampled choir", vol:.8,  pan:-.15},
+  {timbre:"Sampled choir", vol:.8,  pan:.15},
+  {timbre:"Sampled choir", vol:.75, pan:.45},
+];
+const PARTS = ["Bassus","Tenor","Altus","Cantus"];
+const PITCH_NAMES = ["Lowest note","Second from bottom","Third from bottom","Highest note"];
+const NAMES = ["C","C♯","D","E♭","E","F","F♯","G","A♭","A","B♭","B"];
+
+// ---------- state ----------
+let reverb=null, wet=null, reverbOn=false;
+let glottalWave=null;
+let ctx=null, master=null, noiseBuf=null, organWave=null, midi=null;
+const TEMPERAMENTS=["Equal","Meantone","Just","Pythagorean","Werckmeister III","Kirnberger III","Vallotti","Young","Kellner","1/6 Meantone","19-EDO","31-EDO"];
+const dev={110:null,111:null,112:null,199:null,237:null};
+let zoneSeen=false, out=null, sysexOK=false, deviceMpe=null, singlePort=null, zoneWatch=null;
+// the minichord's chord port (Port 1) carries the chord and the sysex; Port 2 is the harp
+const isChordPort = n => /minichord/i.test(n) && (n.includes("1") || n.trim().toLowerCase()==="minichord");
+let mode="channel";
+let look="scriptorium", nave=.35;
+let perf = (navigator.hardwareConcurrency||4) <= 4 ? "light" : "standard";
+const chans = Array.from({length:16},(_,i)=>({bend:0, range:i===0?2:48, rpn:[127,127]}));
+const zone = {type:"lower", known:false, members:15};
+const keys = new Map(); // "ch:note" -> slot index
+let pending=[], pendingTimer=null;
+const slots = DEFAULTS.map((d,i)=>({i, ...d, mute:false, solo:false, chan:"auto",
+  gain:null, panner:null, voice:null, key:null, ch:null, note:null, hist:[], shown:""}));
+
+try{
+  const saved = JSON.parse(localStorage.getItem("mc-choir")||"null");
+  if(saved){ saved.slots?.forEach((s,i)=>{ if(slots[i]) Object.assign(slots[i], {timbre:(saved.v>=2 && TIMBRES[s.timbre])?s.timbre:slots[i].timbre, vol:s.vol, pan:s.pan, chan:s.chan}); });
+    if(SAMPLE_SETS[saved.sampleSet]) sampleSet=saved.sampleSet;
+    if(saved.mode==="pitch"||saved.mode==="channel") mode=saved.mode;
+    if(saved.perf==="light"||saved.perf==="standard") perf=saved.perf;
+    if(saved.look==="plain"||saved.look==="scriptorium") look=saved.look;
+    if(["a","e","i","o","u","kyrie"].includes(saved.vowelMode)) vowelMode=saved.vowelMode;
+    if(typeof saved.nave==="number") nave=Math.max(0,Math.min(1,saved.nave)); }
+}catch(e){}
+function save(){ try{ localStorage.setItem("mc-choir", JSON.stringify({v:2, mode, perf, look, nave, vowelMode, sampleSet, slots:slots.map(s=>({timbre:s.timbre,vol:s.vol,pan:s.pan,chan:s.chan}))})); }catch(e){} }
+
+if(look==="plain") document.documentElement.dataset.look="plain";
+const masterIdx = () => zone.type==="lower" ? 0 : 15;
+function resolvedChan(s){
+  if(s.chan!=="auto") return +s.chan;
+  return zone.type==="lower" ? 1+s.i : 14-s.i;
+}
+const mtof = p => 440*Math.pow(2,(p-69)/12);
+function pitchFor(s){
+  const c=chans[s.ch]; let p = s.note + c.bend*c.range;
+  const m=masterIdx(); if(s.ch!==m) p += chans[m].bend*chans[m].range;
+  return p;
+}
+
+// ---------- audio ----------
+function initAudio(){
+  if(ctx) return ctx.resume();
+  // Chrome on desktop Linux drops out with the smallest buffer, so Linux always gets the larger one
+  const linuxDesktop = /Linux/.test(navigator.userAgent) && !/Android/.test(navigator.userAgent);
+  ctx = new (window.AudioContext||window.webkitAudioContext)({latencyHint: (perf==="light" || linuxDesktop) ? "playback" : "interactive"});
+  const comp = ctx.createDynamicsCompressor();
+  comp.threshold.value=-14; comp.ratio.value=4;
+  master = ctx.createGain(); master.gain.value=.6;
+  master.connect(comp).connect(ctx.destination);
+  // a stone nave: decaying stereo noise as the impulse response
+  const secs = perf==="light" ? 2 : 3.6, n=Math.floor(ctx.sampleRate*secs);
+  const ir=ctx.createBuffer(2,n,ctx.sampleRate);
+  for(let c=0;c<2;c++){ const d=ir.getChannelData(c); for(let i=0;i<n;i++) d[i]=(Math.random()*2-1)*Math.pow(1-i/n,3.2); }
+  reverb=ctx.createConvolver(); reverb.buffer=ir;
+  wet=ctx.createGain(); reverb.connect(wet).connect(comp);
+  reverbOn=false; applyNave();
+  noiseBuf = ctx.createBuffer(1, ctx.sampleRate*2, ctx.sampleRate);
+  const d=noiseBuf.getChannelData(0); for(let i=0;i<d.length;i++) d[i]=Math.random()*2-1;
+  const h=[0,1,.7,.35,.25,0,0,0,.2];
+  organWave = ctx.createPeriodicWave(new Float32Array(h.length), new Float32Array(h));
+  // a glottal pulse rolls off near 12 dB per octave, twice as steep as a sawtooth
+  const N=80, gr=new Float32Array(N), gi=new Float32Array(N);
+  for(let k=1;k<N;k++) gi[k]=Math.pow(k,-1.9);
+  glottalWave = ctx.createPeriodicWave(gr, gi);
+  for(const k in banks) delete banks[k];   // buffers belong to the old context
+  loadSet(sampleSet);
+  slots.forEach(s=>{ s.gain=ctx.createGain(); s.panner=ctx.createStereoPanner();
+    s.gain.connect(s.panner).connect(master); });
+  applyMix();
+}
+function applyNave(){
+  if(!ctx) return;
+  const want=nave>0.001;
+  if(want && !reverbOn){ master.connect(reverb); reverbOn=true; }
+  if(!want && reverbOn){ master.disconnect(reverb); reverbOn=false; }
+  wet.gain.setTargetAtTime(nave*0.9, ctx.currentTime, .03);
+}
+function applyMix(){
+  if(!ctx) return;
+  const anySolo = slots.some(s=>s.solo);
+  slots.forEach(s=>{
+    const g = (s.mute || (anySolo && !s.solo)) ? 0 : s.vol;
+    s.gain.gain.setTargetAtTime(g, ctx.currentTime, .02);
+    s.panner.pan.setTargetAtTime(s.pan, ctx.currentTime, .02);
+  });
+}
+function glideTo(param, v, tt, tc){
+  if(param.cancelAndHoldAtTime) param.cancelAndHoldAtTime(tt); else param.cancelScheduledValues(tt);
+  param.setTargetAtTime(v, tt, tc);
+}
+const cutoff = (t,f) => Math.min(16000, t.filter.freq + (t.filter.track||0)*f);
+
+function makeSinger(t, dest, pitch, vel){
+  const now=ctx.currentTime; let f=mtof(pitch);
+  const part=t.part||partFor(pitch);
+  let vowel=currentVowel();
+  const env=ctx.createGain(); env.gain.value=0; env.connect(dest);
+  const peak=t.level*(.55+.45*vel/127);
+  env.gain.setValueAtTime(0,now);
+  env.gain.linearRampToValueAtTime(peak*.8, now+t.attack*.6);
+  env.gain.linearRampToValueAtTime(peak, now+t.attack);
+  // five formant resonators in parallel
+  const src=ctx.createGain(), sum=ctx.createGain(), bank=[];
+  for(let k=0;k<5;k++){
+    const bp=ctx.createBiquadFilter(); bp.type="bandpass"; const g=ctx.createGain();
+    src.connect(bp).connect(g).connect(sum); bank.push({bp,g});
+  }
+  sum.connect(env);
+  const shape=(tc)=>{
+    const set=formantSet(part, vowel, f);
+    const mk=Math.min(40, VOICE_LEVEL/Math.max(1e-4, formantLoudness(set,f)));
+    if(tc) glideTo(sum.gain,mk,ctx.currentTime,tc); else sum.gain.value=mk;
+    set.forEach(([fr,q,gg],k)=>{
+      const b=bank[k];
+      if(tc){ glideTo(b.bp.frequency,fr,ctx.currentTime,tc); glideTo(b.bp.Q,q,ctx.currentTime,tc); glideTo(b.g.gain,gg,ctx.currentTime,tc); }
+      else { b.bp.frequency.value=fr; b.bp.Q.value=q; b.g.gain.value=gg; }
+    });
+  };
+  shape(0);
+  const sources=[], oscs=[];
+  // slow random pitch drift (jitter), shared by the section
+  const jit=ctx.createBufferSource(); jit.buffer=noiseBuf; jit.loop=true;
+  const jl=ctx.createBiquadFilter(); jl.type="lowpass"; jl.frequency.value=4; jl.Q.value=.5;
+  const jg=ctx.createGain(); jg.gain.value=t.jitter*110;   // lowpassed noise is tiny; this lands near the stated cents
+  jit.connect(jl).connect(jg); jit.start(now, Math.random()*1.8); sources.push(jit);
+  const n = perf==="light" ? Math.min(2,t.n) : t.n;
+  for(let i=0;i<n;i++){
+    const osc=ctx.createOscillator(); osc.setPeriodicWave(glottalWave); osc.frequency.value=f;
+    const det = n>1 ? (i-(n-1)/2)*t.spread + (Math.random()-.5)*4 : 0;
+    const t0 = now + i*0.014;                                   // singers never enter exactly together
+    osc.detune.setValueAtTime(det - t.scoop*(.7+Math.random()*.6), t0);  // scoop up into the note
+    osc.detune.linearRampToValueAtTime(det, t0 + .08 + Math.random()*.05);
+    const vib=ctx.createOscillator(), vg=ctx.createGain();
+    vib.frequency.value=t.vib.rate*(.92+Math.random()*.16); vg.gain.value=0;
+    vg.gain.setValueAtTime(0, now+t.vib.delay);
+    vg.gain.linearRampToValueAtTime(t.vib.cents*(.8+Math.random()*.4), now+t.vib.delay+.7);
+    vib.connect(vg).connect(osc.detune); jg.connect(osc.detune);
+    const sg=ctx.createGain(); sg.gain.value=1/Math.sqrt(n);
+    osc.connect(sg).connect(src);
+    osc.start(t0); vib.start(now); sources.push(osc,vib); oscs.push(osc);
+  }
+  // breath through the same resonators, strongest at the onset
+  const br=ctx.createBufferSource(); br.buffer=noiseBuf; br.loop=true;
+  const bh=ctx.createBiquadFilter(); bh.type="highpass"; bh.frequency.value=900;
+  const bg=ctx.createGain(); bg.gain.setValueAtTime(t.breath*3, now); bg.gain.setTargetAtTime(t.breath, now+.05, .12);
+  br.connect(bh).connect(bg).connect(src); br.start(now, Math.random()*1.8); sources.push(br);
+  let released=false;
+  return {
+    setPitch(p){
+      if(released) return;
+      f=mtof(p); const tt=ctx.currentTime;
+      for(const o of oscs) glideTo(o.frequency, f, tt, .004);
+      if(part==="alto"||part==="soprano") shape(.02);
+    },
+    setVowel(v){ if(released||v===vowel) return; vowel=v; shape(.07); },
+    release(){
+      if(released) return; released=true;
+      const tt=ctx.currentTime, g=env.gain;
+      if(g.cancelAndHoldAtTime) g.cancelAndHoldAtTime(tt); else { g.cancelScheduledValues(tt); g.setValueAtTime(g.value,tt); }
+      g.setTargetAtTime(0, tt, t.release/3);
+      const stop=tt+t.release*2+.05;
+      sources.forEach(s=>s.stop(stop));
+      setTimeout(()=>env.disconnect(), (stop-tt)*1000+100);
+    }
+  };
+}
+function makeVoice(t, dest, pitch, vel){
+  if(t.sampled) return makeSampled(t, dest, pitch, vel);
+  if(t.singer) return makeSinger(t, dest, pitch, vel);
+  const now=ctx.currentTime, f=mtof(pitch);
+  const env=ctx.createGain(); env.gain.value=0; env.connect(dest);
+  const peak = t.level*(.55+.45*vel/127);
+  env.gain.setValueAtTime(0,now); env.gain.linearRampToValueAtTime(peak, now+t.attack);
+  const sources=[], oscs=[];
+  const vib=ctx.createOscillator(), vg=ctx.createGain(); vg.gain.value=0;
+  vib.frequency.value = t.vib ? t.vib.rate : 5; vib.connect(vg); vib.start(now); sources.push(vib);
+  if(t.vib){ vg.gain.setValueAtTime(0, now+t.vib.delay); vg.gain.linearRampToValueAtTime(t.vib.cents, now+t.vib.delay+.6); }
+  const pre=ctx.createGain();
+  for(const o of t.oscs){
+    const osc=ctx.createOscillator();
+    if(o.type==="organ") osc.setPeriodicWave(organWave); else osc.type=o.type;
+    const ratio=o.ratio||1; osc.frequency.value=f*ratio; osc.detune.value=o.detune||0;
+    vg.connect(osc.detune);
+    const g=ctx.createGain(); g.gain.value=o.gain; osc.connect(g).connect(pre);
+    osc.start(now); sources.push(osc); oscs.push({osc,ratio});
+  }
+  let tail=pre, filt=null;
+  if(t.formants){
+    const sum=ctx.createGain();
+    for(const [ff,q,g] of t.formants){
+      const bp=ctx.createBiquadFilter(); bp.type="bandpass"; bp.frequency.value=ff; bp.Q.value=q;
+      const gg=ctx.createGain(); gg.gain.value=g; pre.connect(bp).connect(gg).connect(sum);
+    }
+    tail=sum;
+  }
+  if(t.filter){
+    filt=ctx.createBiquadFilter(); filt.type="lowpass"; filt.Q.value=t.filter.q||.7;
+    const base=cutoff(t,f);
+    if(t.filter.env){ filt.frequency.setValueAtTime(Math.min(18000,base+t.filter.env.amount),now);
+      filt.frequency.setTargetAtTime(base, now+t.attack, t.filter.env.decay); }
+    else filt.frequency.value=base;
+    tail.connect(filt); tail=filt;
+  }
+  tail.connect(env);
+  if(t.noise){
+    const n=ctx.createBufferSource(); n.buffer=noiseBuf; n.loop=true;
+    const bp=ctx.createBiquadFilter(); bp.type="bandpass"; bp.frequency.value=t.noise.freq; bp.Q.value=t.noise.q;
+    const ng=ctx.createGain(); ng.gain.value=t.noise.gain; n.connect(bp).connect(ng).connect(env);
+    n.start(now); sources.push(n);
+  }
+  let released=false;
+  return {
+    setPitch(p){
+      if(released) return;
+      const ff=mtof(p), tt=ctx.currentTime;
+      for(const o of oscs) glideTo(o.osc.frequency, ff*o.ratio, tt, .004);
+      if(filt && t.filter.track) glideTo(filt.frequency, cutoff(t,ff), tt, .01);
+    },
+    release(){
+      if(released) return; released=true;
+      const tt=ctx.currentTime, g=env.gain;
+      if(g.cancelAndHoldAtTime) g.cancelAndHoldAtTime(tt); else { g.cancelScheduledValues(tt); g.setValueAtTime(g.value,tt); }
+      g.setTargetAtTime(0, tt, t.release/3);
+      const stop=tt+t.release*2+.05;
+      sources.forEach(s=>s.stop(stop));
+      setTimeout(()=>env.disconnect(), (stop-tt)*1000+100);
+    }
+  };
+}
+
+// ---------- MIDI handling ----------
+let rec=null;
+function handleMidi(data){
+  const st=data[0]; if(st>=0xF0) return;
+  if(rec) rec.events.push([performance.now()-rec.t0, Array.from(data).slice(0, (st&0xF0)===0xC0||(st&0xF0)===0xD0 ? 2 : 3)]);
+  const type=st&0xF0, ch=st&0x0F;
+  if(type===0x90 && data[2]>0) noteOn(ch,data[1],data[2]);
+  else if(type===0x80 || type===0x90) noteOff(ch,data[1]);
+  else if(type===0xE0){
+    const v=(data[2]<<7)|data[1];
+    chans[ch].bend = v>=8192 ? (v-8192)/8191 : (v-8192)/8192;
+    updatePitches(ch);
+  } else if(type===0xB0) controlChange(ch,data[1],data[2]);
+}
+function controlChange(ch,cc,val){
+  const c=chans[ch];
+  if(cc===101) c.rpn[0]=val;
+  else if(cc===100) c.rpn[1]=val;
+  else if(cc===6 || cc===38){
+    const [a,b]=c.rpn;
+    if(a===0 && b===0){
+      const r = cc===6 ? val : Math.floor(c.range)+val/100;
+      const m=masterIdx();
+      if(ch===m) c.range=r; else chans.forEach((x,i)=>{ if(i!==m) x.range=r; });
+      updateZoneInfo();
+    }
+    else if(a===0 && b===6 && cc===6 && (ch===0||ch===15)){
+      if(val>0){
+        zone.type = ch===0 ? "lower" : "upper"; zone.members=val; zone.known=true;
+        chans.forEach((x,i)=>x.range = (i===masterIdx()) ? 2 : 48);
+        zoneSeen=true; setDeviceMpe(1);
+      } else { zone.known=false; zone.type="lower"; setDeviceMpe(0); }
+      updateZoneInfo(); renderRoutes();
+    }
+  } else if(cc===120 || cc===123){
+    [...keys.entries()].filter(([k])=>+k.split(":")[0]===ch).forEach(([k])=>noteOff(ch,+k.split(":")[1]));
+  }
+}
+function noteOn(ch,note,vel){
+  const key=ch+":"+note;
+  if(mode==="channel"){
+    const idx=slots.findIndex(s=>resolvedChan(s)===ch);
+    if(idx<0){
+      if(zone.known && zone.members>4 && ch>=5) return;   // single port mode: harp strings on 6 to 16
+      if(deviceMpe===0) notice(`MPE output is off, so the whole chord arrives on channel ${ch+1}. Turn MPE output on above, or assign by pitch.`);
+      else notice(`Notes on channel ${ch+1} aren't reaching any voice. Choose channel ${ch+1} in a voice's channel menu to hear them.`);
+      return;
+    }
+    startOnSlot(idx,ch,note,vel,key);
+  } else {
+    pending.push({ch,note,vel,key});
+    if(!pendingTimer) pendingTimer=setTimeout(flushPending,12);
+  }
+}
+const RANK_MAP={1:[0],2:[0,3],3:[0,1,3],4:[0,1,2,3]};
+function flushPending(){
+  const batch=pending.sort((a,b)=>a.note-b.note); pending=[]; pendingTimer=null;
+  const k=batch.length;
+  if(k===1 && slots.some(s=>s.key)){
+    // a lone note joins the voice nearest to it in pitch
+    const n=batch[0]; let best=0, bd=1e9;
+    slots.forEach((s,i)=>{ const d = s.key ? Math.abs(pitchFor(s)-n.note) : 50; if(d<bd){bd=d;best=i;} });
+    startOnSlot(best,n.ch,n.note,n.vel,n.key); return;
+  }
+  batch.forEach((n,i)=>{
+    const idx = RANK_MAP[k] ? RANK_MAP[k][i] : Math.round(i*3/(k-1));
+    startOnSlot(idx,n.ch,n.note,n.vel,n.key);
+  });
+}
+const motion={pending:new Map(), timer:null, hist:[]};
+function trackMotion(idx,note){
+  const s=slots[idx];
+  motion.pending.set(idx, s.lastNote==null ? null : note-s.lastNote);
+  s.lastNote=note;
+  if(!motion.timer) motion.timer=setTimeout(commitMotion,30);
+}
+function commitMotion(){
+  motion.timer=null;
+  const m=motion.pending; motion.pending=new Map();
+  if(m.size<3) return;   // a single note or pair isn't a chord change
+  let total=0, counted=0;
+  slots.forEach((s,i)=>{
+    const el=s.el.querySelector(".moved");
+    if(!m.has(i)){ el.textContent=""; return; }
+    const d=m.get(i);
+    if(d===null){ el.textContent="First note"; return; }
+    total+=Math.abs(d); counted++;
+    el.textContent = d===0 ? "Held its note" : `Moved ${d>0?"+":"−"}${Math.abs(d)} st`;
+  });
+  if(!counted) return;
+  motion.hist.push(total); if(motion.hist.length>12) motion.hist.shift();
+  document.getElementById("motionText").innerHTML=`<span class="big">${total} st</span> of motion across the voices at the last chord change.`;
+  const avg=motion.hist.reduce((a,b)=>a+b,0)/motion.hist.length;
+  document.getElementById("motionAvg").textContent=`Average over the last ${motion.hist.length}: ${avg.toFixed(1)} st. Turn voice leading on and off to compare.`;
+  const max=Math.max(12,...motion.hist);
+  document.getElementById("bars").innerHTML=motion.hist.map(v=>`<span style="height:${Math.max(4,v/max*100)}%" title="${v} st"></span>`).join("");
+}
+function startOnSlot(idx,ch,note,vel,key){
+  const s=slots[idx];
+  trackMotion(idx,note);
+  if(s.voice) s.voice.release();
+  if(s.key) keys.delete(s.key);
+  Object.assign(s,{key,ch,note,voice:null});
+  keys.set(key,idx);
+  (s.onsets||(s.onsets=[])).push([performance.now(), pitchFor(s)]);
+  advanceSyllable();
+  if(ctx) s.voice=makeVoice(TIMBRES[s.timbre], s.gain, pitchFor(s), vel);
+  else notice("MIDI is arriving but sound is off. Press start to hear it.");
+}
+function noteOff(ch,note){
+  const key=ch+":"+note;
+  const p=pending.findIndex(n=>n.key===key); if(p>=0){ pending.splice(p,1); return; }
+  const idx=keys.get(key); if(idx===undefined) return;
+  keys.delete(key);
+  const s=slots[idx];
+  if(s.key===key){ s.voice?.release(); s.voice=null; s.key=null; }
+}
+const dirty=new Set(); let pitchTimer=null;
+function updatePitches(ch){
+  const m=masterIdx();
+  slots.forEach(s=>{ if(s.key && (ch===m || s.ch===ch)) dirty.add(s); });
+  if(dirty.size && !pitchTimer) pitchTimer=setTimeout(flushPitches, 8);
+}
+function flushPitches(){
+  pitchTimer=null;
+  dirty.forEach(s=>{ if(s.key) s.voice?.setPitch(pitchFor(s)); });
+  dirty.clear();
+}
+function panic(){
+  pending=[]; clearTimeout(pendingTimer); pendingTimer=null;
+  slots.forEach(s=>{ s.voice?.release(); s.voice=null; s.key=null; });
+  keys.clear(); chans.forEach(c=>c.bend=0); glideRun++;
+}
+
+async function initMidi(){
+  const status=document.getElementById("status");
+  if(!navigator.requestMIDIAccess){ status.innerHTML="This browser has no Web MIDI. Open the page in Chrome, Edge or Opera on a computer."; return; }
+  try{ midi=await navigator.requestMIDIAccess({sysex:true}); sysexOK=true; }
+  catch(e){
+    try{ midi=await navigator.requestMIDIAccess(); }
+    catch(e2){ status.innerHTML="MIDI access was blocked. If this page is shown inside another page, open it in its own tab and allow MIDI when asked."; return; }
+  }
+  midi.onstatechange=populateInputs; populateInputs();
+}
+function populateInputs(){
+  const sel=document.getElementById("input"), prev=sel.value;
+  const inputs=[...midi.inputs.values()];
+  sel.innerHTML=""; sel.disabled=false;
+  sel.add(new Option("All MIDI inputs","all"));
+  inputs.forEach(i=>sel.add(new Option(i.name,i.id)));
+  const mc=inputs.find(i=>isChordPort(i.name));
+  sel.value = inputs.some(i=>i.id===prev)||prev==="all" ? prev : (mc ? mc.id : "all");
+  inputs.forEach(i=>i.onmidimessage=e=>{
+    if(e.data[0]===0xF0){ if(isChordPort(i.name)) handleDump(e.data); return; }
+    if(sel.value==="all"||sel.value===i.id) handleMidi(e.data);
+  });
+  const status=document.getElementById("status");
+  if(!inputs.length) status.innerHTML="No MIDI inputs found. Plug in the minichord and it will show up here.";
+  else status.innerHTML = mc ? `Listening to <b>${mc.name}</b>, the chord port.`
+                             : `Listening. No minichord chord port yet, so all inputs are live.`;
+  const newOut=[...midi.outputs.values()].find(o=>isChordPort(o.name))||null;
+  const fresh = newOut && (!out || out.id!==newOut.id);
+  out=newOut; renderDevice();
+  if(fresh) requestDump();
+}
+function requestDump(){ if(out && sysexOK) out.send([0xF0,0,0,0,0,0xF7]); }
+function handleDump(d){
+  if(d.length!==514) return;   // 256 parameters, two 7-bit bytes each, plus F0 and F7
+  const p=i=>d[1+2*i]+128*d[2+2*i];
+  singlePort = p(108)===1;
+  const mpe = p(110)===1 ? 1 : 0;
+  dev[111]=p(111)?1:0; dev[112]=Math.min(24,p(112)); dev[199]=Math.min(1500,p(199)); dev[237]=Math.min(11,p(237));
+  if(!mpe && zone.known){ zone.known=false; zone.type="lower"; updateZoneInfo(); renderRoutes(); }
+  if(mpe && !zone.known){ zone.type="lower"; zone.members = singlePort ? 15 : 4; zone.known=true; updateZoneInfo(); renderRoutes(); }
+  setDeviceMpe(mpe);
+}
+function setDeviceMpe(v){ deviceMpe=v; dev[110]=v; renderDevice(); }
+function renderDevice(){
+  const box=document.getElementById("device"), btn=document.getElementById("mpeBtn"), note=document.getElementById("deviceNote");
+  box.hidden = !out;
+  if(!out) return;
+  btn.disabled = !sysexOK;
+  btn.setAttribute("aria-pressed", deviceMpe===1);
+  btn.textContent = deviceMpe===1 ? "On" : "Off";
+  const vl=document.getElementById("vlBtn"); vl.disabled=!sysexOK||dev[111]===null;
+  vl.setAttribute("aria-pressed", dev[111]===1); vl.textContent = dev[111]===1 ? "On" : "Off";
+  const set=(id,v,o,fmt)=>{ const el=document.getElementById(id); el.disabled=!sysexOK||v===null;
+    if(v!==null && document.activeElement!==el) el.value=v;
+    if(o) document.getElementById(o).textContent = v===null ? "" : fmt(+el.value); };
+  set("vlr",dev[112],"vlrOut",v=>v+" st");
+  set("gl",dev[199],"glOut",v=>v+" ms");
+  set("temp",dev[237],null);
+  if(!sysexOK) note.textContent="Reload and allow system-exclusive MIDI access to switch this from here.";
+  else if(deviceMpe===1) note.textContent = singlePort ? "Chord on channels 2 to 5, harp strings on 6 to 16 of the same port." : "Chord voices on channels 2 to 5 of Port 1.";
+  else if(deviceMpe===0) note.textContent="The chord arrives on a single channel.";
+  else note.textContent="Reading the minichord…";
+}
+function writeParam(a,v){
+  if(!out||!sysexOK) return;
+  out.send([0xF0,a&127,a>>7,v&127,(v>>7)&127,0xF7]); dev[a]=v;
+}
+let resyncTimer;
+function resync(){ clearTimeout(resyncTimer); resyncTimer=setTimeout(requestDump,300); }
+function setMpe(v){
+  if(!out || !sysexOK) return;
+  panic();
+  out.send([0xF0,110,0,v,0,0xF7]);
+  clearTimeout(zoneWatch); zoneSeen=false;
+  if(v===1) zoneWatch=setTimeout(()=>{
+    if(!zoneSeen) document.getElementById("deviceNote").textContent =
+      "The minichord took the setting but announced no MPE zone, so its firmware likely has no MPE output. Flash the test-allFeatures build.";
+  },800);
+  setTimeout(requestDump,150);
+}
+
+// ---------- UI ----------
+const voicesEl=document.getElementById("voices");
+slots.forEach((s,i)=>{
+  const el=document.createElement("section");
+  el.className="voice"; el.style.setProperty("--c",`var(--v${i})`);
+  el.innerHTML=`
+    <div class="part" aria-hidden="true">${PARTS[i]}</div>
+    <select class="timbre" aria-label="Instrument for voice ${i+1}">${Object.keys(TIMBRES).map(n=>`<option>${n}</option>`).join("")}</select>
+    <div class="note" aria-live="off"><span>–</span><small></small></div>
+    <div class="route"></div>
+    <label>Level<input type="range" min="0" max="1" step=".01" class="vol"></label>
+    <label>Pan<input type="range" min="-1" max="1" step=".01" class="pan"></label>
+    <div class="moved"></div>
+    <div class="toggles"><button class="mute" aria-pressed="false">Mute</button><button class="solo" aria-pressed="false">Solo</button></div>`;
+  voicesEl.appendChild(el); s.el=el;
+  const t=el.querySelector(".timbre"); t.value=s.timbre;
+  t.onchange=()=>{ s.timbre=t.value; save(); };
+  const v=el.querySelector(".vol"); v.value=s.vol; v.oninput=()=>{ s.vol=+v.value; applyMix(); save(); };
+  const p=el.querySelector(".pan"); p.value=s.pan; p.oninput=()=>{ s.pan=+p.value; applyMix(); save(); };
+  el.querySelector(".mute").onclick=e=>{ s.mute=!s.mute; e.target.setAttribute("aria-pressed",s.mute); applyMix(); };
+  el.querySelector(".solo").onclick=e=>{ s.solo=!s.solo; e.target.setAttribute("aria-pressed",s.solo); applyMix(); };
+});
+function renderRoutes(){
+  slots.forEach((s,i)=>{
+    const r=s.el.querySelector(".route");
+    if(mode==="pitch"){ r.textContent=PITCH_NAMES[i]+" of each chord"; return; }
+    const auto = zone.type==="lower" ? 2+i : 15-i;
+    r.innerHTML=`<select aria-label="Channel for voice ${i+1}">
+      <option value="auto">Channel ${auto} (auto)</option>
+      ${Array.from({length:16},(_,c)=>`<option value="${c}">Channel ${c+1}</option>`).join("")}</select>`;
+    const sel=r.querySelector("select"); sel.value=s.chan;
+    sel.onchange=()=>{ panic(); s.chan=sel.value; save(); };
+  });
+  document.getElementById("modeHelp").textContent = mode==="channel"
+    ? "Each voice keeps its own instrument for as long as the minichord keeps it on the same channel, so a voice-led line stays one timbre while it moves."
+    : "Voices are sorted low to high as each chord starts, so the bass instrument always plays the bottom note even when lines cross.";
+}
+function updateZoneInfo(){
+  const m=masterIdx(), mem=chans[zone.type==="lower"?1:14];
+  const zt = zone.known ? `The minichord declared an MPE ${zone.type} zone.` : "No MPE zone declared yet, so a lower zone is assumed.";
+  document.getElementById("zoneInfo").textContent = `${zt} Voice bend range is ±${+mem.range.toFixed(2)} semitones, master channel ${m+1}.`;
+}
+let noticeTimer;
+function notice(msg){ const n=document.getElementById("notice"); n.textContent=msg; clearTimeout(noticeTimer); noticeTimer=setTimeout(()=>n.textContent="",5000); }
+
+document.querySelectorAll('input[name=mode]').forEach(r=>{
+  r.checked = r.value===mode;
+  r.onchange=()=>{ panic(); mode=r.value; renderRoutes(); save(); };
+});
+document.getElementById("start").onclick=async e=>{
+  initAudio(); e.target.disabled=true; e.target.textContent="Sound on";
+  await initMidi();
+};
+document.getElementById("panic").onclick=panic;
+document.getElementById("mpeBtn").onclick=()=>setMpe(deviceMpe===1 ? 0 : 1);
+document.getElementById("vlBtn").onclick=()=>{ writeParam(111, dev[111]===1?0:1); renderDevice(); resync(); };
+const tSel=document.getElementById("temp");
+TEMPERAMENTS.forEach((n,i)=>tSel.add(new Option(n,i)));
+tSel.onchange=()=>{ writeParam(237,+tSel.value); resync(); };
+[["vlr",112,"vlrOut"," st"],["gl",199,"glOut"," ms"]].forEach(([id,addr,o,u])=>{
+  const el=document.getElementById(id); let last=0;
+  el.oninput=()=>{ document.getElementById(o).textContent=el.value+u;
+    const now=performance.now(); if(now-last>40){ last=now; writeParam(addr,+el.value); } };
+  el.onchange=()=>{ writeParam(addr,+el.value); resync(); };
+});
+const setSel=document.getElementById("sampleSet"); setSel.value=sampleSet;
+setSel.onchange=()=>{ sampleSet=setSel.value; save(); if(ctx) loadSet(sampleSet); };
+const vowelSel=document.getElementById("vowel"); vowelSel.value=vowelMode;
+vowelSel.onchange=()=>{ vowelMode=vowelSel.value; kyrieIdx=-1; underlay.length=0;
+  slots.forEach(s=>s.voice?.setVowel?.(currentVowel())); save(); };
+const lookSel=document.getElementById("look"); lookSel.value=look;
+lookSel.onchange=()=>{ look=lookSel.value;
+  if(look==="plain") document.documentElement.dataset.look="plain"; else delete document.documentElement.dataset.look;
+  readColors(); save(); };
+const naveEl=document.getElementById("nave"); naveEl.value=nave;
+naveEl.oninput=()=>{ nave=+naveEl.value; applyNave(); save(); };
+const perfSel=document.getElementById("perf"); perfSel.value=perf;
+perfSel.onchange=()=>{
+  perf=perfSel.value; save(); resize();
+  if(ctx){ panic(); ctx.close(); ctx=null; initAudio(); }
+};
+
+// ---------- MPE MIDI file recorder ----------
+const recBtn=document.getElementById("recBtn"), recStatus=document.getElementById("recStatus");
+let recTick=null;
+recBtn.onclick=()=>{
+  if(!rec){
+    rec={t0:performance.now(), events:[]};
+    recBtn.setAttribute("aria-pressed","true"); recBtn.textContent="Stop and save";
+    recTick=setInterval(()=>{ recStatus.textContent=`Recording ${((performance.now()-rec.t0)/1000).toFixed(0)} s`; },250);
+    return;
+  }
+  const r=rec; rec=null; clearInterval(recTick);
+  recBtn.setAttribute("aria-pressed","false"); recBtn.textContent="Start recording";
+  const end=performance.now()-r.t0;
+  // close anything still held so the file doesn't end mid-note
+  keys.forEach((_,k)=>{ const [ch,n]=k.split(":").map(Number); r.events.push([end,[0x80|ch,n,0]]); });
+  if(!r.events.some(e=>(e[1][0]&0xF0)===0x90)){ recStatus.textContent="Nothing was played, so there's nothing to save."; return; }
+  saveMidi(r.events);
+  recStatus.textContent="Saved.";
+};
+function saveMidi(events){
+  const bytes=[], vlq=n=>{ const b=[n&127]; while(n>>=7) b.unshift((n&127)|128); return b; };
+  const put=(tick,msg)=>{ bytes.push(...vlq(tick),...msg); };
+  put(0,[0xFF,0x51,0x03,0x07,0xA1,0x20]);                 // 120 bpm, so 1 ms = 0.96 ticks at 480 ppq
+  if(deviceMpe===1 || zone.known){                        // MPE configuration: zone on ch 1, bend range on the first member
+    const m=zone.known?zone.members:4;
+    put(0,[0xB0,101,0]); put(0,[0xB0,100,6]); put(0,[0xB0,6,m]);
+    put(0,[0xB1,101,0]); put(0,[0xB1,100,0]); put(0,[0xB1,6,48]);
+  }
+  let last=0;
+  events.sort((a,b)=>a[0]-b[0]).forEach(([ms,msg])=>{ const t=Math.round(ms*0.96); put(t-last,msg); last=t; });
+  put(0,[0xFF,0x2F,0x00]);
+  const len=bytes.length;
+  const head=[0x4D,0x54,0x68,0x64,0,0,0,6,0,0,0,1,0x01,0xE0,
+    0x4D,0x54,0x72,0x6B,(len>>>24)&255,(len>>>16)&255,(len>>>8)&255,len&255];
+  const file=new Uint8Array(head.length+len); file.set(head,0); file.set(bytes,head.length);
+  const d=new Date(), pad=n=>String(n).padStart(2,"0");
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(new Blob([file],{type:"audio/midi"}));
+  a.download=`minichord-choir-${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}.mid`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+}
+
+// test chord: synthetic MPE into the same path
+const TEST=[48,55,64,72];
+const testChan = i => mode==="channel" ? resolvedChan(slots[i]) : 1+i;
+const hold=document.getElementById("hold");
+let holding=false;
+function holdOn(){ if(holding) return; holding=true; initAudio(); TEST.forEach((n,i)=>handleMidi([0x90|testChan(i),n,100])); }
+function holdOff(){ if(!holding) return; holding=false; TEST.forEach((n,i)=>handleMidi([0x80|testChan(i),n,0])); }
+hold.addEventListener("pointerdown",e=>{ hold.setPointerCapture(e.pointerId); holdOn(); });
+hold.addEventListener("pointerup",holdOff); hold.addEventListener("pointercancel",holdOff);
+hold.addEventListener("keydown",e=>{ if(e.key===" "||e.key==="Enter"){ e.preventDefault(); holdOn(); } });
+hold.addEventListener("keyup",e=>{ if(e.key===" "||e.key==="Enter") holdOff(); });
+
+let glideRun=0;
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+function bendTo(ch,semi){ const r=chans[ch].range||48; let v=Math.round(8192+semi/r*8192); v=Math.max(0,Math.min(16383,v)); handleMidi([0xE0|ch, v&127, v>>7]); }
+
+// ---------- the minichord's own voicings, ported from its firmware ----------
+// Without voice leading, a chord is built up from its root in close position: root, third, fifth,
+// then the root again an octave up (or the seventh). With it on, the four voices take the chord's
+// notes, in rising order and never crossing, that move least from the chord sounding now, within
+// `range` semitones of where root position would sit, and every note of the chord must appear.
+// Offsets are semitones above the MIDI base, C3; in C, the roots sit from C3 up to B3.
+function firmwareVoicing(root, tones, prev, on, range=12){
+  const n=tones.length, anchor=[0,1,2,3].map(v=>root+tones[v%n]+12*Math.floor(v/n));
+  if(!on) return anchor;
+  const lo=Math.max(0,Math.min(...anchor)-range), hi=Math.max(...anchor)+range;
+  const pool=[], pt=[];
+  for(let note=lo; note<=hi && pool.length<40; note++){ const i=tones.indexOf(((note-root)%12+12)%12); if(i>=0){ pool.push(note); pt.push(i); } }
+  if(pool.length<4) return anchor;
+  const from=prev||anchor, full=(1<<n)-1, M=1<<n, U=32767;
+  const cost=[0,1,2,3].map(()=>pool.map(()=>new Array(M).fill(U)));
+  const cameI=[0,1,2,3].map(()=>pool.map(()=>new Array(M).fill(0))), cameM=[0,1,2,3].map(()=>pool.map(()=>new Array(M).fill(0)));
+  pool.forEach((p,i)=>{ cost[0][i][1<<pt[i]]=Math.abs(p-from[0]); });
+  for(let v=1;v<4;v++){
+    const best=new Array(M).fill(U), bestI=new Array(M).fill(0);
+    for(let i=0;i<pool.length;i++){
+      if(i>0) for(let m=0;m<M;m++) if(cost[v-1][i-1][m]<best[m]){ best[m]=cost[v-1][i-1][m]; bestI[m]=i-1; }
+      const bit=1<<pt[i], step=Math.abs(pool[i]-from[v]);
+      for(let m=0;m<M;m++){ if(best[m]===U) continue; const r=m|bit, t=best[m]+step;
+        if(t<cost[v][i][r]){ cost[v][i][r]=t; cameI[v][i][r]=bestI[m]; cameM[v][i][r]=m; } }
+    }
+  }
+  let bestTotal=U, idx=0;
+  for(let i=0;i<pool.length;i++) if(cost[3][i][full]<bestTotal){ bestTotal=cost[3][i][full]; idx=i; }
+  if(bestTotal===U) return anchor;
+  const out=[0,0,0,0]; let m=full;
+  for(let v=3;v>=1;v--){ out[v]=pool[idx]; const ni=cameI[v][idx][m], nm=cameM[v][idx][m]; idx=ni; m=nm; }
+  out[0]=pool[idx];
+  return out;
+}
+const VL_TONES={M:[0,4,7], m:[0,3,7], "7":[0,4,7,10]};
+const VL_PROG=[["C",0,"M"],["Am",9,"m"],["Dm",2,"m"],["G7",7,"7"],["C",0,"M"],["F",5,"M"],["G",7,"M"],["C",0,"M"]];
+function caption(text){ const c=document.getElementById("caption"); c.hidden=!text; c.textContent=text||""; }
+document.getElementById("vlDemo").onclick=async()=>{
+  initAudio(); panic(); const run=++glideRun;
+  const chs=[0,1,2,3].map(i=>testChan(i));
+  const range = dev[112]!=null ? dev[112] : 12;
+  const avg={};
+  for(const on of [false,true]){
+    caption(on ? "Voice leading on" : "Voice leading off");
+    let prev=null, total=0, changes=0;
+    for(const [,root,q] of VL_PROG){
+      if(run!==glideRun) return caption(null);
+      const v=firmwareVoicing(root, VL_TONES[q], prev, on, range), notes=v.map(x=>48+x);
+      if(!prev){ chs.forEach(ch=>bendTo(ch,0)); notes.forEach((n,i)=>handleMidi([0x90|chs[i],n,100])); }
+      else {
+        // as the minichord sends a glide over MPE: the new note arrives bent to where the voice was, then slides home
+        const old=prev.map(x=>48+x);
+        notes.forEach((n,i)=>{ handleMidi([0x80|chs[i],old[i],0]); bendTo(chs[i],old[i]-n); handleMidi([0x90|chs[i],n,100]); });
+        total+=notes.reduce((s,n,i)=>s+Math.abs(n-old[i]),0); changes++;
+        const t0=performance.now();
+        while(true){ const f=Math.min(1,(performance.now()-t0)/260); notes.forEach((n,i)=>bendTo(chs[i],(old[i]-n)*(1-f)));
+          if(f>=1) break; await sleep(12); if(run!==glideRun) return caption(null); }
+      }
+      prev=v; await sleep(1500);
+    }
+    prev.forEach((x,i)=>handleMidi([0x80|chs[i],48+x,0]));
+    avg[on]=total/changes;
+    await sleep(900);
+  }
+  caption(null);
+  document.getElementById("vlResult").textContent = `Voice leading off: the voices moved ${avg[false].toFixed(1)} semitones per chord change. On: ${avg[true].toFixed(1)}. `+
+    `The same eight chords with ${Math.round(avg[false]/avg[true])} times less motion, using a range of ${range}.`;
+};
+document.getElementById("glide").onclick=async()=>{
+  initAudio(); panic(); const run=++glideRun;
+  const chs=TEST.map((_,i)=>testChan(i));
+  const steps=[[0,0,0,0],[5,2,1,0],[7,4,-2,-1],[0,0,0,0]]; // C, F, G, C voice-led
+  const sendBend=(ch,semi)=>{ const r=chans[ch].range||48; let v=Math.round(8192+semi/r*8192); v=Math.max(0,Math.min(16383,v)); handleMidi([0xE0|ch, v&127, v>>7]); };
+  chs.forEach(ch=>sendBend(ch,0));
+  TEST.forEach((n,i)=>handleMidi([0x90|chs[i],n,100]));
+  const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+  let cur=steps[0];
+  for(const next of steps.slice(1)){
+    await sleep(800); if(run!==glideRun) return;
+    const t0=performance.now(), dur=260;
+    while(true){
+      const k=Math.min(1,(performance.now()-t0)/dur);
+      chs.forEach((ch,i)=>sendBend(ch, cur[i]+(next[i]-cur[i])*k));
+      if(k>=1) break; await sleep(10); if(run!==glideRun) return;
+    }
+    cur=next;
+  }
+  await sleep(900); if(run!==glideRun) return;
+  TEST.forEach((n,i)=>handleMidi([0x80|chs[i],n,0]));
+};
+
+// ---------- trace ----------
+const cv=document.getElementById("trace"), g=cv.getContext("2d");
+let colors=[], ink="", muted="", rule="", rubric="", bodyFont="";
+function readColors(){
+  const cs=getComputedStyle(document.documentElement);
+  colors=[0,1,2,3].map(i=>cs.getPropertyValue(`--v${i}`).trim());
+  ink=cs.getPropertyValue("--ink").trim(); muted=cs.getPropertyValue("--muted").trim(); rule=cs.getPropertyValue("--rule").trim();
+  rubric=cs.getPropertyValue("--rubric").trim(); bodyFont=cs.getPropertyValue("--body").trim();
+}
+function resize(){ const dpr= perf==="light" ? 1 : Math.min(2, window.devicePixelRatio||1); cv.width=cv.clientWidth*dpr; cv.height=cv.clientHeight*dpr; g.setTransform(dpr,0,0,dpr,0,0); }
+readColors(); resize();
+window.addEventListener("resize",resize);
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change",readColors);
+const view={lo:40,hi:80}; const SPAN=8000;
+const emptyEl=document.getElementById("empty");
+function noteLabel(p){
+  const r=Math.round(p), c=Math.round((p-r)*100);
+  return [NAMES[((r%12)+12)%12]+(Math.floor(r/12)-1), c ? (c>0?"+":"−")+Math.abs(c)+"¢" : ""];
+}
+let lastDraw=0, lastSample=0;
+function frame(){
+  requestAnimationFrame(frame);
+  const now=performance.now(), W=cv.clientWidth, H=cv.clientHeight;
+  if(now-lastDraw < (perf==="light" ? 50 : 16)) return;
+  lastDraw=now;
+  const sample = now-lastSample >= 33; if(sample) lastSample=now;
+  let lo=1e9, hi=-1e9, any=false;
+  slots.forEach(s=>{
+    const p = s.key ? pitchFor(s) : null;
+    const prev=s.hist[s.hist.length-1];
+    if(sample || !prev || (prev[1]===null)!==(p===null)) s.hist.push([now,p]);
+    while(s.hist.length && s.hist[0][0] < now-SPAN-200) s.hist.shift();
+    for(const [,q] of s.hist) if(q!==null){ lo=Math.min(lo,q); hi=Math.max(hi,q); any=true; }
+    const txt = p===null ? "–|" : noteLabel(p).join("|");
+    if(txt!==s.shown){ s.shown=txt; const [a,b]=txt.split("|"); s.el.querySelector(".note span").textContent=a; s.el.querySelector(".note small").textContent=b; }
+    s.el.classList.toggle("on", !!s.key);
+  });
+  emptyEl.hidden=any;
+  let tlo=any?lo-4:40, thi=any?hi+4:80;
+  if(thi-tlo<24){ const mid=(thi+tlo)/2; tlo=mid-12; thi=mid+12; }
+  view.lo+=(tlo-view.lo)*.06; view.hi+=(thi-view.hi)*.06;
+  const y=p=>H-10-(p-view.lo)/(view.hi-view.lo)*(H-20);
+  const x=t=>W-(now-t)/SPAN*W;
+  g.clearRect(0,0,W,H);
+  const scr = look!=="plain";
+  g.font=(scr?"italic 14px ":"12px ")+bodyFont; g.textBaseline="middle";
+  for(let n=Math.floor(view.lo)-1; n<=view.hi; n++){
+    const pc=((n%12)+12)%12;
+    if(!(pc===0 || (scr && pc===5))) continue;            // C lines, and F lines as the second clef in the manuscript look
+    const yy=Math.round(y(n))+.5; g.strokeStyle= scr ? rubric : rule; g.globalAlpha = scr ? (pc===0 ? .8 : .45) : 1; g.lineWidth= scr ? 1.5 : 1;
+    g.beginPath(); g.moveTo(38,yy); g.lineTo(W,yy); g.stroke(); g.globalAlpha=1;
+    g.fillStyle= scr ? rubric : muted; g.fillText((pc===0?"C":"F")+(Math.floor(n/12)-1),8,yy);
+  }
+  while(underlay.length && underlay[0][0] < now-SPAN-500) underlay.shift();
+  if(vowelMode==="kyrie" && underlay.length){
+    g.fillStyle=ink; g.font=(scr?"italic 20px ":"15px ")+bodyFont; g.textBaseline="alphabetic";
+    for(const [t,txt] of underlay) g.fillText(txt, x(t)+2, H-30);
+    g.textBaseline="middle";
+  }
+  slots.forEach((s,i)=>{
+    g.strokeStyle=colors[i]; g.lineWidth=3; g.lineJoin="round"; g.lineCap="round";
+    g.beginPath(); let pen=false;
+    for(const [t,p] of s.hist){
+      if(p===null){ pen=false; continue; }
+      const xx=x(t), yy=y(p);
+      if(pen) g.lineTo(xx,yy); else { g.moveTo(xx,yy); pen=true; }
+    }
+    g.stroke();
+    g.fillStyle=colors[i];
+    if(s.onsets){
+      while(s.onsets.length && s.onsets[0][0] < now-SPAN-200) s.onsets.shift();
+      if(scr) for(const [t,p] of s.onsets){ const xx=x(t), yy=y(p); g.fillRect(xx-5,yy-5,10,10); }
+    }
+    const last=s.hist[s.hist.length-1];
+    if(last && last[1]!==null){
+      const yy=y(last[1]); g.beginPath();
+      if(scr) g.rect(W-13,yy-6,12,12); else g.arc(W-6,yy,5,0,Math.PI*2);
+      g.fill();
+    }
+  });
+}
+renderRoutes(); updateZoneInfo(); requestAnimationFrame(frame);
+</script>
+</body>
+</html>
