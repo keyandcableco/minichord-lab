@@ -97,6 +97,8 @@ select{border:1px solid var(--rule);background:var(--panel);border-radius:var(--
 .stage{position:relative;background:var(--panel);border:1px solid var(--rule);border-radius:var(--radius);overflow:hidden}
 canvas{display:block;width:100%;height:280px}
 .stage .empty[hidden]{display:none}
+.voice .slashTag{align-self:flex-start;font:italic 700 .9rem var(--body);color:var(--rubric);border:1px dashed var(--rubric);border-radius:var(--radius);padding:.05rem .45rem}
+.voice .slashTag[hidden]{display:none}
 .stage .caption{position:absolute;right:12px;top:10px;padding:.2rem .7rem;border-radius:var(--radius);background:var(--panel);border:1px solid var(--rule);font:italic 700 1.3rem var(--body);color:var(--rubric)}
 .stage .caption[hidden]{display:none}
 .stage .hint{position:absolute;left:14px;bottom:8px;font-size:.85rem;color:var(--muted);pointer-events:none;font-style:italic}
@@ -122,7 +124,7 @@ canvas{display:block;width:100%;height:280px}
 
 .device{margin:0 0 18px}
 .device[hidden]{display:none}
-.dgrid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:14px 18px;margin-top:10px}
+.dgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px 18px;margin-top:10px}
 @media (max-width:900px){.dgrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-width:460px){.dgrid{grid-template-columns:1fr}}
 .ctl{display:flex;flex-direction:column;gap:6px;font-size:.95rem}
@@ -191,8 +193,11 @@ footer p{margin:0;max-width:80ch}
       <label class="ctl"><span class="lbl">Leading range <output id="vlrOut"></output></span><input type="range" id="vlr" min="0" max="24" step="1" disabled></label>
       <label class="ctl"><span class="lbl">Glide <output id="glOut"></output></span><input type="range" id="gl" min="0" max="1500" step="10" disabled></label>
       <label class="ctl"><span class="lbl">Temperament</span><select id="temp" disabled></select></label>
+      <label class="ctl"><span class="lbl">Slash replaces</span><select id="slashRep" disabled>
+        <option value="0">Root</option><option value="1">Third</option><option value="2">Fifth, or the seventh in 7th chords</option></select></label>
     </div>
     <p class="fine">Changes here are live and last until the preset changes. Save the preset in Sound Lab to keep them. Voice leading and the 19- and 31-EDO temperaments need the test-allFeatures firmware.</p>
+    <p class="fine">A slash chord swaps one note of the chord for the slash button's note, and that note always sings on the same voice, marked on its strip below. Only "Root" puts the slash note in the bass. On the trace, a red slash marks each moment that voice moved on its own while the rest of the chord held, which is what pressing or releasing a slash looks like; with voice leading on, an ordinary chord change can occasionally do the same.</p>
   </section>
 
   <div class="stage">
@@ -422,7 +427,7 @@ let reverb=null, wet=null, reverbOn=false;
 let glottalWave=null;
 let ctx=null, master=null, noiseBuf=null, organWave=null, midi=null;
 const TEMPERAMENTS=["Equal","Meantone","Just","Pythagorean","Werckmeister III","Kirnberger III","Vallotti","Young","Kellner","1/6 Meantone","19-EDO","31-EDO"];
-const dev={110:null,111:null,112:null,199:null,237:null};
+const dev={23:null,110:null,111:null,112:null,199:null,237:null};
 let zoneSeen=false, out=null, sysexOK=false, deviceMpe=null, singlePort=null, zoneWatch=null;
 // the minichord's chord port (Port 1) carries the chord and the sysex; Port 2 is the harp
 const isChordPort = n => /minichord/i.test(n) && (n.includes("1") || n.trim().toLowerCase()==="minichord");
@@ -749,8 +754,43 @@ function commitMotion(){
   const max=Math.max(12,...motion.hist);
   document.getElementById("bars").innerHTML=motion.hist.map(v=>`<span style="height:${Math.max(4,v/max*100)}%" title="${v} st"></span>`).join("");
 }
+// ---------- slash chords ----------
+// The firmware swaps the chord tone at the "slash replaces" level (0 root, 1 third, 2 fifth or seventh)
+// for the slash button's note. With the default shuffle, level n is voice n, and over MPE voice n is
+// the zone's member channel n, so the slash note always sings on the same channel.
+const slashLevel = () => dev[23]!=null ? dev[23] : 0;
+function slashSlot(){
+  if(mode!=="channel") return -1;
+  const ch = zone.type==="lower" ? 1+slashLevel() : 14-slashLevel();
+  return slots.findIndex(s=>resolvedChan(s)===ch);
+}
+function renderSlash(){
+  const k=slashSlot();
+  slots.forEach((s,i)=>{ const t=s.el?.querySelector(".slashTag"); if(t) t.hidden = i!==k; });
+}
+const slashMarks=[];              // {t, slot, pitch, label}
+let slashState=null;              // {slot, from}: the note the voice had before the slash
+const moveWatch={moved:new Map(), timer:null};
+function watchMove(idx, fromNote){
+  if(!moveWatch.moved.has(idx)) moveWatch.moved.set(idx, fromNote);
+  if(!moveWatch.timer) moveWatch.timer=setTimeout(checkSlashMove,45);
+}
+function checkSlashMove(){
+  const m=moveWatch.moved; moveWatch.moved=new Map(); moveWatch.timer=null;
+  const k=slashSlot();
+  if(m.size!==1 || k<0 || !m.has(k)){ if(m.size>1) slashState=null; return; }
+  // only the slash voice moved: the rest of the chord must still be sounding round it
+  if(slots.filter((s,i)=>i!==k && s.key).length<2) return;
+  const s=slots[k], from=m.get(k);
+  if(from==null) return;
+  const t=performance.now(), name=NAMES[((s.note%12)+12)%12];
+  if(slashState && slashState.slot===k && s.note===slashState.from){ slashMarks.push({t,slot:k,pitch:s.note,label:"back"}); slashState=null; }
+  else { if(!slashState) slashState={slot:k, from}; slashMarks.push({t,slot:k,pitch:s.note,label:"/"+name}); }
+  if(slashMarks.length>40) slashMarks.shift();
+}
 function startOnSlot(idx,ch,note,vel,key){
   const s=slots[idx];
+  watchMove(idx, s.lastNote ?? null);   // the note it had, even though its note-off came first
   trackMotion(idx,note);
   if(s.voice) s.voice.release();
   if(s.key) keys.delete(s.key);
@@ -823,7 +863,7 @@ function handleDump(d){
   const p=i=>d[1+2*i]+128*d[2+2*i];
   singlePort = p(108)===1;
   const mpe = p(110)===1 ? 1 : 0;
-  dev[111]=p(111)?1:0; dev[112]=Math.min(24,p(112)); dev[199]=Math.min(1500,p(199)); dev[237]=Math.min(11,p(237));
+  dev[111]=p(111)?1:0; dev[112]=Math.min(24,p(112)); dev[199]=Math.min(1500,p(199)); dev[237]=Math.min(11,p(237)); dev[23]=Math.min(2,p(23));
   if(!mpe && zone.known){ zone.known=false; zone.type="lower"; updateZoneInfo(); renderRoutes(); }
   if(mpe && !zone.known){ zone.type="lower"; zone.members = singlePort ? 15 : 4; zone.known=true; updateZoneInfo(); renderRoutes(); }
   setDeviceMpe(mpe);
@@ -844,6 +884,8 @@ function renderDevice(){
   set("vlr",dev[112],"vlrOut",v=>v+" st");
   set("gl",dev[199],"glOut",v=>v+" ms");
   set("temp",dev[237],null);
+  set("slashRep",dev[23],null);
+  renderSlash();
   if(!sysexOK) note.textContent="Reload and allow system-exclusive MIDI access to switch this from here.";
   else if(deviceMpe===1) note.textContent = singlePort ? "Chord on channels 2 to 5, harp strings on 6 to 16 of the same port." : "Chord voices on channels 2 to 5 of Port 1.";
   else if(deviceMpe===0) note.textContent="The chord arrives on a single channel.";
@@ -874,6 +916,7 @@ slots.forEach((s,i)=>{
   el.className="voice"; el.style.setProperty("--c",`var(--v${i})`);
   el.innerHTML=`
     <div class="part" aria-hidden="true">${PARTS[i]}</div>
+    <div class="slashTag" hidden>The slash note sings here</div>
     <select class="timbre" aria-label="Instrument for voice ${i+1}">${Object.keys(TIMBRES).map(n=>`<option>${n}</option>`).join("")}</select>
     <div class="note" aria-live="off"><span>–</span><small></small></div>
     <div class="route"></div>
@@ -903,6 +946,7 @@ function renderRoutes(){
   document.getElementById("modeHelp").textContent = mode==="channel"
     ? "Each voice keeps its own instrument for as long as the minichord keeps it on the same channel, so a voice-led line stays one timbre while it moves."
     : "Voices are sorted low to high as each chord starts, so the bass instrument always plays the bottom note even when lines cross.";
+  renderSlash();
 }
 function updateZoneInfo(){
   const m=masterIdx(), mem=chans[zone.type==="lower"?1:14];
@@ -926,6 +970,7 @@ document.getElementById("vlBtn").onclick=()=>{ writeParam(111, dev[111]===1?0:1)
 const tSel=document.getElementById("temp");
 TEMPERAMENTS.forEach((n,i)=>tSel.add(new Option(n,i)));
 tSel.onchange=()=>{ writeParam(237,+tSel.value); resync(); };
+document.getElementById("slashRep").onchange=e=>{ writeParam(23,+e.target.value); renderSlash(); resync(); };
 [["vlr",112,"vlrOut"," st"],["gl",199,"glOut"," ms"]].forEach(([id,addr,o,u])=>{
   const el=document.getElementById(id); let last=0;
   el.oninput=()=>{ document.getElementById(o).textContent=el.value+u;
@@ -1173,6 +1218,16 @@ function frame(){
       if(scr) for(const [t,p] of s.onsets){ const xx=x(t), yy=y(p); g.fillRect(xx-5,yy-5,10,10); }
     }
     const last=s.hist[s.hist.length-1];
+    // slash marks: a stroke through this voice where it moved alone, with the note it went to
+    for(const mk of slashMarks){
+      if(mk.slot!==i || mk.t < now-SPAN) continue;
+      const xx=x(mk.t), yy=y(mk.pitch);
+      g.save(); g.strokeStyle=rubric||"#A5281B"; g.fillStyle=rubric||"#A5281B"; g.lineWidth=3;
+      g.beginPath(); g.moveTo(xx-7,yy+11); g.lineTo(xx+7,yy-11); g.stroke();
+      g.font=(scr?"italic 700 17px ":"700 14px ")+bodyFont; g.textBaseline="bottom"; g.textAlign="left";
+      g.fillText(mk.label, xx+9, yy-10); g.restore();
+    }
+    g.fillStyle=colors[i];
     if(last && last[1]!==null){
       const yy=y(last[1]); g.beginPath();
       if(scr) g.rect(W-13,yy-6,12,12); else g.arc(W-6,yy,5,0,Math.PI*2);
