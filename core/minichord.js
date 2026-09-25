@@ -8,7 +8,8 @@
  *
  * Events (addEventListener):
  *   "voices"  the sounding chord voices changed (coalesced to one per frame)
- *   "chord"   a chord settled: notes stopped arriving for a moment
+ *   "chord"   a chord settled: notes stopped arriving and any glide finished;
+ *             event.startedAt is when its notes arrived
  *   "device"  the parameter dump arrived or a setting changed
  *   "status"  connection text for the page to show
  * ========================================================================== */
@@ -107,7 +108,7 @@ export class Minichord extends EventTarget {
     const type=st&0xF0, ch=st&0x0F;
     if(type===0x90 && data[2]>0) this._on(ch,data[1],data[2]);
     else if(type===0x80 || type===0x90) this._off(ch,data[1]);
-    else if(type===0xE0){ const v=(data[2]<<7)|data[1]; this.chans[ch].bend = v>=8192 ? (v-8192)/8191 : (v-8192)/8192; this._changed(false); }
+    else if(type===0xE0){ const v=(data[2]<<7)|data[1]; this.chans[ch].bend = v>=8192 ? (v-8192)/8191 : (v-8192)/8192; this._lastBend=performance.now(); this._changed(false); }
     else if(type===0xB0) this._cc(ch,data[1],data[2]);
   }
   _chordChannel(ch){
@@ -150,12 +151,22 @@ export class Minichord extends EventTarget {
     if(!this._frame) this._frame=requestAnimationFrame(()=>{ this._frame=0; this.dispatchEvent(new Event("voices")); });
     if(noteChange){
       clearTimeout(this._settle);
-      this._settle=setTimeout(()=>{
-        const v=this.voices, key=v.map(x=>x.ch+":"+x.note).join(",");
-        if(v.length && key!==this._lastChordKey){ this._lastChordKey=key; this.dispatchEvent(new CustomEvent("chord",{detail:v})); }
-        if(!v.length) this._lastChordKey="";
-      },40);
+      this._settleStart=performance.now();
+      this._settle=setTimeout(()=>this._trySettle(),40);
     }
+  }
+  // A chord has settled when notes stop arriving and, with glide on, the bends stop moving too:
+  // the minichord sends each new note first and then bends the voice home from where it was.
+  _trySettle(){
+    const now=performance.now();
+    if(now-(this._lastBend||0)<50 && now-this._settleStart<2500){ this._settle=setTimeout(()=>this._trySettle(),30); return; }
+    const v=this.voices, key=v.map(x=>x.ch+":"+x.note).join(",");
+    if(v.length && key!==this._lastChordKey){
+      this._lastChordKey=key;
+      const ev=new CustomEvent("chord",{detail:v}); ev.startedAt=this._settleStart;   // when its notes arrived, before any glide
+      this.dispatchEvent(ev);
+    }
+    if(!v.length) this._lastChordKey="";
   }
 }
 

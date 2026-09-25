@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Stage · Minichord Lab</title>
+<meta name="description" content="Full-screen visuals for projection at a gig, drawn live from the minichord's voices: ribbons, blooms and constellations.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✨</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Caveat:wght@700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../core/lab.css">
+<style>
+/* the stage keeps its own palette: a projector wants contrast whatever the viewer's theme */
+html,body{height:100%;margin:0;overflow:hidden}
+body{background:var(--bg,#07090C)}
+#stage{position:fixed;inset:0;width:100%;height:100%;display:block}
+.hud{position:fixed;left:0;right:0;top:0;padding:calc(12px + env(safe-area-inset-top,0px)) 16px 12px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;
+  background:linear-gradient(to bottom,rgba(0,0,0,.55),rgba(0,0,0,0));transition:opacity .4s;color:#E8ECF2}
+.hud.hidden{opacity:0;pointer-events:none}
+body.idle{cursor:none}
+.hud a{color:#E8ECF2;font-weight:700;text-decoration:none;margin-right:6px}
+.hud button,.hud select{background:rgba(20,26,32,.8);color:#E8ECF2;border:1px solid rgba(232,236,242,.25);border-radius:8px;padding:.35rem .7rem;font:700 15px var(--ui)}
+.hud button[aria-pressed="true"]{background:#E8ECF2;color:#07090C}
+.hud .grow{flex:1}
+.hud .status{color:rgba(232,236,242,.7);font-size:.85rem}
+.keys{position:fixed;left:16px;bottom:calc(12px + env(safe-area-inset-bottom,0px));color:rgba(232,236,242,.55);font:14px var(--ui);transition:opacity .4s}
+.keys.hidden{opacity:0}
+</style>
+</head>
+<body>
+<canvas id="stage" aria-label="Visuals drawn from the minichord's chord voices" role="img"></canvas>
+<div class="hud" id="hud">
+  <a href="../">Minichord Lab</a>
+  <button id="s1" aria-pressed="true">Ribbons</button>
+  <button id="s2" aria-pressed="false">Bloom</button>
+  <button id="s3" aria-pressed="false">Constellation</button>
+  <select id="palette" aria-label="Palette"><option value="night">Night</option><option value="chalk">Chalkboard</option><option value="day">Daylight</option></select>
+  <button id="names" aria-pressed="true">Chord names</button>
+  <button id="demo" aria-pressed="false">Demo</button>
+  <button id="full">Fullscreen</button>
+  <span class="grow"></span>
+  <span class="status" id="status">Not connected</span>
+  <select id="input" aria-label="MIDI input" disabled><option>No MIDI yet</option></select>
+  <button id="connect">Connect minichord</button>
+</div>
+<div class="keys" id="keys">1 2 3 scenes · F fullscreen · N names · D demo · move the mouse for controls</div>
+
+<script type="module">
+import {Minichord, spell} from "../core/minichord.js";
+import {pcOf, chordName, roughness, voiceLead} from "../core/theory.js";
+
+const mc=new Minichord(); window.mc=mc;
+const $=id=>document.getElementById(id);
+const mod=(a,n)=>((a%n)+n)%n;
+
+// ---------- settings ----------
+const PALETTES={
+  night:{bg:"#07090C", fg:"#E8ECF2", muted:"#5E6B78", voices:["#5EC8FF","#7CF29A","#FF7AB6","#FFD166"]},
+  chalk:{bg:"#1F2B25", fg:"#ECEADF", muted:"#7E8C82", voices:["#8EC5E8","#A8D98A","#F29CB0","#F2D16B"]},
+  day:  {bg:"#F4F1EA", fg:"#1B2430", muted:"#8B93A0", voices:["#1F5FB0","#1E8449","#C0392B","#7D3C98"]},
+};
+const st={scene:1, palette:"night", names:true};
+try{ Object.assign(st, JSON.parse(localStorage.getItem("lab-stage")||"{}")); }catch(e){}
+const save=()=>{ try{ localStorage.setItem("lab-stage",JSON.stringify(st)); }catch(e){} };
+let P=PALETTES[st.palette]||PALETTES.night;
+const hand=getComputedStyle(document.documentElement).getPropertyValue("--hand").trim()||"cursive";
+const ui=getComputedStyle(document.documentElement).getPropertyValue("--ui").trim()||"sans-serif";
+
+// ---------- canvas ----------
+const cv=$("stage"), g=cv.getContext("2d");
+let W=0,H=0,dpr=1;
+function resize(){ dpr=Math.min(1.5,window.devicePixelRatio||1); W=innerWidth; H=innerHeight; cv.width=W*dpr; cv.height=H*dpr; g.setTransform(dpr,0,0,dpr,0,0); }
+addEventListener("resize",resize); resize();
+const alpha=(hex,a)=>{ const n=parseInt(hex.slice(1),16); return `rgba(${n>>16},${n>>8&255},${n&255},${a})`; };
+
+// ---------- what the voices are doing ----------
+const SPAN=10000;
+const hist=[[],[],[],[]];          // per voice colour: [t, pitch|null]
+const chords=[];                  // settled chords: {t, name, pitches, rough, pcs}
+let shimmer=0, pulse=0;
+const colourOf=(v,i)=>((v.voice ?? i)%4+4)%4;
+mc.addEventListener("chord", e=>{
+  const P_=e.detail.map(v=>v.pitch);
+  const n=P_.length, r=n>1 ? roughness(P_)/(n*(n-1)/2) : 0;   // roughness per pair of notes, so a plain triad reads as calm
+  chords.push({t:e.startedAt ?? performance.now(), name:chordName(P_, mc.keyFifths), pitches:P_, rough:r, pcs:[...new Set(P_.map(p=>pcOf(p)))]});
+  if(chords.length>40) chords.shift();
+  pulse=1;
+  bloomEcho(); starMove(P_);
+});
+
+// ---------- scene 1: ribbons ----------
+const view={lo:48,hi:72};
+function ribbons(now, vs){
+  // range follows what's been played
+  let lo=1e9,hi=-1e9;
+  for(const h of hist) for(const [,p] of h) if(p!=null){ lo=Math.min(lo,p); hi=Math.max(hi,p); }
+  if(lo<1e9){ let a=lo-5,b=hi+5; if(b-a<20){ const m=(a+b)/2; a=m-10; b=m+10; } view.lo+=(a-view.lo)*.03; view.hi+=(b-view.hi)*.03; }
+  const y=p=>H*.88-(p-view.lo)/(view.hi-view.lo)*H*.72, x=t=>W-(now-t)/SPAN*W*.92;
+  // faint octave lines
+  g.lineWidth=1; g.strokeStyle=alpha(P.muted,.18);
+  for(let n=Math.ceil(view.lo/12)*12;n<=view.hi;n+=12){ g.beginPath(); g.moveTo(0,y(n)); g.lineTo(W,y(n)); g.stroke(); }
+  // chord changes as faint bar lines, with names
+  g.textAlign="left"; g.textBaseline="top";
+  for(const c of chords){ const xx=x(c.t); if(xx<-200) continue;
+    g.strokeStyle=alpha(P.muted,.22); g.beginPath(); g.moveTo(xx,H*.12); g.lineTo(xx,H*.94); g.stroke();
+    if(st.names && c.name){ g.fillStyle=alpha(P.fg,.75); g.font=`700 ${Math.round(H*.05)}px ${hand}`; g.fillText(c.name,xx+8,H*.1); } }
+  // each voice: a wide soft stroke under a bright core
+  hist.forEach((h,k)=>{
+    const col=P.voices[k];
+    for(const [w,a] of [[Math.max(10,H*.022),.16],[3.2,.95]]){
+      g.strokeStyle=alpha(col,a); g.lineWidth=w; g.lineCap="round"; g.lineJoin="round";
+      g.beginPath(); let pen=false;
+      for(const [t,p] of h){ if(p==null){ pen=false; continue; } const X=x(t), Y=y(p)+Math.sin(t/140+k)*shimmer*H*.007; pen ? g.lineTo(X,Y) : g.moveTo(X,Y); pen=true; }
+      g.stroke();
+    }
+    const last=h[h.length-1];
+    if(last && last[1]!=null){ const X=x(last[0]), Y=y(last[1]); g.fillStyle=alpha(col,.25); g.beginPath(); g.arc(X,Y,H*.028*(1+pulse*.6),0,7); g.fill(); g.fillStyle=col; g.beginPath(); g.arc(X,Y,H*.009,0,7); g.fill(); }
+  });
+}
+
+// ---------- scene 2: bloom ----------
+const echoes=[];   // {angles, born}
+const ang=pc=>pc/12*2*Math.PI-Math.PI/2;
+function bloomEcho(){ const c=chords[chords.length-1]; if(c && c.pcs.length>1) echoes.push({angles:[...c.pcs].sort((a,b)=>a-b).map(ang), born:performance.now()}); if(echoes.length>12) echoes.shift(); }
+function bloom(now, vs){
+  const cx=W/2, cy=H/2, r0=Math.min(W,H)*.3;
+  g.strokeStyle=alpha(P.muted,.35); g.lineWidth=1.5; g.beginPath(); g.arc(cx,cy,r0,0,7); g.stroke();
+  g.textAlign="center"; g.textBaseline="middle"; g.font=`700 ${Math.round(r0*.1)}px ${ui}`;
+  for(let k=0;k<12;k++){ const a=ang(k), x1=cx+Math.cos(a)*r0*.96, y1=cy+Math.sin(a)*r0*.96, x2=cx+Math.cos(a)*r0*1.04, y2=cy+Math.sin(a)*r0*1.04;
+    g.strokeStyle=alpha(P.muted,.5); g.beginPath(); g.moveTo(x1,y1); g.lineTo(x2,y2); g.stroke();
+    if(st.names){ g.fillStyle=alpha(P.muted,.8); g.fillText(spell(k,mc.keyFifths), cx+Math.cos(a)*r0*1.14, cy+Math.sin(a)*r0*1.14); } }
+  // older chords bloom outward and fade
+  for(const e of echoes){
+    const age=(now-e.born)/1000; if(age>5) continue;
+    const r=r0*(1+age*.32), a=Math.max(0,.55-age*.11);
+    g.strokeStyle=alpha(P.fg,a); g.lineWidth=2; g.beginPath();
+    e.angles.forEach((t,k)=>{ const x=cx+Math.cos(t)*r, y=cy+Math.sin(t)*r; k?g.lineTo(x,y):g.moveTo(x,y); }); g.closePath(); g.stroke();
+  }
+  if(!vs.length) return;
+  // the live chord: vertices follow the voices' exact pitch, so glides slide round the clock; rough chords shimmer
+  const pts=vs.map((v,i)=>({a:ang(pcOf(v.pitch)), c:P.voices[colourOf(v,i)]})).sort((p,q)=>p.a-q.a);
+  const jit=k=>1+shimmer*.035*Math.sin(now/120+k*2.1);
+  g.fillStyle=alpha(P.fg,.07+pulse*.08); g.strokeStyle=alpha(P.fg,.9); g.lineWidth=3.5; g.lineJoin="round";
+  g.beginPath(); pts.forEach((p,k)=>{ const x=cx+Math.cos(p.a)*r0*jit(k), y=cy+Math.sin(p.a)*r0*jit(k); k?g.lineTo(x,y):g.moveTo(x,y); }); g.closePath(); g.fill(); g.stroke();
+  pts.forEach((p,k)=>{ const x=cx+Math.cos(p.a)*r0*jit(k), y=cy+Math.sin(p.a)*r0*jit(k);
+    g.fillStyle=alpha(p.c,.25); g.beginPath(); g.arc(x,y,r0*.09*(1+pulse*.5),0,7); g.fill();
+    g.fillStyle=p.c; g.beginPath(); g.arc(x,y,r0*.035,0,7); g.fill(); });
+  const c=chords[chords.length-1];
+  if(st.names && c && c.name){ g.fillStyle=P.fg; g.font=`700 ${Math.round(r0*.34)}px ${hand}`; g.fillText(c.name,cx,cy); }
+}
+
+// ---------- scene 3: constellation (the Tonnetz as a star field) ----------
+const cam={x:0,y:0}, star={nodes:[], c:[0,0], trail:[]};
+const S=()=>Math.min(W,H)/6.2, HH=()=>S()*Math.sqrt(3)/2;
+const pcAt=(i,j)=>mod(7*i+4*j,12), pos=(i,j)=>[(i+j/2)*S(), -j*HH()];
+function starMove(pitches){
+  const pcs=[...new Set(pitches.map(p=>Math.round(pcOf(p))%12))];
+  const near=star.c; let best=null, bs=1e9;
+  const [ci,cj]=[near[0]/S()+near[1]/HH()/2, -near[1]/HH()];
+  const copies=pc=>{ const o=[]; for(let i=Math.floor(ci)-7;i<=Math.ceil(ci)+7;i++) for(let j=Math.floor(cj)-5;j<=Math.ceil(cj)+5;j++) if(pcAt(i,j)===pc) o.push([i,j]); return o; };
+  for(const a of copies(pcs[0])){
+    const pa=pos(...a), nodes=[a];
+    for(const pc of pcs.slice(1)){ let bn=null,bd=1e9; for(const c of copies(pc)){ const p=pos(...c), d=Math.hypot(p[0]-pa[0],p[1]-pa[1]); if(d<bd){bd=d;bn=c;} } nodes.push(bn); }
+    const cxy=nodes.map(n=>pos(...n)).reduce((s,p)=>[s[0]+p[0]/nodes.length,s[1]+p[1]/nodes.length],[0,0]);
+    const spread=nodes.reduce((s,n)=>{ const p=pos(...n); return s+Math.hypot(p[0]-cxy[0],p[1]-cxy[1]); },0);
+    const score=spread+.6*Math.hypot(cxy[0]-near[0],cxy[1]-near[1]);
+    if(score<bs){ bs=score; best={nodes,c:cxy}; }
+  }
+  if(!best) return;
+  star.nodes=best.nodes; star.trail.push(best.c); if(star.trail.length>16) star.trail.shift(); star.c=best.c;
+}
+function constellation(now, vs){
+  cam.x+=(star.c[0]-cam.x)*.05; cam.y+=(star.c[1]-cam.y)*.05;
+  const ox=W/2-cam.x, oy=H/2-cam.y, s=S();
+  const i0=Math.floor((cam.x-W)/s)-2, i1=Math.ceil((cam.x+W)/s)+2, j0=Math.floor(-(cam.y+H)/HH())-2, j1=Math.ceil(-(cam.y-H)/HH())+2;
+  // the background lattice, faintly, with twinkling stars
+  g.strokeStyle=alpha(P.muted,.12); g.lineWidth=1;
+  for(let j=j0;j<=j1;j++) for(let i=i0-Math.ceil((j1-j0)/2);i<=i1;i++){
+    const [x,y]=pos(i,j); const X=x+ox, Y=y+oy; if(X<-s||X>W+s||Y<-s||Y>H+s) continue;
+    for(const [di,dj] of [[1,0],[0,1],[-1,1]]){ const [x2,y2]=pos(i+di,j+dj); g.beginPath(); g.moveTo(X,Y); g.lineTo(x2+ox,y2+oy); g.stroke(); }
+    const tw=.35+.25*Math.sin(now/900+i*1.7+j*2.3);
+    g.fillStyle=alpha(P.fg,tw*.5); g.beginPath(); g.arc(X,Y,2.2,0,7); g.fill();
+  }
+  // the comet trail between chords
+  g.lineCap="round";
+  for(let k=1;k<star.trail.length;k++){ const a=star.trail[k-1], b=star.trail[k], f=k/star.trail.length;
+    g.strokeStyle=alpha(P.fg,f*.6); g.lineWidth=1+f*4; g.beginPath(); g.moveTo(a[0]+ox,a[1]+oy); g.lineTo(b[0]+ox,b[1]+oy); g.stroke(); }
+  if(!star.nodes.length) return;
+  // the chord: lit stars joined where they are neighbours, coloured by the voices on them
+  const lit=star.nodes.map(n=>({n, p:pos(...n)}));
+  g.strokeStyle=alpha(P.fg,.85); g.lineWidth=3;
+  for(let a=0;a<lit.length;a++) for(let b=a+1;b<lit.length;b++){ const di=lit[b].n[0]-lit[a].n[0], dj=lit[b].n[1]-lit[a].n[1];
+    if([[1,0],[-1,0],[0,1],[0,-1],[1,-1],[-1,1]].some(([x,y])=>x===di&&y===dj)){ g.beginPath(); g.moveTo(lit[a].p[0]+ox,lit[a].p[1]+oy); g.lineTo(lit[b].p[0]+ox,lit[b].p[1]+oy); g.stroke(); } }
+  const byPc=new Map(); vs.forEach((v,i)=>byPc.set(Math.round(pcOf(v.pitch))%12, P.voices[colourOf(v,i)]));
+  g.textAlign="center"; g.textBaseline="middle";
+  for(const {n,p} of lit){
+    const col=byPc.get(pcAt(...n))||P.fg, X=p[0]+ox+Math.sin(now/40+n[0])*shimmer*3, Y=p[1]+oy+Math.cos(now/43+n[1])*shimmer*3;
+    g.fillStyle=alpha(col,.22); g.beginPath(); g.arc(X,Y,s*.2*(1+pulse*.5),0,7); g.fill();
+    g.fillStyle=col; g.beginPath(); g.arc(X,Y,s*.07,0,7); g.fill();
+    if(st.names){ g.fillStyle=P.bg; g.font=`700 ${Math.round(s*.09)}px ${ui}`; g.fillText(spell(pcAt(...n),mc.keyFifths),X,Y); }
+  }
+  const c=chords[chords.length-1];
+  if(st.names && c && c.name){ g.fillStyle=P.fg; g.textAlign="left"; g.textBaseline="bottom"; g.font=`700 ${Math.round(H*.09)}px ${hand}`; g.fillText(c.name, W*.04, H*.95); }
+}
+
+// ---------- the loop ----------
+function frame(now){
+  requestAnimationFrame(frame);
+  const vs=mc.voices;
+  // record each voice colour's pitch for the ribbons
+  const seen=new Set();
+  vs.forEach((v,i)=>{ const k=colourOf(v,i); seen.add(k); hist[k].push([now,v.pitch]); });
+  for(let k=0;k<4;k++){ if(!seen.has(k)){ const h=hist[k]; if(h.length && h[h.length-1][1]!=null) h.push([now,null]); }
+    while(hist[k].length && hist[k][0][0]<now-SPAN-500) hist[k].shift(); }
+  const c=chords[chords.length-1];
+  const target = vs.length && c ? Math.max(0,Math.min(1,(c.rough-.26)/.25)) : 0;
+  shimmer+=(target-shimmer)*.05; pulse*=.94;
+  g.fillStyle=P.bg; g.fillRect(0,0,W,H);
+  if(st.scene===1) ribbons(now,vs); else if(st.scene===2) bloom(now,vs); else constellation(now,vs);
+}
+requestAnimationFrame(frame);
+
+// ---------- controls ----------
+function setScene(n){ st.scene=n; save(); [1,2,3].forEach(k=>$("s"+k).setAttribute("aria-pressed",k===n)); }
+function setPalette(p){ st.palette=p; P=PALETTES[p]; document.body.style.setProperty("--bg",P.bg); $("palette").value=p; save(); }
+[1,2,3].forEach(k=>$("s"+k).onclick=()=>setScene(k));
+$("palette").onchange=e=>setPalette(e.target.value);
+$("names").onclick=()=>{ st.names=!st.names; $("names").setAttribute("aria-pressed",st.names); save(); };
+$("full").onclick=()=>{ document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen?.(); };
+setScene(st.scene); setPalette(st.palette); $("names").setAttribute("aria-pressed",st.names);
+addEventListener("keydown",e=>{
+  if(e.target.tagName==="SELECT") return;
+  if(e.key>="1"&&e.key<="3") setScene(+e.key);
+  else if(e.key==="f"||e.key==="F") $("full").click();
+  else if(e.key==="n"||e.key==="N") $("names").click();
+  else if(e.key==="d"||e.key==="D") $("demo").click();
+  wake();
+});
+// the controls fade away, with the cursor, when nobody's touching anything
+let idleT;
+function wake(){ $("hud").classList.remove("hidden"); $("keys").classList.remove("hidden"); document.body.classList.remove("idle");
+  clearTimeout(idleT); idleT=setTimeout(()=>{ if($("hud").matches(":hover")){ wake(); return; } $("hud").classList.add("hidden"); $("keys").classList.add("hidden"); document.body.classList.add("idle"); },3000); }
+addEventListener("pointermove",wake); addEventListener("pointerdown",wake); wake();
+
+mc.addEventListener("status",e=>$("status").textContent=e.detail);
+mc.addEventListener("ports", ()=>{
+  const sel=$("input"), ins=mc.inputs; sel.innerHTML=""; sel.disabled=false;
+  sel.add(new Option("Chord port (auto)","auto")); sel.add(new Option("All MIDI inputs","all"));
+  ins.forEach(i=>sel.add(new Option(i.name,i.id)));
+  sel.value=[...sel.options].some(o=>o.value===mc.inputChoice)?mc.inputChoice:"auto";
+});
+$("input").onchange=e=>mc.selectInput(e.target.value);
+$("connect").onclick=async e=>{ e.target.disabled=true; if(await mc.connect()) e.target.textContent="Connected"; else e.target.disabled=false; };
+
+// ---------- demo: a voice-led progression with glides, sent as the minichord would send it ----------
+let demoRun=0;
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+function bend(ch,semi){ const v=Math.max(0,Math.min(16383,Math.round(8192+semi/48*8192))); mc.handle([0xE0|ch, v&127, v>>7]); }
+async function demo(run){
+  const PROG=[[0,4,7],[9,0,4],[5,9,0],[7,11,2],[4,7,11],[9,0,4],[2,5,9],[7,11,2,5]];
+  let cur=[48,55,64,72];
+  cur.forEach((n,i)=>{ bend(1+i,0); mc.handle([0x91+i,n,100]); });
+  while(run===demoRun){
+    for(const pcs of PROG.slice(1).concat([PROG[0]])){
+      await sleep(2100); if(run!==demoRun) return;
+      const next=voiceLead(cur,pcs).map(Math.round);
+      // like MPE glide: the new note starts where the old one was and bends home
+      next.forEach((n,i)=>{ mc.handle([0x81+i,cur[i],0]); bend(1+i,cur[i]-n); mc.handle([0x91+i,n,100]); });
+      const from=next.map((n,i)=>cur[i]-n), t0=performance.now();
+      while(run===demoRun){ const f=Math.min(1,(performance.now()-t0)/380); next.forEach((n,i)=>bend(1+i,from[i]*(1-f))); if(f>=1) break; await sleep(16); }
+      cur=next;
+    }
+  }
+}
+$("demo").onclick=()=>{
+  const on=$("demo").getAttribute("aria-pressed")!=="true";
+  $("demo").setAttribute("aria-pressed",on);
+  demoRun++;
+  if(on) demo(demoRun); else { for(let ch=1;ch<5;ch++){ mc.handle([0xB0|ch,123,0]); bend(ch,0); } }
+};
+</script>
+</body>
+</html>
