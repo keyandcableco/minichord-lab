@@ -193,11 +193,12 @@ footer p{margin:0;max-width:80ch}
       <label class="ctl"><span class="lbl">Leading range <output id="vlrOut"></output></span><input type="range" id="vlr" min="0" max="24" step="1" disabled></label>
       <label class="ctl"><span class="lbl">Glide <output id="glOut"></output></span><input type="range" id="gl" min="0" max="1500" step="10" disabled></label>
       <label class="ctl"><span class="lbl">Temperament</span><select id="temp" disabled></select></label>
-      <label class="ctl"><span class="lbl">Slash replaces</span><select id="slashRep" disabled>
-        <option value="0">Root</option><option value="1">Third</option><option value="2">Fifth, or the seventh in 7th chords</option></select></label>
+      <label class="ctl"><span class="lbl">Slash voice</span><select id="slashVoice" disabled>
+        <option value="0">Off: the root, as always</option><option value="1">Bass</option><option value="2">Tenor</option><option value="3">Alto</option><option value="4">Soprano</option></select></label>
+      <div class="ctl"><span class="lbl">Slash re-voice</span><button id="revoiceBtn" class="switch" aria-pressed="false" disabled>Off</button></div>
     </div>
-    <p class="fine">Changes here are live and last until the preset changes. Save the preset in Sound Lab to keep them. Voice leading and the 19- and 31-EDO temperaments need the test-allFeatures firmware.</p>
-    <p class="fine">A slash chord swaps one note of the chord for the slash button's note, and that note always sings on the same voice, marked on its strip below. Only "Root" puts the slash note in the bass. On the trace, a red slash marks each moment that voice moved on its own while the rest of the chord held, which is what pressing or releasing a slash looks like; with voice leading on, an ordinary chord change can occasionally do the same.</p>
+    <p class="fine">Changes here are live and last until the preset changes. Save the preset in Sound Lab to keep them. Voice leading, the 19- and 31-EDO temperaments, slash voice and slash re-voice need the test-allFeatures firmware.</p>
+    <p class="fine">A slash chord gives one voice the slash button's note: hold a chord and press another line's button. Slash voice chooses which voice sings it, marked on its strip below. Bass is the slash chord you know, with the whole chord above it. Soprano sings a melody over the chord; tenor and alto change a note inside it, which is how a suspension or a passing tone sounds. With slash re-voice on, the other voices move to keep the chord whole around the slash note; off, they hold still and the chord loses the note it gave up. This page keeps the older slash level setting at the root, so Off behaves like Bass without the re-voicing. On the trace, a red slash marks each moment that voice moved on its own while the rest of the chord held; with voice leading or re-voice on, an ordinary chord change can occasionally do the same.</p>
   </section>
 
   <div class="stage">
@@ -427,7 +428,7 @@ let reverb=null, wet=null, reverbOn=false;
 let glottalWave=null;
 let ctx=null, master=null, noiseBuf=null, organWave=null, midi=null;
 const TEMPERAMENTS=["Equal","Meantone","Just","Pythagorean","Werckmeister III","Kirnberger III","Vallotti","Young","Kellner","1/6 Meantone","19-EDO","31-EDO"];
-const dev={23:null,110:null,111:null,112:null,199:null,237:null};
+const dev={23:null,110:null,111:null,112:null,113:null,114:null,199:null,237:null};
 let zoneSeen=false, out=null, sysexOK=false, deviceMpe=null, singlePort=null, zoneWatch=null;
 // the minichord's chord port (Port 1) carries the chord and the sysex; Port 2 is the harp
 const isChordPort = n => /minichord/i.test(n) && (n.includes("1") || n.trim().toLowerCase()==="minichord");
@@ -755,13 +756,16 @@ function commitMotion(){
   document.getElementById("bars").innerHTML=motion.hist.map(v=>`<span style="height:${Math.max(4,v/max*100)}%" title="${v} st"></span>`).join("");
 }
 // ---------- slash chords ----------
-// The firmware swaps the chord tone at the "slash replaces" level (0 root, 1 third, 2 fifth or seventh)
-// for the slash button's note. With the default shuffle, level n is voice n, and over MPE voice n is
-// the zone's member channel n, so the slash note always sings on the same channel.
-const slashLevel = () => dev[23]!=null ? dev[23] : 0;
+// Slash voice (address 113) chooses which voice, counted from the bottom, takes the slash button's
+// note: 1 bass .. 4 soprano. At 0 the older slash level (address 23) decides, and this page keeps that
+// at the root, which with the default shuffle is the bottom voice. Over MPE, voice n is the zone's
+// member channel n, from the bottom up whenever the voices are in order: always for the bass, and
+// for the others with voice leading or re-voice on.
+const slashIndex = () => dev[113] ? dev[113]-1 : 0;
 function slashSlot(){
   if(mode!=="channel") return -1;
-  const ch = zone.type==="lower" ? 1+slashLevel() : 14-slashLevel();
+  const k=slashIndex();
+  const ch = zone.type==="lower" ? 1+k : 14-k;
   return slots.findIndex(s=>resolvedChan(s)===ch);
 }
 function renderSlash(){
@@ -864,6 +868,10 @@ function handleDump(d){
   singlePort = p(108)===1;
   const mpe = p(110)===1 ? 1 : 0;
   dev[111]=p(111)?1:0; dev[112]=Math.min(24,p(112)); dev[199]=Math.min(1500,p(199)); dev[237]=Math.min(11,p(237)); dev[23]=Math.min(2,p(23));
+  dev[113]=Math.min(4,p(113)); dev[114]=p(114)?1:0;
+  // Slash voice replaces slash level's recipe slots with real voices; slash level stays at the root
+  // here so Off still means the classic slash chord and nothing else moves the slash note around.
+  if(dev[23]!==0 && sysexOK){ writeParam(23,0); }
   if(!mpe && zone.known){ zone.known=false; zone.type="lower"; updateZoneInfo(); renderRoutes(); }
   if(mpe && !zone.known){ zone.type="lower"; zone.members = singlePort ? 15 : 4; zone.known=true; updateZoneInfo(); renderRoutes(); }
   setDeviceMpe(mpe);
@@ -884,7 +892,9 @@ function renderDevice(){
   set("vlr",dev[112],"vlrOut",v=>v+" st");
   set("gl",dev[199],"glOut",v=>v+" ms");
   set("temp",dev[237],null);
-  set("slashRep",dev[23],null);
+  set("slashVoice",dev[113],null);
+  const rv=document.getElementById("revoiceBtn"); rv.disabled=!sysexOK||dev[114]===null;
+  rv.setAttribute("aria-pressed", dev[114]===1); rv.textContent = dev[114]===1 ? "On" : "Off";
   renderSlash();
   if(!sysexOK) note.textContent="Reload and allow system-exclusive MIDI access to switch this from here.";
   else if(deviceMpe===1) note.textContent = singlePort ? "Chord on channels 2 to 5, harp strings on 6 to 16 of the same port." : "Chord voices on channels 2 to 5 of Port 1.";
@@ -970,7 +980,8 @@ document.getElementById("vlBtn").onclick=()=>{ writeParam(111, dev[111]===1?0:1)
 const tSel=document.getElementById("temp");
 TEMPERAMENTS.forEach((n,i)=>tSel.add(new Option(n,i)));
 tSel.onchange=()=>{ writeParam(237,+tSel.value); resync(); };
-document.getElementById("slashRep").onchange=e=>{ writeParam(23,+e.target.value); renderSlash(); resync(); };
+document.getElementById("slashVoice").onchange=e=>{ writeParam(113,+e.target.value); renderSlash(); resync(); };
+document.getElementById("revoiceBtn").onclick=()=>{ writeParam(114, dev[114]===1?0:1); renderDevice(); resync(); };
 [["vlr",112,"vlrOut"," st"],["gl",199,"glOut"," ms"]].forEach(([id,addr,o,u])=>{
   const el=document.getElementById(id); let last=0;
   el.oninput=()=>{ document.getElementById(o).textContent=el.value+u;
