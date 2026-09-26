@@ -443,7 +443,6 @@ function scaleAnswer(pool, sc, rootPc){
 function genScale(){
   const pool=scalePool(), sc=rnd(pool), key=questionKey();
   if(canWrite()){
-    if((mc.params[237]??0)>=10) borrow(237,0);          // the custom scale counts twelve steps: set 19 and 31 aside for the round
     borrow(236,maskOf(sc.iv)); borrow(36,10); if(mc.params[98]===1) borrow(98,0);
   }
   const tonic=KEY_BY_FIFTHS[KEY_FIFTHS[mc.keyIndex??0]] || key.name;
@@ -471,7 +470,6 @@ function genChordScale(){
   const pool=scalePool(), sc=rnd(pool), q=chordFor(sc.iv);
   const root=rnd(ROOTS.filter(r=>spellChord(r,q)));
   if(canWrite()){
-    if((mc.params[237]??0)>=10) borrow(237,0);
     borrow(236,maskOf(sc.iv)); borrow(36,11); if(mc.params[98]===1) borrow(98,0);
   }
   const r=pcOfName(root), ans=scaleAnswer(pool, sc, r);
@@ -672,7 +670,7 @@ function restoreExcept(keep){
   $("restore").hidden=!Object.keys(borrowed).length; stopTones(); mine();
   if(mc.out) setTimeout(()=>mc.requestDump(),200);
 }
-$("restore").onclick=()=>{ restoreAll(); feedback("Your settings are back as they were.",""); };
+$("restore").onclick=()=>{ userRestored=true; restoreAll(); needs(); feedback("Your settings are back as they were.",""); };
 addEventListener("pagehide", restoreAll);
 
 // ---------- settings and scores (remembered) ----------
@@ -704,9 +702,21 @@ function modifierFor(name){
   const want = acc>ka ? 0 : 1;
   if(mc.params[31]!==want) borrow(31,want);
 }
+// Every game but the temperament taster runs in equal temperament: in 19 and 31 the chromatic
+// harp steps by the division's own steps and MIDI rounds to the nearest semitone, and the
+// twelve-note temperaments would colour every listening round.
+const EQUAL={addr:237,value:0,what:"equal temperament"};
+/** apply what the round needs, borrowing it so it goes back when you leave the game */
+let building=false, userRestored=false;   // don't apply while a round is being built, or after "Put my settings back"
+function applyNeeds(){
+  if(!q || !q.needs || !canWrite() || building || userRestored) return;
+  const missing=q.needs.filter(n=> n.ok ? !n.ok(mc.params[n.addr]) : mc.params[n.addr]!==n.value);
+  if(missing.length){ missing.forEach(n=>borrow(n.addr,n.value)); setTimeout(()=>mc.requestDump(),200); }
+}
 function nextQuestion(){
+  userRestored=false;
   stopTones();
-  q=GENS[modeFor()](); solved=false; firstTry=true; keyAtStart=mc.keyIndex; pick={root:null,q:null,bass:null}; qStart=performance.now();
+  building=true; try{ q=GENS[modeFor()](); } finally { building=false; } solved=false; firstTry=true; keyAtStart=mc.keyIndex; pick={root:null,q:null,bass:null}; qStart=performance.now();
   $("what").textContent = settings.mode==="mix" ? `Mix · ${LABELS[q.kind]}` : LABELS[q.kind];
   const pr=$("prompt");
   if(q.gapPrompt){ pr.innerHTML=q.prompt.replace("?", '<span class="gap">?</span>'); } else pr.textContent=q.prompt;
@@ -721,6 +731,8 @@ function nextQuestion(){
   $("next").textContent = sprint ? "Skip" : "Next";
   buildPicker();
   if(q.answer.type==="key") poll(true);
+  if(q.kind!=="temper" && !(q.needs||[]).some(n=>n.addr===237)) q.needs=[...(q.needs||[]), EQUAL];
+  applyNeeds();
   modifierFor(q.answer.spellRoot || q.answer.tonicName || q.pressRoot);
   needs();
   if(q.kind==="simon") setTimeout(simonPlay,700);
@@ -879,15 +891,14 @@ const HARP_MODES=["Follow chord","Major","Major pentatonic","Minor pentatonic","
 function needs(){
   const box=$("needs");
   if(!q || !q.needs){ box.hidden=true; return; }
+  box.hidden=false;
+  const hold = q.holdHint ? ` ${q.holdHint()}` : "";      // worked out now, after the modifier is set
+  const what=q.needs.map(n=>n.what).join(", ");
+  if(mc.params[35]===undefined){ box.textContent=`This one needs ${what}. Connect the minichord and the game sets it for you.`; return; }
+  if(!canWrite()){ box.textContent=`This one needs ${what}, and the game can't change your minichord's settings: see the line under the title.`; return; }
   const missing=q.needs.filter(n=> n.ok ? !n.ok(mc.params[n.addr]) : mc.params[n.addr]!==n.value);
-  box.hidden=false; box.innerHTML="";
-  const t=document.createElement("span");
-  if(mc.params[35]===undefined){ t.textContent=`This one needs ${q.needs.map(n=>n.what).join(", and ")}. Connect the minichord and the game can set it.`; box.append(t); return; }
-  if(!missing.length){ t.textContent= q.holdHint ? `Your minichord is set up for this one. ${q.holdHint()}` : "Your minichord is set up for this one."; box.append(t); return; }   // worked out now, after the modifier is set
-  t.textContent=`This one needs ${missing.map(n=>n.what).join(", and ")}.`;
-  const b=document.createElement("button"); b.textContent="Set it";
-  b.onclick=()=>{ missing.forEach(n=>borrow(n.addr,n.value)); setTimeout(()=>mc.requestDump(),200); };
-  box.append(t,b);
+  if(userRestored && missing.length){ box.textContent=`Your settings are back as they were. Press Next and the game sets ${what} again.`; return; }
+  box.textContent = missing.length ? `Setting your minichord to ${what}…` : `For this game your minichord is set to ${what}; it goes back when you leave.${hold}`;
 }
 
 // ---------- pickers ----------
@@ -1061,6 +1072,7 @@ function mine(){
 
 // ---------- connection ----------
 mc.addEventListener("device", ()=>{
+  if(q && !solved && !rebuilding) applyNeeds();
   mine(); needs();
   // a round built before the minichord's settings arrived is rebuilt now, on the minichord
   if(q && q.wantsWrite && !solved && canWrite() && !rebuilding){
