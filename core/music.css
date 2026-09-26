@@ -1,0 +1,8 @@
+/* Music glyphs for the lab's staves: a subset of Steinberg's Bravura (the
+ * treble clef U+E050, the whole notehead U+E0A2, standard accidentals
+ * U+E260-E266 and Stein-Zimmermann quarter tones U+E280-E285), by SMuFL code
+ * point. At a font size of four staff spaces a glyph drawn at a note's height
+ * sits exactly on it. SIL Open Font License 1.1; a modified version, so it is
+ * renamed, as the Reserved Font Name "Bravura" requires. See
+ * fonts/OFL-lab-music.txt. Built with fonttools' subsetter from Bravura.otf. */
+@font-face{font-family:"Minichord Lab Music";font-style:normal;font-weight:400;font-display:block;src:url("fonts/lab-music.woff2") format("woff2");}

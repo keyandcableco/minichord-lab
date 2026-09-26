@@ -12,6 +12,8 @@
  *             event.startedAt is when its notes arrived
  *   "device"  the parameter dump arrived or a setting changed
  *   "status"  connection text for the page to show
+ *   "harp"    a harp string was plucked: detail {note, ch}, from the harp port
+ *             (Port 2), or from the harp channels of the chord port in single port mode
  * ========================================================================== */
 
 export const KEY_NAMES = ["C","G","D","A","E","B","F","B♭","E♭","A♭","D♭","G♭",
@@ -21,6 +23,7 @@ const KEY_FIFTHS = [0,1,2,3,4,5,-1,-2,-3,-4,-5,-6,6,7,8,9,10,11,12,-8,-7];
 export const TEMPERAMENTS = ["Equal","Meantone","Just","Pythagorean","Werckmeister III","Kirnberger III",
   "Vallotti","Young","Kellner","1/6 Meantone","19-EDO","31-EDO"];
 
+const isHarpPort = n => /minichord/i.test(n) && n.includes("2");
 const isChordPort = n => /minichord/i.test(n) && (n.includes("1") || n.trim().toLowerCase()==="minichord");
 
 export class Minichord extends EventTarget {
@@ -76,6 +79,7 @@ export class Minichord extends EventTarget {
     const chord=ins.find(i=>isChordPort(i.name));
     ins.forEach(i=>i.onmidimessage=e=>{
       if(e.data[0]===0xF0){ if(isChordPort(i.name)) this._dump(e.data); return; }
+      if(isHarpPort(i.name)){ this._harp(e.data); return; }   // the harp's own zone reuses channel numbers, so it never reaches the chord voices
       const use = this.inputChoice==="all" || this.inputChoice===i.id || (this.inputChoice==="auto" && chord && i.id===chord.id);
       if(use || (this.inputChoice==="auto" && !chord)) this.handle(e.data);
     });
@@ -120,8 +124,11 @@ export class Minichord extends EventTarget {
     if(this.params[108]===1 && this.params[107]) return ch !== this.params[107]-1;
     return true;
   }
+  _harp(d){
+    if((d[0]&0xF0)===0x90 && d[2]>0) this.dispatchEvent(new CustomEvent("harp",{detail:{note:d[1], ch:d[0]&15}}));
+  }
   _on(ch,note,vel){
-    if(!this._chordChannel(ch)) return;
+    if(!this._chordChannel(ch)){ this.dispatchEvent(new CustomEvent("harp",{detail:{note, ch}})); return; }
     // a voice's channel holds one note at a time
     if(this.mpe) for(const [k,n] of this.notes) if(n.ch===ch) this.notes.delete(k);
     this.notes.set(ch+":"+note,{ch,note,vel,t:performance.now()});
