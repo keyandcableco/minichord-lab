@@ -42,6 +42,8 @@
 .fieldbar{display:flex;gap:18px;flex-wrap:wrap;font-size:1rem;color:var(--muted);width:100%}
 .fieldbar b{color:var(--ink);font-size:1.2rem}
 .controls button[aria-pressed="false"].sound{opacity:.7}
+.plainfont{--hand:"Minichord Lab Accidentals","Atkinson Hyperlegible",system-ui,sans-serif}
+@media (prefers-reduced-motion:reduce){.game.flash,.field.flash,.modpill.pulse{animation:none}.game.flash{box-shadow:inset 0 0 0 4px var(--v2)}}
 .game.flash{animation:wrongflash .55s ease-out}
 @keyframes wrongflash{0%{box-shadow:inset 0 0 0 4px var(--v2);background:color-mix(in srgb,var(--v2) 22%,var(--panel))}100%{box-shadow:inset 0 0 0 0 transparent;background:var(--panel)}}
 .field.flash{animation:wrongflash .45s ease-out}
@@ -54,10 +56,10 @@
 #staff{display:block;width:100%;max-width:520px;height:auto}
 #keys{display:block;width:100%;max-width:560px;height:auto;margin-top:4px}
 #keys[hidden]{display:none}
-#keys .w{fill:#fff;stroke:var(--ink);stroke-width:1}
-#keys .b{fill:var(--ink);stroke:var(--ink);stroke-width:1}
-#keys .on{fill:var(--v0)} #keys .root{fill:var(--accent)} #keys .dim{fill:color-mix(in srgb,var(--v0) 30%,#fff)}
-#keys .b.dim{fill:color-mix(in srgb,var(--v0) 55%,var(--ink))}
+/* a piano looks like a piano in both themes: fixed colours, not the board's (the dark theme's pastels washed it out) */
+#keys .w{fill:#fff;stroke:#1B2430;stroke-width:1}
+#keys .b{fill:#1B2430;stroke:#1B2430;stroke-width:1}
+#keys .on{fill:#1F5FB0} #keys .root{fill:#D9780B} #keys .w.dim{fill:#C7D7EC} #keys .b.dim{fill:#34507A}
 #keys text{font:700 11px var(--ui);fill:#1B2430;text-anchor:middle}
 #keys .lab{fill:#fff;opacity:.92}
 .chordstack{display:inline-flex;flex-direction:column;align-items:center;margin:0 .3em;vertical-align:top}
@@ -213,6 +215,9 @@
         <label>Scales <select id="scaleset"><option value="everyday">Everyday scales</option><option value="modes">The seven modes</option><option value="exotic">Exotic scales</option><option value="all">All of them</option></select></label>
         <label>Directions <select id="dirset"><option value="steps">Half and whole steps</option><option value="thirds">Plus thirds</option><option value="fifths">Plus fourths and fifths</option><option value="all">Plus sixths and the tritone</option></select></label>
         <label>Key <select id="keysrc"><option value="follow">The minichord's key</option><option value="random">A different key each time</option><option value="set">A new key each time, set on the minichord</option></select></label>
+        <label>After a right answer <select id="advance"><option value="quick">Move on quickly</option><option value="slow">Move on after a few seconds</option><option value="wait">Wait for Next</option></select></label>
+        <label>Text size <select id="textSize"><option value="1">Normal</option><option value="1.2">Larger</option><option value="1.4">Largest</option></select></label>
+        <label>Prompt font <select id="promptFont"><option value="serif">Serif</option><option value="plain">Plain and extra legible</option></select></label>
         <label>Sight reader <select id="blastStart"><option value="1">Start with major and minor</option><option value="3">Start with sharps and flats</option><option value="5">Start with every chord type</option><option value="6">Start with slash chords</option><option value="7">Start with any slash chord</option></select></label>
       </div>
       <p class="fine">Chord sets follow what the buttons play: standard is major, minor, 7, maj7, m7, diminished (major and minor together) and augmented (all three); Barry Harris mode turns major, minor and diminished into 6, m6 and diminished 7. The alternate layout is left out, since everyone sets up their own. The buttons play their letters with the key signature's sharps or flats, and the game sets the modifier to sharp or flat for each question, and Barry Harris mode on or off for the chord it asks for.</p>
@@ -1089,13 +1094,20 @@ $("restore").onclick=()=>{ userRestored=true; restoreAll(); needs(); feedback("Y
 addEventListener("pagehide", restoreAll);
 
 // ---------- settings and scores (remembered) ----------
-const settings={mode:"spell", set:"standard", order:"ordered", doubles:"off", secondary:"off", keysrc:"follow", scaleset:"everyday", dirset:"steps", sounds:true, tuneWave:"sine", blastStart:"1"};
+const settings={mode:"spell", set:"standard", order:"ordered", doubles:"off", secondary:"off", keysrc:"follow", scaleset:"everyday", dirset:"steps", sounds:true, tuneWave:"sine", blastStart:"1", advance:"slow", textSize:"1", promptFont:"serif"};
 const saved={best:{}, sprint:{}};
 try{ const s=JSON.parse(localStorage.getItem("lab-spellbound")||"{}"); Object.assign(settings,s.settings||{}); Object.assign(saved,s.saved||{}); }catch(e){}
 if(!LABELS[settings.mode]) settings.mode="spell";
 if(!SETS[settings.set] || settings.set==="alt") settings.set="standard";
 const save=()=>{ try{ localStorage.setItem("lab-spellbound",JSON.stringify({settings,saved})); }catch(e){} };
-for(const id of ["set","order","doubles","secondary","keysrc","scaleset","dirset","blastStart"]){ $(id).value=settings[id]; $(id).onchange=e=>{ settings[id]=e.target.value; save(); buildPicker(); }; }
+for(const id of ["set","order","doubles","secondary","keysrc","scaleset","dirset","blastStart","advance","textSize","promptFont"]){ $(id).value=settings[id]; $(id).onchange=e=>{ settings[id]=e.target.value; save(); buildPicker(); applyDisplay(); }; }
+// Display: the whole page scales with the text size, and the plain font swaps the serif of
+// prompts and chord names for Atkinson Hyperlegible
+function applyDisplay(){
+  document.querySelector("main").style.zoom = settings.textSize==="1" ? "" : settings.textSize;
+  document.documentElement.classList.toggle("plainfont", settings.promptFont==="plain");
+}
+applyDisplay();
 const stats={streak:0, asked:0, clean:0, times:[]};   // times: seconds to a first-time right answer, recent ones
 function scoreboard(){
   $("streak").textContent=stats.streak; $("best").textContent=saved.best[settings.mode]||0;
@@ -1294,8 +1306,8 @@ function correct(extra){
   scoreboard(); poll(false);
   // Right first time, the game moves on by itself; after a miss it waits for Next, so there's
   // time to read how the answer is built. Tune up always waits: locking in is the end.
-  if(firstTry && q.kind!=="tune"){
-    const dwell = sprint ? 450 : q.kind==="melody" ? 2200 : q.learn ? 3200 : 1800;
+  if(firstTry && q.kind!=="tune" && (sprint || settings.advance!=="wait")){
+    const dwell = sprint ? 450 : settings.advance==="slow" ? 4500 : q.kind==="melody" ? 2200 : q.learn ? 3200 : 1800;
     setTimeout(()=>{ if(solved && q) nextQuestion(); }, dwell);
   } else if(!sprint){
     const f=$("feedback"), s3=document.createElement("small"); s3.textContent="Press Next when you're ready."; f.appendChild(s3);
