@@ -245,9 +245,11 @@ footer p{margin:0;max-width:80ch}
         <button id="hold">Hold C major</button>
         <button id="glide">Play glide demo</button>
         <button id="vlDemo">Voice leading: off, then on</button>
+        <button id="slashDemo">Slash voices: held still, then re-voiced</button>
         <button id="panic">Stop all sound</button>
       </div>
       <p class="fine" id="vlResult">The voice leading demo plays the same eight chords twice, voiced exactly as the minichord voices them: first built up from each root, then voice-led.</p>
+      <p class="fine">The slash voice demo holds a C chord and gives the slash note to each voice in turn, bass, tenor, alto and soprano, then lets it go back, voiced as the minichord's slash voice setting voices it. The first time the other voices hold still, so only one voice moves at a time; the second time slash re-voice is on, and the voices around the slash note move to keep the chord whole. The soprano sounds the same both times: it gives up the doubled root on top, so the chord below is already whole.</p>
     </section>
   </div>
   <footer>
@@ -1177,6 +1179,87 @@ document.getElementById("vlDemo").onclick=async()=>{
   caption(null);
   document.getElementById("vlResult").textContent = `Voice leading off: the voices moved ${avg[false].toFixed(1)} semitones per chord change. On: ${avg[true].toFixed(1)}. `+
     `The same eight chords with ${Math.round(avg[false]/avg[true])} times less motion, using a range of ${range}.`;
+};
+// ---------- slash voice demo: the firmware's apply_slash_voice(), ported ----------
+// A slash gives one voice, counted from the bottom (0 bass .. 3 soprano), the slash note. The bass
+// takes it in the octave that lets the chord move least and the three above hold the whole chord.
+// Tenor, alto and soprano take it nearest where they were, between their neighbours, and the others
+// hold still; with re-voice, the two that are neither it nor the bass move instead, as little as they
+// can, to keep the chord whole. A four-note chord in three voices leaves out its fifth.
+function tonesForThree(tones, skip){
+  let t=tones.filter(x=>x!==skip);
+  if(t.length===4){ const f=t.findIndex((x,i)=>i>0 && Math.abs(x-7)<=1); t.splice(f>0?f:3,1); }
+  return t;
+}
+function slashVoicing(notes, root, tones, slashPc, k, revoice){
+  const pc=n=>((n%12)+12)%12, rel=n=>pc(n-root);
+  const order=[0,1,2,3].sort((a,b)=>notes[a]-notes[b]), was=notes[order[k]];
+  const down=was-((pc(was)-slashPc+12)%12), pins=[down,down+12], slashRel=pc(slashPc-root);
+  if(k===0 || revoice){
+    const bass=notes[order[0]], movers=k===0?3:2;
+    const need=tonesForThree(tones, k===0?-1:slashRel).filter(t=>k===0 || t!==rel(bass));
+    const from=[1,2,3].filter(i=>i!==k).map(i=>notes[order[i]]);
+    const lo=k===0?0:bass+1, hi=Math.max(...from)+12, pool=[];
+    for(let n=lo;n<=hi;n++) if(tones.includes(rel(n))) pool.push(n);
+    let best=null, bestTotal=Infinity, bestWide=Infinity;
+    const pick=(chosen,start)=>{
+      if(chosen.length===movers){
+        for(const pin of pins){
+          if(k>0 && pin<=bass) continue;
+          if(chosen.includes(pin) || chosen.filter(n=>n<pin).length!==(k===0?0:k-1)) continue;
+          if(!need.every(t=>chosen.some(n=>rel(n)===t))) continue;
+          const moves=[Math.abs(pin-was), ...chosen.map((n,i)=>Math.abs(n-from[i]))];
+          const total=moves.reduce((a,b)=>a+b,0), wide=Math.max(...moves);
+          if(total<bestTotal || (total===bestTotal && wide<bestWide)){
+            bestTotal=total; bestWide=wide;
+            best = k===0 ? [pin,...chosen] : [bass,...(()=>{ const o=[...chosen]; o.splice(k-1,0,pin); return o; })()];
+          }
+        }
+        return;
+      }
+      for(let i=start;i<pool.length;i++) pick([...chosen,pool[i]],i+1);
+    };
+    pick([],0);
+    if(best) return best;
+  }
+  const below=notes[order[k-1]], above=k<3?notes[order[k+1]]:127;
+  let n=was-((pc(was)-slashPc+12)%12), bestN=null;
+  for(let c=n-24;c<=n+24;c+=12) if(c>below && c<above && (bestN===null || Math.abs(c-was)<Math.abs(bestN-was))) bestN=c;
+  const out=[...notes]; out[order[k]] = bestN!==null ? bestN : (Math.abs(n-was)<=Math.abs(n+12-was)?n:n+12);
+  return out;
+}
+const SLASH_STEPS=[
+  [null,null,"C"],
+  [0,11,"Bass takes B: C over B"],       [null,null,"back to C"],
+  [1,5,"Tenor takes F: a suspension"],   [null,null,"it resolves to C"],
+  [2,9,"Alto takes A: a sixth inside the chord"], [null,null,"back to C"],
+  [3,2,"Soprano takes D: a melody note on top"],  [3,4,"Soprano steps to E"], [null,null,"back to C"],
+];
+document.getElementById("slashDemo").onclick=async()=>{
+  initAudio(); panic(); const run=++glideRun;
+  const chs=[0,1,2,3].map(i=>testChan(i));
+  const plain=[48,52,55,60], tones=[0,4,7];
+  for(const revoice of [false,true]){
+    let prev=null;
+    for(const [k,slashPc,text] of SLASH_STEPS){
+      if(run!==glideRun) return caption(null);
+      caption((revoice ? "Re-voiced · " : "Held still · ")+text);
+      const notes = k===null ? plain : slashVoicing(plain, 0, tones, slashPc, k, revoice);
+      if(!prev){ chs.forEach(ch=>bendTo(ch,0)); notes.forEach((n,i)=>handleMidi([0x90|chs[i],n,100])); }
+      else {
+        // only the voices whose note changes glide to it, as the minichord sends them over MPE
+        const moved=notes.map((n,i)=>n!==prev[i]);
+        notes.forEach((n,i)=>{ if(!moved[i]) return; handleMidi([0x80|chs[i],prev[i],0]); bendTo(chs[i],prev[i]-n); handleMidi([0x90|chs[i],n,100]); });
+        const t0=performance.now();
+        while(true){ const f=Math.min(1,(performance.now()-t0)/220); notes.forEach((n,i)=>{ if(moved[i]) bendTo(chs[i],(prev[i]-n)*(1-f)); });
+          if(f>=1) break; await sleep(12); if(run!==glideRun) return caption(null); }
+      }
+      prev=notes; await sleep(1300);
+    }
+    prev.forEach((n,i)=>handleMidi([0x80|chs[i],n,0]));
+    await sleep(900);
+  }
+  caption(null);
 };
 document.getElementById("glide").onclick=async()=>{
   initAudio(); panic(); const run=++glideRun;
