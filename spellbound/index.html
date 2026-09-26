@@ -23,6 +23,18 @@
 .prompt{font-family:var(--hand);font-size:clamp(2.4rem,6.5vw,4.4rem);line-height:1.05;margin:.2rem 0 0}
 .prompt .gap{color:var(--accent)}
 .prompt.long{font-size:clamp(1.7rem,4vw,2.6rem);line-height:1.15}
+.prompt .num{color:var(--accent)}
+.prompt .in{font-size:.5em;color:var(--muted);font-family:var(--ui);letter-spacing:.02em}
+.prompt .keyname{color:var(--v0)}
+.field{position:relative;width:100%;height:300px;border:1px solid var(--rule);border-radius:12px;background:var(--board);overflow:hidden}
+.field .fchord{position:absolute;transform:translateX(-50%);font:600 2rem var(--hand);color:var(--ink);white-space:nowrap;pointer-events:none}
+.field .fchord.low{color:var(--accent)}
+.field .fchord.hit{color:var(--v1);transition:opacity .35s,transform .35s;opacity:0;transform:translateX(-50%) scale(1.6)}
+.field .fchord.miss{color:var(--v2);transition:opacity .5s;opacity:0}
+.field .ground{position:absolute;left:0;right:0;bottom:0;height:3px;background:var(--v2);opacity:.5}
+.fieldbar{display:flex;gap:18px;flex-wrap:wrap;font-size:1rem;color:var(--muted);width:100%}
+.fieldbar b{color:var(--ink);font-size:1.2rem}
+.controls button[aria-pressed="false"].sound{opacity:.7}
 .sub{font-size:1.1rem;color:var(--muted);margin:0;max-width:64ch}
 #staff{display:block;width:100%;max-width:520px;height:auto}
 #staff[hidden]{display:none}
@@ -82,6 +94,7 @@
     <button data-mode="staff">On the staff</button>
     <button data-mode="slash">Slash chords</button>
     <button data-mode="key">Key detective</button>
+    <button data-mode="blaster">Sight reader</button>
     <button data-mode="mix">Mix</button>
   </div>
   <div class="modes" role="group" aria-label="The harp">
@@ -141,6 +154,7 @@
       <button id="hear" disabled>Hear it</button>
       <button id="reveal" disabled>Show the answer</button>
       <button id="sprint">60-second sprint</button>
+      <button id="soundBtn" class="sound" aria-pressed="true" title="Chimes for right answers">Sounds on</button>
     </div>
   </section>
 
@@ -163,7 +177,7 @@
         <label>Directions <select id="dirset"><option value="steps">Half and whole steps</option><option value="thirds">Plus thirds</option><option value="fifths">Plus fourths and fifths</option><option value="all">Plus sixths and the tritone</option></select></label>
         <label>Key <select id="keysrc"><option value="follow">The minichord's key</option><option value="random">A different key each time</option></select></label>
       </div>
-      <p class="fine">Chord sets follow what the buttons play: standard is major, minor, 7, maj7, m7, diminished (major and minor together) and augmented (all three); Barry Harris mode turns major, minor and diminished into 6, m6 and diminished 7. The alternate layout is left out, since everyone sets up their own. The buttons play their letters with the key signature's sharps or flats, and the game sets the modifier to sharp or flat for each question.</p>
+      <p class="fine">Chord sets follow what the buttons play: standard is major, minor, 7, maj7, m7, diminished (major and minor together) and augmented (all three); Barry Harris mode turns major, minor and diminished into 6, m6 and diminished 7. The alternate layout is left out, since everyone sets up their own. The buttons play their letters with the key signature's sharps or flats, and the game sets the modifier to sharp or flat for each question, and Barry Harris mode on or off for the chord it asks for.</p>
     </section>
   </div>
 
@@ -335,7 +349,8 @@ function genNumeral(){
   }
   choices=choices.filter(c=>spellChord(c.root,c.q));
   const c=rnd(choices), tones=spellChord(c.root,c.q);
-  return {kind:"numeral", prompt:`${c.label} in ${key.name} major`, sub:"Press the chord this numeral names.",
+  const numHtml=c.label.replace(/ of /,' <span class="in">of</span> ');
+  return {kind:"numeral", prompt:`${c.label} in ${key.name} major`, promptHtml:`<span class="num">${numHtml}</span> <span class="in">in</span> <span class="keyname">${key.name} major</span>`, sub:"Press the chord this numeral names.",
     answer:{type:"chord", root:pcOfName(c.root), q:c.q, name:c.root+c.q, tones, spellRoot:c.root},
     hint:`${key.name} major's scale: ${[0,1,2,3,4,5,6].map(i=>above(key.name,i,[0,2,4,5,7,9,11][i])).join(" ")}.`, hear:tones, context:key.fifths};
 }
@@ -504,7 +519,7 @@ function genSimon(){
   const key=questionKey(), tonic=pcOfName(key.name);
   simon={key, seq:[], pos:0, best:saved.best.simonLen||0};
   simonGrow();
-  return {kind:"simon", prompt:`Simon says, in ${key.name} major`, sub:`Hold ${key.name} major. Listen, then pluck the melody back on the harp. Each time you get it, it grows by a note.`,
+  return {kind:"simon", prompt:`Simon says, in ${key.name} major`, promptHtml:`Simon says <span class="in">in</span> <span class="keyname">${key.name} major</span>`, sub:`Hold ${key.name} major. Listen, then pluck the melody back on the harp. Each time you get it, it grows by a note.`,
     answer:{type:"simon", name:"the melody"}, hint:"Press Hear it to hear the melody again.", context:key.fifths, pressRoot:key.name, holdHint:()=>`Hold ${pressRoot(key.name)}, with the major button.`,
     hearFn:()=>simon.seq.map((d,k)=>[60+tonic+MAJOR[(d-1)%7]+(d===8?12:0),k*.55]), needs:[PER_CHORD,NOT_CHROMATIC]};
 }
@@ -521,12 +536,23 @@ const MOVES={steps:[1,2], thirds:[1,2,3,4], fifths:[1,2,3,4,5,7], all:[1,2,3,4,5
 const MOVE_NAMES={1:"a half step",2:"a whole step",3:"a minor third",4:"a major third",5:"a fourth",6:"a tritone",7:"a fifth",8:"a minor sixth",9:"a major sixth"};
 let dirs=null;
 const SHARP_NAMES=["C","C♯","D","D♯","E","F","F♯","G","G♯","A","A♯","B"], FLAT_NAMES=["C","D♭","D","E♭","E","F","G♭","G","A♭","A","B♭","B"];
-const dirName=k=> k===0 || dirs.moves[k-1].up ? SHARP_NAMES[dirs.path[k]] : FLAT_NAMES[dirs.path[k]];   // spelled the way you reached it
+// letters each move spans: a minor sixth up from F is D♭, five letters on, not C♯; a half step
+// is named the way the harp's strings are, sharp going up and flat going down
+const MOVE_LETTERS={1:1,2:1,3:2,4:2,5:3,6:3,7:4,8:5,9:5};
+const dirName=k=>dirs.names[k];
+function spellMove(from, iv, up, pc){
+  if(iv===1) return up ? SHARP_NAMES[pc] : FLAT_NAMES[pc];
+  const st=MOVE_LETTERS[iv], n = up ? above(from,st,iv) : above(from,(7-st)%7,12-iv);
+  if(n && !/[𝄪𝄫]/.test(n)) return n;
+  return up ? SHARP_NAMES[pc] : FLAT_NAMES[pc];                 // past a double accidental, the plain name
+}
 function genDirections(){
   const start=Math.floor(Math.random()*12), set=MOVES[settings.dirset]||MOVES.steps;
   const moves=[]; let at=start; const path=[start];
   for(let k=0;k<8;k++){ const iv=rnd(set), up=Math.random()<.5; at=mod(at+(up?iv:-iv),12); moves.push({iv,up}); path.push(at); }
-  dirs={moves, path, pos:0};
+  const names=[spell(start,0)];
+  moves.forEach((m,k)=>names.push(spellMove(names[k], m.iv, m.up, path[k+1])));
+  dirs={moves, path, names, pos:0};
   return {kind:"directions", prompt:`Start on ${spell(start,0)}`, sub:"Pluck it, then follow each direction from the note you're on. Twelve strings, one octave: from B, up goes round to C.",
     answer:{type:"dirs", name:"the path"}, hint:"", context:0, needs:[CHROMATIC],
     hearFn:()=>[[60+start,0]]};
@@ -665,19 +691,130 @@ function genTemper(){
     choices:TEMPERS.map(v=>({value:v,label:TEMPERAMENT_TABLE[v].label})),
     hearFn:()=>[[48,60,64,67],[44,56,60,63],[52,56,59,64]].flatMap((ch,k)=>ch.map(n=>[tune(n,t,0),k*1.5]))};
 }
+// Tune up plays the chord voices as a plain tone, so nothing but the tuning makes them beat:
+// one oscillator in the waveform you choose (sine, triangle, sawtooth or square, the firmware's
+// 0, 3, 1 and 2), the others and the noise silent, an organ envelope, the filter open and still,
+// no tremolo, vibrato, pitch bend, glide, delay, reverb or crunch. All of it is borrowed and
+// goes back when you leave the game. Values are as the firmware stores them: floats times 100.
+const WAVES={sine:0, triangle:3, sawtooth:1, square:2};
+const PLAIN_TONE={121:30, 123:100, 124:0, 127:0, 130:0, 135:0, 136:0,
+  137:5, 138:0, 139:0, 140:100, 141:150,
+  143:5000, 144:0, 145:70, 149:100, 154:0, 155:0,
+  157:0, 159:0, 161:0, 163:0, 170:0, 175:0,
+  176:0, 182:100, 183:0, 184:0, 185:0, 199:0};
+const TONE_ADDRS=new Set([...Object.keys(PLAIN_TONE).map(Number), 122]);
+function plainTone(){
+  for(const [a,v] of Object.entries(PLAIN_TONE)) borrow(+a,v);
+  borrow(122, WAVES[settings.tuneWave] ?? 0);
+}
 function genTune(){
   const off=(Math.random()<.5?-1:1)*(15+Math.floor(Math.random()*55));   // 1.5 to 7 Hz off, in tenths of a hertz
   tuneState={secret:4400+off, nudge:0};
-  if(canWrite()){ borrow(109,tuneState.secret); }
-  return {wantsWrite:!canWrite(), borrows:[109], kind:"tune", prompt:"Tune it back to A = 440", sub: canWrite() ? "Your minichord's tuning has been knocked off. Hold an A on it, turn on the reference, and slide until the beating stops. Then lock it in."
+  if(canWrite()){ plainTone(); borrow(109,tuneState.secret); }
+  return {wantsWrite:!canWrite(), borrows:[109, ...TONE_ADDRS], kind:"tune", prompt:"Tune it back to A = 440", sub: canWrite() ? "Your minichord's tuning has been knocked off, and it now plays a plain tone with nothing moving in it, so the only beating you hear is the tuning. Hold its A chord, turn on the reference, and slide until the beating stops. Then lock it in. Choose the tone to hear the beats in a different colour."
       : "The second tone plays a minichord knocked out of tune. Turn on both, slide until the beating stops, then lock it in.",
     answer:{type:"tune"}, hint:"Slow beats mean you're close. If they speed up as you slide, go the other way.", context:0};
 }
-const GENS={spell:genSpell, numeral:genNumeral, staff:genStaff, slash:genSlash, key:genKey, harp:genHarp, missing:genMissing,
+
+// ---------- Sight reader ----------
+// An arcade round for everyone: chord symbols fall from the top, and each one played on the
+// buttons before it lands is blasted. Three that land and the round is over. It starts with
+// major and minor on the seven buttons as your key plays them, adds 7 chords, then the roots
+// the modifier reaches, then maj7 and m7, then diminished and augmented, a little faster
+// every eight chords. The modifier is set one way for the whole round, sharpen or flatten,
+// so every root on screen is one button, or one button with the modifier.
+const BLAST_LEVELS=[{q:["","m"],acc:false},{q:["","m","7"],acc:false},{q:["","m","7"],acc:true},
+  {q:["","m","7","maj7","m7"],acc:true},{q:["","m","7","maj7","m7","°","+"],acc:true}];
+const BARRY_SWAP={"":"6","m":"m6","°":"°7"};
+let blast=null;
+function genBlaster(){
+  return {kind:"blaster", prompt:"Sight reader", sub:"Chords fall from the top. Play each one on the buttons before it lands; the lowest is lit. Three that land and the round is over.",
+    answer:{type:"blaster", get name(){ const l=lowestBlast(); return l ? l.sym : "the lowest chord"; }},
+    get hint(){ const l=lowestBlast(); return l ? `The lowest is ${l.sym}: ${(spellChord(l.root,l.q)||[]).join(" ")}.` : "Wait for a chord to fall."; },
+    hearFn:()=>{ const l=lowestBlast(); return l ? FORM[l.q].map(f=>[48+pcOfName(l.root)+f[1],0]) : []; },
+    context:0, barry: settings.set==="barry" ? "6" : ""};
+}
+const lowestBlast=()=> blast ? blast.items.filter(i=>!i.done).sort((a,b)=>a.t0-b.t0)[0] || null : null;
+function blastRoots(){
+  const f=canWrite() ? devFifths() : 0, out=[], lv=BLAST_LEVELS[blast.level];
+  for(let li=0; li<7; li++){
+    const ka=keyAcc(li,f);
+    if(Math.abs(ka)<=1) out.push(LETTERS[li]+ACC[ka]);
+    const a=ka+blast.dir, n=LETTERS[li]+(ACC[a]??"");
+    if(lv.acc && Math.abs(a)===1 && !["E♯","B♯","F♭","C♭"].includes(n)) out.push(n);
+  }
+  return out;
+}
+function startBlaster(){
+  const f=canWrite() ? devFifths() : 0;
+  blast={items:[], score:0, lives:3, level:0, hits:0, dir: f<0 ? -1 : f>0 ? 1 : (Math.random()<.5?1:-1),
+    next:performance.now()+700, fall:9000, gap:2600, over:false, raf:0, field:null, bar:null};
+  if(canWrite()){ const want = blast.dir>0 ? 0 : 1; if(mc.params[31]!==want) borrow(31,want); }
+  stats.streak=0; scoreboard(); buildSpecial();
+  blast.raf=requestAnimationFrame(blastTick);
+}
+function stopBlaster(){ if(blast){ blast.over=true; cancelAnimationFrame(blast.raf); } blast=null; }
+function blastBar(){
+  if(!blast || !blast.bar) return;
+  blast.bar.innerHTML=`<span>Score <b>${blast.score}</b></span><span>Lives <b>${"♥".repeat(Math.max(0,blast.lives))||"–"}</b></span><span>Level <b>${blast.level+1}</b></span><span>Best <b>${saved.best.blaster||0}</b></span>`;
+}
+function spawnBlast(now){
+  const lv=BLAST_LEVELS[blast.level], quals=lv.q.map(x=> settings.set==="barry" ? (BARRY_SWAP[x]??x) : x);
+  const roots=blastRoots(), onScreen=new Set(blast.items.filter(i=>!i.done).map(i=>i.sym));
+  for(let k=0;k<30;k++){
+    const root=rnd(roots), qq=rnd(quals), sym=root+qq;
+    if(onScreen.has(sym) || !spellChord(root,qq)) continue;
+    const el=document.createElement("span"); el.className="fchord"; el.textContent=sym;
+    el.style.left=`${10+Math.random()*80}%`; el.style.top="0px";
+    blast.field.appendChild(el);
+    blast.items.push({el, sym, root, q:qq, rootPc:pcOfName(root), t0:now});
+    return;
+  }
+}
+function blastTick(now){
+  if(!blast || blast.over) return;
+  const live=blast.items.filter(i=>!i.done);
+  if(now>=blast.next && live.length<5){ spawnBlast(now); blast.next=now+blast.gap*(.8+Math.random()*.4); }
+  const H=blast.field ? blast.field.clientHeight : 300;
+  for(const it of live){
+    const y=(now-it.t0)/blast.fall;
+    if(y>=1){ blastMiss(it); if(!blast || blast.over) return; continue; }
+    it.el.style.top=`${y*(H-44)}px`;
+  }
+  const low=lowestBlast(); blast.items.forEach(it=>it.el.classList.toggle("low", it===low));
+  blast.raf=requestAnimationFrame(blastTick);
+}
+function blastMiss(it){
+  it.done=true; it.el.classList.add("miss"); setTimeout(()=>it.el.remove(),600);
+  blast.lives--; blastBar(); feedback(`${it.sym} landed.`,"bad", `On your minichord: ${howTo(it.root,it.q)}.`);
+  if(blast.lives<=0) blastOver();
+}
+function blastOver(){
+  blast.over=true; cancelAnimationFrame(blast.raf);
+  const best=Math.max(saved.best.blaster||0, blast.score); saved.best.blaster=best; save();
+  blast.items.forEach(i=>i.el.remove());
+  feedback(`Game over: ${blast.score} points, level ${blast.level+1}.`, "", `Your best: ${best}. Press Next to play again.`);
+  blastBar();
+}
+function blasterChord(voices){
+  if(!blast || blast.over) return;
+  const pitches=voices.map(v=>v.pitch);
+  const hit=blast.items.filter(i=>!i.done && isChord(pitches,i.rootPc,i.q)).sort((a,b)=>a.t0-b.t0)[0];
+  if(!hit){ if(chordId(pitches)) later(()=>feedback(`${chordName(pitches,devFifths())||"That"} isn't falling.`,"bad")); return; }
+  hit.done=true; hit.el.classList.remove("low"); hit.el.classList.add("hit"); setTimeout(()=>hit.el.remove(),400);
+  blast.hits++; blast.score+=10*(blast.level+1); stats.streak=blast.hits; scoreboard();
+  if(blast.hits%8===0){
+    if(blast.level<BLAST_LEVELS.length-1) blast.level++;
+    blast.fall=Math.max(3500, blast.fall*.88); blast.gap=Math.max(900, blast.gap*.88);
+    chime("done"); feedback(`${hit.sym}! Level ${blast.level+1}.`,"good");
+  } else { chime("step"); feedback(`${hit.sym}!`,"good"); }
+  blastBar();
+}
+const GENS={spell:genSpell, blaster:genBlaster, numeral:genNumeral, staff:genStaff, slash:genSlash, key:genKey, harp:genHarp, missing:genMissing,
   melody:genMelody, chordscale:genChordScale, smooth:genSmooth, whichvoice:genWhichVoice, simon:genSimon, directions:genDirections, pluckchord:genPluckChord, buildscale:genBuildScale,
   scale:genScale, transpose:genTranspose, temper:genTemper, tune:genTune};
 const MYSTERY=new Set(["scale","transpose","temper","tune"]);
-const LABELS={spell:"Spell it", numeral:"Numerals", staff:"On the staff", slash:"Slash chords", key:"Key detective", harp:"Harp hunt", missing:"Missing note", mix:"Mix",
+const LABELS={spell:"Spell it", blaster:"Sight reader", numeral:"Numerals", staff:"On the staff", slash:"Slash chords", key:"Key detective", harp:"Harp hunt", missing:"Missing note", mix:"Mix",
   melody:"Play by number", chordscale:"Chord scales", smooth:"Smooth moves", whichvoice:"Which voice moved?", simon:"Simon says", directions:"Follow the directions", pluckchord:"Pluck the chord", buildscale:"Build the scale",
   scale:"Scale detective", transpose:"Transpose detective", temper:"Temperament taster", tune:"Tune up"};
 
@@ -708,7 +845,7 @@ $("restore").onclick=()=>{ userRestored=true; restoreAll(); needs(); feedback("Y
 addEventListener("pagehide", restoreAll);
 
 // ---------- settings and scores (remembered) ----------
-const settings={mode:"spell", set:"standard", order:"ordered", doubles:"off", secondary:"off", keysrc:"follow", scaleset:"everyday", dirset:"steps"};
+const settings={mode:"spell", set:"standard", order:"ordered", doubles:"off", secondary:"off", keysrc:"follow", scaleset:"everyday", dirset:"steps", sounds:true, tuneWave:"sine"};
 const saved={best:{}, sprint:{}};
 try{ const s=JSON.parse(localStorage.getItem("lab-spellbound")||"{}"); Object.assign(settings,s.settings||{}); Object.assign(saved,s.saved||{}); }catch(e){}
 if(!LABELS[settings.mode]) settings.mode="spell";
@@ -721,6 +858,29 @@ function scoreboard(){
   $("acc").textContent= stats.asked ? `${Math.round(stats.clean/stats.asked*100)}%` : "–";
   const t=stats.times.slice(-10); $("avg").textContent = t.length ? `${(t.reduce((a,b)=>a+b,0)/t.length).toFixed(1)} s` : "–";
 }
+
+// ---------- chimes ----------
+// Soft sine bells, quiet and high enough to sit above the minichord without clashing:
+// a single short note for each right step of a path, scale or chord, and a rising pair for
+// a right answer. Off with the Sounds button.
+function chime(kind){
+  if(!settings.sounds || !piano.ctx || piano.ctx.state!=="running") return;
+  const ctx=piano.ctx, t0=ctx.currentTime+.01;
+  const bell=(freq,at,level,dur)=>{
+    for(const [mult,amp] of [[1,1],[2.76,.12],[5.4,.04]]){          // a bell's inharmonic partials, faint
+      const o=ctx.createOscillator(), g=ctx.createGain();
+      o.type="sine"; o.frequency.value=freq*mult;
+      g.gain.setValueAtTime(0,at); g.gain.linearRampToValueAtTime(level*amp,at+.008);
+      g.gain.exponentialRampToValueAtTime(.0001,at+dur);
+      o.connect(g).connect(ctx.destination); o.start(at); o.stop(at+dur+.05);
+    }
+  };
+  if(kind==="step") bell(1318.5,t0,.05,.35);                       // E6
+  else { bell(1046.5,t0,.06,.7); bell(1568,t0+.11,.06,.9); }       // C6 then G6
+}
+function soundButton(){ const b=$("soundBtn"); b.setAttribute("aria-pressed",settings.sounds); b.textContent = settings.sounds ? "Sounds on" : "Sounds off"; }
+$("soundBtn").onclick=()=>{ settings.sounds=!settings.sounds; save(); soundButton(); if(settings.sounds){ piano.start(); chime("step"); } };
+soundButton();
 
 // ---------- a round ----------
 let simonShow=false, rebuilding=false;   // by ear; the numbers are an opt-in help
@@ -740,6 +900,15 @@ function modifierFor(name){
 // harp steps by the division's own steps and MIDI rounds to the nearest semitone, and the
 // twelve-note temperaments would colour every listening round.
 const EQUAL={addr:237,value:0,what:"equal temperament"};
+// Barry Harris mode (address 33) turns the major, minor and diminished buttons into 6, m6
+// and diminished 7, so each question sets it the way its chord needs, like the modifier:
+// on for those three, off for plain major, minor and diminished, and left alone otherwise.
+const BARRY_ON=new Set(["6","m6","°7"]), BARRY_OFF=new Set(["","m","°"]);
+function barryFor(qq){
+  if(qq==null || !canWrite()) return;
+  const want = BARRY_ON.has(qq) ? 1 : BARRY_OFF.has(qq) ? 0 : null;
+  if(want!=null && (mc.params[33]??0)!==want) borrow(33,want);
+}
 /** apply what the round needs, borrowing it so it goes back when you leave the game */
 let building=false, userRestored=false;   // don't apply while a round is being built, or after "Put my settings back"
 function applyNeeds(){
@@ -749,11 +918,13 @@ function applyNeeds(){
 }
 function nextQuestion(){
   userRestored=false;
-  stopTones();
+  stopTones(); stopBlaster(); clearTimeout(pendingWrong); pendingWrong=null;
+  harpQuietUntil=performance.now()+150;
   building=true; try{ q=GENS[modeFor()](); } finally { building=false; } solved=false; firstTry=true; keyAtStart=mc.keyIndex; pick={root:null,q:null,bass:null}; qStart=performance.now();
   $("what").textContent = settings.mode==="mix" ? `Mix · ${LABELS[q.kind]}` : LABELS[q.kind];
   const pr=$("prompt");
-  if(q.gapPrompt){ pr.innerHTML=q.prompt.replace("?", '<span class="gap">?</span>'); } else pr.textContent=q.prompt;
+  if(q.promptHtml){ pr.innerHTML=q.promptHtml; }
+  else if(q.gapPrompt){ pr.innerHTML=q.prompt.replace("?", '<span class="gap">?</span>'); } else pr.textContent=q.prompt;
   pr.style.wordSpacing = ["spell","key","missing"].includes(q.kind) ? ".25em" : "normal";
   pr.classList.toggle("long", q.prompt.length>26);          // sentences get a smaller size than a chord's letters   // wide gaps between letters, not words
   $("staff").toggleAttribute("hidden", q.kind!=="staff");   // an SVG element: toggle the attribute, not a property
@@ -768,7 +939,9 @@ function nextQuestion(){
   if(q.kind!=="temper" && !(q.needs||[]).some(n=>n.addr===237)) q.needs=[...(q.needs||[]), EQUAL];
   applyNeeds();
   modifierFor(q.answer.spellRoot || q.answer.tonicName || q.pressRoot);
+  barryFor(q.answer.q!=null ? q.answer.q : (q.answer.type==="key" || q.pressRoot) ? "" : q.barry);
   needs();
+  if(q.kind==="blaster") startBlaster();
   if(q.kind==="simon") setTimeout(simonPlay,700);
 }
 function feedback(text,kind="",small=""){ const f=$("feedback"); f.className="feedback "+kind; f.textContent=text; if(small){ const s=document.createElement("small"); s.textContent=small; f.appendChild(s); } }
@@ -777,6 +950,7 @@ function reveal(a){
   if(a.type==="slash") return `Hold ${howTo(a.spellRoot,a.q)}, then press ${pressRoot(a.bassName)} as well.`;
   if(a.type==="key") return `Key signature: ${sigText(a.fifths)}. Its home chord is ${pressRoot(a.tonicName)}, with the major button.`;
   if(a.type==="smooth" && smooth.last) return moveText(smooth.last.f, smooth.last.v);
+  if(a.type==="blaster"){ const l=lowestBlast(); return l ? `On your minichord: ${howTo(l.root,l.q)}.` : ""; }
   return "";
 }
 function correct(extra){
@@ -785,6 +959,7 @@ function correct(extra){
   if(stats.streak>(saved.best[settings.mode]||0)){ saved.best[settings.mode]=stats.streak; save(); }
   if(sprint) sprint.right++;
   const a=q.answer;
+  chime("done");
   feedback(extra || `Right: ${a.name}.`, "good", reveal(a));
   scoreboard(); poll(false);
   if(!MYSTERY.has(q.kind)) setTimeout(()=>{ if(solved && q) nextQuestion(); }, sprint ? 450 : q.kind==="melody" ? 2200 : 1800);
@@ -825,20 +1000,30 @@ function answerChoiceByChord(voices){
     if(hit) answerChoice(hit.value);
   }
 }
+// A chord of two or three buttons (maj7, m7, diminished, augmented, a slash) passes
+// through a simpler chord on the way: the first button sounds before the others land.
+// A right answer counts at once; a wrong one waits to see whether more buttons follow.
+let pendingWrong=null;
+function later(fn){
+  clearTimeout(pendingWrong);
+  pendingWrong=setTimeout(()=>{ pendingWrong=null; if(q && !solved) fn(); }, q && q.answer.type==="slash" ? 800 : 500);
+}
 function answerChord(voices){
+  clearTimeout(pendingWrong); pendingWrong=null;
   if(!q || solved) return;
+  if(q.answer.type==="blaster") return blasterChord(voices);
   if(q.answer.type==="choice" && (q.keypad || q.parent!=null)) return answerChoiceByChord(voices);
   if(q.answer.type==="smooth") return answerSmooth(voices);
   const pitches=voices.map(v=>v.pitch), a=q.answer, got=chordId(pitches), said=got ? chordName(pitches, q.context||0) : "that";
   if(a.type==="chord"){
     if(isChord(pitches,a.root,a.q)) return correct();
-    if(got && got.root===a.root) return wrong(`You played ${said}: right root, but a different kind of chord.`);
-    if(got && got.quality===a.q) return wrong(`You played ${said}: the right kind of chord on a different root.`);
-    return wrong(`You played ${said}. Not quite.`);
+    if(got && got.root===a.root) return later(()=>wrong(`You played ${said}: right root, but a different kind of chord.`));
+    if(got && got.quality===a.q) return later(()=>wrong(`You played ${said}: the right kind of chord on a different root.`));
+    return later(()=>wrong(`You played ${said}. Not quite.`));
   }
   if(a.type==="key"){
     if(isChord(pitches,a.tonic,"")) return correct();
-    return wrong(`${said} isn't the home chord of the key these belong to.`);
+    return later(()=>wrong(`${said} isn't the home chord of the key these belong to.`));
   }
   if(a.type==="slash"){
     // the slash note sings on the voice "Slash replaces" names; with Root, that's voice 0, the bass
@@ -848,8 +1033,8 @@ function answerChord(voices){
     const bassOk = slashVoice ? mod(Math.round(slashVoice.pitch),12)===a.bass : mod(Math.round(Math.min(...pitches)),12)===a.bass;
     const restOk = pcs.every(p=>p===a.bass || tones.includes(p)) && pcs.includes(tones[1]);
     if(bassOk && restOk) return correct();
-    if(restOk) return wrong(`Right chord, but the slash note isn't ${a.bassName}. Hold the chord and press the ${a.bassName[0]} button too.`);
-    return wrong(`You played ${said}. Hold ${a.name.split("/")[0]} first, then add the slash.`);
+    if(restOk) return later(()=>wrong(`Right chord, but the slash note isn't ${a.bassName}. Hold the chord and press the ${a.bassName[0]} button too.`));
+    return later(()=>wrong(`You played ${said}. Hold ${a.name.split("/")[0]} first, then add the slash.`));
   }
 }
 function answerNote(pc){
@@ -867,7 +1052,7 @@ function answerNote(pc){
     simon.pos++; buildSpecial();
     if(simon.pos===simon.seq.length){
       stats.streak=simon.seq.length; scoreboard();
-      feedback(`${simon.seq.length} note${simon.seq.length>1?"s":""}. Here's the next one.`,"good");
+      chime("done"); feedback(`${simon.seq.length} note${simon.seq.length>1?"s":""}. Here's the next one.`,"good");
       simonGrow(); buildSpecial(); setTimeout(simonPlay,900);
     }
     return;
@@ -877,20 +1062,22 @@ function answerNote(pc){
     if(pc!==want){ firstTry=false; feedback(`That's ${spell(pc,0)}. ${dirs.pos ? `From ${dirName(dirs.pos-1)}, ${dirsPrompt().toLowerCase()} is somewhere else.` : "Find the starting note."}`,"bad"); return; }
     dirs.pos++;
     if(dirs.pos===dirs.path.length) return correct(`Made it: ${dirs.path.map((p,k)=>dirName(k)).join(" → ")}.`);
+    chime("step");
     $("prompt").textContent=dirsPrompt(); buildSpecial(); feedback(`${dirName(dirs.pos-1)}.`,"good");
     return;
   }
   if(a.type==="collect"){
     if(!a.pcs.includes(pc)){ firstTry=false; feedback(`${spell(pc,0)} isn't in ${q.prompt}.`,"bad"); return; }
-    a.got.add(pc); buildSpecial();
+    const fresh=!a.got.has(pc); a.got.add(pc); buildSpecial();
     if(a.got.size===a.pcs.length) return correct(`All there: ${a.name}.`);
+    if(fresh) chime("step");
     feedback(`${spell(pc,0)}: ${a.pcs.length-a.got.size} to go.`,"good"); return;
   }
   if(a.type==="sequence"){
     if(pc!==a.pcs[a.pos]){ firstTry=false; feedback(`That's ${spell(pc,0)}. Not the next note of the scale.`,"bad"); return; }
     a.pos++; buildSpecial();
     if(a.pos===a.pcs.length) return correct(`That's ${a.name}.`);
-    feedback(""); return;
+    chime("step"); feedback(""); return;
   }
   if(q.answer.type==="melody"){
     const a=q.answer;
@@ -916,7 +1103,16 @@ function answerChoice(v){
   wrong(`Not ${c?c.label:"that"}. Listen again, or try a hint.`);
 }
 mc.addEventListener("chord", e=>answerChord(e.detail));
-mc.addEventListener("harp", e=>answerNote(mod(e.detail.note,12)));
+// A string can fire twice for one pluck. The same note again within 180 ms is the same
+// pluck, and would otherwise answer the next step of a path, a scale or a melody.
+let lastHarp={pc:-1,t:0}, harpQuietUntil=0;
+mc.addEventListener("harp", e=>{
+  const pc=mod(e.detail.note,12), now=performance.now();
+  if(pc===lastHarp.pc && now-lastHarp.t<180) return;
+  lastHarp={pc,t:now};
+  if(now<harpQuietUntil) return;
+  answerNote(pc);
+});
 let pollT=null;
 function poll(on){ clearInterval(pollT); pollT=null; if(on && mc.sysex && mc.out) pollT=setInterval(()=>mc.requestDump(),900); }
 
@@ -932,7 +1128,9 @@ function needs(){
   if(!canWrite()){ box.textContent=`This one needs ${what}, and the game can't change your minichord's settings: see the line under the title.`; return; }
   const missing=q.needs.filter(n=> n.ok ? !n.ok(mc.params[n.addr]) : mc.params[n.addr]!==n.value);
   if(userRestored && missing.length){ box.textContent=`Your settings are back as they were. Press Next and the game sets ${what} again.`; return; }
-  box.textContent = missing.length ? `Setting your minichord to ${what}…` : `For this game your minichord is set to ${what}; it goes back when you leave.${hold}`;
+  // before firmware 16 the harp only changes over to (or out of) chromatic on the next chord press
+  const wake = q.needs.some(n=>n.addr===98) && (mc.params[7]??0)<16 ? " Press any chord once so the harp changes over; your firmware waits for a chord before it retunes the strings." : "";
+  box.textContent = missing.length ? `Setting your minichord to ${what}…` : `For this game your minichord is set to ${what}; it goes back when you leave.${hold}${wake}`;
 }
 
 // ---------- pickers ----------
@@ -983,14 +1181,21 @@ let tones=null;
 function stopTones(){ if(tones){ tones.forEach(o=>{ try{ o.stop(); }catch(e){} }); tones=null; } const b=$("refBtn"); if(b) b.setAttribute("aria-pressed","false"); }
 async function startTones(){
   await piano.start(); const ctx=piano.ctx, t0=ctx.currentTime;
-  const make=(freq,level)=>{ const o=ctx.createOscillator(), g=ctx.createGain(), re=new Float32Array(7), im=new Float32Array(7);
-    for(let k=1;k<7;k++) im[k]=Math.pow(.55,k-1); o.setPeriodicWave(ctx.createPeriodicWave(re,im)); o.frequency.value=freq;
+  const make=(freq,level,type)=>{ const o=ctx.createOscillator(), g=ctx.createGain(); o.type=type; o.frequency.value=freq;
     g.gain.setValueAtTime(0,t0); g.gain.linearRampToValueAtTime(level,t0+.15); o.connect(g).connect(ctx.destination); o.start(); return o; };
-  tones=[make(440,.12)];
-  if(!canWrite()) tones.push(make((tuneState.secret+tuneState.nudge)/10,.12));   // no minichord: simulate it
+  // the reference is a pure A in three octaves, so it beats against whichever A the chord voices sound
+  tones=[make(220,.05,"sine"), make(440,.08,"sine"), make(880,.04,"sine")];
+  if(!canWrite()){ tones.sim=make((tuneState.secret+tuneState.nudge)/10,.1,settings.tuneWave); tones.push(tones.sim); }   // no minichord: simulate it
 }
 function buildSpecial(){
-  const box=$("special"); box.innerHTML=""; box.hidden = !(q && ["tune","melody","smooth","simon","directions","pluckchord","buildscale"].includes(q.kind)); if(box.hidden) return;
+  const box=$("special"); box.innerHTML=""; box.hidden = !(q && ["tune","melody","smooth","simon","directions","pluckchord","buildscale","blaster"].includes(q.kind)); if(box.hidden) return;
+  if(q.kind==="blaster"){
+    const bar=document.createElement("div"); bar.className="fieldbar";
+    const field=document.createElement("div"); field.className="field"; field.setAttribute("aria-label","Falling chords");
+    const ground=document.createElement("div"); ground.className="ground"; field.appendChild(ground);
+    if(blast){ blast.items.filter(i=>!i.done).forEach(i=>field.appendChild(i.el)); blast.field=field; blast.bar=bar; }
+    box.append(bar, field); blastBar(); return;
+  }
   const chip=(text,state)=>{ const b=document.createElement("span"); b.textContent=text;
     b.style.cssText=`font:600 1.5rem var(--hand);min-width:1.4em;padding:0 .15em;text-align:center;border-bottom:3px solid ${state==="now"?"var(--accent)":"transparent"};color:${state==="done"?"var(--v1)":state==="now"?"var(--ink)":"var(--muted)"}`;
     box.appendChild(b); return b; };
@@ -1017,13 +1222,20 @@ function buildSpecial(){
     } else if(smooth.from) t.textContent = `Holding ${smooth.from.name}: ${smooth.from.v.map(p=>spell(mod(Math.round(p),12),devFifths())).join(" ")}, bass to top.`;
     box.appendChild(t); return;
   }
+  const wl=document.createElement("label"); wl.textContent="Tone ";
+  const ws=document.createElement("select"); ws.setAttribute("aria-label","The minichord's tone for tuning");
+  for(const w of Object.keys(WAVES)) ws.add(new Option(w[0].toUpperCase()+w.slice(1), w));
+  ws.value=settings.tuneWave;
+  ws.onchange=async()=>{ settings.tuneWave=ws.value; save(); if(canWrite()) borrow(122, WAVES[ws.value]);
+    if(tones){ stopTones(); await startTones(); $("refBtn").setAttribute("aria-pressed","true"); } };
+  wl.append(ws); box.append(wl);
   const ref=document.createElement("button"); ref.id="refBtn"; ref.textContent= canWrite() ? "Reference A" : "Play both tones"; ref.setAttribute("aria-pressed","false");
   ref.onclick=async()=>{ if(tones){ stopTones(); } else { await startTones(); ref.setAttribute("aria-pressed","true"); } };
   const sl=document.createElement("input"); sl.type="range"; sl.min=-90; sl.max=90; sl.step=1; sl.value=0; sl.setAttribute("aria-label","Tuning");
   let last=0;
   sl.oninput=()=>{ tuneState.nudge=+sl.value; const v=Math.max(4320,Math.min(4460,tuneState.secret+tuneState.nudge));
     if(canWrite()){ const now=performance.now(); if(now-last>60){ last=now; mc.writeParam(109,v); } }
-    else if(tones && tones[1]) tones[1].frequency.setTargetAtTime(v/10, piano.ctx.currentTime, .02); };
+    else if(tones && tones.sim) tones.sim.frequency.setTargetAtTime(v/10, piano.ctx.currentTime, .02); };
   sl.onchange=()=>{ if(canWrite()) mc.writeParam(109,Math.max(4320,Math.min(4460,tuneState.secret+tuneState.nudge))); };
   const lock=document.createElement("button"); lock.className="primary"; lock.textContent="Lock it in";
   lock.onclick=()=>{
@@ -1054,19 +1266,19 @@ $("reveal").onclick=()=>{
   if(a.type==="tune"){ const hz=tuneState.secret/10; feedback(`It was set to A = ${hz.toFixed(1)} Hz, ${Math.abs(1200*Math.log2(hz/440)).toFixed(1)} cents ${hz>440?"sharp":"flat"}.`,"bad","Slide the other way from there, or press Next."); return; }
   feedback(`It's ${a.name}.`, "bad", reveal(a) || (a.type==="choice" ? "Press Next for another." : "Answer it to go on."));
 };
-$("next").onclick=()=>{ if(q && !solved && !sprint){ stats.asked++; stats.streak=0; scoreboard(); } nextQuestion(); };
+$("next").onclick=()=>{ piano.start(); if(q && !solved && !sprint){ stats.asked++; stats.streak=0; scoreboard(); } nextQuestion(); };
 
 // ---------- modes ----------
 function setMode(m){
   const switching = settings.mode!==m;
   settings.mode=m; save();
   document.querySelectorAll(".modes button[data-mode]").forEach(x=>x.setAttribute("aria-pressed",x.dataset.mode===m));
-  $("sprint").disabled = MYSTERY.has(m);
+  $("sprint").disabled = MYSTERY.has(m) || m==="blaster";
   stats.streak=0; scoreboard(); nextQuestion();
   if(switching) restoreExcept(new Set([...(q.needs||[]).map(n=>n.addr), ...(q.borrows||[]), 31]));   // the next game sets the modifier itself   // keep what the new game uses
 }
 document.querySelectorAll(".modes button[data-mode]").forEach(b=>{ b.setAttribute("aria-pressed", b.dataset.mode===settings.mode); b.onclick=()=>setMode(b.dataset.mode); });
-$("sprint").disabled = MYSTERY.has(settings.mode);
+$("sprint").disabled = MYSTERY.has(settings.mode) || settings.mode==="blaster";
 
 // ---------- sprint ----------
 $("sprint").onclick=()=>{
@@ -1090,7 +1302,7 @@ function endSprint(){
 }
 
 // ---------- your minichord ----------
-const ADDR_NAMES={23:"slash replaces",30:"transpose",31:"modifier",36:"harp scale mode",98:"chromatic harp",109:"tuning",110:"MPE",111:"voice leading",113:"slash voice",236:"custom scale",237:"temperament"};
+const ADDR_NAMES={23:"slash replaces",33:"Barry Harris mode",30:"transpose",31:"modifier",36:"harp scale mode",98:"chromatic harp",109:"tuning",110:"MPE",111:"voice leading",113:"slash voice",236:"custom scale",237:"temperament"};
 function mine(){
   const strip=$("mystrip");
   if(mc.params[35]===undefined){ strip.hidden=true; return; }
@@ -1098,7 +1310,7 @@ function mine(){
   const f=devFifths(), name=KEY_BY_FIFTHS[f] || mc.keyName || "?";
   $("myKey").textContent=`${name} major`;
   const parts=[sigText(f), `modifier ${modWord()==="sharp"?"sharpens":"flattens"}`];
-  const b=Object.keys(borrowed).map(a=>ADDR_NAMES[a]||`address ${a}`);
+  const b=[...new Set(Object.keys(borrowed).map(a=> TONE_ADDRS.has(+a) ? "a plain tone" : ADDR_NAMES[a]||`address ${a}`))];
   if(b.length) parts.push(`borrowed for this game: ${b.join(", ")}`);
   $("myInfo").textContent=parts.join(" · ");
   $("restore").hidden=!b.length;
