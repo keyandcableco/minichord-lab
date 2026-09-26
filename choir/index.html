@@ -99,6 +99,8 @@ canvas{display:block;width:100%;height:280px}
 .stage .empty[hidden]{display:none}
 .voice .slashTag{align-self:flex-start;font:italic 700 .9rem var(--body);color:var(--rubric);border:1px dashed var(--rubric);border-radius:var(--radius);padding:.05rem .45rem}
 .voice .slashTag[hidden]{display:none}
+.voice .cantusTag{align-self:flex-start;font:italic 700 .9rem var(--body);color:var(--rubric);border:1px solid var(--rubric);border-radius:var(--radius);padding:.05rem .45rem}
+.voice .cantusTag[hidden]{display:none}
 .ctl[hidden]{display:none}
 .stage .caption{position:absolute;right:12px;top:10px;padding:.2rem .7rem;border-radius:var(--radius);background:var(--panel);border:1px solid var(--rule);font:italic 700 1.3rem var(--body);color:var(--rubric)}
 .stage .caption[hidden]{display:none}
@@ -200,9 +202,12 @@ footer p{margin:0;max-width:80ch}
       <label class="ctl" id="ctlSlashVoice"><span class="lbl">Slash voice</span><select id="slashVoice" disabled>
         <option value="0">Off (slash level)</option><option value="1">Bass</option><option value="2">Tenor</option><option value="3">Alto</option><option value="4">Soprano</option></select></label>
       <div class="ctl" id="ctlRevoice"><span class="lbl">Re-voice</span><button id="revoiceBtn" class="switch" aria-pressed="false" disabled>Off</button></div>
+      <label class="ctl" id="ctlCantus" hidden><span class="lbl">Cantus</span><select id="cantusSel" disabled>
+        <option value="0">Off</option><option value="1">Bass</option><option value="2">Tenor</option><option value="3">Alto</option><option value="4">Soprano</option><option value="5">Nearest</option></select></label>
     </div>
     <p class="fine">Changes here are live and last until the preset changes. Save the preset in Sound Lab to keep them. Voice leading and the 19- and 31-EDO temperaments need the test-allFeatures firmware.</p>
     <p class="fine">Slash voice picks which voice sings a slash chord's note, counted up from the bottom: bass, tenor, alto or soprano. That voice's strip is marked below. Re-voice lets the other upper voices move to keep the chord whole around it. Choosing a slash voice also sets slash level to root, which then only steers the harp and rhythm mode. On the trace, a red slash marks the moment the chosen voice takes the slash note while the chord you hold stays whole, and "back" when it lets go. Older firmware has "Slash replaces" here instead.</p>
+    <p class="fine" id="cantusHelp" hidden>Cantus lets the harp set one voice, the way slash voice lets a slash set one: bass, tenor, alto or soprano, or Nearest, whichever voice can reach the note by the smallest move. The first string of each harp gesture gives that voice its note; the rest of a strum moves nothing. A chord tone re-voices the chord around it, and any other note is a passing tone that voice sings alone. That voice's strip is marked below. With a slash voice on as well, the trace can't tell the harp's moves from the slash's, so both are drawn as slashes.</p>
   </section>
 
   <div class="stage">
@@ -425,7 +430,8 @@ const DEFAULTS = [
   {timbre:"Sampled choir", vol:.8,  pan:.15},
   {timbre:"Sampled choir", vol:.75, pan:.45},
 ];
-const PARTS = ["Bassus","Tenor","Altus","Cantus"];
+// the top part is Superius rather than its other name, Cantus, which here means the voice the harp sets
+const PARTS = ["Bassus","Tenor","Altus","Superius"];
 const PITCH_NAMES = ["Lowest note","Second from bottom","Third from bottom","Highest note"];
 const NAMES = ["C","C♯","D","E♭","E","F","F♯","G","A♭","A","B♭","B"];
 
@@ -434,7 +440,7 @@ let reverb=null, wet=null, reverbOn=false;
 let glottalWave=null;
 let ctx=null, master=null, noiseBuf=null, organWave=null, midi=null;
 const TEMPERAMENTS=["Equal","Meantone","Just","Pythagorean","Werckmeister III","Kirnberger III","Vallotti","Young","Kellner","1/6 Meantone","19-EDO","31-EDO"];
-const dev={7:null,23:null,110:null,111:null,112:null,113:null,114:null,199:null,237:null};
+const dev={7:null,23:null,110:null,111:null,112:null,113:null,114:null,115:null,199:null,237:null};
 let zoneSeen=false, out=null, sysexOK=false, deviceMpe=null, singlePort=null, zoneWatch=null;
 // the minichord's chord port (Port 1) carries the chord and the sysex; Port 2 is the harp
 const isChordPort = n => /minichord/i.test(n) && (n.includes("1") || n.trim().toLowerCase()==="minichord");
@@ -785,6 +791,22 @@ function slashSlot(){
 function renderSlash(){
   const k=slashSlot();
   slots.forEach((s,i)=>{ const t=s.el?.querySelector(".slashTag"); if(t) t.hidden = i!==k; });
+  renderCantus();
+}
+// Firmware 14's cantus (address 115): the harp sets the voice of that rank, counted up from
+// the bottom like slash voice. Nearest (5) moves whichever voice is closest, so no strip is marked.
+function cantusSlot(){
+  const c=(dev[7]??0)>=14 ? dev[115] : null;
+  if(!(c>=1 && c<=4)) return -1;
+  const r=c-1, on=soundingByPitch();
+  if(on.length>r) return on[r].i;
+  if(mode!=="channel") return -1;
+  const ch = zone.type==="lower" ? 1+r : 14-r;
+  return slots.findIndex(s=>resolvedChan(s)===ch);
+}
+function renderCantus(){
+  const k=cantusSlot();
+  slots.forEach((s,i)=>{ const t=s.el?.querySelector(".cantusTag"); if(t) t.hidden = i!==k; });
 }
 const slashMarks=[];              // {t, slot, pitch, label}
 let slashState=null;              // what the chord was before the slash
@@ -910,7 +932,7 @@ function handleDump(d){
   const p=i=>d[1+2*i]+128*d[2+2*i];
   singlePort = p(108)===1;
   const mpe = p(110)===1 ? 1 : 0;
-  dev[111]=Math.min(2,p(111)); dev[112]=Math.min(24,p(112)); dev[199]=Math.min(1500,p(199)); dev[237]=Math.min(11,p(237)); dev[23]=Math.min(2,p(23)); dev[7]=p(7); dev[113]=Math.min(4,p(113)); dev[114]=p(114)?1:0;
+  dev[111]=Math.min(2,p(111)); dev[112]=Math.min(24,p(112)); dev[199]=Math.min(1500,p(199)); dev[237]=Math.min(11,p(237)); dev[23]=Math.min(2,p(23)); dev[7]=p(7); dev[113]=Math.min(4,p(113)); dev[114]=p(114)?1:0; dev[115]=Math.min(5,p(115));
   if(!mpe && zone.known){ zone.known=false; zone.type="lower"; updateZoneInfo(); renderRoutes(); }
   if(mpe && !zone.known){ zone.type="lower"; zone.members = singlePort ? 15 : 4; zone.known=true; updateZoneInfo(); renderRoutes(); }
   setDeviceMpe(mpe);
@@ -938,6 +960,10 @@ function renderDevice(){
   set("slashVoice",newFw?dev[113]:null,null);
   const rv=document.getElementById("revoiceBtn"); rv.disabled=!sysexOK||!newFw||dev[113]===null||dev[113]<2;   // re-voice applies to tenor, alto and soprano
   rv.setAttribute("aria-pressed", dev[114]===1); rv.textContent = dev[114]===1 ? "On" : "Off";
+  const cantusFw=(dev[7]??0)>=14;                            // cantus arrived in firmware 14
+  document.getElementById("ctlCantus").hidden=!cantusFw;
+  document.getElementById("cantusHelp").hidden=!cantusFw;
+  set("cantusSel",cantusFw?dev[115]:null,null);
   renderSlash();
   if(!sysexOK) note.textContent="Reload and allow system-exclusive MIDI access to switch this from here.";
   else if(deviceMpe===1) note.textContent = singlePort ? "Chord on channels 2 to 5, harp strings on 6 to 16 of the same port." : "Chord voices on channels 2 to 5 of Port 1.";
@@ -970,6 +996,7 @@ slots.forEach((s,i)=>{
   el.innerHTML=`
     <div class="part" aria-hidden="true">${PARTS[i]}</div>
     <div class="slashTag" hidden>The slash note sings here</div>
+    <div class="cantusTag" hidden>The harp sets this voice</div>
     <select class="timbre" aria-label="Instrument for voice ${i+1}">${Object.keys(TIMBRES).map(n=>`<option>${n}</option>`).join("")}</select>
     <div class="note" aria-live="off"><span>–</span><small></small></div>
     <div class="route"></div>
@@ -1030,6 +1057,7 @@ document.getElementById("slashVoice").onchange=e=>{
   slashState=null; renderDevice(); resync();
 };
 document.getElementById("revoiceBtn").onclick=()=>{ writeParam(114, dev[114]===1?0:1); renderDevice(); resync(); };
+document.getElementById("cantusSel").onchange=e=>{ writeParam(115,+e.target.value); renderDevice(); resync(); };
 [["vlr",112,"vlrOut"," st"],["gl",199,"glOut"," ms"]].forEach(([id,addr,o,u])=>{
   const el=document.getElementById(id); let last=0;
   el.oninput=()=>{ document.getElementById(o).textContent=el.value+u;
