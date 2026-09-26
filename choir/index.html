@@ -190,7 +190,8 @@ footer p{margin:0;max-width:80ch}
     <p class="status" id="deviceNote"></p>
     <div class="dgrid">
       <div class="ctl"><span class="lbl">MPE output</span><button id="mpeBtn" class="switch" aria-pressed="false" disabled>Off</button></div>
-      <div class="ctl"><span class="lbl">Voice leading</span><button id="vlBtn" class="switch" aria-pressed="false" disabled>Off</button></div>
+      <label class="ctl"><span class="lbl">Voice leading</span><select id="vlSel" disabled>
+        <option value="0">Off</option><option value="1">On</option><option value="2">Strict: no parallel fifths or octaves</option></select></label>
       <label class="ctl"><span class="lbl">Leading range <output id="vlrOut"></output></span><input type="range" id="vlr" min="0" max="24" step="1" disabled></label>
       <label class="ctl"><span class="lbl">Glide <output id="glOut"></output></span><input type="range" id="gl" min="0" max="1500" step="10" disabled></label>
       <label class="ctl"><span class="lbl">Temperament</span><select id="temp" disabled></select></label>
@@ -244,11 +245,11 @@ footer p{margin:0;max-width:80ch}
       <div class="row">
         <button id="hold">Hold C major</button>
         <button id="glide">Play glide demo</button>
-        <button id="vlDemo">Voice leading: off, then on</button>
+        <button id="vlDemo">Voice leading: off, on, then strict</button>
         <button id="slashDemo">Slash voices: held still, then re-voiced</button>
         <button id="panic">Stop all sound</button>
       </div>
-      <p class="fine" id="vlResult">The voice leading demo plays the same eight chords twice, voiced exactly as the minichord voices them: first built up from each root, then voice-led.</p>
+      <p class="fine" id="vlResult">The voice leading demo plays the same eight chords three times, voiced exactly as the minichord voices them: built up from each root, then voice-led, then voice-led strictly, which steers clear of parallel fifths and octaves.</p>
       <p class="fine">The slash voice demo holds a C chord and gives the slash note to each voice in turn, bass, tenor, alto and soprano, then lets it go back, voiced as the minichord's slash voice setting voices it. The first time the other voices hold still, so only one voice moves at a time; the second time slash re-voice is on, and the voices around the slash note move to keep the chord whole. The soprano sounds the same both times: it gives up the doubled root on top, so the chord below is already whole.</p>
     </section>
   </div>
@@ -909,7 +910,7 @@ function handleDump(d){
   const p=i=>d[1+2*i]+128*d[2+2*i];
   singlePort = p(108)===1;
   const mpe = p(110)===1 ? 1 : 0;
-  dev[111]=p(111)?1:0; dev[112]=Math.min(24,p(112)); dev[199]=Math.min(1500,p(199)); dev[237]=Math.min(11,p(237)); dev[23]=Math.min(2,p(23)); dev[7]=p(7); dev[113]=Math.min(4,p(113)); dev[114]=p(114)?1:0;
+  dev[111]=Math.min(2,p(111)); dev[112]=Math.min(24,p(112)); dev[199]=Math.min(1500,p(199)); dev[237]=Math.min(11,p(237)); dev[23]=Math.min(2,p(23)); dev[7]=p(7); dev[113]=Math.min(4,p(113)); dev[114]=p(114)?1:0;
   if(!mpe && zone.known){ zone.known=false; zone.type="lower"; updateZoneInfo(); renderRoutes(); }
   if(mpe && !zone.known){ zone.type="lower"; zone.members = singlePort ? 15 : 4; zone.known=true; updateZoneInfo(); renderRoutes(); }
   setDeviceMpe(mpe);
@@ -922,11 +923,10 @@ function renderDevice(){
   btn.disabled = !sysexOK;
   btn.setAttribute("aria-pressed", deviceMpe===1);
   btn.textContent = deviceMpe===1 ? "On" : "Off";
-  const vl=document.getElementById("vlBtn"); vl.disabled=!sysexOK||dev[111]===null;
-  vl.setAttribute("aria-pressed", dev[111]===1); vl.textContent = dev[111]===1 ? "On" : "Off";
   const set=(id,v,o,fmt)=>{ const el=document.getElementById(id); el.disabled=!sysexOK||v===null;
     if(v!==null && document.activeElement!==el) el.value=v;
     if(o) document.getElementById(o).textContent = v===null ? "" : fmt(+el.value); };
+  set("vlSel",dev[111],null);
   set("vlr",dev[112],"vlrOut",v=>v+" st");
   set("gl",dev[199],"glOut",v=>v+" ms");
   set("temp",dev[237],null);
@@ -1019,7 +1019,7 @@ document.getElementById("start").onclick=async e=>{
 };
 document.getElementById("panic").onclick=panic;
 document.getElementById("mpeBtn").onclick=()=>setMpe(deviceMpe===1 ? 0 : 1);
-document.getElementById("vlBtn").onclick=()=>{ writeParam(111, dev[111]===1?0:1); renderDevice(); resync(); };
+document.getElementById("vlSel").onchange=e=>{ writeParam(111,+e.target.value); renderDevice(); resync(); };
 const tSel=document.getElementById("temp");
 TEMPERAMENTS.forEach((n,i)=>tSel.add(new Option(n,i)));
 tSel.onchange=()=>{ writeParam(237,+tSel.value); resync(); };
@@ -1146,6 +1146,36 @@ function firmwareVoicing(root, tones, prev, on, range=12){
   out[0]=pool[idx];
   return out;
 }
+// Strict voice leading (voice leading 2, firmware 13): the firmware's strict_search(). Parallel fifths
+// and octaves between any two voices cost as much as four semitones of movement, and the outer voices
+// leaping into a fifth or octave as much as two, so they are avoided when something close by avoids
+// them. Every choice within an octave of each voice is tried.
+function parallelCost(prev,next){
+  const ic=x=>((x%12)+12)%12; let cost=0;
+  for(let i=0;i<4;i++) for(let j=i+1;j<4;j++){
+    const mi=next[i]-prev[i], mj=next[j]-prev[j];
+    if(!mi || !mj || (mi>0)!==(mj>0)) continue;
+    const before=ic(prev[j]-prev[i]), after=ic(next[j]-next[i]), perfect=after===7||after===0;
+    if(perfect && before===after) cost+=4;
+    else if(perfect && i===0 && j===3 && Math.abs(mj)>2) cost+=2;
+  }
+  return cost;
+}
+function strictVoicing(root, tones, prev, range){
+  const n=tones.length, anchor=[0,1,2,3].map(v=>root+tones[v%n]+12*Math.floor(v/n));
+  if(!prev) return anchor;
+  const lo=Math.max(0,Math.min(...anchor)-range), hi=Math.max(...anchor)+range, pool=[];
+  for(let x=lo;x<=hi;x++) if(tones.includes(((x-root)%12+12)%12)) pool.push(x);
+  const from=[...prev].sort((a,b)=>a-b), cand=from.map(f=>pool.filter(x=>Math.abs(x-f)<=12));
+  let best=null, bestCost=Infinity;
+  for(const a of cand[0]) for(const b of cand[1]) if(b>a) for(const c of cand[2]) if(c>b) for(const d of cand[3]) if(d>c){
+    const v=[a,b,c,d];
+    if(new Set(v.map(x=>((x-root)%12+12)%12)).size<n) continue;
+    const cost=v.reduce((s,x,i)=>s+Math.abs(x-from[i]),0)+parallelCost(from,v);
+    if(cost<bestCost){ bestCost=cost; best=v; }
+  }
+  return best || firmwareVoicing(root,tones,prev,true,range);
+}
 const VL_TONES={M:[0,4,7], m:[0,3,7], "7":[0,4,7,10]};
 const VL_PROG=[["C",0,"M"],["Am",9,"m"],["Dm",2,"m"],["G7",7,"7"],["C",0,"M"],["F",5,"M"],["G",7,"M"],["C",0,"M"]];
 function caption(text){ const c=document.getElementById("caption"); c.hidden=!text; c.textContent=text||""; }
@@ -1153,13 +1183,14 @@ document.getElementById("vlDemo").onclick=async()=>{
   initAudio(); panic(); const run=++glideRun;
   const chs=[0,1,2,3].map(i=>testChan(i));
   const range = dev[112]!=null ? dev[112] : 12;
-  const avg={};
-  for(const on of [false,true]){
-    caption(on ? "Voice leading on" : "Voice leading off");
-    let prev=null, total=0, changes=0;
+  const avg={}, pars={};
+  for(const mode of [0,1,2]){
+    caption(["Voice leading off","Voice leading on","Voice leading strict"][mode]);
+    let prev=null, total=0, changes=0, parallels=0;
     for(const [,root,q] of VL_PROG){
       if(run!==glideRun) return caption(null);
-      const v=firmwareVoicing(root, VL_TONES[q], prev, on, range), notes=v.map(x=>48+x);
+      const v = mode===2 ? strictVoicing(root, VL_TONES[q], prev, range) : firmwareVoicing(root, VL_TONES[q], prev, mode===1, range), notes=v.map(x=>48+x);
+      if(prev && parallelCost(prev, v)>0) parallels++;
       if(!prev){ chs.forEach(ch=>bendTo(ch,0)); notes.forEach((n,i)=>handleMidi([0x90|chs[i],n,100])); }
       else {
         // as the minichord sends a glide over MPE: the new note arrives bent to where the voice was, then slides home
@@ -1173,12 +1204,13 @@ document.getElementById("vlDemo").onclick=async()=>{
       prev=v; await sleep(1500);
     }
     prev.forEach((x,i)=>handleMidi([0x80|chs[i],48+x,0]));
-    avg[on]=total/changes;
+    avg[mode]=total/changes; pars[mode]=parallels;
     await sleep(900);
   }
   caption(null);
-  document.getElementById("vlResult").textContent = `Voice leading off: the voices moved ${avg[false].toFixed(1)} semitones per chord change. On: ${avg[true].toFixed(1)}. `+
-    `The same eight chords with ${Math.round(avg[false]/avg[true])} times less motion, using a range of ${range}.`;
+  const pc=n=>n===1 ? "1 change" : `${n} changes`;
+  document.getElementById("vlResult").textContent = `Voice leading off: the voices moved ${avg[0].toFixed(1)} semitones per chord change, with parallel fifths, octaves or leaps into them in ${pc(pars[0])}. `+
+    `On: ${avg[1].toFixed(1)} semitones, parallels in ${pc(pars[1])}. Strict: ${avg[2].toFixed(1)} semitones, parallels in ${pc(pars[2])}. Range ${range}.`;
 };
 // ---------- slash voice demo: the firmware's apply_slash_voice(), ported ----------
 // A slash gives one voice, counted from the bottom (0 bass .. 3 soprano), the slash note. The bass
