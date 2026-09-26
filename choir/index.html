@@ -14,6 +14,7 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎼</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="../core/music.css">
 <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Instrument+Sans:wght@400;500;600;700&family=UnifrakturMaguntia&display=swap" rel="stylesheet">
 <style>
 /* two looks share one set of token names: Scriptorium (default) and Workbench */
@@ -137,6 +138,17 @@ canvas{display:block;width:100%;height:280px}
 .switch{min-width:4.5rem}
 .switch[aria-pressed="true"]{background:var(--v1);color:var(--panel);border-color:var(--v1)}
 .fine{font-size:.88rem;color:var(--muted);margin:.8rem 0 0}
+.scorePanel{margin-top:14px}
+#score{display:block;width:100%;height:auto;max-width:760px}
+#score .line,#score .ledger,#score .stem,#score .brace{stroke:var(--ink);stroke-width:1}
+#score .ledger{stroke-width:1.4}
+#score .stem{stroke-width:1.2}
+#score .glyph{font-family:"Minichord Lab Music";fill:var(--ink)}
+#score .flag{fill:var(--rubric)}
+#score line.flag{stroke:var(--rubric);stroke-width:1.2}
+#score .label{font:italic 700 12px var(--body);fill:var(--rubric)}
+#score .empty{font:italic 14px var(--body);fill:var(--muted)}
+#parallels.found{color:var(--rubric);font-weight:600}
 
 .bench{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:14px}
 @media (max-width:820px){.bench{grid-template-columns:1fr}}
@@ -219,6 +231,12 @@ footer p{margin:0;max-width:80ch}
 
   <div class="voices" id="voices"></div>
 
+  <section class="panel scorePanel">
+    <h2>Closed score</h2>
+    <svg id="score" role="img" aria-label="The last eight chords in closed score"></svg>
+    <p class="fine">The last eight chords as a choir would read them: soprano and alto on the treble staff, tenor and bass on the bass staff, the upper voice of each staff with its stem up and the lower with its stem down. Parallel fifths and octaves are marked P5 and P8, and a direct fifth or octave, the outer voices moving the same way into one with the soprano leaping, H5 and H8. Notes are spelled with fixed sharps and flats, and in 19- and 31-note temperaments at the nearest semitone.</p>
+  </section>
+
   <div class="bench">
     <section class="panel">
       <h2>How voices are assigned</h2>
@@ -235,6 +253,7 @@ footer p{margin:0;max-width:80ch}
       <p id="motionText">Play two chords in a row to see how far each voice travels between them.</p>
       <div class="bars" id="bars" aria-hidden="true"></div>
       <p id="motionAvg"></p>
+      <p id="parallels"></p>
     </section>
     <section class="panel">
       <h2>Record</h2>
@@ -749,6 +768,7 @@ function trackMotion(idx,note){
 function commitMotion(){
   motion.timer=null;
   const m=motion.pending; motion.pending=new Map();
+  recordScore();
   if(m.size<3) return;   // a single note or pair isn't a chord change
   let total=0, counted=0;
   slots.forEach((s,i)=>{
@@ -766,6 +786,98 @@ function commitMotion(){
   document.getElementById("motionAvg").textContent=`Average over the last ${motion.hist.length}: ${avg.toFixed(1)} st. Turn voice leading on and off to compare.`;
   const max=Math.max(12,...motion.hist);
   document.getElementById("bars").innerHTML=motion.hist.map(v=>`<span style="height:${Math.max(4,v/max*100)}%" title="${v} st"></span>`).join("");
+}
+// ---------- closed score ----------
+// Each chord as it lands, voice by voice (a slot is a voice: its MPE channel), with the
+// parallels and direct fifths and octaves from the chord before, by the rule the
+// firmware's strict voice leading avoids: two voices moving the same way from one fifth
+// or octave to another, or the outer voices moving the same way into one with the top
+// voice leaping more than a whole step.
+const scoreCols=[];                 // {notes: Map(slot -> midi), flags: [{a, b, kind}]}
+const SCORE_COLS=8;
+const RANK_NAMES={4:["bass","tenor","alto","soprano"], 3:["bass","middle voice","top voice"]};
+function findParallels(prev, next){
+  const both=[...next.keys()].filter(i=>prev.has(i)).sort((a,b)=>next.get(a)-next.get(b));
+  const flags=[];
+  for(let x=0;x<both.length;x++) for(let y=x+1;y<both.length;y++){
+    const a=both[x], b=both[y];                                     // a sounds below b now
+    const ma=next.get(a)-prev.get(a), mb=next.get(b)-prev.get(b);
+    if(!ma || !mb || (ma>0)!==(mb>0)) continue;
+    const before=(((prev.get(b)-prev.get(a))%12)+12)%12, after=(((next.get(b)-next.get(a))%12)+12)%12;
+    if(after!==0 && after!==7) continue;
+    if(before===after) flags.push({a,b,kind:after===7?"P5":"P8"});
+    else if(x===0 && y===both.length-1 && Math.abs(mb)>2) flags.push({a,b,kind:after===7?"H5":"H8"});
+  }
+  return flags;
+}
+function recordScore(){
+  const notes=new Map();
+  slots.forEach((s,i)=>{ if(s.key && s.note!=null) notes.set(i,s.note); });
+  if(notes.size<3) return;
+  const last=scoreCols[scoreCols.length-1];
+  if(last && last.notes.size===notes.size && [...notes].every(([i,n])=>last.notes.get(i)===n)) return;
+  const flags = last ? findParallels(last.notes, notes) : [];
+  scoreCols.push({notes, flags});
+  if(scoreCols.length>SCORE_COLS) scoreCols.shift();
+  renderScore(); reportParallels(notes, flags, !!last);
+}
+function reportParallels(notes, flags, hadPrev){
+  const el=document.getElementById("parallels");
+  if(!hadPrev){ el.textContent=""; el.className=""; return; }
+  const order=[...notes.keys()].sort((a,b)=>notes.get(a)-notes.get(b));
+  const names=RANK_NAMES[order.length]||order.map((_,k)=>"voice "+(k+1));
+  const nm=i=>names[order.indexOf(i)];
+  const what={P5:"Parallel fifths",P8:"Parallel octaves",H5:"A direct fifth",H8:"A direct octave"};
+  if(!flags.length){ el.className=""; el.textContent="No parallel fifths or octaves at the last change."; return; }
+  el.className="found";
+  el.textContent=flags.map(f=>f.kind[0]==="P" ? `${what[f.kind]} between the ${nm(f.a)} and the ${nm(f.b)}.`
+    : `${what[f.kind]} in the outer voices, the ${nm(f.b)} leaping into it.`).join(" ")
+    + ((dev[111]??0)<2 ? " Strict voice leading steers around these." : "");
+}
+// Spelling with the choir's fixed sharps and flats: letter index (C=0) and alteration.
+const SPELL=[[0,0],[0,1],[1,0],[2,-1],[2,0],[3,0],[3,1],[4,0],[5,-1],[5,0],[6,-1],[6,0]];
+const SCORE_GLYPH={treble:"\uE050", bass:"\uE062", head:"\uE0A4", "-1":"\uE260", "0":"\uE261", "1":"\uE262"};
+function renderScore(){
+  const svg=document.getElementById("score"), NS="http://www.w3.org/2000/svg";
+  const SP=9, HW=1.18*SP, COL=5.6*SP, X0=5.2*SP, W=X0+SCORE_COLS*COL+SP;
+  const T=4.5*SP, B=T+10*SP, H=B+4*SP+4.5*SP;
+  svg.setAttribute("viewBox",`0 0 ${W} ${H}`); svg.innerHTML="";
+  const el=(t,a,txt)=>{ const e=document.createElementNS(NS,t); for(const k in a) e.setAttribute(k,a[k]); if(txt!=null) e.textContent=txt; svg.appendChild(e); return e; };
+  // diatonic steps: C4 is 28; F5 tops the treble staff, A3 the bass staff
+  const staff={treble:{top:38, y:dn=>T+(38-dn)*SP/2, low:30, high:38}, bass:{top:26, y:dn=>B+(26-dn)*SP/2, low:18, high:26}};
+  for(const k of ["treble","bass"]) for(let l=0;l<5;l++){ const yy=(k==="treble"?T:B)+l*SP; el("line",{class:"line",x1:SP,x2:W-SP,y1:yy,y2:yy}); }
+  el("line",{class:"brace",x1:SP,x2:SP,y1:T,y2:B+4*SP});
+  el("text",{class:"glyph","font-size":4*SP,x:1.6*SP,y:staff.treble.y(32)},SCORE_GLYPH.treble);   // on G4
+  el("text",{class:"glyph","font-size":4*SP,x:1.6*SP,y:staff.bass.y(24)},SCORE_GLYPH.bass);       // on F3
+  if(!scoreCols.length){ el("text",{class:"empty",x:X0+SP,y:B-2.6*SP},"Play some chords and they are written here."); return; }
+  const alters={treble:new Map(), bass:new Map()};          // accidentals carry through, as in one bar
+  scoreCols.forEach((col,c)=>{
+    const x=X0+c*COL+1.6*SP;
+    const flagged=new Set(); col.flags.forEach(f=>{ flagged.add(f.a); flagged.add(f.b); });
+    const order=[...col.notes.keys()].sort((a,b)=>col.notes.get(a)-col.notes.get(b));
+    const nBass=Math.floor(order.length/2);
+    for(const [k,group] of [["bass",order.slice(0,nBass)],["treble",order.slice(nBass)]]){
+      const st=staff[k];
+      const ns=group.map(i=>{ const m=col.notes.get(i), [li,alt]=SPELL[((m%12)+12)%12]; return {i, dn:(Math.floor(m/12)-1)*7+li, alt}; });
+      // the upper voice of the staff stems up, the lower down; a second puts the lower note to the right
+      ns.forEach((n,j)=>{ n.up = j===ns.length-1; n.x=x; });
+      if(ns.length===2 && ns[1].dn-ns[0].dn===1) ns[0].x=x+HW;
+      let accX=x-.3*SP;
+      for(const n of [...ns].reverse()){
+        const yy=st.y(n.dn), cls = flagged.has(n.i) ? "glyph flag" : "glyph";
+        for(let L=st.low-2; L>=n.dn; L-=2) el("line",{class:"ledger",x1:n.x-.35*SP,x2:n.x+HW+.35*SP,y1:st.y(L),y2:st.y(L)});
+        for(let L=st.high+2; L<=n.dn; L+=2) el("line",{class:"ledger",x1:n.x-.35*SP,x2:n.x+HW+.35*SP,y1:st.y(L),y2:st.y(L)});
+        const prevAlt=alters[k].has(n.dn) ? alters[k].get(n.dn) : 0;
+        if(n.alt!==prevAlt){ accX-=1.05*SP; el("text",{class:cls,"font-size":4*SP,x:accX,y:yy},SCORE_GLYPH[String(n.alt)]); }
+        alters[k].set(n.dn,n.alt);
+        el("text",{class:cls,"font-size":4*SP,x:n.x,y:yy},SCORE_GLYPH.head);
+        const sx = n.up ? n.x+HW-.06*SP : n.x+.06*SP, sy = n.up ? yy-3.5*SP : yy+3.5*SP;
+        el("line",{class: flagged.has(n.i) ? "stem flag" : "stem",x1:sx,x2:sx,y1:yy+(n.up?-.2*SP:.2*SP),y2:sy});
+      }
+    }
+    const kinds=[...new Set(col.flags.map(f=>f.kind))];
+    if(kinds.length) el("text",{class:"label",x:x-.4*SP,y:T-2.6*SP},kinds.join(" "));
+  });
 }
 // ---------- slash chords ----------
 // Firmware 13's "slash voice" (address 113) puts the slash note on the voice of that rank,
@@ -1435,7 +1547,7 @@ function frame(){
     }
   });
 }
-renderRoutes(); updateZoneInfo(); requestAnimationFrame(frame);
+renderRoutes(); updateZoneInfo(); renderScore(); requestAnimationFrame(frame);
 </script>
 <!-- say-thanks -->
 <p style="text-align:center;margin:28px 0 18px;font-size:14px;opacity:0.8">Minichord Lab by <a href="https://keyandcable.com/projects.html" target="_blank" rel="noopener" style="color:inherit">The Key &amp; Cable Company</a> &middot; <a href="https://keyandcable.com/thanks.html" target="_blank" rel="noopener" style="color:inherit;font-weight:bold">Say thanks</a></p>

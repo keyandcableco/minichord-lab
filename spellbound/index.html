@@ -101,6 +101,7 @@
   <div class="modes" role="group" aria-label="Voice leading">
     <span class="grp">Voice leading</span>
     <button data-mode="smooth">Smooth moves</button>
+    <button data-mode="whichvoice">Which voice moved?</button>
   </div>
   <div class="modes" role="group" aria-label="Mystery settings">
     <span class="grp">Mystery settings</span>
@@ -608,6 +609,39 @@ function genSmooth(){
   }
   smooth.from=null; return genSmooth();     // nothing reachable from here: start afresh
 }
+// Which voice moved: two chords, voiced the way the minichord's voice leading voices them,
+// where only one of the four voices moves. Listening only, so it needs no minichord.
+const SATB=["Bass","Tenor","Alto","Soprano"];
+const STEP_WORDS=["","a semitone","a whole tone","a minor third","a major third","a fourth","a tritone","a fifth"];
+const ROOT_NAMES=["C","D♭","D","E♭","E","F","F♯","G","A♭","A","B♭","B"];
+// a note spelled as the tone it is in the chord: G♯ in A maj7, not A♭
+function toneIn(r,q,pc){
+  const f=FORM[q].find(([,se])=>se===mod(pc-r,12));
+  return (f && above(ROOT_NAMES[r],f[0],f[1])) || ROOT_NAMES[mod(pc,12)];
+}
+function genWhichVoice(){
+  const base=48, quals=["","m","7","maj7","m7"];
+  const want=Math.floor(Math.random()*4);      // the voice to move, so each comes up as often
+  for(let tries=0; tries<60; tries++){
+    const r=Math.floor(Math.random()*12), q=rnd(quals);
+    const f=firmwareVoicing(r,VL_TONES[q],null,12);
+    const moves=[];
+    for(let r2=0;r2<12;r2++) for(const q2 of quals){
+      const v=firmwareVoicing(r2,VL_TONES[q2],f,12);
+      if(CHALLENGES.one.test(f,v) && v[want]!==f[want]) moves.push({r2,q2,v});
+    }
+    if(!moves.length) continue;
+    const m=rnd(moves), k=want, d=m.v[k]-f[k];
+    const from=toneIn(r,q,f[k]), to=toneIn(m.r2,m.q2,m.v[k]);
+    const size=Math.abs(d)<STEP_WORDS.length ? STEP_WORDS[Math.abs(d)] : `${Math.abs(d)} semitones`;
+    return {kind:"whichvoice", prompt:"Which voice moved?", sub:"Hear it plays two chords, voiced the way the minichord's voice leading voices them. Only one of the four voices moves. Which one?",
+      answer:{type:"choice", value:k, name:`the ${SATB[k].toLowerCase()}, ${from} to ${to}, as ${ROOT_NAMES[r]+q} goes to ${ROOT_NAMES[m.r2]+m.q2}`},
+      hint:`It moves ${d>0?"up":"down"} ${size}.`, context:0,
+      choices:SATB.map((l,i)=>({value:i,label:l})),
+      hearFn:()=>[...f.map(p=>[base+p,0]), ...m.v.map(p=>[base+p,1.5])]};
+  }
+  return genSmooth();
+}
 const INTERVALS=["","a semitone up","a whole tone up","a minor third up","a major third up","a fourth up","a tritone up","a fifth up","a minor sixth up","a major sixth up","a minor seventh up","a major seventh up"];
 function genTranspose(){
   const t=1+Math.floor(Math.random()*11);
@@ -640,11 +674,11 @@ function genTune(){
     answer:{type:"tune"}, hint:"Slow beats mean you're close. If they speed up as you slide, go the other way.", context:0};
 }
 const GENS={spell:genSpell, numeral:genNumeral, staff:genStaff, slash:genSlash, key:genKey, harp:genHarp, missing:genMissing,
-  melody:genMelody, chordscale:genChordScale, smooth:genSmooth, simon:genSimon, directions:genDirections, pluckchord:genPluckChord, buildscale:genBuildScale,
+  melody:genMelody, chordscale:genChordScale, smooth:genSmooth, whichvoice:genWhichVoice, simon:genSimon, directions:genDirections, pluckchord:genPluckChord, buildscale:genBuildScale,
   scale:genScale, transpose:genTranspose, temper:genTemper, tune:genTune};
 const MYSTERY=new Set(["scale","transpose","temper","tune"]);
 const LABELS={spell:"Spell it", numeral:"Numerals", staff:"On the staff", slash:"Slash chords", key:"Key detective", harp:"Harp hunt", missing:"Missing note", mix:"Mix",
-  melody:"Play by number", chordscale:"Chord scales", smooth:"Smooth moves", simon:"Simon says", directions:"Follow the directions", pluckchord:"Pluck the chord", buildscale:"Build the scale",
+  melody:"Play by number", chordscale:"Chord scales", smooth:"Smooth moves", whichvoice:"Which voice moved?", simon:"Simon says", directions:"Follow the directions", pluckchord:"Pluck the chord", buildscale:"Build the scale",
   scale:"Scale detective", transpose:"Transpose detective", temper:"Temperament taster", tune:"Tune up"};
 
 // ---------- borrowing settings, and always giving them back ----------
