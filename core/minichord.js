@@ -87,18 +87,31 @@ export class Minichord extends EventTarget {
     const fresh = out && (!this.out || this.out.id!==out.id);
     this.out=out;
     if(!ins.length) this._status("No MIDI inputs found. Plug in the minichord and it will show up here.");
-    else if(chord) this._status(`Listening to ${chord.name}, the chord port.`);
+    else if(chord) this._status(`Listening to ${chord.name}, the chord port.` + (this.sysex ? "" :
+      " System-exclusive access wasn't allowed, so the lab can't read or change the minichord's settings: allow \"MIDI device control & reprogram\" in the browser's site settings, then reload."));
     else this._status("Listening to every MIDI input. No minichord found yet.");
     if(fresh) this.requestDump();
     this.dispatchEvent(new Event("ports"));
   }
-  requestDump(){ if(this.out && this.sysex) this.out.send([0xF0,0,0,0,0,0xF7]); }
+  /** ask for every setting; asks again if no reply comes, and says so if none ever does */
+  requestDump(){
+    if(!this.out || !this.sysex) return;
+    this.out.send([0xF0,0,0,0,0,0xF7]);
+    clearTimeout(this._dumpT);
+    this._dumpT=setTimeout(()=>{
+      if(this.params[35]!==undefined) return;
+      this._dumpTries=(this._dumpTries||0)+1;
+      if(this._dumpTries<3) this.requestDump();
+      else this._status(`${this.statusText||""} The minichord didn't answer a request for its settings, so they can't be read or changed. Unplug it, plug it back in, and reload.`);
+    },1500);
+  }
   writeParam(a,v){
     if(!this.out || !this.sysex) return false;
     this.out.send([0xF0,a&127,a>>7,v&127,(v>>7)&127,0xF7]); this.params[a]=v;
     this.dispatchEvent(new Event("device")); return true;
   }
   _dump(d){
+    this._dumpTries=0; clearTimeout(this._dumpT);
     if(d.length!==514) return;   // 256 parameters as two 7-bit bytes, plus F0 and F7
     for(let i=0;i<256;i++) this.params[i]=d[1+2*i]+128*d[2+2*i];
     if(this.params[110]===1 && !this.zone.known){ this.zone={type:"lower", members:this.params[108]===1?15:4, known:true}; }

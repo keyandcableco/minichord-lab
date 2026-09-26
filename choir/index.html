@@ -99,6 +99,7 @@ canvas{display:block;width:100%;height:280px}
 .stage .empty[hidden]{display:none}
 .voice .slashTag{align-self:flex-start;font:italic 700 .9rem var(--body);color:var(--rubric);border:1px dashed var(--rubric);border-radius:var(--radius);padding:.05rem .45rem}
 .voice .slashTag[hidden]{display:none}
+.ctl[hidden]{display:none}
 .stage .caption{position:absolute;right:12px;top:10px;padding:.2rem .7rem;border-radius:var(--radius);background:var(--panel);border:1px solid var(--rule);font:italic 700 1.3rem var(--body);color:var(--rubric)}
 .stage .caption[hidden]{display:none}
 .stage .hint{position:absolute;left:14px;bottom:8px;font-size:.85rem;color:var(--muted);pointer-events:none;font-style:italic}
@@ -193,12 +194,14 @@ footer p{margin:0;max-width:80ch}
       <label class="ctl"><span class="lbl">Leading range <output id="vlrOut"></output></span><input type="range" id="vlr" min="0" max="24" step="1" disabled></label>
       <label class="ctl"><span class="lbl">Glide <output id="glOut"></output></span><input type="range" id="gl" min="0" max="1500" step="10" disabled></label>
       <label class="ctl"><span class="lbl">Temperament</span><select id="temp" disabled></select></label>
-      <label class="ctl"><span class="lbl">Slash voice</span><select id="slashVoice" disabled>
-        <option value="0">Off: the root, as always</option><option value="1">Bass</option><option value="2">Tenor</option><option value="3">Alto</option><option value="4">Soprano</option></select></label>
-      <div class="ctl"><span class="lbl">Slash re-voice</span><button id="revoiceBtn" class="switch" aria-pressed="false" disabled>Off</button></div>
+      <label class="ctl" id="ctlSlashRep" hidden><span class="lbl">Slash replaces</span><select id="slashRep" disabled>
+        <option value="0">Root</option><option value="1">Third</option><option value="2">Fifth, or the seventh in 7th chords</option></select></label>
+      <label class="ctl" id="ctlSlashVoice"><span class="lbl">Slash voice</span><select id="slashVoice" disabled>
+        <option value="0">Off (slash level)</option><option value="1">Bass</option><option value="2">Tenor</option><option value="3">Alto</option><option value="4">Soprano</option></select></label>
+      <div class="ctl" id="ctlRevoice"><span class="lbl">Re-voice</span><button id="revoiceBtn" class="switch" aria-pressed="false" disabled>Off</button></div>
     </div>
-    <p class="fine">Changes here are live and last until the preset changes. Save the preset in Sound Lab to keep them. Voice leading, the 19- and 31-EDO temperaments, slash voice and slash re-voice need the test-allFeatures firmware.</p>
-    <p class="fine">A slash chord gives one voice the slash button's note: hold a chord and press another line's button. Slash voice chooses which voice sings it, marked on its strip below. Bass is the slash chord you know, with the whole chord above it. Soprano sings a melody over the chord; tenor and alto change a note inside it, which is how a suspension or a passing tone sounds. With slash re-voice on, the other voices move to keep the chord whole around the slash note; off, they hold still and the chord loses the note it gave up. This page keeps the older slash level setting at the root, so Off behaves like Bass without the re-voicing. On the trace, a red slash marks each moment that voice moved on its own while the rest of the chord held; with voice leading or re-voice on, an ordinary chord change can occasionally do the same.</p>
+    <p class="fine">Changes here are live and last until the preset changes. Save the preset in Sound Lab to keep them. Voice leading and the 19- and 31-EDO temperaments need the test-allFeatures firmware.</p>
+    <p class="fine">Slash voice picks which voice sings a slash chord's note, counted up from the bottom: bass, tenor, alto or soprano. That voice's strip is marked below. Re-voice lets the other upper voices move to keep the chord whole around it. Choosing a slash voice also sets slash level to root, which then only steers the harp and rhythm mode. On the trace, a red slash marks the moment the chosen voice takes the slash note while the chord you hold stays whole, and "back" when it lets go. Older firmware has "Slash replaces" here instead.</p>
   </section>
 
   <div class="stage">
@@ -428,7 +431,7 @@ let reverb=null, wet=null, reverbOn=false;
 let glottalWave=null;
 let ctx=null, master=null, noiseBuf=null, organWave=null, midi=null;
 const TEMPERAMENTS=["Equal","Meantone","Just","Pythagorean","Werckmeister III","Kirnberger III","Vallotti","Young","Kellner","1/6 Meantone","19-EDO","31-EDO"];
-const dev={23:null,110:null,111:null,112:null,113:null,114:null,199:null,237:null};
+const dev={7:null,23:null,110:null,111:null,112:null,113:null,114:null,199:null,237:null};
 let zoneSeen=false, out=null, sysexOK=false, deviceMpe=null, singlePort=null, zoneWatch=null;
 // the minichord's chord port (Port 1) carries the chord and the sysex; Port 2 is the harp
 const isChordPort = n => /minichord/i.test(n) && (n.includes("1") || n.trim().toLowerCase()==="minichord");
@@ -756,16 +759,24 @@ function commitMotion(){
   document.getElementById("bars").innerHTML=motion.hist.map(v=>`<span style="height:${Math.max(4,v/max*100)}%" title="${v} st"></span>`).join("");
 }
 // ---------- slash chords ----------
-// Slash voice (address 113) chooses which voice, counted from the bottom, takes the slash button's
-// note: 1 bass .. 4 soprano. At 0 the older slash level (address 23) decides, and this page keeps that
-// at the root, which with the default shuffle is the bottom voice. Over MPE, voice n is the zone's
-// member channel n, from the bottom up whenever the voices are in order: always for the bass, and
-// for the others with voice leading or re-voice on.
-const slashIndex = () => dev[113] ? dev[113]-1 : 0;
+// Firmware 13's "slash voice" (address 113) puts the slash note on the voice of that rank,
+// counted up from the bottom: 1 bass, 2 tenor, 3 alto, 4 soprano, whichever channel carries it.
+// With it off, or on older firmware, "slash replaces" (address 23) picks a chord level instead,
+// and with the default shuffle level n is voice n, so the slash sings on the zone's channel n.
+const slashRank = () => (dev[7]??0)>=13 && dev[113]>=1 ? dev[113]-1 : null;
+const slashLevel = () => dev[23]!=null ? dev[23] : 0;
+function soundingByPitch(){ return slots.map((s,i)=>({s,i})).filter(x=>x.s.key).sort((a,b)=>pitchFor(a.s)-pitchFor(b.s)); }
 function slashSlot(){
+  const r=slashRank();
+  if(r!=null){
+    const on=soundingByPitch();
+    if(on.length>r) return on[r].i;
+    if(mode!=="channel") return -1;
+    const ch = zone.type==="lower" ? 1+r : 14-r;                 // nothing sounding: where voice leading puts that rank
+    return slots.findIndex(s=>resolvedChan(s)===ch);
+  }
   if(mode!=="channel") return -1;
-  const k=slashIndex();
-  const ch = zone.type==="lower" ? 1+k : 14-k;
+  const ch = zone.type==="lower" ? 1+slashLevel() : 14-slashLevel();
   return slots.findIndex(s=>resolvedChan(s)===ch);
 }
 function renderSlash(){
@@ -773,21 +784,50 @@ function renderSlash(){
   slots.forEach((s,i)=>{ const t=s.el?.querySelector(".slashTag"); if(t) t.hidden = i!==k; });
 }
 const slashMarks=[];              // {t, slot, pitch, label}
-let slashState=null;              // {slot, from}: the note the voice had before the slash
+let slashState=null;              // what the chord was before the slash
+let heldSnap=null;                // the held chord after the last change: {pcs, slashPc}
 const moveWatch={moved:new Map(), timer:null};
 function watchMove(idx, fromNote){
   if(!moveWatch.moved.has(idx)) moveWatch.moved.set(idx, fromNote);
   if(!moveWatch.timer) moveWatch.timer=setTimeout(checkSlashMove,45);
 }
+const pcSetOf = () => new Set(slots.filter(s=>s.key).map(s=>((s.note%12)+12)%12));
+const slotsNoteBefore = (snap, slot) => snap && snap.notes ? snap.notes[slot] : null;
+const sameSet = (a,b) => a.size===b.size && [...a].every(x=>b.has(x));
 function checkSlashMove(){
   const m=moveWatch.moved; moveWatch.moved=new Map(); moveWatch.timer=null;
+  renderSlash();
+  const r=slashRank(), t=performance.now();
+  if(r!=null){
+    // Slash voice. A slash is either the voice of the chosen rank taking a new note while the
+    // held chord stays whole (a bass slash, or any slash with re-voice: the others may move to
+    // keep it whole), or that voice alone moving while the others hold (an upper slash without
+    // re-voice, which replaces a chord tone). "back" is it returning to the note it had.
+    const on=soundingByPitch(), now=pcSetOf(), sv=on[r], prev=heldSnap;
+    heldSnap = on.length>=3 ? {pcs:now, slashPc: sv ? ((sv.s.note%12)+12)%12 : null, slot: sv ? sv.i : -1, notes: slots.map(x=>x.key ? x.note : null)} : null;
+    if(!prev || !sv || on.length<3) return;
+    const pcNow=((sv.s.note%12)+12)%12;
+    if(slashState && sameSet(now,slashState.pcs) && slots[slashState.slot]?.note===slashState.from){
+      slashMarks.push({t,slot:slashState.slot,pitch:slots[slashState.slot].note,label:"back"}); slashState=null;
+    } else {
+      const whole=[...prev.pcs].every(p=>now.has(p)) && now.size-prev.pcs.size<=1 && pcNow!==prev.slashPc;
+      const alone=m.size===1 && m.has(prev.slot) && m.get(prev.slot)!=null;
+      if(whole || alone){
+        const slot = alone ? prev.slot : sv.i, note=slots[slot].note;
+        if(!slashState) slashState={pcs:prev.pcs, slot, from: alone ? m.get(prev.slot) : slotsNoteBefore(prev, slot)};
+        slashMarks.push({t,slot,pitch:note,label:"/"+NAMES[((note%12)+12)%12]});
+      } else if(slashState && !(m.size===1 && m.has(slashState.slot))) slashState=null;   // a new chord
+    }
+    if(slashMarks.length>40) slashMarks.shift();
+    return;
+  }
+  // Slash replaces: the slash voice moved alone while the rest of the chord held
   const k=slashSlot();
   if(m.size!==1 || k<0 || !m.has(k)){ if(m.size>1) slashState=null; return; }
-  // only the slash voice moved: the rest of the chord must still be sounding round it
   if(slots.filter((s,i)=>i!==k && s.key).length<2) return;
   const s=slots[k], from=m.get(k);
   if(from==null) return;
-  const t=performance.now(), name=NAMES[((s.note%12)+12)%12];
+  const name=NAMES[((s.note%12)+12)%12];
   if(slashState && slashState.slot===k && s.note===slashState.from){ slashMarks.push({t,slot:k,pitch:s.note,label:"back"}); slashState=null; }
   else { if(!slashState) slashState={slot:k, from}; slashMarks.push({t,slot:k,pitch:s.note,label:"/"+name}); }
   if(slashMarks.length>40) slashMarks.shift();
@@ -867,11 +907,7 @@ function handleDump(d){
   const p=i=>d[1+2*i]+128*d[2+2*i];
   singlePort = p(108)===1;
   const mpe = p(110)===1 ? 1 : 0;
-  dev[111]=p(111)?1:0; dev[112]=Math.min(24,p(112)); dev[199]=Math.min(1500,p(199)); dev[237]=Math.min(11,p(237)); dev[23]=Math.min(2,p(23));
-  dev[113]=Math.min(4,p(113)); dev[114]=p(114)?1:0;
-  // Slash voice replaces slash level's recipe slots with real voices; slash level stays at the root
-  // here so Off still means the classic slash chord and nothing else moves the slash note around.
-  if(dev[23]!==0 && sysexOK){ writeParam(23,0); }
+  dev[111]=p(111)?1:0; dev[112]=Math.min(24,p(112)); dev[199]=Math.min(1500,p(199)); dev[237]=Math.min(11,p(237)); dev[23]=Math.min(2,p(23)); dev[7]=p(7); dev[113]=Math.min(4,p(113)); dev[114]=p(114)?1:0;
   if(!mpe && zone.known){ zone.known=false; zone.type="lower"; updateZoneInfo(); renderRoutes(); }
   if(mpe && !zone.known){ zone.type="lower"; zone.members = singlePort ? 15 : 4; zone.known=true; updateZoneInfo(); renderRoutes(); }
   setDeviceMpe(mpe);
@@ -892,8 +928,13 @@ function renderDevice(){
   set("vlr",dev[112],"vlrOut",v=>v+" st");
   set("gl",dev[199],"glOut",v=>v+" ms");
   set("temp",dev[237],null);
-  set("slashVoice",dev[113],null);
-  const rv=document.getElementById("revoiceBtn"); rv.disabled=!sysexOK||dev[114]===null;
+  set("slashRep",dev[23],null);
+  const newFw=(dev[7]??0)>=13;                               // slash voice arrived in firmware 13
+  document.getElementById("ctlSlashRep").hidden=newFw;
+  document.getElementById("ctlSlashVoice").hidden=!newFw;
+  document.getElementById("ctlRevoice").hidden=!newFw;
+  set("slashVoice",newFw?dev[113]:null,null);
+  const rv=document.getElementById("revoiceBtn"); rv.disabled=!sysexOK||!newFw||dev[113]===null||dev[113]<2;   // re-voice applies to tenor, alto and soprano
   rv.setAttribute("aria-pressed", dev[114]===1); rv.textContent = dev[114]===1 ? "On" : "Off";
   renderSlash();
   if(!sysexOK) note.textContent="Reload and allow system-exclusive MIDI access to switch this from here.";
@@ -980,7 +1021,12 @@ document.getElementById("vlBtn").onclick=()=>{ writeParam(111, dev[111]===1?0:1)
 const tSel=document.getElementById("temp");
 TEMPERAMENTS.forEach((n,i)=>tSel.add(new Option(n,i)));
 tSel.onchange=()=>{ writeParam(237,+tSel.value); resync(); };
-document.getElementById("slashVoice").onchange=e=>{ writeParam(113,+e.target.value); renderSlash(); resync(); };
+document.getElementById("slashRep").onchange=e=>{ writeParam(23,+e.target.value); renderSlash(); resync(); };
+document.getElementById("slashVoice").onchange=e=>{
+  const v=+e.target.value; writeParam(113,v);
+  if(v>0 && dev[23]!==0) writeParam(23,0);   // with a slash voice, slash level only steers the harp and rhythm: keep it on root
+  slashState=null; renderDevice(); resync();
+};
 document.getElementById("revoiceBtn").onclick=()=>{ writeParam(114, dev[114]===1?0:1); renderDevice(); resync(); };
 [["vlr",112,"vlrOut"," st"],["gl",199,"glOut"," ms"]].forEach(([id,addr,o,u])=>{
   const el=document.getElementById(id); let last=0;

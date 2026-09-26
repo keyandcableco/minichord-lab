@@ -1,9 +1,14 @@
+/* Accidentals in text (♭ ♮ ♯ 𝄫 𝄪) from Bravura Text, so chord symbols get real music signs whatever the
+ * main font: unicode-range keeps it to those five characters. A subset of Steinberg's Bravura Text under the
+ * SIL Open Font License, renamed as its Reserved Font Name requires; see fonts/OFL-lab-music.txt. */
+@font-face{font-family:"Minichord Lab Accidentals";font-style:normal;font-weight:100 900;font-display:swap;
+  src:url("fonts/lab-accidentals.woff2") format("woff2");unicode-range:U+266D-266F,U+1D12A-1D12B;size-adjust:85%;}
 /* Minichord Lab: a classroom board. Chalkboard in dark mode, whiteboard in light. */
 :root{
   --board:#EEF1EF; --panel:#FAFBFA; --ink:#1B2430; --muted:#58646E; --rule:#D3D9D6; --accent:#D9780B;
   --v0:#1F5FB0; --v1:#1E8449; --v2:#C0392B; --v3:#7D3C98; --focus:#1F5FB0;
-  --ui:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",sans-serif;
-  --hand:"Caveat","Segoe Print","Bradley Hand",cursive;
+  --ui:"Minichord Lab Accidentals","Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --hand:"Minichord Lab Accidentals","Source Serif 4","Source Serif Pro",Georgia,"Times New Roman",serif;   /* titles, chord names and prompts */
   box-sizing:border-box;
   padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
   color-scheme:light dark;
@@ -35,7 +40,7 @@ select{border:1px solid var(--rule);background:var(--panel);border-radius:8px;pa
 .crumb:hover{color:var(--ink)}
 .connect{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
 .status{font-size:.92rem;color:var(--muted);margin:0}
-h1{font-family:var(--hand);font-weight:700;font-size:3.2rem;line-height:1;margin:0}
+h1{font-family:var(--hand);font-weight:600;font-size:2.6rem;line-height:1.1;letter-spacing:-.01em;margin:0}
 .lede{color:var(--muted);max-width:62ch;margin:.4rem 0 0}
 .panel{background:var(--panel);border:1px solid var(--rule);border-radius:12px;padding:16px}
 .panel h2{font-size:1.05rem;margin:0 0 .5rem}
