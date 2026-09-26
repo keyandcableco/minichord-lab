@@ -12,10 +12,13 @@
 <link rel="stylesheet" href="../core/lab.css">
 <link rel="stylesheet" href="../core/music.css">
 <style>
-.modes{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0}
+.modes{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 0}
+.zone.gamesel{margin:16px 0 0;padding:12px 16px 8px;border:1px solid var(--rule);border-radius:12px;background:var(--panel)}
+.zonehead{font-size:.8rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 4px}
+.answerhead{margin:30px 0 0;padding-top:16px;border-top:2px dashed var(--rule)}
 .modes .grp{font-size:.9rem;color:var(--muted);min-width:9.5rem}
 .modes button[aria-pressed="true"]{background:var(--ink);color:var(--board);border-color:var(--ink)}
-.game{position:relative;min-height:330px;display:flex;flex-direction:column;gap:10px;margin-top:6px}
+.game{position:relative;min-height:330px;display:flex;flex-direction:column;gap:10px;margin-top:18px;border:2px solid var(--ink);box-shadow:0 6px 20px rgba(0,0,0,.08)}
 .gamebar{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:baseline;justify-content:space-between}
 .gamebar .what{font-weight:700;color:var(--muted)}
 .chips{display:flex;flex-wrap:wrap;gap:14px;font-size:.95rem;color:var(--muted)}
@@ -31,6 +34,10 @@
 .field .fchord.low{color:var(--accent)}
 .field .fchord.hit{color:var(--v1);transition:opacity .35s,transform .35s;opacity:0;transform:translateX(-50%) scale(1.6)}
 .field .fchord.miss{color:var(--v2);transition:opacity .5s;opacity:0}
+.field .fkey{position:absolute;left:0;right:0;text-align:center;padding:.3rem 0;font:600 1.35rem var(--hand);color:var(--ink);background:color-mix(in srgb,var(--v0) 20%,transparent);border-top:2px solid var(--v0);border-bottom:2px solid var(--v0);pointer-events:none}
+.field .fkey small{display:block;font:400 .8rem var(--ui);color:var(--muted)}
+.field .fkey.hit{transition:opacity .5s;opacity:0;background:color-mix(in srgb,var(--v1) 35%,transparent)}
+.field .fkey.miss{transition:opacity .6s;opacity:0}
 .field .ground{position:absolute;left:0;right:0;bottom:0;height:3px;background:var(--v2);opacity:.5}
 .fieldbar{display:flex;gap:18px;flex-wrap:wrap;font-size:1rem;color:var(--muted);width:100%}
 .fieldbar b{color:var(--ink);font-size:1.2rem}
@@ -66,7 +73,7 @@
 .mystrip .mykey{font-family:var(--hand);font-weight:600;font-size:1.9rem;line-height:1.1}
 .mystrip .myinfo{color:var(--muted);font-size:.95rem}
 .mystrip button{margin-left:auto}
-.grid2{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:18px;margin-top:18px}
+.grid2{display:grid;grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr);gap:18px;margin-top:10px}
 @media (max-width:900px){.grid2{grid-template-columns:1fr}}
 .picker .row6{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px;margin:.4rem 0}
 .picker .row4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin:.4rem 0}
@@ -75,7 +82,10 @@
 .picker button[aria-pressed="true"]{background:var(--ink);color:var(--board);border-color:var(--ink)}
 .picker label{display:flex;gap:8px;align-items:center;color:var(--muted);font-size:.95rem;margin:.3rem 0}
 .settings{display:grid;gap:10px}
-.settings label{display:grid;grid-template-columns:10rem 1fr;align-items:center;gap:10px;color:var(--muted);font-size:.95rem}
+.settings label{display:grid;grid-template-columns:8.5rem minmax(0,1fr);align-items:center;gap:10px;color:var(--muted);font-size:.95rem}
+.settings select{width:100%;min-width:0;max-width:100%;text-overflow:ellipsis}
+@media (max-width:520px){.settings label{grid-template-columns:1fr;gap:4px}}
+.picker .row6{grid-template-columns:repeat(auto-fill,minmax(3.2rem,1fr))!important}
 .mine{display:grid;grid-template-columns:10rem 1fr;gap:8px 10px;align-items:center;font-size:.95rem;margin-top:.4rem}
 .mine span{color:var(--muted)}
 .mine button{justify-self:start;padding:.25rem .7rem}
@@ -95,6 +105,8 @@
   <p class="lede">A chord spelling game for the minichord that trains your hands as much as your head: the more you play, the faster you find any chord on the buttons, any note on the harp, and the smoothest way from one chord to the next. Answers are timed, so you can watch yourself get quicker. No minichord? The pickers take answers, and the mysteries play on the piano.</p>
   <p class="status" id="status">Connect the minichord, or play with the pickers.</p>
 
+  <section class="zone gamesel" aria-label="Choose a game">
+  <h2 class="zonehead">Choose a game</h2>
   <div class="modes" role="group" aria-label="Read and play">
     <span class="grp">Read and play</span>
     <button data-mode="spell">Spell it</button>
@@ -132,6 +144,7 @@
     <button data-mode="temper">Temperament taster</button>
     <button data-mode="tune">Tune up</button>
   </div>
+  </section>
 
   <div class="mystrip" id="mystrip" hidden>
     <span class="mylabel">Your minichord</span>
@@ -144,6 +157,7 @@
     <div class="gamebar">
       <span class="what" id="what"></span>
       <span class="modpill" id="modpill" hidden></span>
+      <span class="modpill" id="bhpill" hidden></span>
       <div class="chips">
         <span>Streak <b id="streak">0</b></span>
         <span>Best <b id="best">0</b></span>
@@ -168,6 +182,7 @@
     </div>
   </section>
 
+  <h2 class="zonehead answerhead">Answer and settings</h2>
   <div class="grid2">
     <section class="panel picker">
       <h2 id="pickTitle">Answer without a minichord</h2>
@@ -186,7 +201,7 @@
         <label>Scales <select id="scaleset"><option value="everyday">Everyday scales</option><option value="modes">The seven modes</option><option value="exotic">Exotic scales</option><option value="all">All of them</option></select></label>
         <label>Directions <select id="dirset"><option value="steps">Half and whole steps</option><option value="thirds">Plus thirds</option><option value="fifths">Plus fourths and fifths</option><option value="all">Plus sixths and the tritone</option></select></label>
         <label>Key <select id="keysrc"><option value="follow">The minichord's key</option><option value="random">A different key each time</option><option value="set">A new key each time, set on the minichord</option></select></label>
-        <label>Sight reader <select id="blastStart"><option value="1">Start with major and minor</option><option value="3">Start with sharps and flats</option><option value="5">Start with every chord type</option><option value="6">Start with slash chords</option></select></label>
+        <label>Sight reader <select id="blastStart"><option value="1">Start with major and minor</option><option value="3">Start with sharps and flats</option><option value="5">Start with every chord type</option><option value="6">Start with slash chords</option><option value="7">Start with any slash chord</option></select></label>
       </div>
       <p class="fine">Chord sets follow what the buttons play: standard is major, minor, 7, maj7, m7, diminished (major and minor together) and augmented (all three); Barry Harris mode turns major, minor and diminished into 6, m6 and diminished 7. The alternate layout is left out, since everyone sets up their own. The buttons play their letters with the key signature's sharps or flats, and the game sets the modifier to sharp or flat for each question, and Barry Harris mode on or off for the chord it asks for.</p>
     </section>
@@ -823,27 +838,34 @@ function answerDiatonic(voices){
 // ---------- Sight reader ----------
 // An arcade round for everyone: chord symbols fall from the top, and each one played on the
 // buttons before it lands is blasted. Three that land and the round is over. It starts with
-// major and minor on the seven buttons as your key plays them, adds 7 chords, then the roots
-// the modifier reaches, then maj7 and m7, then diminished and augmented, a little faster
-// every eight chords. The modifier is set one way for the whole round, sharpen or flatten,
-// so every root on screen is one button, or one button with the modifier.
+// major and minor on the seven buttons as your key plays them and climbs every eight chords,
+// a little faster each time: 7 chords, the roots the modifier reaches, maj7 and m7,
+// diminished and augmented, inversions, any slash chord, and last Barry Harris mode, switched
+// on mid-round once the field is clear. The modifier is set one way for the whole round.
+//
+// From level 3, every level also drops a key bar, "Key of D major". Set that key signature
+// with the key change combo before it lands and the chords that follow, all from that key,
+// are plain buttons; leave it and they need the modifier.
 const BLAST_LEVELS=[{q:["","m"],acc:false},{q:["","m","7"],acc:false},{q:["","m","7"],acc:true},
   {q:["","m","7","maj7","m7"],acc:true},{q:["","m","7","maj7","m7","°","+"],acc:true},
   {q:["","m","7","maj7","m7","°","+"],acc:true,slash:"inversion"},      // C/E, Am/C: the bass is the chord's third or fifth
-  {q:["","m","7","maj7","m7","°","+"],acc:true,slash:"any"}];           // D/C, G/F: any button under the chord
+  {q:["","m","7","maj7","m7","°","+"],acc:true,slash:"any"},            // D/C, G/F: any button under the chord
+  {q:["","m","7","maj7","m7","°","+"],acc:true,slash:"any",barry:true}]; // 6, m6 and °7 join, mid-round
 // slash chords need the slash note in the bass: firmware 13's slash voice set to Bass
 const slashReady=()=>!canWrite() || (mc.params[7]??0)>=13;
-const topLevel=()=>BLAST_LEVELS.length-1-(slashReady()?0:2);
+const levelOk=l=> !(BLAST_LEVELS[l].slash && !slashReady()) && !(BLAST_LEVELS[l].barry && (!canWrite() || settings.set==="barry"));
+function nextLevel(l){ for(let n=l+1;n<BLAST_LEVELS.length;n++) if(levelOk(n)) return n; return l; }
 const BARRY_SWAP={"":"6","m":"m6","°":"°7"};
 let blast=null;
 function genBlaster(){
-  return {kind:"blaster", prompt:"Sight reader", sub:"Chords fall from the top. Play each one on the buttons before it lands; the lowest is lit. Three that land and the round is over.",
+  return {kind:"blaster", prompt:"Sight reader", sub:"Chords fall from the top. Play each one on the buttons before it lands; the lowest is lit. Three that land and the round is over. When a key bar falls, set that key signature with the key change combo, and the chords after it get easier.",
     answer:{type:"blaster", get name(){ const l=lowestBlast(); return l ? l.sym : "the lowest chord"; }},
     get hint(){ const l=lowestBlast(); return l ? `The lowest is ${l.sym}: ${(spellChord(l.root,l.q)||[]).join(" ")}${l.bass?`, over ${l.bass} in the bass`:""}.` : "Wait for a chord to fall."; },
     hearFn:()=>{ const l=lowestBlast(); return l ? [...(l.bass?[[36+pcOfName(l.bass),0]]:[]), ...FORM[l.q].map(f=>[48+pcOfName(l.root)+f[1],0])] : []; },
     context:0, barry: settings.set==="barry" ? "6" : ""};
 }
 const lowestBlast=()=> blast ? blast.items.filter(i=>!i.done).sort((a,b)=>a.t0-b.t0)[0] || null : null;
+const blastQuals=()=>BLAST_LEVELS[blast.level].q.map(x=> (settings.set==="barry" || blast.barry) ? (BARRY_SWAP[x]??x) : x);
 function blastRoots(plainOnly){
   const f=canWrite() ? devFifths() : 0, out=[], lv=BLAST_LEVELS[blast.level];
   for(let li=0; li<7; li++){
@@ -855,55 +877,111 @@ function blastRoots(plainOnly){
   return out;
 }
 function startBlaster(){
-  const f=canWrite() ? devFifths() : 0, start=Math.min(topLevel(), Math.max(0,(+settings.blastStart||1)-1));
+  const f=canWrite() ? devFifths() : 0;
+  let start=Math.max(0,Math.min(BLAST_LEVELS.length-1,(+settings.blastStart||1)-1)); while(start>0 && !levelOk(start)) start--;
   blast={items:[], score:0, lives:3, level:start, hits:0, dir: f<0 ? -1 : f>0 ? 1 : (Math.random()<.5?1:-1),
-    next:performance.now()+700, fall:9000*Math.pow(.92,start), gap:2600*Math.pow(.92,start), over:false, raf:0, field:null, bar:null};
-  if(canWrite()){ const want = blast.dir>0 ? 0 : 1; if(mc.params[31]!==want) borrow(31,want);
-    if(slashReady() && mc.params[113]!==1) borrow(113,1); }   // for the slash levels, the slash note in the bass
+    next:performance.now()+700, fall:9000*Math.pow(.92,start), gap:2600*Math.pow(.92,start), over:false, raf:0, field:null, bar:null,
+    barry:false, pauseForBarry:false, keyBar:null, keyTarget:null};
+  if(canWrite()){
+    const want = blast.dir>0 ? 0 : 1; if(mc.params[31]!==want) borrow(31,want);
+    if(slashReady() && mc.params[113]!==1) borrow(113,1);   // for the slash levels, the slash note in the bass
+    if(mc.params[35]!=null && !(35 in borrowed)) borrow(35,mc.params[35]);   // the key you change it to goes back when you leave
+    poll(true);                                             // read the key signature as you change it
+  }
   modPill();
   stats.streak=0; scoreboard(); buildSpecial();
   blast.raf=requestAnimationFrame(blastTick);
 }
-function stopBlaster(){ if(blast){ blast.over=true; cancelAnimationFrame(blast.raf); } blast=null; }
+function stopBlaster(){ if(blast){ blast.over=true; cancelAnimationFrame(blast.raf); poll(false); } blast=null; }
 function blastBar(){
   if(!blast || !blast.bar) return;
-  blast.bar.innerHTML=`<span>Score <b>${blast.score}</b></span><span>Lives <b>${"♥".repeat(Math.max(0,blast.lives))||"–"}</b></span><span>Level <b>${blast.level+1}</b></span><span>Best <b>${saved.best.blaster||0}</b></span>`;
+  const key = blast.keyTarget ? `<span>Key <b>${blast.keyTarget.name}</b></span>` : "";
+  blast.bar.innerHTML=`<span>Score <b>${blast.score}</b></span><span>Lives <b>${"♥".repeat(Math.max(0,blast.lives))||"–"}</b></span><span>Level <b>${blast.level+1}</b></span>${key}<span>Best <b>${saved.best.blaster||0}</b></span>`;
+}
+// the next chord: from the key bar's key once one has fallen, otherwise any button's
+function pickBlastChord(slashNow){
+  const lv=BLAST_LEVELS[blast.level], quals=blastQuals(), swap=x=> (settings.set==="barry"||blast.barry) ? (BARRY_SWAP[x]??x) : x;
+  if(blast.keyTarget){
+    const K=blast.keyTarget.name, d=rnd(DEGREES), root=above(K,d.st,d.se);
+    const opts=[swap(d.q), SEVENTHS[d.n]?.[1]].filter(x=>x!=null && quals.includes(x));
+    if(!root || !opts.length) return null;
+    let qq=rnd(opts), bass=null;
+    if(slashNow){
+      qq=swap(d.q); const t=spellChord(root,qq); if(!t || !["","m","6","m6"].includes(qq)) return null;
+      const i=Math.floor(Math.random()*7);
+      bass = lv.slash==="inversion" ? rnd([t[1],t[2]]) : above(K,i,MAJOR[i]);   // a note of the key, a plain button once it's set
+      if(!bass || pcOfName(bass)===pcOfName(root)) return null;
+    }
+    return spellChord(root,qq) ? {root,qq,bass} : null;
+  }
+  const roots=blastRoots(slashNow);
+  let root=rnd(roots), qq=rnd(quals), bass=null;
+  if(!spellChord(root,qq)) return null;
+  if(slashNow){
+    if(!["","m","6","m6"].includes(qq)) qq=rnd((settings.set==="barry"||blast.barry)?["6","m6"]:["","m"]);
+    const t2=spellChord(root,qq); if(!t2) return null;
+    const plain=blastRoots(true);
+    bass = lv.slash==="inversion" ? rnd([t2[1],t2[2]]) : rnd(plain);
+    if(!plain.includes(bass) || pcOfName(bass)===pcOfName(root)) return null;
+  }
+  return {root,qq,bass};
 }
 function spawnBlast(now){
   const lv=BLAST_LEVELS[blast.level];
-  const quals=lv.q.map(x=> settings.set==="barry" ? (BARRY_SWAP[x]??x) : x);
   const onScreen=new Set(blast.items.filter(i=>!i.done).map(i=>i.sym));
-  // on the slash levels about one chord in three is a slash chord, on plain buttons only
-  const slashNow = lv.slash && Math.random()<.35;
-  const roots=blastRoots(slashNow);
+  const slashNow = lv.slash && Math.random()<.35;        // on the slash levels about one chord in three
   for(let k=0;k<40;k++){
-    let root=rnd(roots), qq=rnd(quals), bass=null;
-    const tones=spellChord(root,qq); if(!tones) continue;
-    if(slashNow){
-      if(!["","m","6","m6"].includes(qq)) qq=rnd(settings.set==="barry"?["6","m6"]:["","m"]);
-      const t2=spellChord(root,qq); if(!t2) continue;
-      const plain=blastRoots(true);
-      bass = lv.slash==="inversion" ? rnd([t2[1],t2[2]]) : rnd(plain);
-      if(!plain.includes(bass) || pcOfName(bass)===pcOfName(root)) continue;
-    }
-    const sym=root+qq+(bass?`/${bass}`:"");
+    const c=pickBlastChord(slashNow); if(!c) continue;
+    const sym=c.root+c.qq+(c.bass?`/${c.bass}`:"");
     if(onScreen.has(sym)) continue;
     const el=document.createElement("span"); el.className="fchord"; el.textContent=sym;
     el.style.left=`${10+Math.random()*80}%`; el.style.top="0px";
     blast.field.appendChild(el);
-    blast.items.push({el, sym, root, q:qq, bass, rootPc:pcOfName(root), bassPc:bass?pcOfName(bass):null, t0:now});
+    blast.items.push({el, sym, root:c.root, q:c.qq, bass:c.bass, rootPc:pcOfName(c.root), bassPc:c.bass?pcOfName(c.bass):null, t0:now});
     return;
   }
+}
+function spawnKeyBar(now){
+  if(!canWrite() || blast.keyBar) return;
+  const here=devFifths(), f=rnd([-5,-4,-3,-2,-1,0,1,2,3,4,5,6].filter(x=>x!==here)), name=KEY_BY_FIFTHS[f];
+  const el=document.createElement("div"); el.className="fkey";
+  el.innerHTML=`Key of ${name} major<small>${sigText(f)}${f?`: ${sigList(f).join(" ")}`:""} · set it with the key change combo</small>`;
+  el.style.top="0px"; blast.field.appendChild(el);
+  blast.keyBar={el, f, name, t0:now}; blast.keyTarget={f, name};
+  feedback(`Key of ${name} major is falling.`,"",`Set the key signature to ${name} with the key change combo before it lands, and the chords after it are all plain buttons.`);
+  blastBar();
+}
+// called whenever the minichord reports its settings: has the key been set?
+function blastKey(){
+  const k=blast && blast.keyBar;
+  if(!k || blast.over || !canWrite() || devFifths()!==k.f) return;
+  k.el.classList.add("hit"); setTimeout(()=>k.el.remove(),500); blast.keyBar=null;
+  blast.score+=50; chime("done");
+  feedback(`Key of ${k.name} major: set. +50`,"good",`${sigText(k.f)}${k.f?`, ${sigList(k.f).join(", ")}`:""}: every chord of the key is a plain button now.`);
+  blastBar();
 }
 function blastTick(now){
   if(!blast || blast.over) return;
   const live=blast.items.filter(i=>!i.done);
-  if(now>=blast.next && live.length<5){ spawnBlast(now); blast.next=now+blast.gap*(.8+Math.random()*.4); }
+  if(blast.pauseForBarry && !live.length){
+    blast.pauseForBarry=false; blast.barry=true; borrow(33,1); modPill(); chime("done");
+    feedback("Barry Harris mode is on.","good","Major now plays 6, minor m6, and diminished °7: the chords that fall next are written that way.");
+    blast.next=now+1500;
+  }
+  if(!blast.pauseForBarry && now>=blast.next && live.length<5){ spawnBlast(now); blast.next=now+blast.gap*(.8+Math.random()*.4); }
   const H=blast.field ? blast.field.clientHeight : 300;
   for(const it of live){
     const y=(now-it.t0)/blast.fall;
     if(y>=1){ blastMiss(it); if(!blast || blast.over) return; continue; }
     it.el.style.top=`${y*(H-44)}px`;
+  }
+  const k=blast.keyBar;
+  if(k){
+    const y=(now-k.t0)/(blast.fall*1.6);
+    if(y>=1){ k.el.classList.add("miss"); setTimeout(()=>k.el.remove(),600); blast.keyBar=null; blast.lives--; blastBar(); buzz(blast.field);
+      feedback(`The key of ${k.name} major landed.`,"bad",`Its chords keep falling: each needs its own button and modifier until you set the key.`);
+      if(blast.lives<=0){ blastOver(); return; } }
+    else k.el.style.top=`${y*(H-52)}px`;
   }
   const low=lowestBlast(); blast.items.forEach(it=>it.el.classList.toggle("low", it===low));
   blast.raf=requestAnimationFrame(blastTick);
@@ -915,9 +993,9 @@ function blastMiss(it){
   if(blast.lives<=0) blastOver();
 }
 function blastOver(){
-  blast.over=true; cancelAnimationFrame(blast.raf);
+  blast.over=true; cancelAnimationFrame(blast.raf); poll(false);
   const best=Math.max(saved.best.blaster||0, blast.score); saved.best.blaster=best; save();
-  blast.items.forEach(i=>i.el.remove());
+  blast.items.forEach(i=>i.el.remove()); if(blast.keyBar) blast.keyBar.el.remove();
   feedback(`Game over: ${blast.score} points, level ${blast.level+1}.`, "", `Your best: ${best}. Press Next to play again.`);
   blastBar();
 }
@@ -934,9 +1012,14 @@ function blasterChord(voices){
   hit.done=true; hit.el.classList.remove("low"); hit.el.classList.add("hit"); setTimeout(()=>hit.el.remove(),400);
   blast.hits++; blast.score+=10*(blast.level+1); stats.streak=blast.hits; scoreboard();
   if(blast.hits%8===0){
-    if(blast.level<topLevel()) blast.level++;
+    const was=blast.level; blast.level=nextLevel(blast.level);
     blast.fall=Math.max(3500, blast.fall*.88); blast.gap=Math.max(900, blast.gap*.88);
-    chime("done"); feedback(`${hit.sym}! Level ${blast.level+1}${BLAST_LEVELS[blast.level].slash && !BLAST_LEVELS[blast.level-1]?.slash ? ": slash chords. Hold the chord, then press the bass note's button too" : ""}.`,"good");
+    const lv=BLAST_LEVELS[blast.level], news = blast.level===was ? "" :
+      lv.barry ? ": Barry Harris mode comes on once the field is clear" :
+      lv.slash && !BLAST_LEVELS[was].slash ? ": slash chords. Hold the chord, then press the bass note's button too" : "";
+    if(lv.barry && !blast.barry) blast.pauseForBarry=true;
+    chime("done"); feedback(`${hit.sym}! Level ${blast.level+1}${news}.`,"good");
+    if(blast.level>=2) spawnKeyBar(performance.now());
   } else { chime("step"); feedback(`${hit.sym}!`,"good"); }
   blastBar();
 }
@@ -1039,7 +1122,15 @@ function modPill(){
   el.title = set ? "The game switched the modifier this way so every answer is one button plus the modifier. It goes back when you leave." : "The modifier as your minichord has it.";
   if(lastMod!==null && lastMod!==mc.params[31]){ el.classList.remove("pulse"); void el.offsetWidth; el.classList.add("pulse"); }
   lastMod=mc.params[31];
+  // Barry Harris mode: shown whenever it's on or the game has set it either way
+  const bh=$("bhpill"), on=mc.params[33]===1, bset=33 in borrowed;
+  bh.hidden = !(on || bset);
+  bh.textContent = on ? `Barry Harris on: major, minor and dim play 6, m6 and °7${bset?" · set for you":""}` : "Barry Harris off · set for you";
+  bh.title = "Barry Harris mode (address 33). The game sets it for each chord it asks for, and it goes back when you leave.";
+  if(lastBarry!==null && lastBarry!==mc.params[33]){ bh.classList.remove("pulse"); void bh.offsetWidth; bh.classList.add("pulse"); }
+  lastBarry=mc.params[33];
 }
+let lastBarry=null;
 // Every game but the temperament taster runs in equal temperament: in 19 and 31 the chromatic
 // harp steps by the division's own steps and MIDI rounds to the nearest semitone, and the
 // twelve-note temperaments would colour every listening round.
@@ -1052,6 +1143,7 @@ function barryFor(qq){
   if(qq==null || !canWrite()) return;
   const want = BARRY_ON.has(qq) ? 1 : BARRY_OFF.has(qq) ? 0 : null;
   if(want!=null && (mc.params[33]??0)!==want) borrow(33,want);
+  modPill();
 }
 /** apply what the round needs, borrowing it so it goes back when you leave the game */
 let building=false, userRestored=false;   // don't apply while a round is being built, or after "Put my settings back"
@@ -1113,8 +1205,14 @@ function correct(extra){
   if(learn && learn!==reveal(a)){ const s2=document.createElement("small"); s2.className="learn"; s2.textContent=learn; $("feedback").appendChild(s2); }
   else if(learn){ const sm=$("feedback").querySelector("small"); if(sm) sm.className="learn"; }
   scoreboard(); poll(false);
-  const dwell = sprint ? 450 : q.kind==="melody" ? 2200 : (!firstTry || ["buildscale","chordscale","diatonic"].includes(q.kind)) ? 4500 : 1800;   // time to read how it's built
-  if(!MYSTERY.has(q.kind)) setTimeout(()=>{ if(solved && q) nextQuestion(); }, dwell);
+  // Right first time, the game moves on by itself; after a miss it waits for Next, so there's
+  // time to read how the answer is built. Tune up always waits: locking in is the end.
+  if(firstTry && q.kind!=="tune"){
+    const dwell = sprint ? 450 : q.kind==="melody" ? 2200 : q.learn ? 3200 : 1800;
+    setTimeout(()=>{ if(solved && q) nextQuestion(); }, dwell);
+  } else if(!sprint){
+    const f=$("feedback"), s3=document.createElement("small"); s3.textContent="Press Next when you're ready."; f.appendChild(s3);
+  }
 }
 function wrong(text){ firstTry=false; stats.streak=0; buzz(); feedback(text,"bad"); scoreboard(); }
 // A wrong answer flashes the game card red and, with sounds on, plays two soft low notes
@@ -1266,7 +1364,7 @@ function answerKey(tonicPc){
 function answerChoice(v){
   if(!q || solved || q.answer.type!=="choice") return;
   const parentNote = q.parent!=null && q.parent!==q.rootPc ? ` It has the notes of ${spell(q.parent,devFifths())} major.` : "";
-  if(v===q.answer.value) return correct(MYSTERY.has(q.kind) ? `Right: ${q.answer.name}.${parentNote} Press Next for another, or Put my settings back.` : `Right: ${q.answer.name}.${parentNote}`);
+  if(v===q.answer.value) return correct(`Right: ${q.answer.name}.${parentNote}`);
   const c=q.choices.find(c=>c.value===v);
   wrong(`Not ${c?c.label:"that"}. Listen again, or try a hint.`);
 }
@@ -1488,6 +1586,7 @@ function mine(){
 
 // ---------- connection ----------
 mc.addEventListener("device", ()=>{
+  if(blast) blastKey();
   if(q && !solved && !rebuilding) applyNeeds();
   mine(); needs();
   // a round built before the minichord's settings arrived is rebuilt now, on the minichord
