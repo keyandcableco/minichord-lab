@@ -287,7 +287,7 @@ function questionKey(){
   // so every note of the key is a plain button and the modifier is only for what's outside it
   if(settings.keysrc==="set"){
     const f=rnd([-5,-4,-3,-2,-1,0,1,2,3,4,5,6]);
-    if(canWrite() && mc.params[35]!==keyIndexOf(f)) borrow(35,keyIndexOf(f));
+    ensure(35,keyIndexOf(f));
     return {name:KEY_BY_FIFTHS[f], fifths:f};
   }
   if(settings.keysrc==="follow" && mc.keyIndex!=null){ const f=KEY_FIFTHS[mc.keyIndex]; if(KEY_BY_FIFTHS[f]) return {name:KEY_BY_FIFTHS[f], fifths:f}; }
@@ -812,7 +812,7 @@ let diat=null;
 const sigList=f=>{ const order=f>0?"FCGDAEB":"BEADGCF"; return [...order.slice(0,Math.abs(f))].map(L=>L+(f>0?"♯":"♭")); };
 function genDiatonic(){
   const f=rnd([-6,-5,-4,-3,-2,-1,0,1,2,3,4,5,6]), name=KEY_BY_FIFTHS[f];
-  if(canWrite() && mc.params[35]!==keyIndexOf(f)) borrow(35,keyIndexOf(f));
+  ensure(35,keyIndexOf(f));
   const chords=DEGREES.map(d=>{ const root=above(name,d.st,d.se); return {label:d.n, root, q:d.q, rootPc:pcOfName(root)}; });
   diat={f, name, chords, pos:0};
   const acc=sigList(f), what = f===0 ? "no sharps or flats: every button plays its plain letter" : `${sigText(f)}, ${acc.join(", ")}: the minichord now plays every ${acc.map(a=>a[0]).join(", ")} button as ${acc.join(", ")}`;
@@ -883,8 +883,8 @@ function startBlaster(){
     next:performance.now()+700, fall:9000*Math.pow(.92,start), gap:2600*Math.pow(.92,start), over:false, raf:0, field:null, bar:null,
     barry:false, pauseForBarry:false, keyBar:null, keyTarget:null};
   if(canWrite()){
-    const want = blast.dir>0 ? 0 : 1; if(mc.params[31]!==want) borrow(31,want);
-    if(slashReady() && mc.params[113]!==1) borrow(113,1);   // for the slash levels, the slash note in the bass
+    ensure(31, blast.dir>0 ? 0 : 1);
+    if(slashReady()) ensure(113,1);   // for the slash levels, the slash note in the bass
     if(mc.params[35]!=null && !(35 in borrowed)) borrow(35,mc.params[35]);   // the key you change it to goes back when you leave
     poll(true);                                             // read the key signature as you change it
   }
@@ -1033,8 +1033,18 @@ const LABELS={spell:"Spell it", blaster:"Sight reader", diatonic:"Seven chords",
 
 // ---------- borrowing settings, and always giving them back ----------
 const borrowed={};
+// everything the current round has set, so switching games never gives back what the new
+// game just borrowed (the key signature, Barry Harris mode, slash voice…)
+const roundBorrows=new Set();
+/** set addr to value for this round: borrowed if it differs, and kept if an earlier round already set it */
+function ensure(addr,value){
+  if(!canWrite()) return;
+  if((mc.params[addr]??0)!==value) borrow(addr,value);
+  else if(addr in borrowed) roundBorrows.add(addr);
+}
 function borrow(addr,value){
   if(!canWrite()) return;
+  roundBorrows.add(addr);
   if(!(addr in borrowed)) borrowed[addr]=mc.params[addr] ?? 0;
   mc.writeParam(addr,value);
   $("restore").hidden=false; mine();
@@ -1108,7 +1118,7 @@ function modifierFor(name){
   if(acc===ka) return;
   const want = acc>ka ? 0 : 1;
   q.usesMod=true;
-  if(mc.params[31]!==want) borrow(31,want);
+  ensure(31,want);
 }
 // The modifier pill: which way the modifier goes right now, whether the game set it, and a
 // pulse whenever it changes, so a question that needs it never catches you out.
@@ -1142,7 +1152,7 @@ const BARRY_ON=new Set(["6","m6","°7"]), BARRY_OFF=new Set(["","m","°"]);
 function barryFor(qq){
   if(qq==null || !canWrite()) return;
   const want = BARRY_ON.has(qq) ? 1 : BARRY_OFF.has(qq) ? 0 : null;
-  if(want!=null && (mc.params[33]??0)!==want) borrow(33,want);
+  if(want!=null) ensure(33,want);
   modPill();
 }
 /** apply what the round needs, borrowing it so it goes back when you leave the game */
@@ -1153,7 +1163,7 @@ function applyNeeds(){
   if(missing.length){ missing.forEach(n=>borrow(n.addr,n.value)); setTimeout(()=>mc.requestDump(),200); }
 }
 function nextQuestion(){
-  userRestored=false;
+  userRestored=false; roundBorrows.clear();
   stopTones(); stopBlaster(); clearTimeout(pendingWrong); pendingWrong=null;
   harpQuietUntil=performance.now()+150;
   building=true; try{ q=GENS[modeFor()](); } finally { building=false; } solved=false; firstTry=true; keyAtStart=mc.keyIndex; pick={root:null,q:null,bass:null}; qStart=performance.now();
@@ -1542,7 +1552,7 @@ function setMode(m){
   document.querySelectorAll(".modes button[data-mode]").forEach(x=>x.setAttribute("aria-pressed",x.dataset.mode===m));
   $("sprint").disabled = MYSTERY.has(m) || m==="blaster";
   stats.streak=0; scoreboard(); nextQuestion();
-  if(switching) restoreExcept(new Set([...(q.needs||[]).map(n=>n.addr), ...(q.borrows||[]), 31]));   // the next game sets the modifier itself   // keep what the new game uses
+  if(switching) restoreExcept(new Set([...(q.needs||[]).map(n=>n.addr), ...(q.borrows||[]), ...roundBorrows, 31]));   // the next game sets the modifier itself   // keep what the new game uses
 }
 document.querySelectorAll(".modes button[data-mode]").forEach(b=>{ b.setAttribute("aria-pressed", b.dataset.mode===settings.mode); b.onclick=()=>setMode(b.dataset.mode); });
 $("sprint").disabled = MYSTERY.has(settings.mode) || settings.mode==="blaster";
