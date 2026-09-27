@@ -120,7 +120,7 @@
 /* the title with the settings button on its right; settings open over the page */
 .titlerow{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
 /* one game on its own page: only the game card and the bar at the top */
-.solo .zone.gamesel, .solo .lede, .solo .answers, .solo #hint, .solo #hear, .solo #reveal, .solo #lastBtn, .solo #sprint, .solo #next, .solo .game .sub{display:none!important}
+.solo .zone.gamesel, .solo .lede, .solo #hint, .solo #hear, .solo #reveal, .solo #lastBtn, .solo #sprint, .solo #next, .solo .game .sub{display:none!important}
 .morelink{font-size:1rem;margin:.2rem 0 0}
 .morelink[hidden]{display:none}
 #settingsDlg{border:2px solid var(--ink);border-top:8px solid var(--felt);border-radius:var(--radius);background:var(--panel);color:var(--ink);padding:14px 18px 18px;width:min(640px,94vw);max-height:88vh;overflow:auto}
@@ -1344,7 +1344,7 @@ function blastMenu(over){
     const p=document.createElement("p"); p.textContent="OR START FROM"; ov.appendChild(p);
     sfx("over");
   } else {
-    ov.innerHTML=`<h3>CHORD INVADERS</h3><p>PLAY EACH CHORD BEFORE IT LANDS. ★ CHORDS SCORE BIG AND NEVER HURT. SET THE KEY WHEN A KEY BAR FALLS.</p><p class="blink">CHOOSE A LEVEL</p>`;
+    ov.innerHTML=`<h3>CHORD INVADERS</h3><p>PLAY EACH CHORD BEFORE IT LANDS. ★ CHORDS SCORE BIG AND NEVER HURT.${keyComboReady() ? " SET THE KEY WHEN A KEY BAR FALLS." : ""}</p><p class="blink">CHOOSE A LEVEL</p>`;
   }
   // the speed, chosen here and remembered
   const sp=document.createElement("div"); sp.className="levels";
@@ -1435,8 +1435,11 @@ function spawnBlast(now){
     return;
   }
 }
+// Key bars are answered with the key change combo, which stock firmware (version 9) doesn't have,
+// so they only fall for firmware that does.
+const keyComboReady=()=>canWrite() && (mc.params[7]??0)>9;
 function spawnKeyBar(now){
-  if(!canWrite() || blast.keyBar) return;
+  if(!keyComboReady() || blast.keyBar) return;
   const here=devFifths(), f=rnd([-5,-4,-3,-2,-1,0,1,2,3,4,5,6].filter(x=>x!==here)), name=KEY_BY_FIFTHS[f];
   const el=document.createElement("div"); el.className="fkey";
   el.innerHTML=`KEY OF ${name} MAJOR<small>${sigText(f)}${f?`: ${sigList(f).join(" ")}`:""} · set it with the key change combo</small>`;
@@ -1798,9 +1801,14 @@ function barryFor(qq){
 }
 /** apply what the round needs, borrowing it so it goes back when you leave the game */
 let building=false, userRestored=false;   // don't apply while a round is being built, or after "Put my settings back"
+// A need for a setting the minichord's firmware doesn't report is already met: stock firmware has
+// no temperament setting, so it's always in equal temperament, and asking for it would only write
+// to an address it ignores and ask again, round and round.
+const hasSetting=a=>mc.params[a]!==undefined;
+const unmet=n=> hasSetting(n.addr) && (n.ok ? !n.ok(mc.params[n.addr]) : mc.params[n.addr]!==n.value);
 function applyNeeds(){
   if(!q || !q.needs || !canWrite() || building || userRestored) return;
-  const missing=q.needs.filter(n=> n.ok ? !n.ok(mc.params[n.addr]) : mc.params[n.addr]!==n.value);
+  const missing=q.needs.filter(unmet);
   if(missing.length){ missing.forEach(n=>borrow(n.addr,n.value)); setTimeout(()=>mc.requestDump(),200); }
 }
 // The last round, kept when a new one starts: its prompt and everything its answer showed
@@ -2069,10 +2077,12 @@ function needs(){
   if(!q || !q.needs){ box.hidden=true; return; }
   box.hidden=false;
   const hold = q.holdHint ? ` ${q.holdHint()}` : "";      // worked out now, after the modifier is set
-  const what=q.needs.map(n=>n.what).filter(Boolean).join(", ");
+  // once connected, only name what this firmware can actually be set to
+  const what=q.needs.filter(n=> mc.params[35]===undefined || hasSetting(n.addr)).map(n=>n.what).filter(Boolean).join(", ");
+  if(!what && mc.params[35]!==undefined){ box.hidden=true; return; }
   if(mc.params[35]===undefined){ box.textContent=`This one needs ${what}. Connect the minichord and the game sets it for you.`; return; }
   if(!canWrite()){ box.textContent=`This one needs ${what}, and the game can't change your minichord's settings: see the line under the title.`; return; }
-  const missing=q.needs.filter(n=> n.ok ? !n.ok(mc.params[n.addr]) : mc.params[n.addr]!==n.value);
+  const missing=q.needs.filter(unmet);
   if(userRestored && missing.length){ box.textContent=`Your settings are back as they were. Press Next and the game sets ${what} again.`; return; }
   // before firmware 16 the harp only changes over to (or out of) chromatic on the next chord press
   const wake = q.needs.some(n=>n.addr===98) && (mc.params[7]??0)<16 ? " Press any chord once so the harp changes over; your firmware waits for a chord before it retunes the strings." : "";
