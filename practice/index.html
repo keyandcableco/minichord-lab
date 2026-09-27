@@ -284,7 +284,17 @@
 .helper.hharp .hstring{display:flex;align-items:center;justify-content:center;font:400 .45rem "Minichord Lab Accidentals","Press Start 2P",monospace;color:#9A93B5;border:1px solid #2E2A40;background:#0E0C14}
 .helper.hharp .hstring.lit{background:#FFD35A;color:#16132A;border-color:#FFF4C2;box-shadow:0 0 10px rgba(255,211,90,.9)}
 .helper.hharp small{position:absolute;bottom:-18px;left:0;right:0;text-align:center;font:400 .4rem "Press Start 2P",monospace;color:#9A93B5}
-.field.demoing .helper{display:none}
+.field.demoing .helper.hboard{display:none}
+
+/* the keymaster's plate: black, leaning, twelve white notes */
+.kmplate{aspect-ratio:266/602}
+.kmplate svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.kmplate .kdot{position:absolute;width:20%;aspect-ratio:1;transform:translate(-50%,-50%);border-radius:50%;background:#F4F2EA;border:3px solid #000;box-shadow:0 0 0 2px #3A3530;display:flex;align-items:center;justify-content:center;font:400 .42rem "Minichord Lab Accidentals","Press Start 2P",monospace;color:#16132A;box-sizing:border-box}
+.kmstrip.plate{top:50%;bottom:auto;width:auto;height:min(300px,68%);transform:translateY(-50%);display:block}
+.kmstrip.plate .kdot.km-A,.kmstrip.plate .kdot.km-B{color:#8B0000}
+.kmstrip.plate .kdot.hit{animation:kmhit .25s ease-out}
+.kmstrip.plate .kdot.demo-on,.helper.hharp.plate .kdot.lit{background:#FFD35A;border-color:#FFF4C2;box-shadow:0 0 12px rgba(255,211,90,.95);color:#16132A}
+.helper.hharp.plate{background:none;border:none;padding:0;display:block;height:min(330px,72%);width:auto}
 /* the demo's pixel minichord */
 .overlay button.howto{border-color:#FFD35A;color:#FFD35A}
 .demo{position:absolute;inset:0;z-index:5;display:flex;flex-direction:column;justify-content:flex-start;padding:10px 14px;pointer-events:none}
@@ -1747,18 +1757,21 @@ function commandDemo(){
   el.innerHTML=`<div class="demohead"><span class="demotag blink">DEMO</span><span class="demotitle"></span><button class="demoskip">SKIP ▶</button></div><p class="democap"></p>`;
   el.querySelector(".demoskip").onclick=()=>endCommandDemo(token);
   const $d=s=>el.querySelector(s), sleep=ms=>new Promise(r=>setTimeout(r,ms));
+  demoHarp("command");
   sfx("attract");
   (async()=>{
     for(const sc of HC_DEMO){
       if(!token.run) return;
       $d(".demotitle").textContent=sc.title||""; $d(".democap").textContent=sc.text;
       blast.wave=sc.wave; const L=HC_LEVELS[0]; blast.labels && hcLabelsShow(sc.labels);
+      blast.helpNamesStale=true; helpString(-1);                        // the harp's names follow the scene's key
       if(sc.freeze){ await sleep(700); if(!token.run) return; sfx("freeze"); blast.frozenUntil=performance.now()+1600; popup(blast.field.clientWidth/2, blast.field.clientHeight-70, "FROZEN", "#7FE9FF"); }
       if(sc.note==null){ await sleep(sc.hold||3000); continue; }
       const st=hcStrings(), x=st[sc.note];
       const ch=document.createElement("span"); ch.className="fchord fnote democh";
       if(sc.staff) ch.innerHTML=hcStaffSvg(x.name, sc.note); else ch.textContent = sc.degrees ? String(x.deg) : sc.solfa ? SOLFA[x.deg-1] : x.name;
       ch.style.left=`${blast.cannons[sc.note].x}px`; ch.style.top="96px"; blast.field.appendChild(ch);
+      helpString(sc.note);                                              // the string to pluck lights on the harp
       requestAnimationFrame(()=>{ ch.style.transition="top 2s linear"; ch.style.top="200px"; });
       await sleep(1300); if(!token.run){ ch.remove(); return; }
       // the string lights and fires, and the note plays
@@ -1767,7 +1780,7 @@ function commandDemo(){
       const fld=blast.field, x1=ch.offsetLeft, y1=ch.offsetTop+ch.offsetHeight/2;
       sfx("shoot");
       blast.fx.missiles.push({x0:c.x/PX, y0:(fld.clientHeight-30)/PX, x1:x1/PX, y1:y1/PX, t0:performance.now(), dur:200, hit:()=>{ sfx("boom"); explode(x1,y1); ch.remove(); }});
-      await sleep(1600);
+      await sleep(900); helpString(-1); await sleep(700);
     }
     if(token.run) endCommandDemo(token);
   })();
@@ -1776,6 +1789,7 @@ function hcLabelsShow(on){ const st=hcStrings(); [...blast.labels.children].forE
 // a string's label: its name, and on the chromatic strip the black-key strings' flat name under the sharp
 const hcLabelText=x=> x.alt ? `${x.name}<br>${x.alt}` : x.name;
 function endCommandDemo(token){
+  if(blast && blast.demo===token) demoHarpDone();
   if(!blast || blast.demo!==token) return;
   stopDemo(); blast.phase="menu"; blast.wave={kind:"chrom"}; hcLabelsShow(false);
   if(blast.overlay) blast.overlay.hidden=false;
@@ -1807,10 +1821,30 @@ const KM_LAYOUTS={
 const kmLayout=()=>KM_LAYOUTS[saved.harpLayout==="keymaster" ? "keymaster" : "strip"];
 const KM_GLYPH={up:"▲",left:"◀",A:"A",B:"B",right:"▶",down:"▼"};
 const kmControl=pc=>kmLayout().byString[mod(pc,12)];
+
+// The keymaster harp as it looks: a leaning black plate with its twelve white notes in four rising
+// rows of three, strings 1 to 3 the lowest row, 10 to 12 the top. Positions are percentages of the
+// plate, measured from a photograph of it.
+const KM_PLATE_DOTS=[[19,87.5],[50,78.5],[81,68],[19,67],[50,57.5],[81,47.5],[19,46.5],[50,36.5],[81,27],[19,26],[50,16.5],[81,8.5]].map(([x,y])=>[x,y+1.5]);   // three even columns, centred on the plate
+const KM_PLATE_SHAPE="1.5,23.6 72.9,0.3 98.5,5 98.5,76.4 26.3,99.3 1.5,96.3";
+/** fill el with the plate; label(stringIndex) gives each note's text. Returns the notes by string. */
+function kmPlate(el, label){
+  el.classList.add("kmplate");
+  el.innerHTML=`<svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><polygon points="${KM_PLATE_SHAPE}" fill="#0C0B0F" stroke="#4A443C" stroke-width="1.2" stroke-linejoin="round" vector-effect="non-scaling-stroke"/></svg>`;
+  const dots=[];
+  KM_PLATE_DOTS.forEach(([x,y],sI)=>{ const d=document.createElement("span"); d.className="kdot"; d.dataset.pc=sI; d.style.left=x+"%"; d.style.top=y+"%"; d.textContent=label(sI); el.appendChild(d); dots[sI]=d; });
+  return dots;
+}
 /** the controller drawn beside the field, as the harp is laid out, lit as it's touched */
 function kmStrip(field){
-  const L=kmLayout(), el=document.createElement("div"); el.className="kmstrip "+(L.cols===3?"grid":"line"); el.setAttribute("aria-label","The harp as a controller");
-  L.drawOrder.forEach(pc=>{ const z=L.byString[pc], c=document.createElement("span"); c.className=`km km-${z}`; c.dataset.zone=z; c.dataset.pc=pc; c.textContent=KM_GLYPH[z]; el.appendChild(c); });
+  const L=kmLayout(), el=document.createElement("div"); el.setAttribute("aria-label","The harp as a controller");
+  if(L.cols===3){   // the keymaster: its own plate, each note marked with what it does
+    el.className="kmstrip plate";
+    kmPlate(el, sI=>KM_GLYPH[L.byString[sI]]).forEach((d,sI)=>{ const z=L.byString[sI]; d.classList.add("km",`km-${z}`); d.dataset.zone=z; });
+  } else {
+    el.className="kmstrip line";
+    L.drawOrder.forEach(pc=>{ const z=L.byString[pc], c=document.createElement("span"); c.className=`km km-${z}`; c.dataset.zone=z; c.dataset.pc=pc; c.textContent=KM_GLYPH[z]; el.appendChild(c); });
+  }
   field.appendChild(el); return el;
 }
 function kmFlash(strip, pc){ if(!strip) return; const c=strip.querySelector(`[data-pc="${mod(pc,12)}"]`); if(!c) return; c.classList.remove("hit"); void c.offsetWidth; c.classList.add("hit"); }
@@ -2411,6 +2445,7 @@ function asDemo(){
   el.querySelector(".demoskip").onclick=()=>endAsDemo(token);
   const $d=s=>el.querySelector(s), sleep=ms=>new Promise(r=>setTimeout(r,ms)), say=(t,c)=>{ $d(".demotitle").textContent=t||""; $d(".democap").textContent=c; };
   const play=notes=>{ if(settings.sounds && piano.ctx){ const go=()=>piano.play(notes,{when:.02,dur:1.1}); piano.ctx.state==="running"?go():piano.ctx.resume().then(go).catch(()=>{}); } };
+  demoHarp("asteroids");
   sfx("attract");
   (async()=>{
     const step=async ms=>{ await sleep(ms); if(!token.run) throw 0; };
@@ -2425,7 +2460,7 @@ function asDemo(){
       for(const nm of ["E","G♯","B","D"]){
         await step(650);
         const r=blast.rocks.find(x=>!x.dead && x.kind==="note" && x.name===nm); if(!r) continue;
-        play([60+r.pc]); r.dead=true;
+        play([60+r.pc]); r.dead=true; helpString(r.pc);
         asFire(r, ()=>{ r.deadAt=performance.now(); r.el.remove(); explode(r.x,r.y,16); sfx("boom"); });
       }
       await step(1000); say("","EVERY NOTE OF A CHORD SHOT DOWN SCORES A BONUS. A WRONG STRING JAMS YOUR GUN."); await step(3400);
@@ -2435,6 +2470,7 @@ function asDemo(){
   })();
 }
 function endAsDemo(token){
+  if(blast && blast.demo===token) demoHarpDone();
   if(!blast || blast.demo!==token) return;
   stopDemo(); blast.phase="menu"; blast.rocks.forEach(r=>{ if(!r.dead) asKill(r); }); blast.rocks=[]; blast.score=0;
   if(blast.overlay) blast.overlay.hidden=false;
@@ -2976,13 +3012,17 @@ function helpChord(rootName, q, bass){
   h.mod.textContent = mc.params[31]===1 ? "♭" : "♯";
   if(bass){ const bc=DEMO_COLS.indexOf(bass[0]); if(bc>=0) h.cells[bc][0].classList.add("slashlit"); }
 }
+// A demo shows the harp whether beginner mode is on or not, lighting each string as it's plucked,
+// and takes it away again after unless the player has beginner mode on.
+function demoHarp(k){ if(blast && blast.field && !blast.helpHarp){ blast.helpHarp=helperHarp(k); blast.field.appendChild(blast.helpHarp.el); blast.demoHarp=true; } }
+function demoHarpDone(){ if(blast && blast.demoHarp){ blast.helpHarp?.el.remove(); blast.helpHarp=null; blast.demoHarp=false; blast.helpString=null; } else if(blast && blast.helpHarp) helpString(-1); }
 // the harp, drawn as the player's harp is laid out, its strings named, the one to pluck lit
 function helperHarp(k){
   const grid=(saved.harpLayout==="keymaster");
-  const el=document.createElement("div"); el.className="helper hharp "+(grid?"grid":"line");
-  const order = grid ? [9,10,11,6,7,8,3,4,5,0,1,2] : [11,10,9,8,7,6,5,4,3,2,1,0];   // strings, as drawn top row first
-  const cells=[];
-  order.forEach(sI=>{ const c=document.createElement("span"); c.className="hstring"; cells[sI]=c; el.appendChild(c); });
+  const el=document.createElement("div"); el.className="helper hharp "+(grid?"plate":"line");
+  let cells=[];
+  if(grid) cells=kmPlate(el, ()=>"");                                           // the keymaster's own plate
+  else [11,10,9,8,7,6,5,4,3,2,1,0].forEach(sI=>{ const c=document.createElement("span"); c.className="hstring"; cells[sI]=c; el.appendChild(c); });   // the strip, high strings at the top
   const names=()=>{ const st = k==="command" ? hcStrings() : [...Array(12)].map((_,i)=>({name:SHARP_NAMES[i]})); st.forEach((x,i)=>{ if(cells[i]) cells[i].textContent=x.name; }); };
   names();
   const cap=document.createElement("small"); cap.textContent="HARP"; el.appendChild(cap);
