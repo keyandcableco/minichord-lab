@@ -221,6 +221,7 @@ details.fold>summary h2{display:inline}
 details.fold>summary::before{content:"▸";color:var(--felt);font-size:1rem;transition:transform .15s;display:inline-block}
 details.fold[open]>summary::before{transform:rotate(90deg)}
 .nowplaying{color:var(--muted);font-style:italic}
+.arcadelinks{font-size:.9rem;color:var(--muted);margin-left:6px}
 details.fold[open] .nowplaying{display:none}
 /* the round before this one, kept to look back at */
 .lastround{margin-top:10px;padding:8px 12px;border-left:3px solid var(--rule);background:var(--board)}
@@ -257,6 +258,12 @@ details.fold[open] .nowplaying{display:none}
 
   <details class="zone gamesel fold" id="gameMenu" open>
   <summary><h2 class="zonehead">Choose a game</h2><span class="nowplaying" id="nowPlaying"></span></summary>
+  <div class="modes arcaderow" role="group" aria-label="Arcade games">
+    <span class="grp">Arcade games</span>
+    <button data-mode="blaster">Chord Invaders</button>
+    <button data-mode="command">Harp Command</button>
+    <span class="arcadelinks">or on their own pages: <a href="../invaders/">Chord Invaders</a> · <a href="../harp-command/">Harp Command</a></span>
+  </div>
   <div class="modes" role="group" aria-label="Read and play">
     <span class="grp">Read and play</span>
     <button data-mode="spell">Spell it</button>
@@ -264,14 +271,12 @@ details.fold[open] .nowplaying{display:none}
     <button data-mode="staff">On the staff</button>
     <button data-mode="slash">Slash chords</button>
     <button data-mode="key">Key detective</button>
-    <button data-mode="blaster">Chord Invaders</button>
     <button data-mode="diatonic">Seven chords</button>
     <button data-mode="mix">Mix</button>
   </div>
   <div class="modes" role="group" aria-label="The harp">
     <span class="grp">The harp</span>
     <button data-mode="harp">Harp hunt</button>
-    <button data-mode="command">Harp Command</button>
     <button data-mode="melody">Play by number</button>
     <button data-mode="simon">Simon says</button>
     <button data-mode="chordscale">Chord scales</button>
