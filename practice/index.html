@@ -132,9 +132,9 @@
 .answers{margin-top:22px}
 .answers .picker{max-width:720px}
 /* ---------- Chord Invaders: an arcade cabinet ---------- */
-.field.arcade{height:420px;background:#07060C;border:2px solid #000;border-top:8px solid var(--felt);font-family:"Press Start 2P",monospace;user-select:none}
+.field.arcade{height:460px;background:#07060C;border:2px solid #000;border-top:8px solid var(--felt);font-family:"Press Start 2P",monospace;user-select:none}
 .field.arcade canvas.fx{position:absolute;inset:0;width:100%;height:100%;image-rendering:pixelated;z-index:0}
-.field.arcade .fchord{z-index:2;font:400 1.25rem "Minichord Lab Accidentals","Press Start 2P",monospace;color:#F1E8D2;text-shadow:0 0 6px rgba(255,255,255,.35);letter-spacing:-.02em}
+.field.arcade .fchord{z-index:2;font:400 var(--chord-size,1.25rem) "Minichord Lab Accidentals","Press Start 2P",monospace;color:#F1E8D2;text-shadow:0 0 6px rgba(255,255,255,.35);letter-spacing:-.02em}
 .field.arcade .fchord.low{color:#FFD35A;text-shadow:0 0 10px rgba(255,200,60,.8)}
 .field.arcade .fchord.bonus{color:#7FE9FF;text-shadow:0 0 10px rgba(80,220,255,.9)}
 .field.arcade .fchord.gone{visibility:hidden}
@@ -143,22 +143,25 @@
 .field.arcade .fkey small{font:400 .55rem "Press Start 2P",monospace;color:#B9C7E6;margin-top:4px}
 .field.arcade .ground{z-index:1;background:#FF4B3E;opacity:.7;height:2px}
 .hud{position:absolute;top:8px;left:10px;right:10px;display:flex;justify-content:space-between;align-items:center;z-index:3;font:400 .62rem "Press Start 2P",monospace;color:#F1E8D2;pointer-events:none}
-.hud .lives{color:#FF4B3E;letter-spacing:.2em}
+.hud .lives{color:#FF4B3E;letter-spacing:.15em;font-size:1.35rem;line-height:1;text-shadow:0 0 8px rgba(255,75,62,.6)}
 .hud .lvl{color:#FFD35A}
 .heard{position:absolute;left:10px;bottom:10px;z-index:3;font:400 .55rem "Minichord Lab Accidentals","Press Start 2P",monospace;color:#9A93B5;pointer-events:none}
 .heard b{color:#F1E8D2;font-weight:400}
 .heard.no b{color:#FF7A6E}
 .banner{position:absolute;left:0;right:0;top:36%;text-align:center;z-index:8;pointer-events:none;color:#FFD35A;font:400 1.9rem "Press Start 2P",monospace;text-shadow:0 0 14px rgba(255,200,60,.8),3px 3px 0 #000;animation:banner 2.2s ease-out forwards}
-.banner small{display:block;margin-top:14px;font-size:.6rem;color:#F1E8D2;text-shadow:2px 2px 0 #000;line-height:1.6;padding:0 20px}
+.banner small{display:block;margin-top:14px;font-size:.6rem;color:#F1E8D2;text-shadow:2px 2px 0 #000;line-height:1.6;padding:0 20px;text-wrap:balance}
 @keyframes banner{0%{transform:scale(.3);opacity:0}12%{transform:scale(1.12);opacity:1}22%{transform:scale(1)}80%{opacity:1}100%{opacity:0;transform:translateY(-20px)}}
 .popup{position:absolute;z-index:3;transform:translateX(-50%);font:400 .7rem "Press Start 2P",monospace;color:#FFD35A;pointer-events:none;animation:popup .9s ease-out forwards;text-shadow:2px 2px 0 #000}
 @keyframes popup{0%{opacity:1;transform:translate(-50%,0)}100%{opacity:0;transform:translate(-50%,-34px)}}
 .overlay[hidden]{display:none!important}
-.overlay{position:absolute;inset:0;z-index:5;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:rgba(7,6,12,.72);color:#F1E8D2;text-align:center;padding:16px}
-.overlay h3{margin:0;font:400 1.7rem "Press Start 2P",monospace;color:#FFD35A;text-shadow:3px 3px 0 #000}
+.overlay{position:absolute;inset:0;z-index:5;display:flex;flex-direction:column;align-items:center;justify-content:safe center;overflow-y:auto;gap:10px;background:rgba(7,6,12,.72);color:#F1E8D2;text-align:center;padding:16px}
+.overlay h3{margin:0;font:400 1.5rem "Press Start 2P",monospace;color:#FFD35A;text-shadow:3px 3px 0 #000}
 .overlay h3.over{color:#FF4B3E}
-.overlay p{margin:0;font:400 .62rem/1.7 "Press Start 2P",monospace;color:#CFC6E6;max-width:60ch}
+.overlay p{margin:0;font:400 .62rem/1.7 "Press Start 2P",monospace;color:#CFC6E6;max-width:60ch;text-wrap:balance}
 .overlay .levels{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;max-width:560px}
+.overlay .optrow{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:10px}
+.overlay .optlabel{font:400 .55rem "Press Start 2P",monospace;color:#9A93B5}
+.overlay .optrow button{padding:.4rem .55rem}
 .overlay button{font:400 .62rem "Press Start 2P",monospace;background:#16132A;color:#F1E8D2;border:2px solid #F1E8D2;border-bottom-width:4px;border-radius:0;padding:.55rem .7rem}
 .overlay button:hover{background:#2A2450}
 .overlay button.go{background:var(--felt);border-color:#FFD35A;color:#FFF8E7;font-size:.8rem;padding:.7rem 1.1rem}
@@ -173,7 +176,7 @@
 .demo .demotag{color:#FF4B3E}
 .demo .demotitle{flex:1;color:#FFD35A;font-size:1rem}
 .demo .demoskip{pointer-events:auto;font:400 .55rem "Press Start 2P",monospace;background:#16132A;color:#F1E8D2;border:2px solid #F1E8D2;border-radius:0;padding:.35rem .5rem}
-.demo .democap{margin:10px auto 0;text-align:center;font:400 .88rem/1.75 "Minichord Lab Accidentals","Press Start 2P",monospace;color:#FFD35A;text-shadow:2px 2px 0 #000;min-height:3.6em;padding:6px 12px;background:rgba(7,6,12,.82);max-width:92%}
+.demo .democap{margin:10px auto 0;text-align:center;font:400 .88rem/1.75 "Minichord Lab Accidentals","Press Start 2P",monospace;color:#FFD35A;text-shadow:2px 2px 0 #000;min-height:3.6em;padding:6px 12px;background:rgba(7,6,12,.82);max-width:92%;text-wrap:balance}   /* balanced lines: no word left alone on the second */
 /* while the demo plays, the game's score, level and readout step aside */
 .field.demoing .hud, .field.demoing .heard{visibility:hidden}
 @media (max-width:560px){.demo .democap{font-size:.62rem}}
@@ -1353,6 +1356,9 @@ function sfx(kind){
 // Relaxed is the default; Wild is for showing off.
 const SPEEDS=[["Relaxed",1.8],["Steady",1.35],["Brisk",1],["Fast",.75],["Wild",.55]];
 const speedMul=()=> (SPEEDS[+saved.speed]||SPEEDS[0])[1];
+// how big the falling chord symbols are drawn
+const SIZES=[["S",".95rem"],["M","1.25rem"],["L","1.7rem"],["XL","2.3rem"]];
+const applyChordSize=()=>{ if(blast && blast.field) blast.field.style.setProperty("--chord-size", (SIZES[saved.chordSize??1]||SIZES[1])[1]); };
 const LEVEL_NAMES=["Major and minor","Add 7ths","Sharps and flats","maj7 and m7","Every chord type","Inversions","Any slash chord","Barry Harris"];
 function startBlaster(){
   const f=canWrite() ? devFifths() : 0;
@@ -1381,18 +1387,25 @@ function blastMenu(over){
     const p=document.createElement("p"); p.textContent="OR START FROM"; ov.appendChild(p);
     sfx("over");
   } else {
-    ov.innerHTML=`<h3>CHORD INVADERS</h3><p>PLAY EACH CHORD BEFORE IT LANDS. ★ CHORDS SCORE BIG AND NEVER HURT.${keyComboReady() ? " SET THE KEY WHEN A KEY BAR FALLS." : ""}</p><p class="blink">CHOOSE A LEVEL</p>`;
+    ov.innerHTML=`<h3>CHORD INVADERS</h3><p>PLAY EACH CHORD BEFORE IT LANDS. ★ CHORDS SCORE BIG AND NEVER HURT.${keyComboReady() ? " SET THE KEY WHEN A KEY BAR FALLS." : ""}</p>`;
     const how=document.createElement("button"); how.className="howto"; how.textContent="▶ HOW TO PLAY"; how.onclick=()=>runDemo(); ov.appendChild(how);
   }
   // the speed, chosen here and remembered
   const sp=document.createElement("div"); sp.className="levels";
-  const spl=document.createElement("p"); spl.textContent="SPEED";
+  const spl=document.createElement("span"); spl.className="optlabel"; spl.textContent="SPEED";
   SPEEDS.forEach(([n],i)=>{ const b=document.createElement("button"); b.textContent=n.toUpperCase(); b.setAttribute("aria-pressed", String((+saved.speed||0)===i));
     if((+saved.speed||0)===i){ b.style.background="#F1E8D2"; b.style.color="#16132A"; }
     b.onclick=()=>{ saved.speed=i; save(); [...sp.children].forEach(x=>{ x.style.background=""; x.style.color=""; }); b.style.background="#F1E8D2"; b.style.color="#16132A"; };
     sp.appendChild(b); });
-  ov.append(spl, sp);
-  const lvl=document.createElement("p"); lvl.textContent = over ? "" : "LEVEL"; if(!over) ov.appendChild(lvl);
+  const spRow=document.createElement("div"); spRow.className="optrow"; spRow.append(spl, sp); ov.append(spRow);
+  // the chord symbols' size, chosen here and remembered
+  const sz=document.createElement("div"); sz.className="levels";
+  const szl=document.createElement("span"); szl.className="optlabel"; szl.textContent="CHORD SIZE";
+  const mark=b=>{ [...sz.children].forEach(x=>{ x.style.background=""; x.style.color=""; }); b.style.background="#F1E8D2"; b.style.color="#16132A"; };
+  SIZES.forEach(([n],i)=>{ const b=document.createElement("button"); b.textContent=n; if((saved.chordSize??1)===i) mark(b);
+    b.onclick=()=>{ saved.chordSize=i; save(); applyChordSize(); mark(b); }; sz.appendChild(b); });
+  const szRow=document.createElement("div"); szRow.className="optrow"; szRow.append(szl, sz); ov.append(szRow);
+  if(!over){ const lvl=document.createElement("p"); lvl.className="blink"; lvl.textContent="CHOOSE A LEVEL"; ov.appendChild(lvl); }
   const lv=document.createElement("div"); lv.className="levels";
   LEVEL_NAMES.forEach((n,i)=>{ if(!levelOk(i)) return;
     const b=document.createElement("button"); b.innerHTML=`${i+1}<small>${n}</small>`; b.onclick=()=>beginBlast(i); lv.appendChild(b); });
@@ -1511,7 +1524,7 @@ function beginBlast(level){
   stopDemo();
   blast.items.forEach(i=>i.el.remove()); if(blast.keyBar) blast.keyBar.el.remove();
   Object.assign(blast,{items:[], score:0, lives:3, level, startLevel:level, hits:0, next:performance.now()+900,
-    fall:9000*Math.pow(.92,level)*speedMul(), gap:2600*Math.pow(.92,level)*speedMul(), over:false, phase:"play", keyBar:null, keyTarget:null, pauseForBarry:false});
+    fall:9000*Math.pow(.92,level)*speedMul(), gap:2600*Math.pow(.92,level)*speedMul(), over:false, phase:"play", keyBar:null, keyTarget:null, keyPaid:null, pauseForBarry:false});
   if(BLAST_LEVELS[level].barry && !blast.barry){ blast.barry=true; ensure(33,1); modPill(); }
   // every game starts in C major, whatever key the last one ended in, so the first chords are the
   // plain buttons; the player's own key goes back when they leave
@@ -1596,15 +1609,24 @@ function spawnKeyBar(now){
   blastBar();
 }
 // called whenever the minichord reports its settings: has the key been set?
+// Setting the key a bar asks for scores: while the bar is still falling, 25 points a level,
+// with a banner so it's seen mid-game; once it has landed, a smaller consolation, once.
 function blastKey(){
-  const k=blast && blast.keyBar;
-  if(!k || blast.over || !canWrite() || devFifths()!==k.f) return;
-  const r=k.el.getBoundingClientRect(), fr=blast.field.getBoundingClientRect();
-  explode(r.left-fr.left+r.width/2, r.top-fr.top+r.height/2, 40, ["#5FA8FF","#B9E0FF","#FFFFFF"]);
-  k.el.remove(); blast.keyBar=null;
-  blast.score+=50; sfx("key"); popup(r.left-fr.left+r.width/2, r.top-fr.top, "+50 KEY SET", "#B9E0FF");
-  feedback(`Key of ${k.name} major: set. +50`,"good",`${sigText(k.f)}${k.f?`, ${sigList(k.f).join(", ")}`:""}: every chord of the key is a plain button now.`);
-  blastBar();
+  if(!blast || blast.phase!=="play" || !canWrite()) return;
+  const k=blast.keyBar, t=blast.keyTarget;
+  if(k && devFifths()===k.f){
+    const r=k.el.getBoundingClientRect(), fr=blast.field.getBoundingClientRect(), pts=25*(blast.level+1);
+    explode(r.left-fr.left+r.width/2, r.top-fr.top+r.height/2, 40, ["#5FA8FF","#B9E0FF","#FFFFFF"]);
+    k.el.remove(); blast.keyBar=null; blast.keyPaid=t.f;
+    blast.score+=pts; sfx("key"); popup(r.left-fr.left+r.width/2, r.top-fr.top, `+${pts} KEY SET`, "#B9E0FF");
+    banner(`KEY SET! +${pts}`, `${k.name} MAJOR: ${k.f ? sigList(k.f).join(" ") : "NO SHARPS OR FLATS"}`);
+    feedback(`Key of ${k.name} major: set. +${pts}`,"good",`${sigText(k.f)}${k.f?`, ${sigList(k.f).join(", ")}`:""}: every chord of the key is a plain button now.`);
+    blastBar(); return;
+  }
+  if(!k && t && blast.keyPaid!==t.f && devFifths()===t.f){
+    const pts=10*(blast.level+1); blast.keyPaid=t.f; blast.score+=pts; sfx("key");
+    banner(`KEY SET +${pts}`, `${t.name} MAJOR, A LITTLE LATE`); blastBar();
+  }
 }
 
 // ---------- the space the chords fall through ----------
@@ -2310,7 +2332,7 @@ function buildSpecial(){
     const hud=document.createElement("div"); hud.className="hud"; field.appendChild(hud);
     const hd=document.createElement("div"); hd.className="heard"; field.appendChild(hd);
     box.append(field);
-    if(blast){ blast.items.filter(i=>!i.done).forEach(i=>field.appendChild(i.el)); blast.field=field; blast.hud=hud; blast.heard=hd; blast.fx=fxInit(field); if(blast.overlay) field.appendChild(blast.overlay); }
+    if(blast){ blast.items.filter(i=>!i.done).forEach(i=>field.appendChild(i.el)); blast.field=field; setTimeout(applyChordSize); blast.hud=hud; blast.heard=hd; blast.fx=fxInit(field); if(blast.overlay) field.appendChild(blast.overlay); }
     blastBar(); return;
   }
   const chip=(text,state)=>{ const b=document.createElement("span"); b.textContent=text;
