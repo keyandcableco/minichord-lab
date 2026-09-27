@@ -179,7 +179,6 @@
 /* Harp Command: the string labels along the bottom, and staff notes falling */
 .field.arcade.command .strings{position:absolute;left:0;right:0;bottom:30px;height:24px;z-index:3;pointer-events:none}
 .field.arcade.command.frozen .strings span{color:#7FE9FF}
-.sntile,.snseg,.stcell,.fnote,.rock-note,.field.arcade.command .strings span,#pickBody button,.solchip{white-space:pre-line}   /* the syllable sits under the letter */
 .field.arcade.command .strings span{position:absolute;bottom:0;transform:translateX(-50%);font:400 .55rem/1.5 "Minichord Lab Accidentals","Press Start 2P",monospace;color:#9A93B5;text-align:center}
 .field.arcade .fnote{text-align:center}
 .field.arcade .fnote .minstaff{display:block;color:#F1E8D2}
@@ -329,6 +328,7 @@ details.fold[open] .nowplaying{display:none}
     <span class="grp">The harp</span>
     <button data-mode="harp">Harp hunt</button>
     <button data-mode="melody">Play by number</button>
+    <button data-mode="solfa">Play by solfège</button>
     <button data-mode="simon">Simon says</button>
     <button data-mode="chordscale">Chord scales</button>
     <button data-mode="missing">Missing note</button>
@@ -418,8 +418,6 @@ details.fold[open] .nowplaying{display:none}
         <label>Scales <select id="scaleset"><option value="everyday">Everyday scales</option><option value="modes">The seven modes</option><option value="exotic">Exotic scales</option><option value="all">All of them</option></select></label>
         <label>Directions <select id="dirset"><option value="steps">Half and whole steps</option><option value="thirds">Plus thirds</option><option value="fifths">Plus fourths and fifths</option><option value="all">Plus sixths and the tritone</option></select></label>
         <label>Key <select id="keysrc"><option value="follow">The minichord's key</option><option value="random">A different key each time</option><option value="set">A new key each time, set on the minichord</option></select></label>
-        <label>Solfège beside notes <select id="noteNames"><option value="letters">Off</option><option value="movable">Movable do (do re mi in the key)</option><option value="fixed">Fixed do (Do is always C)</option></select></label>
-        <label>Minor keys in movable do <select id="laMinor"><option value="do">Do-based (do me sol)</option><option value="la">La-based (la do mi)</option></select></label>
         <label>After a right answer <select id="advance"><option value="quick">Move on quickly</option><option value="slow">Move on after a few seconds</option><option value="wait">Wait for Next</option></select></label>
         <label>Text size <select id="textSize"><option value="1">Normal</option><option value="1.2">Larger</option><option value="1.4">Largest</option></select></label>
         <label>Prompt font <select id="promptFont"><option value="serif">Serif</option><option value="plain">Plain and extra legible</option></select></label>
@@ -806,17 +804,21 @@ function genChordScale(){
     hearFn:()=>[...FORM[q].map(f=>[48+r+f[1],0]), ...sc.iv.concat(12).map((x,k)=>[60+r+x,1.3+k*.28])]};
 }
 
-// Play by number: tunes in scale degrees, plucked on the harp in the key's major scale
+// Solfège for a major key, one syllable a degree; do again at the top
+const SOLFA=["do","re","mi","fa","sol","la","ti","do"];
+// Play by number: tunes in scale degrees, plucked on the harp in the key's major scale.
+// Play by solfège is the same game with the tunes in syllables, do re mi, instead of numbers.
 const TUNES=[
   {n:"Up the scale", d:[1,2,3,4,5,6,7,8]}, {n:"Down the scale", d:[8,7,6,5,4,3,2,1]}, {n:"Up and down the chord", d:[1,3,5,8,5,3,1]},
   {n:"Twinkle, Twinkle, Little Star", d:[1,1,5,5,6,6,5,4,4,3,3,2,2,1]}, {n:"Ode to Joy", d:[3,3,4,5,5,4,3,2,1,1,2,3,3,2,2]},
   {n:"Frère Jacques", d:[1,2,3,1,1,2,3,1,3,4,5,3,4,5]}, {n:"Mary Had a Little Lamb", d:[3,2,1,2,3,3,3,2,2,2,3,5,5]},
   {n:"When the Saints Go Marching In", d:[1,3,4,5,1,3,4,5,1,3,4,5,3,1,3,2]}, {n:"Amazing Grace", d:[5,1,3,1,3,2,1,6,5]},
 ];
-function genMelody(){
+function genMelody(solfa=false){
   const key=questionKey(), t=rnd(TUNES);
   const pcs=t.d.map(n=>mod(pcOfName(key.name)+MAJOR[(n-1)%7],12));
-  return {kind:"melody", prompt:t.n, sub:`Hold ${key.name} major and pluck it by number: 1 is ${key.name}, 8 is ${key.name} again. Octaves don't matter.`, pressRoot:key.name, holdHint:()=>`Hold ${pressRoot(key.name)}, with the major button.`,
+  return {kind:"melody", solfa, prompt:t.n, sub: solfa ? `Hold ${key.name} major and pluck it in solfège: do is ${key.name}, sol is the fifth note up, and the last do is ${key.name} again. Octaves don't matter.`
+      : `Hold ${key.name} major and pluck it by number: 1 is ${key.name}, 8 is ${key.name} again. Octaves don't matter.`, pressRoot:key.name, holdHint:()=>`Hold ${pressRoot(key.name)}, with the major button.`,
     answer:{type:"melody", degrees:t.d, pcs, pos:0, name:t.n}, hint:`The next note is ${spell(pcs[0],key.fifths)}.`, context:key.fifths,
     hearFn:()=>pcs.map((p,k)=>[60+p+(t.d[k]===8?12:0),k*.42]),
     needs:[PER_CHORD,NOT_CHROMATIC]};
@@ -1408,6 +1410,7 @@ const HC_LEVELS=[
   {n:"Chromatic", kind:"chrom"},
   {n:"Major keys", kind:"scale", scales:["major"]},
   {n:"Scale degrees", kind:"scale", scales:["major"], degrees:true},
+  {n:"Solfège", kind:"scale", scales:["major"], solfa:true},
   {n:"Minors and modes", kind:"scale", scales:["natural minor","harmonic minor","dorian","mixolydian","major pentatonic","minor pentatonic"], custom:true},
   {n:"On the staff", kind:"scale", scales:["major"], staff:true},
 ];
@@ -1523,7 +1526,6 @@ function commandMenu(over){
     r.append(l,g); ov.appendChild(r); };
   row("SPEED", SPEEDS.map(x=>x[0].toUpperCase()), ()=>+saved.speed||0, i=>{ saved.speed=i; save(); });
   row("NOTE SIZE", SIZES.map(x=>x[0]), ()=>saved.chordSize??1, i=>{ saved.chordSize=i; save(); applyChordSize(); });
-  solRow(ov);
   const lp=document.createElement("p"); lp.className = over ? "" : "blink"; lp.textContent = over ? "OR START FROM" : "CHOOSE A LEVEL"; ov.appendChild(lp);
   const lv=document.createElement("div"); lv.className="levels";
   HC_LEVELS.forEach((L,i)=>{ const b=document.createElement("button"); const ok=hcLevelOk(i);
@@ -1562,6 +1564,7 @@ function hcSpawn(now){
     let label=name;
     if(L.staff){ el.innerHTML=(bonus?PIXEL_STAR:"")+hcStaffSvg(x.name, string); label=x.name; }
     else if(L.degrees){ label=HC_DEG[x.deg-1]; el.innerHTML=bonus?PIXEL_STAR:""; el.append(label); }
+    else if(L.solfa){ label=SOLFA[x.deg-1]; el.innerHTML=bonus?PIXEL_STAR:""; el.append(label); }   // do re mi on the key
     else { el.innerHTML=bonus?PIXEL_STAR:""; el.append(name); }
     el.style.left=`${blast.cannons[string].x}px`; el.style.top="24px";
     blast.field.appendChild(el);
@@ -1660,6 +1663,7 @@ const HC_DEMO=[
   {title:"KEYS", text:"IN A KEY, THE STRINGS PLAY ITS SCALE: HERE D MAJOR, FROM D.", hold:3600, wave:{kind:"scale",scale:"major",tonic:"D",f:2}, labels:true},
   {note:2, text:"F♯ IS THE THIRD STRING NOW.", wave:{kind:"scale",scale:"major",tonic:"D",f:2}, labels:true},
   {note:4, degrees:true, text:"SCALE DEGREES: 5 MEANS THE FIFTH NOTE OF THE SCALE.", wave:{kind:"scale",scale:"major",tonic:"D",f:2}, labels:true},
+  {note:4, solfa:true, text:"SOLFÈGE: DO RE MI FA SOL. SOL IS THE FIFTH NOTE TOO.", wave:{kind:"scale",scale:"major",tonic:"D",f:2}, labels:true},
   {note:5, staff:true, text:"AND LAST, NOTES READ OFF THE STAFF.", wave:{kind:"scale",scale:"major",tonic:"D",f:2}, labels:false},
   {title:"READY?", text:"CHOOSE A LEVEL. PLUCK EACH NOTE BEFORE IT LANDS.", hold:2800, wave:{kind:"chrom"}, labels:false},
 ];
@@ -1683,7 +1687,7 @@ function commandDemo(){
       if(sc.note==null){ await sleep(sc.hold||3000); continue; }
       const st=hcStrings(), x=st[sc.note];
       const ch=document.createElement("span"); ch.className="fchord fnote democh";
-      if(sc.staff) ch.innerHTML=hcStaffSvg(x.name, sc.note); else ch.textContent = sc.degrees ? String(x.deg) : x.name;
+      if(sc.staff) ch.innerHTML=hcStaffSvg(x.name, sc.note); else ch.textContent = sc.degrees ? String(x.deg) : sc.solfa ? SOLFA[x.deg-1] : x.name;
       ch.style.left=`${blast.cannons[sc.note].x}px`; ch.style.top="96px"; blast.field.appendChild(ch);
       requestAnimationFrame(()=>{ ch.style.transition="top 2s linear"; ch.style.top="200px"; });
       await sleep(1300); if(!token.run){ ch.remove(); return; }
@@ -1845,7 +1849,6 @@ function snMenu(over){
   row("HARP", ["STANDARD STRIP","KEYMASTER GRID"], ()=>saved.harpLayout==="keymaster"?1:0, i=>{ saved.harpLayout = i ? "keymaster" : "strip"; save();
     if(blast && blast.strip){ blast.strip.remove(); blast.strip=kmStrip(blast.field); snLayout(); snDraw(); } });
   row("HARP SOUND", ["NORMAL","QUIET","OFF"], ()=>saved.harpSound??1, i=>{ saved.harpSound=i; save(); if(blast && blast.setupDone) kmHarp(); });
-  solRow(ov);
   const lp=document.createElement("p"); lp.className = over ? "" : "blink"; lp.textContent = over ? "OR START FROM" : "CHOOSE A LEVEL"; ov.appendChild(lp);
   const lv=document.createElement("div"); lv.className="levels";
   SN_LEVELS.forEach((L,i)=>{ const b=document.createElement("button"), ok=snLevelOk(i);
@@ -2150,7 +2153,6 @@ function asMenu(over){
     r.append(l,g); ov.appendChild(r); };
   row("SPEED", SPEEDS.map(x=>x[0].toUpperCase()), ()=>+saved.speed||0, i=>{ saved.speed=i; save(); });
   row("LABEL SIZE", SIZES.map(x=>x[0]), ()=>saved.chordSize??1, i=>{ saved.chordSize=i; save(); applyChordSize(); });
-  solRow(ov);
   const lp=document.createElement("p"); lp.className = over ? "" : "blink"; lp.textContent = over ? "OR START FROM" : "CHOOSE A LEVEL"; ov.appendChild(lp);
   const lv=document.createElement("div"); lv.className="levels";
   AS_LEVELS.forEach((L,i)=>{ const b=document.createElement("button"), ok=asLevelOk(i);
@@ -2468,7 +2470,6 @@ function stMenu(over){
   row("HARP", ["STANDARD STRIP","KEYMASTER GRID"], ()=>saved.harpLayout==="keymaster"?1:0, i=>{ saved.harpLayout = i ? "keymaster" : "strip"; save();
     if(blast && blast.strip){ blast.strip.remove(); blast.strip=kmStrip(blast.field); } });
   row("HARP SOUND", ["NORMAL","QUIET","OFF"], ()=>saved.harpSound??1, i=>{ saved.harpSound=i; save(); if(blast && blast.setupDone) kmHarp(); });
-  solRow(ov);
   const lp=document.createElement("p"); lp.className = over ? "" : "blink"; lp.textContent = over ? "OR START FROM" : "CHOOSE A LEVEL"; ov.appendChild(lp);
   const lv=document.createElement("div"); lv.className="levels";
   ST_LEVELS.forEach((L,i)=>{ const b=document.createElement("button"); b.innerHTML=`${i+1}<small>${L.n}</small>`; b.onclick=()=>beginStack(i); lv.appendChild(b); });
@@ -2680,92 +2681,6 @@ function endStDemo(token){
   blast.attract=setTimeout(()=>{ if(blast && blast.kind==="stack" && blast.phase==="menu" && blast.overlay && !blast.overlay.hidden) stDemo(); }, 25000);
 }
 
-
-// ---------- solfège beside the notes ----------
-// Single notes can carry their solfège beside the letter name: movable do (do re mi on the key, with
-// di ra ri me fi se si le li te for the notes between) or fixed do (Do is always C). It's for the
-// games about single notes: Harp Command, Chord Snake's notes, Asteroids' note rocks, Chord Stack's
-// blocks, and the Practice Room's note games (missing notes, harp hunts, melodies, scales). Chord
-// symbols are left as they are, and so is Chord Invaders, which is all chords. Nothing in the games'
-// text is written for it: as a game draws a note, the syllable is added beside it, under the letter on
-// a tile or a button, in brackets in a sentence, and the originals are kept so a change of setting
-// redraws them.
-const SOL_MOVE=["do","re","mi","fa","sol","la","ti"], SOL_FIXED=["Do","Re","Mi","Fa","Sol","La","Si"];
-const SOL_UP={do:"di",re:"ri",fa:"fi",sol:"si",la:"li"}, SOL_DOWN={re:"ra",mi:"me",sol:"se",la:"le",ti:"te"};
-const SOL_ACC={"-2":"𝄫","-1":"♭","0":"","1":"♯","2":"𝄪"};
-const solMode=()=>{ const m=settings.noteNames||"letters"; return m==="both" ? "movable" : m; };
-// the key that movable do counts from: the arcade game's own key where it has one, the question's, or the minichord's
-function solTonic(){
-  let tonic=null, minor=false;
-  if(blast && blast.kind==="command" && blast.wave && blast.wave.kind==="scale"){ tonic=blast.wave.tonic; minor=/minor|dorian|phrygian|locrian/.test(blast.wave.scale); }
-  else if(q && typeof q.context==="number" && KEY_BY_FIFTHS[q.context]) tonic=KEY_BY_FIFTHS[q.context];
-  if(!tonic) tonic=KEY_BY_FIFTHS[devFifths()]||"C";
-  if(minor && settings.laMinor==="la") tonic=above(tonic,2,3)||tonic;   // la-based minor: do is the relative major's tonic
-  return tonic;
-}
-function solMovable(name, tonic){
-  const n=parse(name), t=parse(tonic); if(n.li<0 || t.li<0) return name;
-  const deg=mod(n.li-t.li,7), semis=mod(NAT[n.li]+n.acc-NAT[t.li]-t.acc,12);
-  const diff=mod(semis-[0,2,4,5,7,9,11][deg]+6,12)-6, base=SOL_MOVE[deg];
-  if(diff===0) return base;
-  if(diff===1) return SOL_UP[base] || base+"♯";
-  if(diff===-1) return SOL_DOWN[base] || base+"♭";
-  return base+(SOL_ACC[diff]||"");
-}
-/** a spelled note's syllable, as the setting has it */
-function solSyllable(name){
-  const n=parse(name); if(n.li<0) return "";
-  return solMode()==="fixed" ? SOL_FIXED[n.li]+(SOL_ACC[n.acc]||"") : solMovable(name, solTonic());
-}
-// single notes in running text: a letter with an accidental, or a bare letter followed by punctuation,
-// the end, or another note; never a chord symbol (a letter followed by a quality or a slash) or a key
-// ("E♭ major"), and never an article ("A note falls")
-const SOL_NEXT_NOTE=/^\s+[A-G](?:𝄪|𝄫|♯|♭)?(?=[\s,.;:)·|?]|$)/;
-function solText(text, beside){
-  if(solMode()==="letters" || !/[A-G]/.test(text)) return text;
-  return text.replace(/([A-G])(𝄪|𝄫|♯|♭)?/g, (m, L, acc, i, str)=>{
-    const prev=str[i-1]||"", rest=str.slice(i+m.length);
-    if(/[A-Za-z0-9/]/.test(prev)) return m;                                     // inside a word or after a slash
-    if(/^(?:m(?![a-z])|maj|°|ø|\+|[0-9]|sus|add|\/)/.test(rest)) return m;       // a chord symbol
-    if(/^\s+(?:major|minor|MAJOR|MINOR|harmonic|natural|melodic|dorian|mixolydian|lydian|phrygian|locrian|pentatonic)/.test(rest)) return m;   // a key
-    if(!acc && !/^(?:$|[,.;:)·|?!\s]*$|[,.;:)·|?!])/.test(rest) && !SOL_NEXT_NOTE.test(rest)) return m;   // a word like the article A
-    return beside(m, solSyllable(L+(acc||"")));
-  });
-}
-// where it's added: under the letter on tiles, blocks, rocks, string labels, picker buttons and chips;
-// in brackets in prompts and feedback. The Practice Room's own text only in its note games.
-const SOL_LABELS=".fnote, .rock-note, .sntile, .snseg, .stcell, .strings span, #pickBody button, .solchip";
-const SOL_PROSE="#prompt, #feedback, .lastround";
-const SOL_NOTE_GAMES=new Set(["note","melody","simon","dirs","collect","sequence"]);
-const solNoteGame=()=> blast ? ["command","snake","asteroids","stack"].includes(blast.kind) : !!(q && q.answer && SOL_NOTE_GAMES.has(q.answer.type));
-const solOrig=new WeakMap(), solShown=new WeakMap();
-function solNode(n){
-  const el=n.parentElement; if(!el || el.closest(".overlay, .demo, script, style, #keys")) return;
-  const label=el.closest(SOL_LABELS), prose=!label && el.closest(SOL_PROSE);
-  if(!label && !prose) return;
-  const orig = solShown.get(n)===n.data ? solOrig.get(n) : n.data;
-  const inArcade=!!el.closest(".field.arcade");
-  const out = (inArcade || solNoteGame()) ? solText(orig, label ? (m,syl)=>`${m}\n${syl}` : (m,syl)=>`${m} (${syl})`) : orig;
-  solOrig.set(n,orig); solShown.set(n,out);
-  if(n.data!==out) n.data=out;
-}
-function solWalk(root){ const w=document.createTreeWalker(root, NodeFilter.SHOW_TEXT); let n; while((n=w.nextNode())) solNode(n); }
-new MutationObserver(ms=>{ for(const m of ms){
-  if(m.type==="characterData") solNode(m.target);
-  else m.addedNodes.forEach(a=>{ if(a.nodeType===3) solNode(a); else if(a.nodeType===1) solWalk(a); });
-} }).observe(document.querySelector("main"), {subtree:true, childList:true, characterData:true});
-function solRefresh(){ solWalk(document.querySelector("main")); }
-// the note games' title screens have their own row for it
-function solRow(ov){
-  const r=document.createElement("div"); r.className="optrow"; const l=document.createElement("span"); l.className="optlabel"; l.textContent="SOLFÈGE";
-  const g=document.createElement("div"); g.className="levels";
-  const mark=b=>{ [...g.children].forEach(x=>{ x.style.background=""; x.style.color=""; }); b.style.background="#F1E8D2"; b.style.color="#16132A"; };
-  [["letters","OFF"],["movable","MOVABLE DO"],["fixed","FIXED DO"]].forEach(([v,t])=>{ const b=document.createElement("button"); b.textContent=t; if(solMode()===v) mark(b);
-    b.onclick=()=>{ settings.noteNames=v; save(); mark(b); if($("noteNames")) $("noteNames").value=v; solRefresh();
-      if(blast && blast.kind==="command") hcLabels(); if(blast && blast.kind==="stack") stDraw(); if(blast && blast.kind==="snake") snDraw(); };
-    g.appendChild(b); });
-  r.append(l,g); ov.appendChild(r);
-}
 
 // ---------- Chord Invaders' own sounds ----------
 // Chiptune effects from square waves and noise, only in this game and only with sounds on:
@@ -3309,11 +3224,11 @@ function blasterChord(voices){
   blastBar();
 }
 const GENS={spell:genSpell, command:genCommand, snake:genSnake, asteroids:genAsteroids, stack:genStack, hidden:genHidden, oddone:genOddOne, shades:genShades, reshape:genReshape, blaster:genBlaster, diatonic:genDiatonic, numeral:genNumeral, staff:genStaff, slash:genSlash, key:genKey, harp:genHarp, missing:genMissing,
-  melody:genMelody, chordscale:genChordScale, smooth:genSmooth, whichvoice:genWhichVoice, simon:genSimon, directions:genDirections, pluckchord:genPluckChord, buildscale:genBuildScale,
+  melody:()=>genMelody(false), solfa:()=>genMelody(true), chordscale:genChordScale, smooth:genSmooth, whichvoice:genWhichVoice, simon:genSimon, directions:genDirections, pluckchord:genPluckChord, buildscale:genBuildScale,
   scale:genScale, transpose:genTranspose, temper:genTemper, tune:genTune};
 const MYSTERY=new Set(["scale","transpose","temper","tune"]);
 const LABELS={spell:"Spell it", hidden:"Hidden layout", oddone:"Odd one out", shades:"Shades of the third", reshape:"Reshape", blaster:"Chord Invaders", command:"Harp Command", snake:"Chord Snake", asteroids:"Chord Asteroids", stack:"Chord Stack", diatonic:"Seven chords", numeral:"Numerals", staff:"On the staff", slash:"Slash chords", key:"Key detective", harp:"Harp hunt", missing:"Missing note", mix:"Mix",
-  melody:"Play by number", chordscale:"Chord scales", smooth:"Smooth moves", whichvoice:"Which voice moved?", simon:"Simon says", directions:"Follow the directions", pluckchord:"Pluck the chord", buildscale:"Build the scale",
+  melody:"Play by number", solfa:"Play by solfège", chordscale:"Chord scales", smooth:"Smooth moves", whichvoice:"Which voice moved?", simon:"Simon says", directions:"Follow the directions", pluckchord:"Pluck the chord", buildscale:"Build the scale",
   scale:"Scale detective", transpose:"Transpose detective", temper:"Temperament taster", tune:"Tune up"};
 
 // ---------- borrowing settings, and always giving them back ----------
@@ -3354,7 +3269,7 @@ $("restore").onclick=()=>{ userRestored=true; restoreAll(); needs(); feedback("Y
 addEventListener("pagehide", restoreAll);
 
 // ---------- settings and scores (remembered) ----------
-const settings={mode:"spell", set:"standard", order:"ordered", doubles:"off", secondary:"off", keysrc:"follow", scaleset:"everyday", dirset:"steps", sounds:true, tuneWave:"sine", blastStart:"1", advance:"slow", textSize:"1", promptFont:"serif", reshapeLevel:"1", hiddenPool:"basic", shadesMode:"order", noteNames:"letters", laMinor:"do"};
+const settings={mode:"spell", set:"standard", order:"ordered", doubles:"off", secondary:"off", keysrc:"follow", scaleset:"everyday", dirset:"steps", sounds:true, tuneWave:"sine", blastStart:"1", advance:"slow", textSize:"1", promptFont:"serif", reshapeLevel:"1", hiddenPool:"basic", shadesMode:"order"};
 const saved={best:{}, sprint:{}};
 // saved under its old name, so settings and best scores carry over from when it was Spellbound
 try{ const s=JSON.parse(localStorage.getItem("lab-spellbound")||"{}"); Object.assign(settings,s.settings||{}); Object.assign(saved,s.saved||{}); }catch(e){}
@@ -3367,7 +3282,7 @@ const GAME_SLUGS={invaders:"blaster", "chord-invaders":"blaster", "harp-command"
 const solo=urlParams.has("solo") && LABELS[settings.mode] && !!urlParams.get("game");
 if(!SETS[settings.set] || settings.set==="alt") settings.set="standard";
 const save=()=>{ try{ localStorage.setItem("lab-spellbound",JSON.stringify({settings,saved})); }catch(e){} };
-for(const id of ["set","order","doubles","secondary","keysrc","scaleset","dirset","advance","textSize","promptFont","reshapeLevel","hiddenPool","shadesMode","noteNames","laMinor"]){ $(id).value=settings[id]; $(id).onchange=e=>{ settings[id]=e.target.value; save(); buildPicker(); solRefresh(); applyDisplay(); }; }
+for(const id of ["set","order","doubles","secondary","keysrc","scaleset","dirset","advance","textSize","promptFont","reshapeLevel","hiddenPool","shadesMode"]){ $(id).value=settings[id]; $(id).onchange=e=>{ settings[id]=e.target.value; save(); buildPicker(); applyDisplay(); }; }
 // Display: the whole page scales with the text size, and the plain font swaps the serif of
 // prompts and chord names for Atkinson Hyperlegible
 function applyDisplay(){
@@ -3906,7 +3821,7 @@ function buildSpecial(){
     if(blast){ blast.items.filter(i=>!i.done).forEach(i=>field.appendChild(i.el)); blast.field=field; setTimeout(applyChordSize); blast.hud=hud; blast.heard=hd; blast.fx=fxInit(field); if(blast.overlay) field.appendChild(blast.overlay); }
     blastBar(); return;
   }
-  const chip=(text,state)=>{ const b=document.createElement("span"); b.className="solchip"; b.textContent=text;
+  const chip=(text,state)=>{ const b=document.createElement("span"); b.textContent=text;
     b.style.cssText=`font:600 1.5rem var(--hand);min-width:1.4em;padding:0 .15em;text-align:center;border-bottom:3px solid ${state==="now"?"var(--accent)":"transparent"};color:${state==="done"?"var(--v1)":state==="now"?"var(--ink)":"var(--muted)"}`;
     box.appendChild(b); return b; };
   if(q.kind==="simon"){
@@ -3938,7 +3853,7 @@ function buildSpecial(){
   if(q.kind==="diatonic"){ diat.chords.forEach((c,i)=>chip(i<diat.pos ? `${c.label} ${c.root}${c.q}` : c.label, i<diat.pos?"done":i===diat.pos?"now":"")); return; }
   if(q.kind==="melody"){
     const a=q.answer;
-    a.degrees.forEach((d,i)=>{ const b=document.createElement("span"); b.textContent=d;
+    a.degrees.forEach((d,i)=>{ const b=document.createElement("span"); b.textContent = q.solfa ? SOLFA[d-1] : d;
       b.style.cssText=`font:700 1.7rem var(--hand);min-width:1.4em;text-align:center;border-bottom:3px solid ${i===a.pos?"var(--accent)":"transparent"};color:${i<a.pos?"var(--v1)":i===a.pos?"var(--ink)":"var(--muted)"}`;
       box.appendChild(b); });
     return;
