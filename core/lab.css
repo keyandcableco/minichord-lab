@@ -1,53 +1,79 @@
+/* Minichord Lab: ivory and ebony. The Key & Cable Company's colours: key ivory and ebony from
+ * the logo, the dark red of piano felt, a little brass. Square-cornered like keys, ruled rather
+ * than boxed, and Garamond like keyandcable.com, the Lab's own name set large and plain. */
+@import url("https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400..800;1,400..800&display=swap");
 /* Accidentals in text (♭ ♮ ♯ 𝄫 𝄪) from Bravura Text, so chord symbols get real music signs whatever the
  * main font: unicode-range keeps it to those five characters. A subset of Steinberg's Bravura Text under the
  * SIL Open Font License, renamed as its Reserved Font Name requires; see fonts/OFL-lab-music.txt. */
 @font-face{font-family:"Minichord Lab Accidentals";font-style:normal;font-weight:100 900;font-display:swap;
   src:url("fonts/lab-accidentals.woff2") format("woff2");unicode-range:U+266D-266F,U+1D12A-1D12B;size-adjust:85%;}
-/* Minichord Lab: a classroom board. Chalkboard in dark mode, whiteboard in light. */
 :root{
-  --board:#EEF1EF; --panel:#FAFBFA; --ink:#1B2430; --muted:#58646E; --rule:#D3D9D6; --accent:#D9780B;
-  --v0:#1F5FB0; --v1:#1E8449; --v2:#C0392B; --v3:#7D3C98; --focus:#1F5FB0;
-  --ui:"Minichord Lab Accidentals","Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",sans-serif;
-  --hand:"Minichord Lab Accidentals","Source Serif 4","Source Serif Pro",Georgia,"Times New Roman",serif;   /* titles, chord names and prompts */
+  /* ivory: the page is an aged key, the surfaces a fresh one; ink is the logo's ebony */
+  --board:#F3ECDA; --panel:#FFF8E7; --ink:#2B2B2B; --muted:#6B6358; --rule:#D9CDB2;
+  --felt:#8B0000; --brass:#9C7410; --ebony:#2B2B2B; --ivory:#FFF8E7;
+  --accent:#8B0000;                         /* the highlight colour: felt red */
+  --v0:#24466B; --v1:#3F6B35; --v2:#B3261E; --v3:#6A3F7A; --focus:#9C7410;
+  --ui:"Minichord Lab Accidentals","EB Garamond",Garamond,Georgia,serif;
+  --hand:"Minichord Lab Accidentals","EB Garamond",Garamond,Georgia,serif;   /* titles, chord names and prompts */
+  --mark:"EB Garamond",Garamond,Georgia,serif;                               /* the Lab's name */
+  --radius:2px;
   box-sizing:border-box;
   padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
   color-scheme:light dark;
 }
+/* ebony: the lid down, ivory lettering */
 @media (prefers-color-scheme:dark){
   :root:not([data-theme="light"]){
-    --board:#1F2B25; --panel:#25332C; --ink:#ECEADF; --muted:#A9B3A9; --rule:#3A4A40; --accent:#F2D16B;
-    --v0:#8EC5E8; --v1:#A8D98A; --v2:#F29CB0; --v3:#D9B8F2; --focus:#F2D16B;
+    --board:#161412; --panel:#201D1A; --ink:#F1E8D2; --muted:#B3A78F; --rule:#3D3730;
+    --felt:#A01414; --brass:#D4A017; --accent:#E0605A;
+    --v0:#9DB8D9; --v1:#A9C98F; --v2:#EF8A80; --v3:#CDB3DE; --focus:#D4A017;
   }
 }
 :root[data-theme="dark"]{
-  --board:#1F2B25; --panel:#25332C; --ink:#ECEADF; --muted:#A9B3A9; --rule:#3A4A40; --accent:#F2D16B;
-  --v0:#8EC5E8; --v1:#A8D98A; --v2:#F29CB0; --v3:#D9B8F2; --focus:#F2D16B;
+  --board:#161412; --panel:#201D1A; --ink:#F1E8D2; --muted:#B3A78F; --rule:#3D3730;
+  --felt:#A01414; --brass:#D4A017; --accent:#E0605A;
+  --v0:#9DB8D9; --v1:#A9C98F; --v2:#EF8A80; --v3:#CDB3DE; --focus:#D4A017;
 }
 html{scroll-padding-top:env(safe-area-inset-top,0px)}
 *,*::before,*::after{box-sizing:inherit}
-body{margin:0;background:var(--board);color:var(--ink);font:400 17px/1.55 var(--ui);font-variant-numeric:tabular-nums}
+/* a strip of felt along the top of every page */
+body{margin:0;background:var(--board);color:var(--ink);font:400 18px/1.55 var(--ui);font-variant-numeric:lining-nums tabular-nums;border-top:6px solid var(--felt)}
 main{max-width:1120px;margin:0 auto;padding:26px 20px 48px}
-a{color:var(--v0);text-underline-offset:.15em}
+a{color:var(--felt);text-underline-offset:.15em;text-decoration-thickness:1px}
+@media (prefers-color-scheme:dark){ :root:not([data-theme="light"]) a{color:var(--accent)} }
+/* buttons are keys: ivory with an ebony edge and a little depth underneath, ebony when pressed or on */
 button,select,input{font:inherit;color:inherit}
-button{cursor:pointer;border:1px solid var(--rule);background:var(--panel);border-radius:8px;padding:.45rem .9rem;font-weight:700}
-button.primary{background:var(--ink);color:var(--board);border-color:var(--ink)}
-button:disabled{opacity:.5;cursor:default}
-select{border:1px solid var(--rule);background:var(--panel);border-radius:8px;padding:.4rem .6rem;max-width:100%}
+button{cursor:pointer;border:1px solid var(--ink);border-bottom-width:3px;background:var(--panel);border-radius:var(--radius);padding:.35rem .9rem .3rem;font-weight:600;letter-spacing:.01em}
+button:hover{background:var(--board)}
+button:active{border-bottom-width:1px;margin-top:2px}
+button[aria-pressed="true"],button.on{background:var(--ink);color:var(--panel)}
+button.primary{background:var(--felt);color:#FFF8E7;border-color:#2B2B2B}
+button.primary:hover{background:#6E0000}
+button:disabled{opacity:.45;cursor:default}
+select{border:1px solid var(--ink);background:var(--panel);border-radius:var(--radius);padding:.3rem .5rem;max-width:100%}
 :focus-visible{outline:2px solid var(--focus);outline-offset:2px}
 
-.labbar{display:flex;flex-wrap:wrap;gap:12px 18px;align-items:center;justify-content:space-between;margin-bottom:18px}
-.crumb{font-weight:700;color:var(--muted);text-decoration:none}
-.crumb:hover{color:var(--ink)}
+/* the bar at the top: the maker's name on the fallboard, and the connection */
+.labbar{display:flex;flex-wrap:wrap;gap:12px 18px;align-items:center;justify-content:space-between;margin:-26px -20px 22px;padding:12px 20px;background:var(--ebony);color:#FFF8E7;border-bottom:3px solid var(--felt)}
+.labbar select{background:#FFF8E7;color:#2B2B2B}
+.labbar button{background:#FFF8E7;color:#2B2B2B;border-color:#000}
+.labbar button.primary{background:var(--felt);color:#FFF8E7}
+.crumb{display:inline-flex;align-items:center;gap:10px;white-space:nowrap;font:600 1.35rem var(--mark);letter-spacing:.02em;color:#FFF8E7;text-decoration:none}
+.crumb::before{content:"";width:38px;height:38px;flex:none;background:#FFF8E7 url("logo.svg") center/82% no-repeat;border:2px solid #D4A017;border-radius:2px}   /* the logo on an ivory plate */
+.crumb:hover{color:#FFF;text-decoration:underline;text-decoration-color:var(--felt)}
 .connect{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
-.status{font-size:.92rem;color:var(--muted);margin:0}
-h1{font-family:var(--hand);font-weight:600;font-size:2.6rem;line-height:1.1;letter-spacing:-.01em;margin:0}
-.lede{color:var(--muted);max-width:62ch;margin:.4rem 0 0}
-.panel{background:var(--panel);border:1px solid var(--rule);border-radius:12px;padding:16px}
-.panel h2{font-size:1.05rem;margin:0 0 .5rem}
-.fine{font-size:.9rem;color:var(--muted)}
+.themetoggle{font-weight:600}
+.themetoggle.onboard{margin-left:auto;align-self:flex-start;background:#FFF8E7;color:#2B2B2B;border-color:#000}
+.status{font-size:.95rem;color:var(--muted);margin:0}
+h1{font-family:var(--hand);font-weight:700;font-size:2.8rem;line-height:1.05;letter-spacing:-.01em;margin:0}
+.lede{color:var(--muted);max-width:62ch;margin:.4rem 0 0;font-size:1.05rem}
+/* a panel is a section under a rule, not a rounded box */
+.panel{background:transparent;border:none;border-top:2px solid var(--ink);border-radius:0;padding:12px 0 4px}
+.panel h2{font-size:1.15rem;font-weight:700;margin:0 0 .5rem}
+.fine{font-size:.92rem;color:var(--muted)}
 .row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
 .device-line{font-size:.95rem;color:var(--muted);margin:.3rem 0 0}
 .device-line b{color:var(--ink)}
-footer{margin-top:28px;padding-top:14px;border-top:1px solid var(--rule);color:var(--muted);font-size:.92rem}
+footer{margin-top:34px;padding-top:14px;border-top:2px solid var(--ink);color:var(--muted);font-size:.95rem}
 footer p{margin:.2rem 0;max-width:80ch}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}

@@ -7,21 +7,28 @@
 <meta name="description" content="Small web views that use the minichord as an interface for music theory: chord shapes, voice leading, tuning and more.">
 <meta property="og:title" content="Minichord Lab">
 <meta property="og:description" content="Small web views that use the minichord as an interface for music theory.">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧪</text></svg>">
+<link rel="icon" href="core/logo.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Source+Serif+4:opsz,wght@8..60,600..700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="core/lab.css">
+<script src="core/theme.js"></script>
 <style>
-.views{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;margin-top:12px}
-/* three kinds of view, each under its own heading with a rule above it */
-.group{margin-top:34px;padding-top:18px;border-top:2px solid var(--rule)}
-.group:first-of-type{margin-top:22px}
-.grouphead{font-size:.95rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);margin:0}
-.groupblurb{color:var(--muted);margin:.2rem 0 0}
-.view{display:block;text-decoration:none;color:inherit;background:var(--panel);border:1px solid var(--rule);border-radius:12px;padding:16px 18px}
-.view:hover{border-color:var(--ink)}
-.view h2{font-family:var(--hand);font-size:2rem;line-height:1;margin:0 0 .4rem}
+/* the fallboard: the logo and the Lab's name, ivory on ebony */
+.fallboard{display:flex;align-items:center;gap:22px;margin:-26px -20px 0;padding:26px 28px 22px;background:var(--ebony);color:#FFF8E7;border-bottom:3px solid var(--felt)}
+.fallboard img{width:96px;height:auto;flex:none;background:#FFF8E7;padding:6px;border:2px solid #D4A017;border-radius:2px}   /* the logo on an ivory plate framed in brass */
+.fallboard h1{font:600 clamp(2.6rem,6vw,4rem)/1 var(--mark);color:#FFF8E7;letter-spacing:.01em}
+.fallboard p{margin:.35rem 0 0;color:#E4D9BF;max-width:60ch;font-size:1.08rem}
+/* each group under a solid rule; its views as a ruled list, two across */
+.group{margin-top:34px;padding-top:12px;border-top:2px solid var(--ink)}
+.grouphead{font:italic 600 1.6rem var(--hand);margin:0;color:var(--felt)}
+.groupblurb{color:var(--muted);margin:.1rem 0 0}
+.views{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));column-gap:34px;margin-top:6px}
+.view{display:block;text-decoration:none;color:inherit;padding:14px 0 12px;border-top:1px solid var(--rule)}
+.view h2{font:700 1.7rem/1.1 var(--hand);margin:0 0 .25rem;display:flex;align-items:baseline;gap:.5rem}
+.view h2::after{content:"→";font-weight:400;color:var(--felt);opacity:0;transition:opacity .15s,transform .15s}
+.view:hover h2::after{opacity:1;transform:translateX(3px)}
+.view:hover h2{color:var(--felt)}
 .view p{margin:0;color:var(--muted)}
 .next{margin-top:26px}
 .next p{color:var(--muted);max-width:70ch}
@@ -29,8 +36,13 @@
 </head>
 <body>
 <main>
-  <h1>Minichord Lab</h1>
-  <p class="lede">Small web views that use the minichord as an interface for music theory. Each one listens to the chord buttons over MIDI, reading every voice's exact pitch, the key and the temperament, and draws what the chord is doing.</p>
+  <header class="fallboard">
+    <img src="core/logo.svg" alt="The Key &amp; Cable Company">
+    <div>
+      <h1>Minichord Lab</h1>
+      <p>Pages that turn the minichord into a way to learn and play with harmony. Each listens to the chord buttons over MIDI and shows what your chord is doing.</p>
+    </div>
+  </header>
 
   <section class="group">
     <h2 class="grouphead">See the harmony</h2>
