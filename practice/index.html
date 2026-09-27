@@ -303,6 +303,17 @@
 .helper .board .kmplate.onboard{aspect-ratio:auto}
 .helper .board .hbcover{background:#2B2620}
 .helper .board .kmplate.onboard .kdot{font-size:.28rem;border-width:2px}
+
+/* Chord Breakout: the wall, the paddle and the ball */
+.bobrick{position:absolute;z-index:2;display:flex;align-items:center;justify-content:center;box-sizing:border-box;font:400 calc(var(--chord-size,1.25rem)*.6) "Minichord Lab Accidentals","Press Start 2P",monospace;color:#16132A;border:2px solid #07060C;box-shadow:inset -3px -3px 0 rgba(0,0,0,.25),inset 3px 3px 0 rgba(255,255,255,.35);transition:opacity .3s,transform .3s}
+.bobrick.row0{background:#E0605A}.bobrick.row1{background:#E9A23B}.bobrick.row2{background:#D8C85A}.bobrick.row3{background:#7FBF6A}.bobrick.row4{background:#6FA7D8}
+.bobrick.bonus{background:#7FE9FF}
+.bobrick .pstar{width:.8em;height:.62em;margin-right:.15em}
+.bobrick.cracked{background:#FFF4C2;color:#8B0000;animation:crackglow .5s steps(2) infinite;background-image:linear-gradient(135deg,transparent 45%,#07060C 46%,#07060C 50%,transparent 51%),linear-gradient(45deg,transparent 55%,#07060C 56%,#07060C 59%,transparent 60%)}
+@keyframes crackglow{50%{box-shadow:0 0 14px rgba(255,211,90,.95)}}
+.bobrick.gone{opacity:0;transform:scale(1.3)}
+.bopaddle{position:absolute;left:0;z-index:3;height:12px;background:#F1E8D2;border:2px solid #07060C;box-shadow:inset 0 -3px 0 #B5AC96,0 0 0 2px #FFD35A}
+.boball{position:absolute;left:0;top:0;z-index:3;width:14px;height:14px;background:#FFFFFF;box-shadow:0 0 8px rgba(255,255,255,.8);transform:translate(-40px,-40px)}
 /* the demo's pixel minichord */
 .overlay button.howto{border-color:#FFD35A;color:#FFD35A}
 .demo{position:absolute;inset:0;z-index:5;display:flex;flex-direction:column;justify-content:flex-start;padding:10px 14px;pointer-events:none}
@@ -383,7 +394,8 @@ details.fold[open] .nowplaying{display:none}
     <button data-mode="snake">Chord Snake</button>
     <button data-mode="asteroids">Chord Asteroids</button>
     <button data-mode="stack">Chord Stack</button>
-    <span class="arcadelinks">or on their own pages: <a href="../invaders/">Chord Invaders</a> · <a href="../harp-command/">Harp Command</a> · <a href="../chord-snake/">Chord Snake</a> · <a href="../chord-asteroids/">Chord Asteroids</a> · <a href="../chord-stack/">Chord Stack</a></span>
+    <button data-mode="breakout">Chord Breakout</button>
+    <span class="arcadelinks">or on their own pages: <a href="../invaders/">Chord Invaders</a> · <a href="../harp-command/">Harp Command</a> · <a href="../chord-snake/">Chord Snake</a> · <a href="../chord-asteroids/">Chord Asteroids</a> · <a href="../chord-stack/">Chord Stack</a> · <a href="../chord-breakout/">Chord Breakout</a></span>
   </div>
   <div class="modes" role="group" aria-label="Read and play">
     <span class="grp">Read and play</span>
@@ -2831,7 +2843,7 @@ function endStDemo(token){
 // buttons' columns, F C G D A E B from the left, count 1 to 7: a column's major button starts that
 // level, its minor button sets that speed, and its 7 button switches to that arcade game. The key
 // signature's sharps and flats don't matter; the column is read from the chord's letter.
-const ARCADE_GAMES=["blaster","command","snake","asteroids","stack"];
+const ARCADE_GAMES=["blaster","command","snake","asteroids","stack","breakout"];
 const COLUMN_LETTERS="FCGDAEB";
 function arcadeMenuChord(voices){
   if(cabWaiting()){ cabWake(); return true; }
@@ -2882,6 +2894,7 @@ function arcadeRelayout(){
   if(k==="snake"){ snLayout(); snDraw(); }
   else if(k==="stack"){ stLayout(); stDraw(); }
   else if(k==="asteroids") asCentre();
+  else if(k==="breakout") boLayout();
   else if(k==="command"){ hcLayout(); hcLabels(); }
 }
 for(const ev of ["fullscreenchange","webkitfullscreenchange"]) document.addEventListener(ev, ()=>setTimeout(arcadeRelayout,60));
@@ -2917,8 +2930,8 @@ function arcadeModNote(ov){
 // roll up the screen like credits; then the demo; then round again, until someone plays a chord,
 // plucks the harp, presses a key or clicks. That brings up the options (speed, levels and the rest),
 // which go back to the title if they're left alone. Game over goes straight to its options.
-const DEMO_FOR={blaster:()=>runDemo(true), command:()=>commandDemo(), snake:()=>snDemo(), asteroids:()=>asDemo(), stack:()=>stDemo()};
-const TITLE_FOR={blaster:"CHORD INVADERS", command:"HARP COMMAND", snake:"CHORD SNAKE", asteroids:"CHORD ASTEROIDS", stack:"CHORD STACK"};
+const DEMO_FOR={blaster:()=>runDemo(true), command:()=>commandDemo(), snake:()=>snDemo(), asteroids:()=>asDemo(), stack:()=>stDemo(), breakout:()=>boDemo()};
+const TITLE_FOR={blaster:"CHORD INVADERS", command:"HARP COMMAND", snake:"CHORD SNAKE", asteroids:"CHORD ASTEROIDS", stack:"CHORD STACK", breakout:"CHORD BREAKOUT"};
 const cabKind=()=> blast && (blast.kind||"blaster");
 function cabinet(ov){
   const kids=[...ov.children];
@@ -2968,7 +2981,7 @@ document.addEventListener("keydown", e=>{
 // buttons (and the modifier, and a slash's bass) for the chord that matters now, and in the harp
 // games the string for the note that matters now, drawn as the standard strip or the keymaster's
 // four rows of three. It sits behind the play, a little see-through, so nothing falling is hidden.
-const helpUsesChords=k=>["blaster","snake","asteroids","stack"].includes(k);
+const helpUsesChords=k=>["blaster","snake","asteroids","stack","breakout"].includes(k);
 const helpUsesHarp=k=>["command","asteroids"].includes(k);
 function beginnerRow(opts){
   const r=document.createElement("div"); r.className="optrow"; const l=document.createElement("span"); l.className="optlabel"; l.textContent="BEGINNER";
@@ -3071,6 +3084,284 @@ function helpString(sI){
   const h=blast && blast.helpHarp; if(!h) return;
   if(blast.helpString===sI && !blast.helpNamesStale) return; blast.helpString=sI; blast.helpNamesStale=false;
   h.names(); h.cells.forEach((c,i)=>c && c.classList.toggle("lit", i===sI));
+}
+
+
+// ---------- Chord Breakout ----------
+// Arkanoid with chords. A wall of chord bricks, a ball, and a paddle steered with one of the
+// minichord's knobs, as Arkanoid's was with a dial (or the mouse, or the arrow keys). The ball
+// cracks a brick it hits; the brick only breaks if its chord is played before the ball comes back
+// to the paddle, and heals if it isn't. Clear the wall to move on; let the ball past and it costs a
+// life. The knobs need firmware 17's "knobs send MIDI" (address 238), which the game turns on
+// while it plays; any knob steers, whichever moved last.
+const BO_LEVELS=[
+  {n:"Major and minor", qs:["","m"], roots:"natural"},
+  {n:"Sevenths", qs:["","m","7"], roots:"natural"},
+  {n:"Sharps and flats", qs:["","m","7"], roots:"all"},
+  {n:"Every chord type", qs:["","m","7","maj7","m7","°","+"], roots:"all"},
+  {n:"Slash chords", qs:["","m"], roots:"natural", slash:true},
+];
+const boLevelOk=i=> !BO_LEVELS[i].slash || slashReady();
+const knobsReady=()=>canWrite() && hasSetting(238) && (mc.params[7]??0)>=17;
+function genBreakout(){
+  return {kind:"breakout", prompt:"Chord Breakout", sub:"Turn a knob on the minichord to move the paddle (or use the mouse or arrow keys). The ball cracks the chord brick it hits: play that chord before the ball comes back to the paddle and the brick breaks, or it heals. Clear the wall to go on; let the ball past and it costs a life.",
+    answer:{type:"breakout", get name(){ const b=boTarget(); return b ? b.sym : "a cracked brick's chord"; }},
+    get hint(){ const b=boTarget(); return b ? `The cracked brick is ${b.sym}.` : "Hit a brick first."; },
+    context:0};
+}
+// the brick to play now: the one cracked longest ago
+const boTarget=()=> blast && blast.kind==="breakout" ? blast.bricks.filter(b=>b.alive && b.cracked).sort((a,b)=>a.crackedAt-b.crackedAt)[0]||null : null;
+function startBreakout(){
+  blast={kind:"breakout", bricks:[], score:0, lives:3, level:0, over:true, phase:"menu", raf:0, field:null, hud:null, fx:null, noShip:true,
+    last:performance.now(), ball:null, paddle:{x:0, target:null, w:120}, rally:0};
+  boDevice();
+  stats.streak=0; scoreboard(); buildSpecial();
+  boMenu();
+  blast.raf=requestAnimationFrame(boTick);
+}
+function boDevice(){
+  if(!blast || blast.kind!=="breakout" || !canWrite()) return;
+  if(!blast.setupDone){ blast.setupDone=true; poll(true); if(hasSetting(30)) ensure(30,0); if(slashReady()) ensure(113,1); if(knobsReady()) borrow(238,1); }
+  const sig=BO_LEVELS.map((_,i)=>boLevelOk(i)).join()+knobsReady();
+  if(blast.phase==="menu" && blast.overlay && blast.menuSig!==sig){ const hid=blast.overlay.hidden; blast.overlay.remove(); blast.overlay=null; boMenu(); blast.overlay.hidden=hid; }
+}
+function buildBreakoutField(box){
+  const field=document.createElement("div"); field.className="field arcade breakout"; field.setAttribute("aria-label","The Chord Breakout wall");
+  const hud=document.createElement("div"); hud.className="hud"; field.appendChild(hud); fullButton(field);
+  const hd=document.createElement("div"); hd.className="heard"; field.appendChild(hd);
+  const pad=document.createElement("div"); pad.className="bopaddle"; field.appendChild(pad);
+  const ball=document.createElement("div"); ball.className="boball"; field.appendChild(ball);
+  box.append(field);
+  if(blast && blast.kind==="breakout"){
+    blast.field=field; blast.hud=hud; blast.heard=hd; blast.padEl=pad; blast.ballEl=ball; blast.fx=fxInit(field);
+    blast.bricks.forEach(b=>field.appendChild(b.el));
+    setTimeout(()=>{ applyChordSize(); boLayout(); });
+    if(blast.overlay) field.appendChild(blast.overlay);
+    // the mouse or a finger can steer too
+    field.addEventListener("pointermove", e=>{ if(blast && blast.kind==="breakout"){ const r=field.getBoundingClientRect(); blast.paddle.target=e.clientX-r.left-blast.paddle.w/2; blast.steer="mouse"; } });
+  }
+  boBar(); setTimeout(helperSync);
+}
+function boBar(){
+  if(!blast || blast.kind!=="breakout" || !blast.hud) return;
+  blast.hud.innerHTML=`<span>SCORE ${blast.score}</span><span class="lvl">LEVEL ${blast.level+1}</span><span class="lives">${"♥".repeat(Math.max(0,blast.lives))||"-"}</span>`;
+}
+function boMenu(over){
+  const ov=document.createElement("div"); ov.className="overlay";
+  const best=saved.best.breakout||0;
+  if(over){
+    ov.innerHTML=`<h3 class="over">GAME OVER</h3><p>SCORE ${blast.score} · LEVEL ${blast.level+1} · BEST ${best}</p>`;
+    const again=document.createElement("button"); again.className="go"; again.innerHTML=`PLAY AGAIN<small>from level ${blast.startLevel+1}</small>`;
+    again.onclick=()=>beginBreakout(blast.startLevel); ov.appendChild(again);
+    sfx("over");
+  } else {
+    ov.innerHTML=`<h3>CHORD BREAKOUT</h3><p>${knobsReady() ? "TURN ANY KNOB ON THE MINICHORD TO MOVE THE PADDLE." : "MOVE THE PADDLE WITH THE MOUSE OR THE ARROW KEYS. WITH FIRMWARE 17, A KNOB ON THE MINICHORD DOES IT."}</p><p>THE BALL CRACKS A CHORD BRICK. PLAY ITS CHORD BEFORE THE BALL COMES BACK AND IT BREAKS.</p><p>MISS IT AND THE BRICK HEALS. LET THE BALL PAST AND IT COSTS A LIFE.</p><p class="starline">${PIXEL_STAR}BRICKS SCORE FIVE TIMES AS MUCH.</p>`;
+    const how=document.createElement("button"); how.className="howto"; how.textContent="▶ HOW TO PLAY"; how.onclick=()=>boDemo(); ov.appendChild(how);
+  }
+  const row=(label, list, get, set)=>{ const r=document.createElement("div"); r.className="optrow"; const l=document.createElement("span"); l.className="optlabel"; l.textContent=label;
+    const g=document.createElement("div"); g.className="levels";
+    const mark=b=>{ [...g.children].forEach(x=>{ x.style.background=""; x.style.color=""; }); b.style.background="#F1E8D2"; b.style.color="#16132A"; };
+    list.forEach((n,i)=>{ const b=document.createElement("button"); b.textContent=n; if(get()===i) mark(b); b.onclick=()=>{ set(i); mark(b); }; g.appendChild(b); });
+    r.append(l,g); ov.appendChild(r); };
+  row("SPEED", SPEEDS.map(x=>x[0].toUpperCase()), ()=>+saved.speed||0, i=>{ saved.speed=i; save(); });
+  row("LABEL SIZE", SIZES.map(x=>x[0]), ()=>saved.chordSize??1, i=>{ saved.chordSize=i; save(); applyChordSize(); });
+  row("PADDLE", ["NARROW","NORMAL","WIDE"], ()=>saved.boPaddle??1, i=>{ saved.boPaddle=i; save(); });
+  const lp=document.createElement("p"); lp.className = over ? "" : "blink"; lp.textContent = over ? "OR START FROM" : "CHOOSE A LEVEL"; ov.appendChild(lp);
+  const lv=document.createElement("div"); lv.className="levels";
+  BO_LEVELS.forEach((L,i)=>{ const b=document.createElement("button"), ok=boLevelOk(i);
+    b.innerHTML=`${i+1}<small>${L.n}${ok?"":"<br>NEEDS THE TEST FIRMWARE"}</small>`; b.disabled=!ok; b.onclick=()=>beginBreakout(i); lv.appendChild(b); });
+  ov.appendChild(lv); blast.menuSig=BO_LEVELS.map((_,i)=>boLevelOk(i)).join()+knobsReady();
+  if(!over && best){ const p=document.createElement("p"); p.textContent=`BEST ${best}`; ov.appendChild(p); }
+  if(!over) arcadeModNote(ov);
+  arcadeKeys(ov);
+  if(!over) arcadeCredit(ov);
+  blast.field.appendChild(ov); blast.overlay=ov;
+  if(!over){ cabinet(ov); return; }
+}
+// the wall: rows of chord bricks across the top, sized to the field
+function boLayout(){
+  const f=blast.field, W=f.clientWidth, H=f.clientHeight;
+  blast.W=W; blast.H=H;
+  const pw=[90,130,180][saved.boPaddle??1]; blast.paddle.w=pw; blast.padY=H-46;
+  blast.padEl.style.width=pw+"px"; blast.padEl.style.top=blast.padY+"px";
+  if(blast.paddle.x==null || blast.paddle.x===0) blast.paddle.x=(W-pw)/2;
+  const cols=blast.cols||8, bw=(W-40)/cols;
+  blast.bricks.forEach(b=>{ b.x=20+b.c*bw+2; b.y=56+b.r*36; b.w=bw-4; b.h=30;
+    b.el.style.cssText=`left:${b.x}px;top:${b.y}px;width:${b.w}px;height:${b.h}px`; });
+}
+function boPick(L){
+  for(let k=0;k<40;k++){
+    const root=rnd(L.roots==="natural" ? ["C","D","E","F","G","A","B"] : ROOTS), q=rnd(L.qs), t=spellChord(root,q); if(!t) continue;
+    let bass=null; if(L.slash && Math.random()<.6){ bass=rnd([t[1],t[2]]); }
+    return {root, q, bass, sym:root+q+(bass?"/"+bass:""), rootPc:pcOfName(root), bassPc:bass?pcOfName(bass):null};
+  }
+  return {root:"C", q:"", bass:null, sym:"C", rootPc:0, bassPc:null};
+}
+function boWall(){
+  blast.bricks.forEach(b=>b.el.remove()); blast.bricks=[];
+  const L=BO_LEVELS[blast.level], rows=Math.min(5, 3+Math.floor(blast.level/2)), cols=8; blast.cols=cols;
+  for(let r=0;r<rows;r++) for(let c=0;c<cols;c++){
+    const ch=boPick(L), bonus=Math.random()<.07;
+    const el=document.createElement("div"); el.className="bobrick"+(bonus?" bonus":"")+` row${r%5}`;
+    el.innerHTML=(bonus?PIXEL_STAR:""); el.append(ch.sym);
+    blast.field.appendChild(el);
+    blast.bricks.push({...ch, el, r, c, alive:true, cracked:false, bonus});
+  }
+  boLayout();
+}
+function boServe(){
+  const p=blast.paddle; blast.ball={x:p.x+p.w/2, y:blast.padY-9, vx:0, vy:0, stuck:true, speed:(300/speedMul())*Math.pow(1.05,blast.level)};
+  blast.serveAt=performance.now()+1300;
+}
+function beginBreakout(level){
+  piano.start(); stopDemo(); clearTimeout(blast.attract); clearTimeout(blast.cabT);
+  if(blast.overlay){ blast.overlay.remove(); blast.overlay=null; }
+  Object.assign(blast,{score:0, lives:3, level, startLevel:level, phase:"play", over:false, rally:0, modFor:null});
+  saved.breakoutStart=level; save();
+  stats.streak=0; scoreboard(); boLayout(); boWall(); boServe();
+  cancelAnimationFrame(blast.raf); blast.last=performance.now(); blast.raf=requestAnimationFrame(boTick);
+  banner(`LEVEL ${level+1}`, `${BO_LEVELS[level].n.toUpperCase()} · ${(SPEEDS[+saved.speed]||SPEEDS[0])[0].toUpperCase()}`);
+  sfx("start"); boBar();
+}
+function boTick(now){
+  if(!blast || blast.kind!=="breakout") return;
+  const dt=Math.min(.033,(now-blast.last)/1000); blast.last=now;
+  if(blast.fx) fxDraw(now, dt);
+  if((blast.phase==="play" || blast.phase==="demo") && blast.ball){
+    const p=blast.paddle, W=blast.W||blast.field.clientWidth;
+    // the paddle: toward the knob's or the mouse's position, or pushed by the arrow keys
+    if(blast.phase==="demo" && blast.ball) p.target=blast.ball.x-p.w/2+Math.sin(now/300)*p.w*.2;
+    if(blast.keyDir) p.target=(p.target??p.x)+blast.keyDir*520*dt;
+    if(p.target!=null){ p.target=Math.max(0,Math.min(W-p.w,p.target)); p.x+=(p.target-p.x)*Math.min(1,dt*18); }
+    blast.padEl.style.transform=`translateX(${p.x}px)`;
+    boBall(now, dt);
+  }
+  blast.raf=requestAnimationFrame(boTick);
+}
+function boBall(now, dt){
+  const b=blast.ball, p=blast.paddle, W=blast.W, H=blast.H, R=7;
+  if(b.stuck){
+    b.x=p.x+p.w/2; b.y=blast.padY-R-2;
+    if(now>=blast.serveAt){ const a=(Math.random()-.5)*.8; b.vx=Math.sin(a)*b.speed; b.vy=-Math.cos(a)*b.speed; b.stuck=false; sfx("shoot"); }
+  } else {
+    b.x+=b.vx*dt; b.y+=b.vy*dt;
+    if(b.x<R){ b.x=R; b.vx=Math.abs(b.vx); } if(b.x>W-R){ b.x=W-R; b.vx=-Math.abs(b.vx); }
+    if(b.y<40+R){ b.y=40+R; b.vy=Math.abs(b.vy); }
+    // the paddle: the further from its middle, the steeper the bounce; any brick still cracked heals
+    if(b.vy>0 && b.y+R>=blast.padY && b.y+R<=blast.padY+16 && b.x>=p.x-R && b.x<=p.x+p.w+R){
+      const off=Math.max(-1,Math.min(1,(b.x-(p.x+p.w/2))/(p.w/2))), a=off*1.05;
+      b.vx=Math.sin(a)*b.speed; b.vy=-Math.cos(a)*b.speed; b.y=blast.padY-R;
+      sfx("press"); boHeal();
+    }
+    // the bricks
+    for(const k of blast.bricks){
+      if(!k.alive) continue;
+      const nx=Math.max(k.x,Math.min(b.x,k.x+k.w)), ny=Math.max(k.y,Math.min(b.y,k.y+k.h));
+      if((b.x-nx)**2+(b.y-ny)**2>R*R) continue;
+      const ox=Math.min(Math.abs(b.x-k.x), Math.abs(b.x-(k.x+k.w))), oy=Math.min(Math.abs(b.y-k.y), Math.abs(b.y-(k.y+k.h)));
+      if(ox<oy) b.vx=-b.vx; else b.vy=-b.vy;
+      b.x+=b.vx*dt*1.5; b.y+=b.vy*dt*1.5;
+      if(!k.cracked){ k.cracked=true; k.crackedAt=now; k.el.classList.add("cracked"); sfx("key"); boHelp(); }
+      else sfx("press");
+      if(blast.phase==="demo" && blast.demoAuto) setTimeout(()=>{ if(blast && k.alive && k.cracked) boBreak(k, true); }, 650);
+      break;
+    }
+    if(b.y>H+R){ if(blast.phase==="demo"){ boServe(); return; } boLost(); return; }
+  }
+  blast.ballEl.style.transform=`translate(${b.x-R}px,${b.y-R}px)`;
+}
+function boHeal(){
+  let healed=0;
+  blast.bricks.forEach(k=>{ if(k.alive && k.cracked){ k.cracked=false; k.el.classList.remove("cracked"); healed++; } });
+  if(healed && blast.phase==="play"){ popup(blast.paddle.x+blast.paddle.w/2, blast.padY-24, healed>1?`${healed} HEALED`:"HEALED", "#FF7A6E"); blast.rally=0; }
+  boHelp();
+}
+function boHelp(){ const t=boTarget(); if(t){ arcadeMod(t.root); helpChord(t.root, t.q, t.bass); } else helpChord(null); }
+function boBreak(k, quiet){
+  k.alive=false; k.el.classList.add("gone"); setTimeout(()=>k.el.remove(),300);
+  explode(k.x+k.w/2, k.y+k.h/2, 22, k.bonus?["#7FE9FF","#FFFFFF","#FFD35A"]:["#FFD35A","#FF8A3D","#F1E8D2"]);
+  sfx(k.bonus?"bonus":"boom");
+  if(!quiet){ blast.rally++; const pts=(k.bonus?5:1)*spellChord(k.root,k.q).length*10*(blast.level+1)*Math.min(4,blast.rally);
+    blast.score+=pts; popup(k.x+k.w/2, k.y, `+${pts}${blast.rally>1?` ×${Math.min(4,blast.rally)}`:""}`, k.bonus?"#7FE9FF":undefined); boBar(); stats.streak=blast.rally; scoreboard(); }
+  boHelp();
+  if(!blast.bricks.some(x=>x.alive)){
+    if(blast.phase==="demo"){ boWall(); return; }
+    // a clear wall: the next level, a new wall, a little faster
+    const was=blast.level; for(let n=blast.level+1;n<BO_LEVELS.length;n++) if(boLevelOk(n)){ blast.level=n; break; }
+    sfx("level"); banner(blast.level!==was ? `LEVEL ${blast.level+1}` : "WALL CLEAR!", blast.level!==was ? BO_LEVELS[blast.level].n.toUpperCase() : "FASTER");
+    if(blast.level===was) blast.ball.speed*=1.08;
+    setTimeout(()=>{ if(blast && blast.kind==="breakout" && blast.phase==="play"){ boWall(); boServe(); boBar(); } }, 900);
+  }
+}
+function boLost(){
+  explode(blast.ball.x, blast.H-20, 26, ["#FF4B3E","#FF8A3D","#FFD35A"]);
+  sfx("miss"); buzz(blast.field,true); blast.lives--; boBar(); boHeal();
+  if(blast.lives<=0){
+    blast.phase="over"; blast.over=true; blast.ball=null; blast.ballEl.style.transform="translate(-40px,-40px)";
+    const best=Math.max(saved.best.breakout||0, blast.score); saved.best.breakout=best; save();
+    boMenu(true); return;
+  }
+  banner(`${blast.lives} ${blast.lives===1?"LIFE":"LIVES"} LEFT`); boServe();
+}
+// a chord from the buttons: every cracked brick of that chord breaks
+function breakoutChord(voices){
+  if(!blast || blast.kind!=="breakout") return;
+  if(blast.phase==="demo" && blast.demo){ endBoDemo(blast.demo); return; }
+  if(blast.phase!=="play") return;
+  const pitches=voices.map(v=>v.pitch), name=chordName(pitches,devFifths());
+  const matches=i=>{
+    if(i.bassPc==null) return isChord(pitches,i.rootPc,i.q);
+    const tones=FORM[i.q].map(f=>mod(i.rootPc+f[1],12)), pcs=pitches.map(p=>mod(Math.round(p),12));
+    return mod(Math.round(Math.min(...pitches)),12)===i.bassPc && pcs.every(p=>p===i.bassPc || tones.includes(p)) && pcs.includes(tones[1]);
+  };
+  const hits=blast.bricks.filter(k=>k.alive && k.cracked && matches(k));
+  if(!hits.length){ heard(name,false,"NO CRACKED BRICK"); if(chordId(pitches)) later(()=>{ sfx("miss"); buzz(blast && blast.field, true); }); return; }
+  heard(name,true);
+  hits.forEach(k=>boBreak(k));
+}
+document.addEventListener("keydown", e=>{
+  if(!q || q.kind!=="breakout" || !blast || /INPUT|SELECT|TEXTAREA/.test(document.activeElement?.tagName||"")) return;
+  const d={ArrowLeft:-1,KeyA:-1,ArrowRight:1,KeyD:1}[e.code]; if(d){ e.preventDefault(); blast.keyDir=d; blast.steer="keys"; }
+});
+document.addEventListener("keyup", e=>{ if(blast && blast.kind==="breakout" && ["ArrowLeft","KeyA","ArrowRight","KeyD"].includes(e.code)) blast.keyDir=0; });
+// a knob: the paddle goes where the knob points, left to right across the field
+mc.addEventListener("knob", e=>{
+  if(!blast || blast.kind!=="breakout" || !blast.field) return;
+  if(cabWaiting()){ cabWake(); return; }
+  const W=blast.W||blast.field.clientWidth; blast.paddle.target=e.detail.value*(W-blast.paddle.w); blast.steer="knob";
+});
+
+// ---------- Chord Breakout's demo ----------
+// The game plays itself: the paddle follows the ball, and each brick cracked is played a moment later.
+function boDemo(){
+  if(!blast || blast.kind!=="breakout") return;
+  stopDemo(); clearTimeout(blast.attract); piano.start();
+  if(blast.overlay) blast.overlay.hidden=true;
+  blast.phase="demo"; blast.level=0; blast.demoAuto=true; boLayout(); boWall(); boServe(); blast.serveAt=performance.now()+900;
+  const el=document.createElement("div"); el.className="demo"; blast.field.appendChild(el); blast.field.classList.add("demoing");
+  const token={run:true, el}; blast.demo=token;
+  el.innerHTML=`<div class="demohead"><span class="demotag blink">DEMO</span><span class="demotitle"></span><button class="demoskip">SKIP ▶</button></div><p class="democap"></p>`;
+  el.querySelector(".demoskip").onclick=()=>endBoDemo(token);
+  const say=(t,c)=>{ el.querySelector(".demotitle").textContent=t||""; el.querySelector(".democap").textContent=c; };
+  sfx("attract");
+  (async()=>{
+    const sleep=ms=>new Promise(r=>setTimeout(r,ms)), step=async ms=>{ await sleep(ms); if(!token.run) throw 0; };
+    try{
+      say("CHORD BREAKOUT", knobsReady() ? "TURN A KNOB ON THE MINICHORD TO MOVE THE PADDLE." : "MOVE THE PADDLE WITH A KNOB, THE MOUSE OR THE ARROW KEYS."); await step(4200);
+      say("CRACK IT","THE BALL CRACKS THE BRICK IT HITS. IT GLOWS."); await step(4200);
+      say("PLAY IT","PLAY THAT CHORD BEFORE THE BALL COMES BACK AND THE BRICK BREAKS."); await step(4500);
+      say("OR IT HEALS","IF THE BALL REACHES THE PADDLE FIRST, THE BRICK HEALS."); await step(4000);
+      say("READY?","CLEAR THE WALL. DON'T LET THE BALL PAST."); sfx("level"); await step(3200);
+      endBoDemo(token);
+    }catch(e){ /* skipped */ }
+  })();
+}
+function endBoDemo(token){
+  if(!blast || blast.demo!==token) return;
+  stopDemo(); blast.phase="menu"; blast.demoAuto=false; blast.ball=null; blast.ballEl.style.transform="translate(-40px,-40px)";
+  blast.bricks.forEach(b=>b.el.remove()); blast.bricks=[];
+  if(blast.overlay) blast.overlay.hidden=false;
+  cabRestart();
 }
 
 // ---------- Chord Invaders' own sounds ----------
@@ -3512,6 +3803,10 @@ function fxPaintBackground(kind, W, H){
   } else if(kind==="snake"){
     g.fillStyle="#08100C"; g.fillRect(0,0,W,H);
     g.fillStyle="#1B3325"; for(let y=1;y<H;y+=4) for(let x=1;x<W;x+=4) g.fillRect(x,y,1,1);
+  } else if(kind==="breakout"){
+    g.fillStyle="#070A12"; g.fillRect(0,0,W,H);
+    g.fillStyle="#0E1424"; for(let y=0;y<H;y+=2) g.fillRect(0,y,W,1);                    // scanlines
+    g.fillStyle="#1B2440"; for(let x=0;x<W;x+=16) for(let y=0;y<H;y+=16) g.fillRect(x,y,1,1);   // a grid of dots
   } else if(kind==="stack"){
     g.fillStyle="#0A0810"; g.fillRect(0,0,W,H);
     // dark bricks, offset every other course
@@ -3639,11 +3934,11 @@ function blasterChord(voices){
   }
   blastBar();
 }
-const GENS={spell:genSpell, command:genCommand, snake:genSnake, asteroids:genAsteroids, stack:genStack, hidden:genHidden, oddone:genOddOne, shades:genShades, reshape:genReshape, blaster:genBlaster, diatonic:genDiatonic, numeral:genNumeral, staff:genStaff, slash:genSlash, key:genKey, harp:genHarp, missing:genMissing,
+const GENS={spell:genSpell, command:genCommand, snake:genSnake, asteroids:genAsteroids, stack:genStack, breakout:genBreakout, hidden:genHidden, oddone:genOddOne, shades:genShades, reshape:genReshape, blaster:genBlaster, diatonic:genDiatonic, numeral:genNumeral, staff:genStaff, slash:genSlash, key:genKey, harp:genHarp, missing:genMissing,
   melody:()=>genMelody(false), solfa:()=>genMelody(true), chordscale:genChordScale, smooth:genSmooth, whichvoice:genWhichVoice, simon:genSimon, directions:genDirections, pluckchord:genPluckChord, buildscale:genBuildScale,
   scale:genScale, transpose:genTranspose, temper:genTemper, tune:genTune};
 const MYSTERY=new Set(["scale","transpose","temper","tune"]);
-const LABELS={spell:"Spell it", hidden:"Hidden layout", oddone:"Odd one out", shades:"Shades of the third", reshape:"Reshape", blaster:"Chord Invaders", command:"Harp Command", snake:"Chord Snake", asteroids:"Chord Asteroids", stack:"Chord Stack", diatonic:"Seven chords", numeral:"Numerals", staff:"On the staff", slash:"Slash chords", key:"Key detective", harp:"Harp hunt", missing:"Missing note", mix:"Mix",
+const LABELS={spell:"Spell it", hidden:"Hidden layout", oddone:"Odd one out", shades:"Shades of the third", reshape:"Reshape", blaster:"Chord Invaders", command:"Harp Command", snake:"Chord Snake", asteroids:"Chord Asteroids", stack:"Chord Stack", breakout:"Chord Breakout", diatonic:"Seven chords", numeral:"Numerals", staff:"On the staff", slash:"Slash chords", key:"Key detective", harp:"Harp hunt", missing:"Missing note", mix:"Mix",
   melody:"Play by number", solfa:"Play by solfège", chordscale:"Chord scales", smooth:"Smooth moves", whichvoice:"Which voice moved?", simon:"Simon says", directions:"Follow the directions", pluckchord:"Pluck the chord", buildscale:"Build the scale",
   scale:"Scale detective", transpose:"Transpose detective", temper:"Temperament taster", tune:"Tune up"};
 
@@ -3705,7 +4000,7 @@ if(!LABELS[settings.mode]) settings.mode="spell";
 // A link can open one game directly, ?game=invaders (or any game's name, like ?game=reshape),
 // and ?solo shows that game on its own, without the menu, the settings or the answer area.
 const urlParams=new URLSearchParams(location.search);
-const GAME_SLUGS={invaders:"blaster", "chord-invaders":"blaster", "harp-command":"command", harpcommand:"command", "chord-snake":"snake", "chord-asteroids":"asteroids", asteroids:"asteroids", "chord-stack":"stack", sevenchords:"diatonic", layout:"hidden"};
+const GAME_SLUGS={invaders:"blaster", "chord-invaders":"blaster", "harp-command":"command", harpcommand:"command", "chord-snake":"snake", "chord-asteroids":"asteroids", asteroids:"asteroids", "chord-stack":"stack", "chord-breakout":"breakout", breakout:"breakout", sevenchords:"diatonic", layout:"hidden"};
 { const g=(urlParams.get("game")||"").toLowerCase(), k=GAME_SLUGS[g]||g; if(LABELS[k]) settings.mode=k; }
 const solo=urlParams.has("solo") && LABELS[settings.mode] && !!urlParams.get("game");
 if(!SETS[settings.set] || settings.set==="alt") settings.set="standard";
@@ -3938,6 +4233,7 @@ function nextQuestion(){
   if(q.kind==="snake") startSnake();
   if(q.kind==="asteroids") startAsteroids();
   if(q.kind==="stack") startStack();
+  if(q.kind==="breakout") startBreakout();
   if(q.kind==="simon") setTimeout(simonPlay,700);
 }
 function feedback(text,kind="",small=""){ const f=$("feedback"); f.className="feedback "+kind; f.textContent=text; if(small){ const s=document.createElement("small"); s.textContent=small; f.appendChild(s); } }
@@ -4041,6 +4337,7 @@ function answerChord(voices){
   if(q.answer.type==="snake") return snakeChord(voices);
   if(q.answer.type==="asteroids") return asteroidsChord(voices);
   if(q.answer.type==="stack") return stackChord(voices);
+  if(q.answer.type==="breakout") return breakoutChord(voices);
   if(q.answer.type==="diatonic") return answerDiatonic(voices);
   if(q.answer.type==="reshape") return answerReshape(voices);
   if(q.answer.type==="alt") return answerAltChord(voices);
@@ -4240,11 +4537,12 @@ async function startTones(){
   if(!canWrite()){ tones.sim=make((tuneState.secret+tuneState.nudge)/10,.1,settings.tuneWave); tones.push(tones.sim); }   // no minichord: simulate it
 }
 function buildSpecial(){
-  const box=$("special"); box.innerHTML=""; box.hidden = !(q && ["tune","melody","smooth","simon","directions","pluckchord","buildscale","blaster","command","snake","asteroids","stack","diatonic","reshape","hidden","oddone","shades"].includes(q.kind)); if(box.hidden) return;
+  const box=$("special"); box.innerHTML=""; box.hidden = !(q && ["tune","melody","smooth","simon","directions","pluckchord","buildscale","blaster","command","snake","asteroids","stack","breakout","diatonic","reshape","hidden","oddone","shades"].includes(q.kind)); if(box.hidden) return;
   if(q.kind==="command"){ buildCommandField(box); return; }
   if(q.kind==="snake"){ buildSnakeField(box); return; }
   if(q.kind==="asteroids"){ buildAsteroidsField(box); return; }
   if(q.kind==="stack"){ buildStackField(box); return; }
+  if(q.kind==="breakout"){ buildBreakoutField(box); return; }
   if(q.kind==="blaster"){
     const field=document.createElement("div"); field.className="field arcade"; field.setAttribute("aria-label","Falling chords");
     const ground=document.createElement("div"); ground.className="ground"; field.appendChild(ground);
@@ -4356,7 +4654,7 @@ function setMode(m){
   $("nowPlaying").textContent = `Playing: ${LABELS[m]||m}`;
   settings.mode=m; save();
   document.querySelectorAll(".modes button[data-mode]").forEach(x=>x.setAttribute("aria-pressed",x.dataset.mode===m));
-  $("sprint").disabled = MYSTERY.has(m) || m==="blaster" || m==="command" || m==="snake" || m==="asteroids" || m==="stack";
+  $("sprint").disabled = MYSTERY.has(m) || m==="blaster" || m==="command" || m==="snake" || m==="asteroids" || m==="stack" || m==="breakout";
   stats.streak=0; scoreboard(); nextQuestion();
   if(switching){
     const back=restoreExcept(new Set([...(q.needs||[]).map(n=>n.addr), ...(q.borrows||[]), ...roundBorrows, 31]));   // keep what the new game uses
@@ -4366,7 +4664,7 @@ function setMode(m){
   }
 }
 document.querySelectorAll(".modes button[data-mode]").forEach(b=>{ b.setAttribute("aria-pressed", b.dataset.mode===settings.mode); b.onclick=()=>setMode(b.dataset.mode); });
-$("sprint").disabled = MYSTERY.has(settings.mode) || settings.mode==="blaster" || settings.mode==="command" || settings.mode==="snake" || settings.mode==="asteroids" || settings.mode==="stack";
+$("sprint").disabled = MYSTERY.has(settings.mode) || settings.mode==="blaster" || settings.mode==="command" || settings.mode==="snake" || settings.mode==="asteroids" || settings.mode==="stack" || settings.mode==="breakout";
 $("nowPlaying").textContent = `Playing: ${LABELS[settings.mode]||settings.mode}`;
 for(const [id,key] of [["gameMenu","menuOpen"]]){
   const d=$(id); if(saved[key]===false) d.open=false;
@@ -4421,6 +4719,7 @@ mc.addEventListener("device", ()=>{
   else if(blast && blast.kind==="snake") snDevice();
   else if(blast && blast.kind==="asteroids") asDevice();
   else if(blast && blast.kind==="stack") stDevice();
+  else if(blast && blast.kind==="breakout") boDevice();
   else if(blast){ blastSetup(); if(blast.phase!=="play") blastHomeKey(); blastKey(); }
   if(q && !solved && !rebuilding) applyNeeds();
   mine(); needs();

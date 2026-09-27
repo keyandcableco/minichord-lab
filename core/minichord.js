@@ -35,6 +35,7 @@ export class Minichord extends EventTarget {
     this.params={};               // raw values from the dump, by address
     this.notes=new Map();         // "ch:note" -> {ch, note, vel, t}
     this._frame=0; this._settle=0; this._lastChordKey="";
+    this.knobs=[null,null,null];   // the three knobs, 0 to 1, once the minichord sends them
     // Coming back: once a minichord has been connected on any of the Lab's pages, the next page
     // connects by itself, as long as the browser still holds its MIDI permission. It presses the
     // page's own Connect button, so each page sets up exactly as if you had. Run a moment later,
@@ -158,6 +159,8 @@ export class Minichord extends EventTarget {
   _off(ch,note){ if(this.notes.delete(ch+":"+note)) this._changed(true); }
   allOff(){ this.notes.clear(); this.chans.forEach(c=>c.bend=0); this._changed(true); }
   _cc(ch,cc,val){
+    // the knobs, when "knobs send MIDI" (address 238, firmware 17) is on: CC 20 chord, 21 harp, 22 modulation, on channel 16
+    if(ch===15 && cc>=20 && cc<=22){ const k=cc-20; this.knobs[k]=val/127; this.lastKnob=k; this.dispatchEvent(new CustomEvent("knob",{detail:{knob:k, value:val/127}})); return; }
     const c=this.chans[ch];
     if(cc===101) c.rpn[0]=val;
     else if(cc===100) c.rpn[1]=val;
