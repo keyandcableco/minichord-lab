@@ -106,6 +106,7 @@
       <div class="ctl"><span class="lbl">Articulation</span><div class="seg" id="artic"></div><p class="fine" id="articNote"></p></div>
       <div class="ctl"><span class="lbl">Dynamic</span><div class="seg" id="dyn"></div></div>
       <div class="ctl"><label class="lbl" for="hall">Hall</label><input id="hall" type="range" min="0" max="100" value="35"><p class="fine">From a dry studio to a stone church.</p></div>
+      <div class="ctl"><label class="lbl" for="perf">Performance</label><select id="perf"><option value="standard">Standard</option><option value="light">Light, for older computers</option></select><p class="fine">Light draws the score at a quarter of the frame rate and at plain resolution, keeps the bows still, and uses a shorter hall. The sound is the same.</p></div>
     </section>
     <section class="panel">
       <h2>The parts</h2>
@@ -157,6 +158,9 @@ const ARTICS={
 };
 const DYNS=[["pp",.28,1600],["p",.4,2400],["mp",.55,3600],["mf",.7,5200],["f",.86,7500],["ff",1,11000]];
 let artic="arco", dyn=3, seating="classic", celloDown=false, inRange=true;
+// performance: "light" spares an older computer (a slower score, still bows, a shorter hall); remembered
+let perf="standard"; try{ perf=localStorage.getItem("minichord-quartet-perf")||"standard"; }catch(e){}
+const light=()=>perf==="light";
 const muted=new Set();
 
 // ---------- sound ----------
@@ -199,8 +203,8 @@ async function startAudio(){
   const comp=ctx.createDynamicsCompressor(); comp.threshold.value=-14; comp.ratio.value=3; comp.connect(ctx.destination);
   master=ctx.createGain(); master.gain.value=.9; master.connect(comp);
   dry=ctx.createGain(); wet=ctx.createGain(); dry.connect(master); wet.connect(master);
-  const verb=ctx.createConvolver(); verb.buffer=hallImpulse(2.6); verb.connect(wet);
-  bus.verbIn=verb; setHall();
+  const verb=ctx.createConvolver(); verb.buffer=hallImpulse(light()?1.2:2.6); verb.connect(wet);
+  bus.verbIn=verb; bus.verb=verb; setHall();
   // one channel strip a part: articulation colour, dynamic brightness, seat in the stereo field
   for(const p of PARTS){
     const input=ctx.createGain(), colour=ctx.createBiquadFilter(), colour2=ctx.createBiquadFilter(), bright=ctx.createBiquadFilter(), pan=ctx.createStereoPanner(), out=ctx.createGain();
@@ -284,7 +288,7 @@ function update(){
     const now=performance.now(); if(cur) scoreEnd(p.id, now); scoreNote(p.id, pitch, now);
     playing.set(p.id, {key, note, pitch, t:now, pluck:artic==="pizz"});
   });
-  drawStage();
+  paint();   // light the strings and write the notes; the instruments themselves stay drawn
 }
 mc.addEventListener("voices", update);
 
@@ -384,8 +388,10 @@ function paint(){
   }
 }
 // the bows move while they play: a slow stroke for arco, a shiver for tremolo; a pluck ring for pizzicato
+let lastScore=0;
 function animate(ts){
-  drawScore(ts);
+  if(!light() || ts-lastScore>66){ lastScore=ts; drawScore(ts); }   // light: about fifteen frames a second
+  if(light()){ requestAnimationFrame(animate); return; }            // light: the bows keep still
   for(const p of PARTS){
     const d=parts[p.id], cur=playing.get(p.id); if(!d) continue;
     if(cur && !muted.has(p.id) && artic!=="pizz"){
@@ -459,12 +465,18 @@ function spelled(midi){
 function scoreNote(id, pitch, t){ const r=Math.round(pitch), sp=spelled(r); (lines[id]||=[]).push({t0:t, t1:null, pts:[[t,pitch]], base:r, ...sp}); }
 function scoreGlide(id, pitch, t){ const L=lines[id]; if(L && L.length){ const g=L[L.length-1]; if(g.t1==null) g.pts.push([t,pitch]); } }
 function scoreEnd(id, t){ const L=lines[id]; if(L && L.length){ const g=L[L.length-1]; if(g.t1==null) g.t1=t; } }
+// the page's colours, read once and again when the theme changes, not on every frame
+let scoreColors=null;
+function readScoreColors(){ const css=getComputedStyle(document.documentElement), v=k=>css.getPropertyValue(k).trim();
+  scoreColors={ink:v("--ink"), paper:v("--panel"), felt:v("--felt"), muted:v("--muted"), rule:v("--rule")}; }
+window.addEventListener("themechange",()=>{ scoreColors=null; });
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change",()=>{ scoreColors=null; });
 function drawScore(now){
-  const cv=$("score"), dpr=window.devicePixelRatio||1, W=cv.clientWidth, H=cv.clientHeight;
+  const cv=$("score"), dpr=light() ? 1 : (window.devicePixelRatio||1), W=cv.clientWidth, H=cv.clientHeight;
   if(cv.width!==Math.round(W*dpr) || cv.height!==Math.round(H*dpr)){ cv.width=Math.round(W*dpr); cv.height=Math.round(H*dpr); }
   const c=cv.getContext("2d"); c.setTransform(dpr,0,0,dpr,0,0);
-  const css=getComputedStyle(document.documentElement), ink=css.getPropertyValue("--ink").trim(), paper=css.getPropertyValue("--panel").trim(),
-        felt=css.getPropertyValue("--felt").trim(), muted=css.getPropertyValue("--muted").trim(), rule=css.getPropertyValue("--rule").trim();
+  if(!scoreColors) readScoreColors();
+  const {ink, paper, felt, muted, rule}=scoreColors;
   c.fillStyle=paper; c.fillRect(0,0,W,H);
   const SP=7, gap=(H-24)/4, left=178, f=mc.keyFifths;
   const top=k=>14+k*gap+ (gap-4*SP)/2, y=(k,clef,dn)=>top(k)+(CLEFS[clef].top-dn)*SP/2;
@@ -526,6 +538,10 @@ seg($("dyn"), DYNS.map((d,i)=>[i,d[0]]), dyn, k=>{ dyn=k; applyStrips(); });
 seg($("seating"), Object.entries(SEATINGS).map(([k,v])=>[k,v.n]), seating, k=>{ setSeating(k); $("seatNote").textContent=SEATINGS[k].note; });
 $("seatNote").textContent=SEATINGS[seating].note;
 $("hall").oninput=setHall;
+$("perf").value=perf;
+$("perf").onchange=e=>{ perf=e.target.value; try{ localStorage.setItem("minichord-quartet-perf",perf); }catch(err){}
+  if(ctx && bus.verb) bus.verb.buffer=hallImpulse(light()?1.2:2.6);
+  if(light()) for(const d of Object.values(parts)){ d.bowg.setAttribute("transform",""); d.pluck.setAttribute("opacity",0); } };
 $("celloDown").onchange=e=>{ celloDown=e.target.checked; rebow(); };
 $("inRange").onchange=e=>{ inRange=e.target.checked; rebow(); };
 // a change of articulation or range takes effect on the notes already sounding

@@ -6,4 +6,4 @@
  * sits exactly on it. SIL Open Font License 1.1; a modified version, so it is
  * renamed, as the Reserved Font Name "Bravura" requires. See
  * fonts/OFL-lab-music.txt. Built with fonttools' subsetter from Bravura.otf. */
-@font-face{font-family:"Minichord Lab Music";font-style:normal;font-weight:400;font-display:block;src:url("fonts/lab-music.woff2") format("woff2");}
+@font-face{font-family:"Minichord Lab Music";font-style:normal;font-weight:400;font-display:block;src:url("fonts/lab-music.woff2?v=2") format("woff2");}   /* ?v= changes whenever the subset gains glyphs, so browsers fetch it afresh */
