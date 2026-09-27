@@ -284,7 +284,7 @@
 .helper.hharp .hstring{display:flex;align-items:center;justify-content:center;font:400 .45rem "Minichord Lab Accidentals","Press Start 2P",monospace;color:#9A93B5;border:1px solid #2E2A40;background:#0E0C14}
 .helper.hharp .hstring.lit{background:#FFD35A;color:#16132A;border-color:#FFF4C2;box-shadow:0 0 10px rgba(255,211,90,.9)}
 .helper.hharp small{position:absolute;bottom:-18px;left:0;right:0;text-align:center;font:400 .4rem "Press Start 2P",monospace;color:#9A93B5}
-.field.demoing .helper.hboard{display:none}
+.field.demoing .helper.hboard.helper-blaster,.field.demoing .helper.hboard.helper-snake,.field.demoing .helper.hboard.helper-stack{display:none}
 
 /* the keymaster's plate: black, leaning, twelve white notes */
 .kmplate{aspect-ratio:266/602}
@@ -295,6 +295,14 @@
 .kmstrip.plate .kdot.hit{animation:kmhit .25s ease-out}
 .kmstrip.plate .kdot.demo-on,.helper.hharp.plate .kdot.lit{background:#FFD35A;border-color:#FFF4C2;box-shadow:0 0 12px rgba(255,211,90,.95);color:#16132A}
 .helper.hharp.plate{background:none;border:none;padding:0;display:block;height:min(330px,72%);width:auto}
+
+/* Chord Asteroids' minichord carries its harp: the strip in its slot, or the keymaster plate over it */
+.helper .board .hbstrip{display:flex;flex-direction:column;gap:1px;background:#050407}
+.helper .board .hbstrip span{flex:1;display:flex;align-items:center;justify-content:center;font:400 .3rem "Minichord Lab Accidentals","Press Start 2P",monospace;color:#6E6890;border-bottom:1px solid #1C1A24}
+.helper .board .hbstrip span.lit,.helper .board .kmplate .kdot.lit{background:#FFD35A;color:#16132A;box-shadow:0 0 10px rgba(255,211,90,.95)}
+.helper .board .kmplate.onboard{aspect-ratio:auto}
+.helper .board .hbcover{background:#2B2620}
+.helper .board .kmplate.onboard .kdot{font-size:.28rem;border-width:2px}
 /* the demo's pixel minichord */
 .overlay button.howto{border-color:#FFD35A;color:#FFD35A}
 .demo{position:absolute;inset:0;z-index:5;display:flex;flex-direction:column;justify-content:flex-start;padding:10px 14px;pointer-events:none}
@@ -2454,8 +2462,10 @@ function asDemo(){
       const W=blast.field.clientWidth;
       const rock=asRock("chord", W*.2, blast.cy-60, "E7", {root:"E", q:"7", tones:["E","G♯","B","D"], rootPc:4});
       rock.vx=28; rock.vy=12; await step(3000);
-      say("CRACK IT","PLAY ITS CHORD ON THE BUTTONS: E7 CRACKS INTO E, G♯, B AND D."); await step(1400);
-      play([52,56,59,62]); asKill(rock); asCrack(rock); blast.score=0; await step(1300);
+      say("CRACK IT","PLAY ITS CHORD ON THE BUTTONS: E7 CRACKS INTO E, G♯, B AND D.");
+      blast.helpKey=null; helpChord("E","7"); await step(1400);                 // its buttons light on the minichord
+      play([52,56,59,62]); asKill(rock); asCrack(rock); blast.score=0; await step(700);
+      blast.helpKey=null; helpChord(null); await step(600);
       say("SHOOT THE NOTES","PLUCK EACH NOTE ON THE HARP. THE SHIP TURNS AND FIRES.");
       for(const nm of ["E","G♯","B","D"]){
         await step(650);
@@ -2986,7 +2996,9 @@ function helperSync(rebuild){
   if(rebuild || !want){ blast.helpBoard?.el.remove(); blast.helpHarp?.el.remove(); blast.helpBoard=null; blast.helpHarp=null; blast.helpKey=null; }
   if(!want) return;
   if(helpUsesChords(k) && !blast.helpBoard){ blast.helpBoard=helperBoard(k); blast.field.appendChild(blast.helpBoard.el); }
-  if(helpUsesHarp(k) && !blast.helpHarp){ blast.helpHarp=helperHarp(k); blast.field.appendChild(blast.helpHarp.el); }
+  if(blast.helpBoard && blast.helpBoard.strings){                         // a harp on the minichord itself: no separate one
+    if(!blast.helpHarp) blast.helpHarp={el:{remove(){}}, cells:blast.helpBoard.strings, names:blast.helpBoard.names};
+  } else if(helpUsesHarp(k) && !blast.helpHarp){ blast.helpHarp=helperHarp(k); blast.field.appendChild(blast.helpHarp.el); }
 }
 function helperBoard(k){
   const el=document.createElement("div"); el.className="helper hboard helper-"+k;
@@ -2997,14 +3009,33 @@ function helperBoard(k){
   DEMO_ROWS.forEach((_,r)=>DEMO_COLS.forEach((c,ci)=>{ const b=document.createElement("div"); b.className="cell"; place(b, MC_PARTS.buttons[r*7+ci]); (cells[ci]||=[])[r]=b; grid.appendChild(b); }));
   const labels=()=>{ const f=devFifths(); DEMO_ROWS.forEach(([,suf],r)=>DEMO_COLS.forEach((c,ci)=>{ const li=LETTERS.indexOf(c); cells[ci][r].textContent=c+ACC[keyAcc(li,f)]+suf; })); };
   labels();
-  return {el, cells, mod:el.querySelector(".mod"), labels};
+  // Chord Asteroids plays both halves of the instrument, so its minichord carries its own harp,
+  // lit on the case itself: the strip in the harp's slot, or the keymaster plate where it mounts
+  let strings=null, names=null;
+  if(k==="asteroids"){
+    const board=el.querySelector(".board"), nameOf=i=>SHARP_NAMES[i];
+    if(saved.harpLayout==="keymaster"){
+      const cover=document.createElement("div"); cover.className="hbcover"; place(cover, MC_HARP.slot); board.appendChild(cover);   // no strip under the plate
+      const plate=document.createElement("div"); place(plate, MC_HARP.plate); board.appendChild(plate);
+      strings=kmPlate(plate, nameOf); plate.classList.add("onboard");
+    } else {
+      const strip=document.createElement("div"); strip.className="hbstrip"; place(strip, MC_HARP.strip); board.appendChild(strip);
+      strings=[]; for(let sI=11;sI>=0;sI--){ const c=document.createElement("span"); c.textContent=nameOf(sI); strip.appendChild(c); strings[sI]=c; }   // high strings at the top
+    }
+    names=()=>{};
+  }
+  return {el, cells, mod:el.querySelector(".mod"), labels, strings, names};
 }
+// where the harp sits on the case, as percentages of its outline: the strip in its slot; and the
+// keymaster plate, centred over the slot, clear of the light on its left and the pots on its right,
+// with the slot itself painted over, since the keymaster takes the strip's place
+const MC_HARP={strip:[71.9,19,6.6,61], plate:[66.85,11.6,17.9,76], slot:[70.6,16.3,9.2,67]};
 // which buttons play a chord: its root's column, the rows its quality presses
 const HELP_ROWS={"":[0],"m":[1],"7":[2],"maj7":[0,2],"m7":[1,2],"°":[0,1],"+":[0,1,2],"6":[0],"m6":[1],"°7":[0,1]};
 function helpChord(rootName, q, bass){
   const h=blast && blast.helpBoard; if(!h) return;
   const key=`${rootName}|${q}|${bass||""}|${devFifths()}`; if(blast.helpKey===key) return; blast.helpKey=key;
-  h.labels(); h.el.querySelectorAll(".lit,.slashlit").forEach(x=>x.classList.remove("lit","slashlit")); h.mod.classList.remove("lit");
+  h.labels(); h.el.querySelectorAll(".grid .lit,.grid .slashlit").forEach(x=>x.classList.remove("lit","slashlit")); h.mod.classList.remove("lit");   // the buttons only: the harp keeps its own light
   if(!rootName) return;
   const {li,acc}=parse(rootName), col=DEMO_COLS.indexOf(rootName[0]), f=devFifths();
   (HELP_ROWS[q]||[0]).forEach(r=>h.cells[col] && h.cells[col][r].classList.add("lit"));
@@ -3014,8 +3045,16 @@ function helpChord(rootName, q, bass){
 }
 // A demo shows the harp whether beginner mode is on or not, lighting each string as it's plucked,
 // and takes it away again after unless the player has beginner mode on.
-function demoHarp(k){ if(blast && blast.field && !blast.helpHarp){ blast.helpHarp=helperHarp(k); blast.field.appendChild(blast.helpHarp.el); blast.demoHarp=true; } }
-function demoHarpDone(){ if(blast && blast.demoHarp){ blast.helpHarp?.el.remove(); blast.helpHarp=null; blast.demoHarp=false; blast.helpString=null; } else if(blast && blast.helpHarp) helpString(-1); }
+function demoHarp(k){
+  if(!blast || !blast.field || blast.helpHarp) return;
+  if(k==="asteroids"){ blast.helpBoard=helperBoard(k); blast.field.appendChild(blast.helpBoard.el); blast.helpHarp={el:{remove(){}}, cells:blast.helpBoard.strings, names:blast.helpBoard.names}; }
+  else { blast.helpHarp=helperHarp(k); blast.field.appendChild(blast.helpHarp.el); }
+  blast.demoHarp=true;
+}
+function demoHarpDone(){
+  if(blast && blast.demoHarp){ blast.helpHarp?.el.remove(); if(cabKind()==="asteroids"){ blast.helpBoard?.el.remove(); blast.helpBoard=null; blast.helpKey=null; } blast.helpHarp=null; blast.demoHarp=false; blast.helpString=null; }
+  else if(blast && blast.helpHarp) helpString(-1);
+}
 // the harp, drawn as the player's harp is laid out, its strings named, the one to pluck lit
 function helperHarp(k){
   const grid=(saved.harpLayout==="keymaster");
