@@ -314,6 +314,14 @@
 .bobrick.gone{opacity:0;transform:scale(1.3)}
 .bopaddle{position:absolute;left:0;z-index:3;height:12px;background:#F1E8D2;border:2px solid #07060C;box-shadow:inset 0 -3px 0 #B5AC96,0 0 0 2px #FFD35A}
 .boball{position:absolute;left:0;top:0;z-index:3;width:14px;height:14px;background:#FFFFFF;box-shadow:0 0 8px rgba(255,255,255,.8);transform:translate(-40px,-40px)}
+
+/* Fifths Defender: the keys round the rim */
+.fdrim{position:absolute;inset:0;z-index:2;pointer-events:none}
+.fdkey{position:absolute;transform:translate(-50%,-50%);font:400 .7rem "Minichord Lab Accidentals","Press Start 2P",monospace;color:#9A93B5;text-align:center;line-height:1.5}
+.fdkey small{display:block;font-size:.5rem;color:#6E6890}
+.fdkey.aimed{color:#FFD35A;text-shadow:0 0 10px rgba(255,211,90,.8)}
+.fdkey.aimed small{color:#FFE9A8}
+.fdkey.unused{opacity:.3}
 /* the demo's pixel minichord */
 .overlay button.howto{border-color:#FFD35A;color:#FFD35A}
 .demo{position:absolute;inset:0;z-index:5;display:flex;flex-direction:column;justify-content:flex-start;padding:10px 14px;pointer-events:none}
@@ -395,7 +403,8 @@ details.fold[open] .nowplaying{display:none}
     <button data-mode="asteroids">Chord Asteroids</button>
     <button data-mode="stack">Chord Stack</button>
     <button data-mode="breakout">Chord Breakout</button>
-    <span class="arcadelinks">or on their own pages: <a href="../invaders/">Chord Invaders</a> · <a href="../harp-command/">Harp Command</a> · <a href="../chord-snake/">Chord Snake</a> · <a href="../chord-asteroids/">Chord Asteroids</a> · <a href="../chord-stack/">Chord Stack</a> · <a href="../chord-breakout/">Chord Breakout</a></span>
+    <button data-mode="fifths">Fifths Defender</button>
+    <span class="arcadelinks">or on their own pages: <a href="../invaders/">Chord Invaders</a> · <a href="../harp-command/">Harp Command</a> · <a href="../chord-snake/">Chord Snake</a> · <a href="../chord-asteroids/">Chord Asteroids</a> · <a href="../chord-stack/">Chord Stack</a> · <a href="../chord-breakout/">Chord Breakout</a> · <a href="../fifths-defender/">Fifths Defender</a></span>
   </div>
   <div class="modes" role="group" aria-label="Read and play">
     <span class="grp">Read and play</span>
@@ -2570,7 +2579,18 @@ function startStack(){
 }
 function stDevice(){
   if(!blast || blast.kind!=="stack" || !canWrite()) return;
-  if(!blast.setupDone){ blast.setupDone=true; poll(true); kmHarp(); }
+  if(!blast.setupDone){ blast.setupDone=true; poll(true); kmHarp(); if(knobsReady()) borrow(238,1); }
+  // the title screen mentions the knob once the minichord says it has one to send
+  const sig=String(knobsReady());
+  if(blast.phase==="menu" && blast.overlay && blast.menuSig!==sig){ const hid=blast.overlay.hidden; blast.overlay.remove(); blast.overlay=null; stMenu(); blast.overlay.hidden=hid; blast.menuSig=sig; }
+}
+// A knob is the transposition dial: turned, the falling piece slides through the twelve columns, C at
+// one end of the knob's travel and B at the other, stopping short of anything in its way.
+function stKnob(v){
+  const p=blast && blast.kind==="stack" && blast.phase==="play" && blast.piece; if(!p) return;
+  const want=Math.min(11, Math.floor(v*12));
+  let guard=12; while(p.x!==want && guard--){ const dx=want>p.x ? 1 : -1; const nx=p.x+dx; if(nx<0||nx>11||!stFits(p,nx,p.y)) break; p.x=nx; }
+  stDraw();
 }
 function buildStackField(box){
   const field=document.createElement("div"); field.className="field arcade stack"; field.setAttribute("aria-label","The Chord Stack board");
@@ -2608,7 +2628,7 @@ function stMenu(over){
     again.onclick=()=>beginStack(blast.startLevel); ov.appendChild(again);
     sfx("over");
   } else {
-    ov.innerHTML=`<h3>CHORD STACK</h3><p>ONE COLUMN FOR EACH NOTE, C TO B. SLIDE A PIECE TO TRANSPOSE IT.</p><p>NOTES FALL DOWN THEIR COLUMNS. WHEN A ROW HOLDS A CHORD, PLAY IT TO CLEAR IT.</p><p>A INVERTS · B DROPS · UP SWAPS SHARPS AND FLATS</p>`;
+    ov.innerHTML=`<h3>CHORD STACK</h3><p>ONE COLUMN FOR EACH NOTE, C TO B. SLIDE A PIECE TO TRANSPOSE IT${knobsReady() ? ": TURN A KNOB ON THE MINICHORD AND IT SLIDES" : ""}.</p><p>NOTES FALL DOWN THEIR COLUMNS. WHEN A ROW HOLDS A CHORD, PLAY IT TO CLEAR IT.</p><p>A INVERTS · B DROPS · UP SWAPS SHARPS AND FLATS</p>`;
     const how=document.createElement("button"); how.className="howto"; how.textContent="▶ HOW TO PLAY"; how.onclick=()=>stDemo(); ov.appendChild(how);
   }
   const row=(label, list, get, set)=>{ const r=document.createElement("div"); r.className="optrow"; const l=document.createElement("span"); l.className="optlabel"; l.textContent=label;
@@ -2843,7 +2863,7 @@ function endStDemo(token){
 // buttons' columns, F C G D A E B from the left, count 1 to 7: a column's major button starts that
 // level, its minor button sets that speed, and its 7 button switches to that arcade game. The key
 // signature's sharps and flats don't matter; the column is read from the chord's letter.
-const ARCADE_GAMES=["blaster","command","snake","asteroids","stack","breakout"];
+const ARCADE_GAMES=["blaster","command","snake","asteroids","stack","breakout","fifths"];
 const COLUMN_LETTERS="FCGDAEB";
 function arcadeMenuChord(voices){
   if(cabWaiting()){ cabWake(); return true; }
@@ -2895,6 +2915,7 @@ function arcadeRelayout(){
   else if(k==="stack"){ stLayout(); stDraw(); }
   else if(k==="asteroids") asCentre();
   else if(k==="breakout") boLayout();
+  else if(k==="fifths") fdLayout();
   else if(k==="command"){ hcLayout(); hcLabels(); }
 }
 for(const ev of ["fullscreenchange","webkitfullscreenchange"]) document.addEventListener(ev, ()=>setTimeout(arcadeRelayout,60));
@@ -2930,8 +2951,8 @@ function arcadeModNote(ov){
 // roll up the screen like credits; then the demo; then round again, until someone plays a chord,
 // plucks the harp, presses a key or clicks. That brings up the options (speed, levels and the rest),
 // which go back to the title if they're left alone. Game over goes straight to its options.
-const DEMO_FOR={blaster:()=>runDemo(true), command:()=>commandDemo(), snake:()=>snDemo(), asteroids:()=>asDemo(), stack:()=>stDemo(), breakout:()=>boDemo()};
-const TITLE_FOR={blaster:"CHORD INVADERS", command:"HARP COMMAND", snake:"CHORD SNAKE", asteroids:"CHORD ASTEROIDS", stack:"CHORD STACK", breakout:"CHORD BREAKOUT"};
+const DEMO_FOR={blaster:()=>runDemo(true), command:()=>commandDemo(), snake:()=>snDemo(), asteroids:()=>asDemo(), stack:()=>stDemo(), breakout:()=>boDemo(), fifths:()=>fdDemo()};
+const TITLE_FOR={blaster:"CHORD INVADERS", command:"HARP COMMAND", snake:"CHORD SNAKE", asteroids:"CHORD ASTEROIDS", stack:"CHORD STACK", breakout:"CHORD BREAKOUT", fifths:"FIFTHS DEFENDER"};
 const cabKind=()=> blast && (blast.kind||"blaster");
 function cabinet(ov){
   const kids=[...ov.children];
@@ -2981,8 +3002,8 @@ document.addEventListener("keydown", e=>{
 // buttons (and the modifier, and a slash's bass) for the chord that matters now, and in the harp
 // games the string for the note that matters now, drawn as the standard strip or the keymaster's
 // four rows of three. It sits behind the play, a little see-through, so nothing falling is hidden.
-const helpUsesChords=k=>["blaster","snake","asteroids","stack","breakout"].includes(k);
-const helpUsesHarp=k=>["command","asteroids"].includes(k);
+const helpUsesChords=k=>["blaster","snake","asteroids","stack","breakout","fifths"].includes(k);
+const helpUsesHarp=k=>["command","asteroids","fifths"].includes(k);
 function beginnerRow(opts){
   const r=document.createElement("div"); r.className="optrow"; const l=document.createElement("span"); l.className="optlabel"; l.textContent="BEGINNER";
   const g=document.createElement("div"); g.className="levels";
@@ -3025,7 +3046,7 @@ function helperBoard(k){
   // Chord Asteroids plays both halves of the instrument, so its minichord carries its own harp,
   // lit on the case itself: the strip in the harp's slot, or the keymaster plate where it mounts
   let strings=null, names=null;
-  if(k==="asteroids"){
+  if(k==="asteroids" || k==="fifths"){
     const board=el.querySelector(".board"), nameOf=i=>SHARP_NAMES[i];
     if(saved.harpLayout==="keymaster"){
       const cover=document.createElement("div"); cover.className="hbcover"; place(cover, MC_HARP.slot); board.appendChild(cover);   // no strip under the plate
@@ -3324,10 +3345,13 @@ document.addEventListener("keydown", e=>{
   const d={ArrowLeft:-1,KeyA:-1,ArrowRight:1,KeyD:1}[e.code]; if(d){ e.preventDefault(); blast.keyDir=d; blast.steer="keys"; }
 });
 document.addEventListener("keyup", e=>{ if(blast && blast.kind==="breakout" && ["ArrowLeft","KeyA","ArrowRight","KeyD"].includes(e.code)) blast.keyDir=0; });
-// a knob: the paddle goes where the knob points, left to right across the field
+// a knob: it wakes a title screen; in the games that use one, it steers
 mc.addEventListener("knob", e=>{
-  if(!blast || blast.kind!=="breakout" || !blast.field) return;
+  if(!blast || !blast.field) return;
   if(cabWaiting()){ cabWake(); return; }
+  if(blast.kind==="stack") return stKnob(e.detail.value);
+  if(blast.kind==="fifths") return fdKnob(e.detail.value);
+  if(blast.kind!=="breakout") return;
   const W=blast.W||blast.field.clientWidth; blast.paddle.target=e.detail.value*(W-blast.paddle.w); blast.steer="knob";
 });
 
@@ -3360,6 +3384,275 @@ function endBoDemo(token){
   if(!blast || blast.demo!==token) return;
   stopDemo(); blast.phase="menu"; blast.demoAuto=false; blast.ball=null; blast.ballEl.style.transform="translate(-40px,-40px)";
   blast.bricks.forEach(b=>b.el.remove()); blast.bricks=[];
+  if(blast.overlay) blast.overlay.hidden=false;
+  cabRestart();
+}
+
+
+// ---------- Fifths Defender ----------
+// Tempest on the circle of fifths. The player sits at the hub; the twelve keys stand round the rim in
+// fifths, C at the top, G one step clockwise, F one step back. Enemies crawl in along the spokes.
+// Turn a knob (or the mouse, or the arrow keys) to aim down a spoke, then play that key's chord to
+// fire along it: a key's neighbours on the circle are a knob-turn away, so the circle is learnt by
+// feel. What fires changes with the level: the key's major chord, its relative minor, its dominant
+// seventh (G7 fires down the C spoke), and at the top the key's note on the harp. An enemy that
+// reaches the hub costs a life.
+const FD_KEYS=["C","G","D","A","E","B","F♯","D♭","A♭","E♭","B♭","F"];      // round the circle, clockwise from the top
+const FD_LEVELS=[
+  {n:"Near keys", fire:"major", spokes:[0,1,2,3,9,10,11]},
+  {n:"All twelve keys", fire:"major"},
+  {n:"Relative minors", fire:"minor"},
+  {n:"Dominant sevenths", fire:"dominant"},
+  {n:"On the harp", fire:"harp"},
+];
+// what fires down a spoke at this level: a chord, or the key's note
+function fdFire(i, L){
+  const k=FD_KEYS[i];
+  if(L.fire==="minor"){ const r=above(k,5,9); return {root:r, q:"m", label:r+"m"}; }
+  if(L.fire==="dominant"){ const r=above(k,4,7); return {root:r, q:"7", label:r+"7"}; }
+  if(L.fire==="harp") return {note:pcOfName(k), label:k};
+  return {root:k, q:"", label:k};
+}
+function genFifths(){
+  return {kind:"fifths", prompt:"Fifths Defender", sub:"The twelve keys stand round you in fifths. Turn a knob (or use the mouse or arrow keys) to aim down a key's spoke, then play that key's chord to fire along it. Enemies crawl in; one that reaches the middle costs a life.",
+    answer:{type:"fifths", get name(){ const L=FD_LEVELS[blast?.level||0]; return blast && blast.kind==="fifths" ? fdFire(blast.aim,L).label : "the aimed key's chord"; }},
+    get hint(){ const e=fdNearest(); return e ? `The nearest enemy is on the ${FD_KEYS[e.spoke]} spoke.` : "Wait for an enemy."; },
+    context:0};
+}
+function fdNearest(){ return blast && blast.kind==="fifths" ? blast.foes.filter(f=>!f.dead).sort((a,b)=>a.r-b.r)[0]||null : null; }
+const fdLevelOk=i=> FD_LEVELS[i].fire!=="harp" || canWrite();
+function startFifths(){
+  blast={kind:"fifths", foes:[], score:0, lives:3, level:0, kills:0, over:true, phase:"menu", raf:0, field:null, hud:null, fx:null, noShip:true,
+    last:performance.now(), aim:0, next:0, jamUntil:0};
+  fdDevice();
+  stats.streak=0; scoreboard(); buildSpecial();
+  fdMenu();
+  blast.raf=requestAnimationFrame(fdTick);
+}
+function fdDevice(){
+  if(!blast || blast.kind!=="fifths" || !canWrite()) return;
+  if(!blast.setupDone){ blast.setupDone=true; poll(true); if(hasSetting(30)) ensure(30,0); if(knobsReady()) borrow(238,1); asHarp(); }
+  const sig=FD_LEVELS.map((_,i)=>fdLevelOk(i)).join()+knobsReady();
+  if(blast.phase==="menu" && blast.overlay && blast.menuSig!==sig){ const hid=blast.overlay.hidden; blast.overlay.remove(); blast.overlay=null; fdMenu(); blast.overlay.hidden=hid; }
+}
+function buildFifthsField(box){
+  const field=document.createElement("div"); field.className="field arcade fifths"; field.setAttribute("aria-label","The circle of fifths");
+  const hud=document.createElement("div"); hud.className="hud"; field.appendChild(hud); fullButton(field);
+  const hd=document.createElement("div"); hd.className="heard"; field.appendChild(hd);
+  const rim=document.createElement("div"); rim.className="fdrim"; field.appendChild(rim);
+  box.append(field);
+  if(blast && blast.kind==="fifths"){
+    blast.field=field; blast.hud=hud; blast.heard=hd; blast.rimEl=rim; blast.fx=fxInit(field);
+    FD_KEYS.forEach((k,i)=>{ const l=document.createElement("span"); l.className="fdkey"; rim.appendChild(l); });
+    setTimeout(()=>{ fdLayout(); fdLabels(); });
+    if(blast.overlay) field.appendChild(blast.overlay);
+    // the mouse aims too: at the spoke nearest where it points
+    field.addEventListener("pointermove", e=>{ if(!blast || blast.kind!=="fifths" || blast.phase!=="play") return; const r=field.getBoundingClientRect();
+      const a=Math.atan2(e.clientX-r.left-blast.cx, -(e.clientY-r.top-blast.cy)); fdAimAt(mod(Math.round(a/(Math.PI/6)),12)); });
+  }
+  fdBar(); setTimeout(helperSync);
+}
+function fdLayout(){
+  const f=blast.field, W=f.clientWidth, H=f.clientHeight;
+  blast.cx=W/2; blast.cy=H/2+14; blast.R=Math.max(90, Math.min(W,H)/2-64); blast.hub=26;
+  [...blast.rimEl.children].forEach((l,i)=>{ const a=i*Math.PI/6; l.style.left=`${blast.cx+Math.sin(a)*(blast.R+26)}px`; l.style.top=`${blast.cy-Math.cos(a)*(blast.R+26)}px`; });
+}
+// the rim's names: the keys, or at the minor level the relative minors beneath them
+function fdLabels(){
+  if(!blast || !blast.rimEl) return;
+  const L=FD_LEVELS[blast.level||0];
+  [...blast.rimEl.children].forEach((l,i)=>{ const k=FD_KEYS[i]; l.innerHTML = L.fire==="minor" ? `${k}<small>${above(k,5,9)}m</small>` : k;
+    l.classList.toggle("aimed", i===blast.aim); l.classList.toggle("unused", !!L.spokes && !L.spokes.includes(i)); });
+}
+function fdBar(){
+  if(!blast || blast.kind!=="fifths" || !blast.hud) return;
+  const L=FD_LEVELS[blast.level];
+  blast.hud.innerHTML=`<span>SCORE ${blast.score}</span><span class="lvl">LEVEL ${blast.level+1} · ${L.n.toUpperCase()}</span><span class="lives">${"♥".repeat(Math.max(0,blast.lives))||"-"}</span>`;
+}
+function fdMenu(over){
+  const ov=document.createElement("div"); ov.className="overlay";
+  const best=saved.best.fifths||0;
+  if(over){
+    ov.innerHTML=`<h3 class="over">GAME OVER</h3><p>SCORE ${blast.score} · LEVEL ${blast.level+1} · BEST ${best}</p>`;
+    const again=document.createElement("button"); again.className="go"; again.innerHTML=`PLAY AGAIN<small>from level ${blast.startLevel+1}</small>`;
+    again.onclick=()=>beginFifths(blast.startLevel); ov.appendChild(again);
+    sfx("over");
+  } else {
+    ov.innerHTML=`<h3>FIFTHS DEFENDER</h3><p>THE TWELVE KEYS STAND ROUND YOU IN FIFTHS: C AT THE TOP, G ONE STEP ROUND, F ONE STEP BACK.</p><p>${knobsReady() ? "TURN A KNOB ON THE MINICHORD TO AIM DOWN A KEY." : "AIM DOWN A KEY WITH THE MOUSE OR THE ARROW KEYS. WITH FIRMWARE 17, A KNOB DOES IT."}</p><p>PLAY THAT KEY'S CHORD TO FIRE. LATER, ITS RELATIVE MINOR, ITS DOMINANT SEVENTH, OR ITS NOTE ON THE HARP.</p><p>AN ENEMY THAT REACHES THE MIDDLE COSTS A LIFE.</p>`;
+    const how=document.createElement("button"); how.className="howto"; how.textContent="▶ HOW TO PLAY"; how.onclick=()=>fdDemo(); ov.appendChild(how);
+  }
+  const row=(label, list, get, set)=>{ const r=document.createElement("div"); r.className="optrow"; const l=document.createElement("span"); l.className="optlabel"; l.textContent=label;
+    const g=document.createElement("div"); g.className="levels";
+    const mark=b=>{ [...g.children].forEach(x=>{ x.style.background=""; x.style.color=""; }); b.style.background="#F1E8D2"; b.style.color="#16132A"; };
+    list.forEach((n,i)=>{ const b=document.createElement("button"); b.textContent=n; if(get()===i) mark(b); b.onclick=()=>{ set(i); mark(b); }; g.appendChild(b); });
+    r.append(l,g); ov.appendChild(r); };
+  row("SPEED", SPEEDS.map(x=>x[0].toUpperCase()), ()=>+saved.speed||0, i=>{ saved.speed=i; save(); });
+  const lp=document.createElement("p"); lp.className = over ? "" : "blink"; lp.textContent = over ? "OR START FROM" : "CHOOSE A LEVEL"; ov.appendChild(lp);
+  const lv=document.createElement("div"); lv.className="levels";
+  FD_LEVELS.forEach((L,i)=>{ const b=document.createElement("button"), ok=fdLevelOk(i);
+    b.innerHTML=`${i+1}<small>${L.n}${ok?"":"<br>NEEDS A MINICHORD"}</small>`; b.disabled=!ok; b.onclick=()=>beginFifths(i); lv.appendChild(b); });
+  ov.appendChild(lv); blast.menuSig=FD_LEVELS.map((_,i)=>fdLevelOk(i)).join()+knobsReady();
+  if(!over && best){ const p=document.createElement("p"); p.textContent=`BEST ${best}`; ov.appendChild(p); }
+  if(!over) arcadeModNote(ov);
+  arcadeKeys(ov);
+  if(!over) arcadeCredit(ov);
+  blast.field.appendChild(ov); blast.overlay=ov;
+  if(!over){ cabinet(ov); return; }
+}
+function beginFifths(level){
+  piano.start(); stopDemo(); clearTimeout(blast.attract); clearTimeout(blast.cabT);
+  if(blast.overlay){ blast.overlay.remove(); blast.overlay=null; }
+  Object.assign(blast,{foes:[], score:0, lives:3, level, startLevel:level, kills:0, levelKills:0, phase:"play", over:false, jamUntil:0, modFor:null,
+    next:performance.now()+1500, gap:3000*speedMul()*Math.pow(.93,level), creep:22/speedMul()*Math.pow(1.06,level)});
+  saved.fifthsStart=level; save();
+  stats.streak=0; scoreboard(); fdLayout(); fdLabels();
+  cancelAnimationFrame(blast.raf); blast.last=performance.now(); blast.raf=requestAnimationFrame(fdTick);
+  banner(`LEVEL ${level+1}`, `${FD_LEVELS[level].n.toUpperCase()} · ${(SPEEDS[+saved.speed]||SPEEDS[0])[0].toUpperCase()}`);
+  sfx("start"); fdBar(); fdHelp();
+}
+function fdSpawn(){
+  const L=FD_LEVELS[blast.level], spokes=L.spokes||[...Array(12).keys()];
+  const spoke=rnd(spokes), star=Math.random()<.08;
+  blast.foes.push({spoke, r:blast.R, star, born:performance.now(), wob:Math.random()*6});
+}
+// aim down a spoke
+function fdAimAt(i){
+  if(!blast || blast.kind!=="fifths" || i===blast.aim) return;
+  blast.aim=mod(i,12); sfx("press"); fdLabels(); fdHelp();
+}
+function fdKnob(v){ if(blast && blast.phase==="play") fdAimAt(Math.min(11, Math.floor(v*12))); }
+function fdTick(now){
+  if(!blast || blast.kind!=="fifths") return;
+  const dt=Math.min(.05,(now-blast.last)/1000); blast.last=now;
+  if(blast.phase==="play" || blast.phase==="demo"){
+    if(blast.phase==="play" && now>=blast.next && blast.foes.filter(f=>!f.dead).length<4+blast.level){ fdSpawn(); blast.next=now+blast.gap*(.75+Math.random()*.5); }
+    for(const f of blast.foes){
+      if(f.dead) continue;
+      f.r-=blast.creep*dt*(f.star?.8:1);
+      if(f.r<=blast.hub+6){ f.dead=true; if(blast.phase==="play") fdHitHub(f); }
+    }
+    blast.foes=blast.foes.filter(f=>!f.dead || now-(f.deadAt||0)<50);
+  }
+  if(blast.fx) fxDraw(now, dt);
+  blast.raf=requestAnimationFrame(fdTick);
+}
+function fdHitHub(f){
+  explode(blast.cx, blast.cy, 30, ["#FF4B3E","#FF8A3D","#FFD35A"]);
+  if(f.star){ popup(blast.cx, blast.cy-30, "GONE", "#7FE9FF"); return; }
+  sfx("miss"); buzz(blast.field,true); blast.lives--; fdBar(); blast.hurtAt=performance.now();
+  if(blast.lives<=0){
+    blast.phase="over"; blast.over=true; blast.foes.forEach(x=>x.dead=true);
+    const best=Math.max(saved.best.fifths||0, blast.score); saved.best.fifths=best; save();
+    fdMenu(true);
+  }
+}
+// fire down the aimed spoke: the nearest enemy on it
+function fdShoot(quiet){
+  const on=blast.foes.filter(f=>!f.dead && f.spoke===blast.aim).sort((a,b)=>a.r-b.r)[0];
+  const a=blast.aim*Math.PI/6, P=PX, x0=blast.cx+Math.sin(a)*blast.hub, y0=blast.cy-Math.cos(a)*blast.hub;
+  const r=on ? on.r : blast.R, x1=blast.cx+Math.sin(a)*r, y1=blast.cy-Math.cos(a)*r;
+  sfx("shoot");
+  blast.fx.missiles.push({x0:x0/P, y0:y0/P, x1:x1/P, y1:y1/P, t0:performance.now(), dur:150, hit:()=>{
+    if(!on || on.dead) return;
+    on.dead=true; on.deadAt=performance.now(); explode(x1,y1,20, on.star?["#7FE9FF","#FFFFFF"]:["#FFD35A","#7FE9FF","#F1E8D2"]); sfx(on.star?"bonus":"boom");
+    if(quiet) return;
+    const far=Math.round(on.r/blast.R*10), pts=((on.star?50:10)+far)*(blast.level+1);
+    blast.score+=pts; blast.kills++; stats.streak=blast.kills; scoreboard(); popup(x1,y1-14,`+${pts}`, on.star?"#7FE9FF":undefined);
+    blast.levelKills=(blast.levelKills||0)+1;
+    if(blast.levelKills>=12+3*blast.level && blast.phase==="play"){          // 12 to move up, three more at each level
+      blast.levelKills=0; const was=blast.level;
+      for(let n=blast.level+1;n<FD_LEVELS.length;n++) if(fdLevelOk(n)){ blast.level=n; break; }
+      blast.creep*=1.07; blast.gap=Math.max(1100,blast.gap*.9); sfx("level");
+      banner(blast.level!==was?`LEVEL ${blast.level+1}`:"FASTER!", blast.level!==was?FD_LEVELS[blast.level].n.toUpperCase():""); fdLabels();
+    }
+    fdBar(); fdHelp();
+  }});
+  return !!on;
+}
+function fdHelp(){
+  if(!blast || blast.kind!=="fifths") return;
+  const L=FD_LEVELS[blast.level||0], f=fdFire(blast.aim,L);
+  if(f.root){ arcadeMod(f.root); helpChord(f.root, f.q); } else { helpChord(null); helpString(f.note); }
+}
+// a chord from the buttons: fire, if it's the aimed key's
+function fifthsChord(voices){
+  if(!blast || blast.kind!=="fifths") return;
+  if(blast.phase==="demo" && blast.demo){ endFdDemo(blast.demo); return; }
+  if(blast.phase!=="play") return;
+  const L=FD_LEVELS[blast.level]; if(L.fire==="harp") return;
+  const pitches=voices.map(v=>v.pitch), name=chordName(pitches,devFifths()), f=fdFire(blast.aim,L);
+  if(!isChord(pitches, pcOfName(f.root), f.q)){ heard(name,false,`NOT ${FD_KEYS[blast.aim]}'S ${L.fire==="minor"?"MINOR":L.fire==="dominant"?"DOMINANT":"CHORD"}`); if(chordId(pitches)) later(()=>{ sfx("miss"); buzz(blast && blast.field, true); }); return; }
+  heard(name,true); fdShoot();
+}
+function fifthsNote(pc){
+  if(!blast || blast.kind!=="fifths") return;
+  if(blast.phase==="demo" && blast.demo){ endFdDemo(blast.demo); return; }
+  if(blast.phase!=="play") return;
+  const L=FD_LEVELS[blast.level]; if(L.fire!=="harp") return;
+  const now=performance.now(); if(now<blast.jamUntil){ heard("",false,"JAMMED"); return; }
+  if(pc!==pcOfName(FD_KEYS[blast.aim])){ heard(SHARP_NAMES[pc],false,`NOT ${FD_KEYS[blast.aim]}`); sfx("freeze"); blast.jamUntil=now+900; return; }
+  heard(FD_KEYS[blast.aim],true); fdShoot();
+}
+document.addEventListener("keydown", e=>{
+  if(!q || q.kind!=="fifths" || !blast || blast.phase!=="play" || /INPUT|SELECT|TEXTAREA/.test(document.activeElement?.tagName||"")) return;
+  const d={ArrowLeft:-1,KeyA:-1,ArrowRight:1,KeyD:1}[e.code]; if(d){ e.preventDefault(); fdAimAt(blast.aim+d); }
+});
+// the circle drawn on the canvas: spokes, the aimed one lit, the enemies crawling in, the hub
+function fdDraw(g, now){
+  const P=PX, cx=blast.cx/P, cy=blast.cy/P, R=blast.R/P, hub=blast.hub/P, L=FD_LEVELS[blast.level||0];
+  for(let i=0;i<12;i++){
+    const a=i*Math.PI/6, used=!L.spokes || L.spokes.includes(i), aimed=i===blast.aim;
+    const danger=blast.foes.some(f=>!f.dead && f.spoke===i && f.r<blast.R*.45);
+    g.strokeStyle = aimed ? "#FFD35A" : danger ? "#FF4B3E" : used ? "#3F4A8A" : "#1E2240"; g.lineWidth = aimed ? 1.6 : 1;
+    g.beginPath(); g.moveTo(cx+Math.sin(a)*hub, cy-Math.cos(a)*hub); g.lineTo(cx+Math.sin(a)*R, cy-Math.cos(a)*R); g.stroke();
+  }
+  // the rim, a twelve-sided ring joining the spokes
+  g.strokeStyle="#3F4A8A"; g.lineWidth=1; g.beginPath();
+  for(let i=0;i<=12;i++){ const a=i*Math.PI/6; const x=cx+Math.sin(a)*R, y=cy-Math.cos(a)*R; i?g.lineTo(x,y):g.moveTo(x,y); } g.stroke();
+  // enemies: little bow-ties across their spokes, wobbling as they come
+  for(const f of blast.foes){ if(f.dead) continue;
+    const a=f.spoke*Math.PI/6, r=f.r/P, x=cx+Math.sin(a)*r, y=cy-Math.cos(a)*r, s=3+ (f.r/blast.R)*3, t=a+Math.PI/2+Math.sin(now/180+f.wob)*.3;
+    g.strokeStyle = f.star ? "#7FE9FF" : "#FF5AA0"; g.lineWidth=1.2; g.beginPath();
+    g.moveTo(x+Math.cos(t)*s, y+Math.sin(t)*s); g.lineTo(x-Math.cos(t)*s*.4+Math.sin(t)*s*.6, y-Math.sin(t)*s*.4-Math.cos(t)*s*.6);
+    g.lineTo(x-Math.cos(t)*s, y-Math.sin(t)*s); g.lineTo(x+Math.cos(t)*s*.4-Math.sin(t)*s*.6, y+Math.sin(t)*s*.4+Math.cos(t)*s*.6); g.closePath(); g.stroke(); }
+  // the hub: the player's claw, pointing down the aimed spoke
+  const a=blast.aim*Math.PI/6, hurt=now-(blast.hurtAt||0)<500;
+  g.fillStyle = hurt ? "#FF4B3E" : now<(blast.jamUntil||0) ? "#7FE9FF" : "#FFD35A";
+  const tip=[cx+Math.sin(a)*hub, cy-Math.cos(a)*hub], l=[cx+Math.sin(a-2.4)*hub*.7, cy-Math.cos(a-2.4)*hub*.7], r=[cx+Math.sin(a+2.4)*hub*.7, cy-Math.cos(a+2.4)*hub*.7];
+  g.beginPath(); g.moveTo(...tip); g.lineTo(...l); g.lineTo(cx,cy); g.lineTo(...r); g.closePath(); g.fill();
+}
+
+// ---------- Fifths Defender's demo ----------
+function fdDemo(){
+  if(!blast || blast.kind!=="fifths") return;
+  stopDemo(); clearTimeout(blast.attract); piano.start();
+  if(blast.overlay) blast.overlay.hidden=true;
+  blast.phase="demo"; blast.level=0; blast.foes=[]; blast.creep=18; fdLayout(); fdLabels();
+  const el=document.createElement("div"); el.className="demo"; blast.field.appendChild(el); blast.field.classList.add("demoing");
+  const token={run:true, el}; blast.demo=token;
+  el.innerHTML=`<div class="demohead"><span class="demotag blink">DEMO</span><span class="demotitle"></span><button class="demoskip">SKIP ▶</button></div><p class="democap"></p>`;
+  el.querySelector(".demoskip").onclick=()=>endFdDemo(token);
+  const say=(t,c)=>{ el.querySelector(".demotitle").textContent=t||""; el.querySelector(".democap").textContent=c; };
+  const play=notes=>{ if(settings.sounds && piano.ctx){ const go=()=>piano.play(notes,{when:.02,dur:1}); piano.ctx.state==="running"?go():piano.ctx.resume().then(go).catch(()=>{}); } };
+  sfx("attract");
+  (async()=>{
+    const sleep=ms=>new Promise(r=>setTimeout(r,ms)), step=async ms=>{ await sleep(ms); if(!token.run) throw 0; };
+    const turnTo=async i=>{ while(blast.aim!==i){ const d=mod(i-blast.aim,12)<=6?1:-1; blast.aim=mod(blast.aim+d,12); sfx("press"); fdLabels(); await step(260); } };
+    try{
+      say("FIFTHS DEFENDER","THE TWELVE KEYS STAND ROUND YOU IN FIFTHS. C AT THE TOP, G ONE STEP ROUND."); await step(4000);
+      blast.foes.push({spoke:1, r:blast.R, wob:0},{spoke:11, r:blast.R*1.15, wob:2});
+      say("AIM","AN ENEMY COMES DOWN THE G SPOKE. TURN A KNOB TO AIM AT G."); await turnTo(1); await step(1400);
+      say("FIRE","PLAY G MAJOR AND YOU FIRE DOWN THE SPOKE."); await step(900); play([55,59,62,67]); fdShoot(true); await step(1800);
+      say("NEIGHBOURS","F IS ONE STEP THE OTHER WAY FROM C. AIM, THEN PLAY F."); await turnTo(11); await step(900); play([53,57,60,65]); fdShoot(true); await step(1900);
+      say("LATER LEVELS","THE RELATIVE MINOR, THE DOMINANT SEVENTH, OR THE KEY'S NOTE ON THE HARP FIRES INSTEAD."); await step(3800);
+      say("READY?","DON'T LET THEM REACH THE MIDDLE."); sfx("level"); await step(2600);
+      endFdDemo(token);
+    }catch(e){ /* skipped */ }
+  })();
+}
+function endFdDemo(token){
+  if(!blast || blast.demo!==token) return;
+  stopDemo(); blast.phase="menu"; blast.foes=[]; blast.aim=0; fdLabels();
   if(blast.overlay) blast.overlay.hidden=false;
   cabRestart();
 }
@@ -3803,6 +4096,9 @@ function fxPaintBackground(kind, W, H){
   } else if(kind==="snake"){
     g.fillStyle="#08100C"; g.fillRect(0,0,W,H);
     g.fillStyle="#1B3325"; for(let y=1;y<H;y+=4) for(let x=1;x<W;x+=4) g.fillRect(x,y,1,1);
+  } else if(kind==="fifths"){
+    g.fillStyle="#040308"; g.fillRect(0,0,W,H);
+    for(let i=0;i<W*H/300;i++){ g.fillStyle=rand()<.3?"#4B4670":"#221F3A"; g.fillRect(Math.floor(rand()*W),Math.floor(rand()*H),1,1); }
   } else if(kind==="breakout"){
     g.fillStyle="#070A12"; g.fillRect(0,0,W,H);
     g.fillStyle="#0E1424"; for(let y=0;y<H;y+=2) g.fillRect(0,y,W,1);                    // scanlines
@@ -3819,7 +4115,8 @@ function fxDraw(now, dt){
   const fx=blast.fx; if(!fx) return; fx.resize();
   const g=fx.g, W=fx.w, H=fx.h;
   fxBackground(g, W, H, now, dt);
-  if(blast.asteroids) asDraw(g, now);
+  if(blast.kind==="fifths") fdDraw(g, now);
+  else if(blast.asteroids) asDraw(g, now);
   else if(blast.noShip){ /* the snake's board has no ship */ }
   else if(blast.cannons){
     // Harp Command: a pixel cannon under each of the harp's twelve strings, lowest on the left;
@@ -3934,11 +4231,11 @@ function blasterChord(voices){
   }
   blastBar();
 }
-const GENS={spell:genSpell, command:genCommand, snake:genSnake, asteroids:genAsteroids, stack:genStack, breakout:genBreakout, hidden:genHidden, oddone:genOddOne, shades:genShades, reshape:genReshape, blaster:genBlaster, diatonic:genDiatonic, numeral:genNumeral, staff:genStaff, slash:genSlash, key:genKey, harp:genHarp, missing:genMissing,
+const GENS={spell:genSpell, command:genCommand, snake:genSnake, asteroids:genAsteroids, stack:genStack, breakout:genBreakout, fifths:genFifths, hidden:genHidden, oddone:genOddOne, shades:genShades, reshape:genReshape, blaster:genBlaster, diatonic:genDiatonic, numeral:genNumeral, staff:genStaff, slash:genSlash, key:genKey, harp:genHarp, missing:genMissing,
   melody:()=>genMelody(false), solfa:()=>genMelody(true), chordscale:genChordScale, smooth:genSmooth, whichvoice:genWhichVoice, simon:genSimon, directions:genDirections, pluckchord:genPluckChord, buildscale:genBuildScale,
   scale:genScale, transpose:genTranspose, temper:genTemper, tune:genTune};
 const MYSTERY=new Set(["scale","transpose","temper","tune"]);
-const LABELS={spell:"Spell it", hidden:"Hidden layout", oddone:"Odd one out", shades:"Shades of the third", reshape:"Reshape", blaster:"Chord Invaders", command:"Harp Command", snake:"Chord Snake", asteroids:"Chord Asteroids", stack:"Chord Stack", breakout:"Chord Breakout", diatonic:"Seven chords", numeral:"Numerals", staff:"On the staff", slash:"Slash chords", key:"Key detective", harp:"Harp hunt", missing:"Missing note", mix:"Mix",
+const LABELS={spell:"Spell it", hidden:"Hidden layout", oddone:"Odd one out", shades:"Shades of the third", reshape:"Reshape", blaster:"Chord Invaders", command:"Harp Command", snake:"Chord Snake", asteroids:"Chord Asteroids", stack:"Chord Stack", breakout:"Chord Breakout", fifths:"Fifths Defender", diatonic:"Seven chords", numeral:"Numerals", staff:"On the staff", slash:"Slash chords", key:"Key detective", harp:"Harp hunt", missing:"Missing note", mix:"Mix",
   melody:"Play by number", solfa:"Play by solfège", chordscale:"Chord scales", smooth:"Smooth moves", whichvoice:"Which voice moved?", simon:"Simon says", directions:"Follow the directions", pluckchord:"Pluck the chord", buildscale:"Build the scale",
   scale:"Scale detective", transpose:"Transpose detective", temper:"Temperament taster", tune:"Tune up"};
 
@@ -4000,7 +4297,7 @@ if(!LABELS[settings.mode]) settings.mode="spell";
 // A link can open one game directly, ?game=invaders (or any game's name, like ?game=reshape),
 // and ?solo shows that game on its own, without the menu, the settings or the answer area.
 const urlParams=new URLSearchParams(location.search);
-const GAME_SLUGS={invaders:"blaster", "chord-invaders":"blaster", "harp-command":"command", harpcommand:"command", "chord-snake":"snake", "chord-asteroids":"asteroids", asteroids:"asteroids", "chord-stack":"stack", "chord-breakout":"breakout", breakout:"breakout", sevenchords:"diatonic", layout:"hidden"};
+const GAME_SLUGS={invaders:"blaster", "chord-invaders":"blaster", "harp-command":"command", harpcommand:"command", "chord-snake":"snake", "chord-asteroids":"asteroids", asteroids:"asteroids", "chord-stack":"stack", "chord-breakout":"breakout", breakout:"breakout", "fifths-defender":"fifths", fifths:"fifths", sevenchords:"diatonic", layout:"hidden"};
 { const g=(urlParams.get("game")||"").toLowerCase(), k=GAME_SLUGS[g]||g; if(LABELS[k]) settings.mode=k; }
 const solo=urlParams.has("solo") && LABELS[settings.mode] && !!urlParams.get("game");
 if(!SETS[settings.set] || settings.set==="alt") settings.set="standard";
@@ -4234,6 +4531,7 @@ function nextQuestion(){
   if(q.kind==="asteroids") startAsteroids();
   if(q.kind==="stack") startStack();
   if(q.kind==="breakout") startBreakout();
+  if(q.kind==="fifths") startFifths();
   if(q.kind==="simon") setTimeout(simonPlay,700);
 }
 function feedback(text,kind="",small=""){ const f=$("feedback"); f.className="feedback "+kind; f.textContent=text; if(small){ const s=document.createElement("small"); s.textContent=small; f.appendChild(s); } }
@@ -4338,6 +4636,7 @@ function answerChord(voices){
   if(q.answer.type==="asteroids") return asteroidsChord(voices);
   if(q.answer.type==="stack") return stackChord(voices);
   if(q.answer.type==="breakout") return breakoutChord(voices);
+  if(q.answer.type==="fifths") return fifthsChord(voices);
   if(q.answer.type==="diatonic") return answerDiatonic(voices);
   if(q.answer.type==="reshape") return answerReshape(voices);
   if(q.answer.type==="alt") return answerAltChord(voices);
@@ -4372,6 +4671,7 @@ function answerNote(pc, pickedName){
   if(q && q.kind==="snake") return snakeHarp(pc);
   if(q && q.kind==="asteroids") return asteroidsNote(pc);
   if(q && q.kind==="stack") return stackHarp(pc);
+  if(q && q.kind==="fifths") return fifthsNote(pc);
   if(!q || solved) return;
   if(q.answer.type==="note" && pc===q.answer.pc && pickedName && q.answer.name && pickedName!==q.answer.name)
     return correct(`Right note: ${q.answer.name}. Here it's spelled ${q.answer.name}, not ${pickedName}.`);
@@ -4537,12 +4837,13 @@ async function startTones(){
   if(!canWrite()){ tones.sim=make((tuneState.secret+tuneState.nudge)/10,.1,settings.tuneWave); tones.push(tones.sim); }   // no minichord: simulate it
 }
 function buildSpecial(){
-  const box=$("special"); box.innerHTML=""; box.hidden = !(q && ["tune","melody","smooth","simon","directions","pluckchord","buildscale","blaster","command","snake","asteroids","stack","breakout","diatonic","reshape","hidden","oddone","shades"].includes(q.kind)); if(box.hidden) return;
+  const box=$("special"); box.innerHTML=""; box.hidden = !(q && ["tune","melody","smooth","simon","directions","pluckchord","buildscale","blaster","command","snake","asteroids","stack","breakout","fifths","diatonic","reshape","hidden","oddone","shades"].includes(q.kind)); if(box.hidden) return;
   if(q.kind==="command"){ buildCommandField(box); return; }
   if(q.kind==="snake"){ buildSnakeField(box); return; }
   if(q.kind==="asteroids"){ buildAsteroidsField(box); return; }
   if(q.kind==="stack"){ buildStackField(box); return; }
   if(q.kind==="breakout"){ buildBreakoutField(box); return; }
+  if(q.kind==="fifths"){ buildFifthsField(box); return; }
   if(q.kind==="blaster"){
     const field=document.createElement("div"); field.className="field arcade"; field.setAttribute("aria-label","Falling chords");
     const ground=document.createElement("div"); ground.className="ground"; field.appendChild(ground);
@@ -4654,7 +4955,7 @@ function setMode(m){
   $("nowPlaying").textContent = `Playing: ${LABELS[m]||m}`;
   settings.mode=m; save();
   document.querySelectorAll(".modes button[data-mode]").forEach(x=>x.setAttribute("aria-pressed",x.dataset.mode===m));
-  $("sprint").disabled = MYSTERY.has(m) || m==="blaster" || m==="command" || m==="snake" || m==="asteroids" || m==="stack" || m==="breakout";
+  $("sprint").disabled = MYSTERY.has(m) || m==="blaster" || m==="command" || m==="snake" || m==="asteroids" || m==="stack" || m==="breakout" || m==="fifths";
   stats.streak=0; scoreboard(); nextQuestion();
   if(switching){
     const back=restoreExcept(new Set([...(q.needs||[]).map(n=>n.addr), ...(q.borrows||[]), ...roundBorrows, 31]));   // keep what the new game uses
@@ -4664,7 +4965,7 @@ function setMode(m){
   }
 }
 document.querySelectorAll(".modes button[data-mode]").forEach(b=>{ b.setAttribute("aria-pressed", b.dataset.mode===settings.mode); b.onclick=()=>setMode(b.dataset.mode); });
-$("sprint").disabled = MYSTERY.has(settings.mode) || settings.mode==="blaster" || settings.mode==="command" || settings.mode==="snake" || settings.mode==="asteroids" || settings.mode==="stack" || settings.mode==="breakout";
+$("sprint").disabled = MYSTERY.has(settings.mode) || settings.mode==="blaster" || settings.mode==="command" || settings.mode==="snake" || settings.mode==="asteroids" || settings.mode==="stack" || settings.mode==="breakout" || settings.mode==="fifths";
 $("nowPlaying").textContent = `Playing: ${LABELS[settings.mode]||settings.mode}`;
 for(const [id,key] of [["gameMenu","menuOpen"]]){
   const d=$(id); if(saved[key]===false) d.open=false;
@@ -4720,6 +5021,7 @@ mc.addEventListener("device", ()=>{
   else if(blast && blast.kind==="asteroids") asDevice();
   else if(blast && blast.kind==="stack") stDevice();
   else if(blast && blast.kind==="breakout") boDevice();
+  else if(blast && blast.kind==="fifths") fdDevice();
   else if(blast){ blastSetup(); if(blast.phase!=="play") blastHomeKey(); blastKey(); }
   if(q && !solved && !rebuilding) applyNeeds();
   mine(); needs();
