@@ -876,12 +876,12 @@ function genReshape(){
     if(!newPcs.length && bassPc==null) continue;
     const toneNames=spellTones(voices.map(x=>48+r+x),0,tRoot);
     reshape={root, sq, startSym, sym, tset, bassPc, startSet:[...new Set(start.map(x=>mod(r+x,12)))].sort((a,b)=>a-b),
-      newPcs: bassPc!=null ? [bassPc] : newPcs, got:new Set(), phase:"hold", voices:[], aimed:null, diy:lvl===4, names:toneNames};
+      newPcs: bassPc!=null ? [bassPc] : newPcs, got:new Set(), phase:"hold", voices:[], aimed:null, diy:lvl===4, names:toneNames, showAim:false};
     const needs=[CHROMATIC]; if(bassPc!=null && (mc.params[7]??0)>=13) needs.push({addr:113,value:1,what:"slash voice on the bass"});
     const how = !cantusOk() ? offline(`With the minichord this is played by holding ${startSym} and plucking; here, pick the new note${reshape.newPcs.length>1?"s":""} ${startSym} needs to become ${sym}.`)
       : lvl===4 ? `Hold ${startSym} and pluck the harp to make it ${sym}. You aim the cantus: set it to the voice that has to move (on the double tap or a knob) before you pluck.`
       : bassPc!=null ? `Hold ${startSym}, then move the bass: pluck the new bass note on the harp, or press its button as a slash. Keep holding the chord.`
-      : `Hold ${startSym}, then pluck the harp to change the notes that have to move. The game points the cantus at the right voice each time; keep holding the chord.`;
+      : `Hold ${startSym}, then pluck the harp to change the notes that have to move. The game points the cantus at the right voice for you, so you only need the note; keep holding the chord.`;
     return {kind:"reshape", prompt:`${startSym} → ${sym}`, promptHtml:`<span class="keyname">${startSym}</span> <span class="in">→</span> <span class="num">${sym}</span>`,
       sub:how, pressRoot:root, needs, context:0, barry:sq,
       holdHint:()=>`Hold ${pressRoot(root)}${sq==="m"?", with the minor button":", with the major button"}.`,
@@ -937,7 +937,7 @@ function answerReshape(voices){
   // part way there, or a wrong note
   const prev=r.voices; r.voices=P;
   const wrongPc=pcs.find(pc=>!r.tset.includes(pc) && !r.startSet.includes(pc));
-  if(wrongPc!=null){ firstTry=false; buzz(); feedback(`${spell(wrongPc,0)} isn't in ${r.sym}. Pluck another note: the same voice will take it.`,"bad"); buildSpecial(); return; }
+  if(wrongPc!=null){ firstTry=false; r.showAim=true; buzz(); feedback(`${spell(wrongPc,0)} isn't in ${r.sym}. Pluck another note: the same voice will take it.`,"bad"); buildSpecial(); return; }
   const moved=pcs.some((pc,i)=>prev[i]==null || mod(Math.round(prev[i]),12)!==pc);
   if(!moved){ buildSpecial(); return; }
   chime("step"); reshapeAim(); buildSpecial();
@@ -1707,7 +1707,9 @@ function buildSpecial(){
     // the four voices, bass to soprano, with the one the cantus is on marked
     const names=spellTones(r.voices, 0, r.root), m=reshapeNext();
     r.voices.forEach((p,i)=>{ const pc=mod(Math.round(p),12), nm=r.tset.includes(pc) && !r.startSet.includes(pc) ? (r.names.get(pc)||names.get(pc)) : (names.get(pc)||spell(pc,0));
-      chip(`${VOICE_WORDS[i]}: ${nm}${!r.diy && m && m.rank===i ? " · the harp sets this" : ""}`, m && m.rank===i ? "now" : r.tset.includes(pc) ? "done" : ""); });
+      // which voice moves is the puzzle, so it's only marked after a wrong note or a hint
+      const aim = r.showAim && m && m.rank===i;
+      chip(`${VOICE_WORDS[i]}: ${nm}${aim ? " · this one moves" : ""}`, aim ? "now" : ""); });
     return;
   }
   if(q.kind==="diatonic"){ diat.chords.forEach((c,i)=>chip(i<diat.pos ? `${c.label} ${c.root}${c.q}` : c.label, i<diat.pos?"done":i===diat.pos?"now":"")); return; }
@@ -1762,7 +1764,7 @@ async function hear(){
   piano.play(notes,{when:.05,dur:1.4});
 }
 $("hear").onclick=hear;
-$("hint").onclick=()=>{ if(q){ firstTry=false; feedback(q.hint,""); } };
+$("hint").onclick=()=>{ if(q){ firstTry=false; if(q.kind==="reshape" && reshape){ reshape.showAim=true; buildSpecial(); } feedback(q.hint,""); } };
 $("reveal").onclick=()=>{
   if(!q) return; firstTry=false; stats.streak=0; scoreboard();
   const a=q.answer;
