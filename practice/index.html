@@ -247,6 +247,44 @@
 .field.arcade:fullscreen{width:100vw;height:100vh;max-width:none;border:none;border-top:8px solid var(--felt)}
 .field.arcade:-webkit-full-screen{width:100vw;height:100vh;max-width:none;border:none;border-top:8px solid var(--felt)}
 .field.arcade:fullscreen .overlay h3{font-size:2.2rem}
+
+/* the cabinet: the title, the rules rolling up, and the options */
+.overlay[data-stage="title"] .cab-rules,.overlay[data-stage="title"] .cab-options,
+.overlay[data-stage="rules"] .cab-title,.overlay[data-stage="rules"] .cab-options,
+.overlay[data-stage="options"] .cab-title,.overlay[data-stage="options"] .cab-rules{display:none!important}
+.overlay[data-stage="title"],.overlay[data-stage="rules"]{background:rgba(7,6,12,.55);cursor:pointer}
+.cab-title{display:flex;flex-direction:column;align-items:center;gap:28px}
+.cab-title .cabtitle{font-size:clamp(1.8rem,6vw,3.4rem);line-height:1.25;text-align:center;animation:cabin 1.4s cubic-bezier(.2,1.4,.4,1) both, cabglow 2.4s ease-in-out 1.4s infinite}
+@keyframes cabin{0%{transform:scale(.1) rotate(-6deg);opacity:0;letter-spacing:.8em}100%{transform:none;opacity:1;letter-spacing:.02em}}
+@keyframes cabglow{50%{color:#FFF4C2;text-shadow:0 0 22px rgba(255,211,90,.9),3px 3px 0 #000}}
+.cab-title .cabpress{font-size:.62rem;color:#F1E8D2}
+.cab-rules{position:absolute;inset:0;overflow:hidden;display:flex;justify-content:center}
+.cabscroll{position:absolute;top:100%;left:6%;right:6%;display:flex;flex-direction:column;align-items:center;gap:16px;text-align:center}
+.cabscroll h3{font-size:1.4rem}
+.cabscroll .cabhead{color:#FFD35A!important;font-size:.8rem!important}
+.cabscroll p{font-size:.72rem!important;line-height:2!important;color:#F1E8D2!important;max-width:60ch}
+@keyframes cabroll{0%{transform:translateY(0)}100%{transform:translateY(calc(-100% - 480px))}}
+.cab-options{display:flex;flex-direction:column;align-items:center;gap:10px;width:100%}
+.cab-options h3.small{font-size:1.1rem}
+/* beginner mode: the minichord and the harp, behind the play */
+.helper{position:absolute;z-index:1;pointer-events:none;opacity:.88}
+.helper.hboard{right:10px;bottom:28px;width:min(420px,44%)}
+.helper.hboard.helper-snake,.helper.hboard.helper-stack{left:10px;right:auto;width:min(300px,30%)}
+.helper .board{position:relative;width:100%;aspect-ratio:1508/803;background:url("data:image/png;base64,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") center/100% 100% no-repeat;image-rendering:pixelated}
+.helper .board>*,.helper .grid>*{position:absolute}
+.helper .grid{position:absolute;inset:0}
+.helper .mod,.helper .pre,.helper .cell{font:400 .42rem "Minichord Lab Accidentals","Press Start 2P",monospace;color:#F1E8D2;background:#2A2520;border:2px solid #8C8270;display:flex;align-items:center;justify-content:center;box-sizing:border-box}
+.helper .led{border-radius:50%;background:#FF4B3E}
+.helper .lit{background:#FFD35A!important;color:#16132A!important;border-color:#FFF4C2!important;box-shadow:0 0 10px rgba(255,211,90,.9);animation:helppulse .8s ease-in-out infinite}
+.helper .slashlit{background:#7FE9FF!important;color:#16132A!important;border-color:#E0FBFF!important}
+@keyframes helppulse{50%{box-shadow:0 0 18px rgba(255,211,90,1)}}
+.helper.hharp{right:14px;top:50%;transform:translateY(-50%);display:grid;gap:3px;background:#050407;border:3px solid #6B6358;padding:6px}
+.helper.hharp.line{width:58px;grid-template-rows:repeat(12,20px)}
+.helper.hharp.grid{width:132px;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(4,30px)}
+.helper.hharp .hstring{display:flex;align-items:center;justify-content:center;font:400 .45rem "Minichord Lab Accidentals","Press Start 2P",monospace;color:#9A93B5;border:1px solid #2E2A40;background:#0E0C14}
+.helper.hharp .hstring.lit{background:#FFD35A;color:#16132A;border-color:#FFF4C2;box-shadow:0 0 10px rgba(255,211,90,.9)}
+.helper.hharp small{position:absolute;bottom:-18px;left:0;right:0;text-align:center;font:400 .4rem "Press Start 2P",monospace;color:#9A93B5}
+.field.demoing .helper{display:none}
 /* the demo's pixel minichord */
 .overlay button.howto{border-color:#FFD35A;color:#FFD35A}
 .demo{position:absolute;inset:0;z-index:5;display:flex;flex-direction:column;justify-content:flex-start;padding:10px 14px;pointer-events:none}
@@ -1463,7 +1501,7 @@ function hcNewWave(quiet){
     const f=rnd([-5,-4,-3,-2,-1,0,1,2,3,4,5]), tonic=KEY_BY_FIFTHS[f];   // five flat keys, five sharp, and C
     blast.wave={kind:"scale", scale:rnd(L.scales), tonic, f};
   }
-  hcTuneHarp(); hcLabels();
+  hcTuneHarp(); hcLabels(); blast.helpNamesStale=true;
   const w=blast.wave;
   if(w.kind==="scale" && !quiet) banner(`${w.tonic} ${w.scale.toUpperCase()}`, "THE STRINGS PLAY ITS SCALE NOW");
   blastBarCommand();
@@ -1523,6 +1561,7 @@ function buildCommandField(box){
     if(blast.overlay) field.appendChild(blast.overlay);
   }
   blastBarCommand();
+  setTimeout(helperSync);
 }
 function blastBarCommand(){
   if(!blast || blast.kind!=="command" || !blast.hud) return;
@@ -1560,6 +1599,7 @@ function commandMenu(over){
   arcadeKeys(ov);
   if(!over) arcadeCredit(ov);
   blast.field.appendChild(ov); blast.overlay=ov;
+  if(!over){ cabinet(ov); return; }
   clearTimeout(blast.attract);
   if(!over) blast.attract=setTimeout(()=>{ if(blast && blast.kind==="command" && blast.phase==="menu" && blast.overlay===ov) commandDemo(); }, 25000);
 }
@@ -1629,6 +1669,7 @@ function commandTick(now){
     it.el.style.top=`${24+y*(H-110)}px`;
   }
   const low=hcLowest(); blast.items.forEach(it=>it.el.classList.toggle("low", it===low && !it.bonus));
+  helpString(low ? low.string : -1);
   blast.raf=requestAnimationFrame(commandTick);
 }
 function hcMiss(it){
@@ -1740,6 +1781,7 @@ function endCommandDemo(token){
   if(blast.overlay) blast.overlay.hidden=false;
   clearTimeout(blast.attract);
   blast.attract=setTimeout(()=>{ if(blast && blast.kind==="command" && blast.phase==="menu" && blast.overlay && !blast.overlay.hidden) commandDemo(); }, 25000);
+  cabRestart();
 }
 
 
@@ -1857,6 +1899,7 @@ function buildSnakeField(box){
     if(blast.overlay) field.appendChild(blast.overlay);
   }
   snBar();
+  setTimeout(helperSync);
 }
 function snBar(){
   if(!blast || blast.kind!=="snake" || !blast.hud) return;
@@ -1894,6 +1937,7 @@ function snMenu(over){
   arcadeKeys(ov);
   if(!over) arcadeCredit(ov);
   blast.field.appendChild(ov); blast.overlay=ov;
+  if(!over){ cabinet(ov); return; }
   clearTimeout(blast.attract);
   if(!over) blast.attract=setTimeout(()=>{ if(blast && blast.kind==="snake" && blast.phase==="menu" && blast.overlay===ov) snDemo(); }, 25000);
 }
@@ -1938,7 +1982,7 @@ function snFill(){
 }
 function snDraw(){
   if(!blast || blast.kind!=="snake" || !blast.boardEl) return;
-  if(blast.phase==="play"){ const r=snReady()[0]; if(r) arcadeMod(r.root); }
+  if(blast.phase==="play"){ const r=snReady()[0]; if(r) arcadeMod(r.root); helpChord(r ? r.root : null, r ? r.q : ""); }
   const b=blast.boardEl, ready=new Set((snReady()[0]||{tones:[]}).tones);
   b.innerHTML="";
   for(const t of blast.tiles){ const e=document.createElement("span"); e.className="sntile"+(t.star?" star":""); e.style.cssText=snPos(t.x,t.y); e.innerHTML=(t.star?PIXEL_STAR:"")+t.name; b.appendChild(e); }
@@ -2104,6 +2148,7 @@ function endSnDemo(token){
   if(blast.overlay) blast.overlay.hidden=false;
   clearTimeout(blast.attract);
   blast.attract=setTimeout(()=>{ if(blast && blast.kind==="snake" && blast.phase==="menu" && blast.overlay && !blast.overlay.hidden) snDemo(); }, 25000);
+  cabRestart();
 }
 
 
@@ -2167,6 +2212,7 @@ function buildAsteroidsField(box){
     if(blast.overlay) field.appendChild(blast.overlay);
   }
   asBar();
+  setTimeout(helperSync);
 }
 function asCentre(){ if(!blast || !blast.field) return; blast.cx=blast.field.clientWidth/2; blast.cy=blast.field.clientHeight/2+10; }
 function asBar(){
@@ -2202,6 +2248,7 @@ function asMenu(over){
   arcadeKeys(ov);
   if(!over) arcadeCredit(ov);
   blast.field.appendChild(ov); blast.overlay=ov;
+  if(!over){ cabinet(ov); return; }
   clearTimeout(blast.attract);
   if(!over) blast.attract=setTimeout(()=>{ if(blast && blast.kind==="asteroids" && blast.phase==="menu" && blast.overlay===ov) asDemo(); }, 25000);
 }
@@ -2262,6 +2309,7 @@ function asTick(now){
     blast.rocks=blast.rocks.filter(r=>!r.dead || now-r.deadAt<60);
     const low=asNearest("chord"); blast.rocks.forEach(r=>r.el.classList.toggle("low", r===low && !r.star));
     if(low && blast.phase==="play") arcadeMod(low.root);
+    if(blast.phase==="play"){ const n=asNearest("note"); if(n) helpString(n.pc); else if(blast.helpHarp) helpString(-1); helpChord(low && !n ? low.root : null, low ? low.q : ""); }
   }
   if(blast.fx) fxDraw(now, dt);
   blast.raf=requestAnimationFrame(asTick);
@@ -2392,6 +2440,7 @@ function endAsDemo(token){
   if(blast.overlay) blast.overlay.hidden=false;
   clearTimeout(blast.attract);
   blast.attract=setTimeout(()=>{ if(blast && blast.kind==="asteroids" && blast.phase==="menu" && blast.overlay && !blast.overlay.hidden) asDemo(); }, 25000);
+  cabRestart();
 }
 
 
@@ -2478,6 +2527,7 @@ function buildStackField(box){
     if(blast.overlay) field.appendChild(blast.overlay);
   }
   stBar();
+  setTimeout(helperSync);
 }
 function stLayout(){
   const f=blast.field, H=f.clientHeight-96, cell=Math.max(22, Math.min(36, Math.floor(H/ST_ROWS)));
@@ -2521,6 +2571,7 @@ function stMenu(over){
   arcadeKeys(ov);
   if(!over) arcadeCredit(ov);
   blast.field.appendChild(ov); blast.overlay=ov;
+  if(!over){ cabinet(ov); return; }
   clearTimeout(blast.attract);
   if(!over) blast.attract=setTimeout(()=>{ if(blast && blast.kind==="stack" && blast.phase==="menu" && blast.overlay===ov) stDemo(); }, 25000);
 }
@@ -2659,7 +2710,7 @@ function stOver(){
 }
 function stDraw(){
   if(!blast || blast.kind!=="stack" || !blast.boardEl) return;
-  if(blast.phase==="play"){ const r=stReadyRows().sort((a,b)=>b.y-a.y)[0]; if(r) arcadeMod(r.tones[0]); }
+  if(blast.phase==="play"){ const r=stReadyRows().sort((a,b)=>b.y-a.y)[0]; if(r) arcadeMod(r.tones[0]); helpChord(r ? r.tones[0] : null, r ? r.q : ""); }
   const b=blast.boardEl, c=blast.cell, ready=new Set(stReadyRows().flatMap(r=>r.pcs.map(x=>r.y+","+x)));   // just the chord's notes glow
   const cellHtml=(x,y,cls,label)=>`<span class="stcell ${cls}" style="left:${x*c}px;top:${y*c}px;width:${c}px;height:${c}px;font-size:${Math.round(c*.36)}px">${label}</span>`;
   let h="";
@@ -2724,6 +2775,7 @@ function endStDemo(token){
   if(blast.overlay) blast.overlay.hidden=false;
   clearTimeout(blast.attract);
   blast.attract=setTimeout(()=>{ if(blast && blast.kind==="stack" && blast.phase==="menu" && blast.overlay && !blast.overlay.hidden) stDemo(); }, 25000);
+  cabRestart();
 }
 
 
@@ -2736,6 +2788,7 @@ function endStDemo(token){
 const ARCADE_GAMES=["blaster","command","snake","asteroids","stack"];
 const COLUMN_LETTERS="FCGDAEB";
 function arcadeMenuChord(voices){
+  if(cabWaiting()){ cabWake(); return true; }
   if(!blast || !["menu","over"].includes(blast.phase) || !blast.overlay || blast.overlay.hidden) return false;
   const id=chordId(voices.map(v=>v.pitch)); if(!id) return true;
   const col=COLUMN_LETTERS.indexOf(spell(id.root, devFifths())[0]);   // 0 to 6
@@ -2810,6 +2863,135 @@ function arcadeModNote(ov){
   const p=document.createElement("p"); p.className="padhint";
   p.textContent="THE MODIFIER: THE GAME SETS SHARP OR FLAT FOR THE CHORD YOU NEED NEXT. DOUBLE-TAP IT TO FLIP IT YOURSELF.";
   ov.appendChild(p);
+}
+
+
+// ---------- the cabinet: title, then the rules scrolling, then the options ----------
+// A title screen the way arcade cabinets do it: the name first, big and animated; then the rules
+// roll up the screen like credits; then the demo; then round again, until someone plays a chord,
+// plucks the harp, presses a key or clicks. That brings up the options (speed, levels and the rest),
+// which go back to the title if they're left alone. Game over goes straight to its options.
+const DEMO_FOR={blaster:()=>runDemo(true), command:()=>commandDemo(), snake:()=>snDemo(), asteroids:()=>asDemo(), stack:()=>stDemo()};
+const TITLE_FOR={blaster:"CHORD INVADERS", command:"HARP COMMAND", snake:"CHORD SNAKE", asteroids:"CHORD ASTEROIDS", stack:"CHORD STACK"};
+const cabKind=()=> blast && (blast.kind||"blaster");
+function cabinet(ov){
+  const kids=[...ov.children];
+  const isRule=c=> (c.tagName==="P" && !c.classList.contains("blink") && !/^BEST /.test(c.textContent)) || c.classList.contains("padhint");
+  const rules=kids.filter(c=>isRule(c) && !c.classList.contains("credit")), credit=kids.find(c=>c.classList.contains("credit"));
+  const title=document.createElement("div"); title.className="cab-title";
+  title.innerHTML=`<h3 class="cabtitle">${TITLE_FOR[cabKind()]||"MINICHORD LAB"}</h3><p class="cabpress blink">PLAY A CHORD · PLUCK THE HARP · PRESS ANY KEY</p>`;
+  const roll=document.createElement("div"); roll.className="cab-rules";
+  const inner=document.createElement("div"); inner.className="cabscroll";
+  inner.innerHTML=`<h3>${TITLE_FOR[cabKind()]||""}</h3><p class="cabhead">HOW TO PLAY</p>`;
+  rules.forEach(r=>inner.appendChild(r));
+  if(credit) inner.appendChild(credit.cloneNode(true));
+  roll.appendChild(inner);
+  const opts=document.createElement("div"); opts.className="cab-options";
+  [...ov.children].forEach(c=>opts.appendChild(c));
+  opts.querySelector("h3")?.classList.add("small");
+  beginnerRow(opts);
+  ov.append(title, roll, opts);
+  ov.addEventListener("click", e=>{ if(ov.dataset.stage!=="options"){ e.stopPropagation(); cabWake(); } }, true);
+  inner.addEventListener("animationend", ()=>{ if(blast && blast.overlay===ov && ov.dataset.stage==="rules" && blast.phase==="menu"){ const d=DEMO_FOR[cabKind()]; if(d) d(); } });
+  cabStage(ov, "title");
+}
+function cabStage(ov, stage){
+  if(!blast) return;
+  clearTimeout(blast.cabT); clearTimeout(blast.attract);
+  ov.dataset.stage=stage;
+  if(stage==="title") blast.cabT=setTimeout(()=>{ if(blast && blast.overlay===ov && ov.dataset.stage==="title") cabStage(ov,"rules"); }, 3600);
+  if(stage==="rules"){ const inner=ov.querySelector(".cabscroll"); if(inner){ inner.style.animation="none"; void inner.offsetWidth;
+    inner.style.animation=`cabroll ${Math.max(12, inner.children.length*2.4)}s linear forwards`; } }
+  if(stage==="options") blast.cabT=setTimeout(()=>{ if(blast && blast.overlay===ov && ov.dataset.stage==="options" && blast.phase==="menu") cabStage(ov,"title"); }, 45000);
+}
+// someone's here: show the options
+function cabWake(){
+  const ov=blast && blast.overlay; if(!ov || ov.hidden || !ov.dataset.stage || ov.dataset.stage==="options") return false;
+  cabStage(ov,"options"); sfx("start"); return true;
+}
+const cabWaiting=()=> !!(blast && blast.overlay && !blast.overlay.hidden && blast.overlay.dataset.stage && blast.overlay.dataset.stage!=="options");
+// after a demo, round to the title again
+function cabRestart(){ if(blast && blast.overlay && blast.overlay.dataset.stage) cabStage(blast.overlay,"title"); }
+document.addEventListener("keydown", e=>{
+  if(!cabWaiting() || /INPUT|SELECT|TEXTAREA/.test(document.activeElement?.tagName||"")) return;
+  if(e.code!=="KeyF"){ e.preventDefault(); cabWake(); }
+});
+
+// ---------- beginner mode: the minichord on screen, showing what to press ----------
+// For newcomers the games can keep the instrument on screen and light what to press: the chord
+// buttons (and the modifier, and a slash's bass) for the chord that matters now, and in the harp
+// games the string for the note that matters now, drawn as the standard strip or the keymaster's
+// four rows of three. It sits behind the play, a little see-through, so nothing falling is hidden.
+const helpUsesChords=k=>["blaster","snake","asteroids","stack"].includes(k);
+const helpUsesHarp=k=>["command","asteroids"].includes(k);
+function beginnerRow(opts){
+  const r=document.createElement("div"); r.className="optrow"; const l=document.createElement("span"); l.className="optlabel"; l.textContent="BEGINNER";
+  const g=document.createElement("div"); g.className="levels";
+  const mark=b=>{ [...g.children].forEach(x=>{ x.style.background=""; x.style.color=""; }); b.style.background="#F1E8D2"; b.style.color="#16132A"; };
+  [["OFF",false],["SHOW WHAT TO PRESS",true]].forEach(([t,v])=>{ const b=document.createElement("button"); b.textContent=t; if(!!saved.beginner===v) mark(b);
+    b.onclick=()=>{ saved.beginner=v; save(); mark(b); helperSync(); }; g.appendChild(b); });
+  r.append(l,g);
+  // the harp games need to know which harp to draw
+  let harpRow=null;
+  if(helpUsesHarp(cabKind()) && ![...opts.querySelectorAll(".optlabel")].some(x=>x.textContent==="HARP")){
+    harpRow=document.createElement("div"); harpRow.className="optrow"; const hl=document.createElement("span"); hl.className="optlabel"; hl.textContent="HARP";
+    const hg=document.createElement("div"); hg.className="levels";
+    const hmark=b=>{ [...hg.children].forEach(x=>{ x.style.background=""; x.style.color=""; }); b.style.background="#F1E8D2"; b.style.color="#16132A"; };
+    [["STANDARD STRIP","strip"],["KEYMASTER GRID","keymaster"]].forEach(([t,v])=>{ const b=document.createElement("button"); b.textContent=t; if((saved.harpLayout||"strip")===v) hmark(b);
+      b.onclick=()=>{ saved.harpLayout=v; save(); hmark(b); helperSync(true); }; hg.appendChild(b); });
+    harpRow.append(hl,hg);
+  }
+  const before=opts.querySelector("p.blink") || [...opts.querySelectorAll(".levels")].pop();
+  opts.insertBefore(r, before); if(harpRow) opts.insertBefore(harpRow, r);
+}
+function helperSync(rebuild){
+  if(!blast || !blast.field) return;
+  const k=cabKind(), want=!!saved.beginner;
+  if(rebuild || !want){ blast.helpBoard?.el.remove(); blast.helpHarp?.el.remove(); blast.helpBoard=null; blast.helpHarp=null; blast.helpKey=null; }
+  if(!want) return;
+  if(helpUsesChords(k) && !blast.helpBoard){ blast.helpBoard=helperBoard(k); blast.field.appendChild(blast.helpBoard.el); }
+  if(helpUsesHarp(k) && !blast.helpHarp){ blast.helpHarp=helperHarp(k); blast.field.appendChild(blast.helpHarp.el); }
+}
+function helperBoard(k){
+  const el=document.createElement("div"); el.className="helper hboard helper-"+k;
+  el.innerHTML=`<div class="board"><div class="mod">♯</div><div class="pre">▲</div><div class="pre">▼</div><span class="led"></span><div class="grid"></div></div>`;
+  const place=(e,[x,y,w,h])=>{ e.style.left=x+"%"; e.style.top=y+"%"; e.style.width=w+"%"; e.style.height=h+"%"; };
+  place(el.querySelector(".mod"), MC_PARTS.mod); el.querySelectorAll(".pre").forEach((p,i)=>place(p, MC_PARTS.presets[i])); place(el.querySelector(".led"), MC_PARTS.led);
+  const grid=el.querySelector(".grid"), cells=[];
+  DEMO_ROWS.forEach((_,r)=>DEMO_COLS.forEach((c,ci)=>{ const b=document.createElement("div"); b.className="cell"; place(b, MC_PARTS.buttons[r*7+ci]); (cells[ci]||=[])[r]=b; grid.appendChild(b); }));
+  const labels=()=>{ const f=devFifths(); DEMO_ROWS.forEach(([,suf],r)=>DEMO_COLS.forEach((c,ci)=>{ const li=LETTERS.indexOf(c); cells[ci][r].textContent=c+ACC[keyAcc(li,f)]+suf; })); };
+  labels();
+  return {el, cells, mod:el.querySelector(".mod"), labels};
+}
+// which buttons play a chord: its root's column, the rows its quality presses
+const HELP_ROWS={"":[0],"m":[1],"7":[2],"maj7":[0,2],"m7":[1,2],"°":[0,1],"+":[0,1,2],"6":[0],"m6":[1],"°7":[0,1]};
+function helpChord(rootName, q, bass){
+  const h=blast && blast.helpBoard; if(!h) return;
+  const key=`${rootName}|${q}|${bass||""}|${devFifths()}`; if(blast.helpKey===key) return; blast.helpKey=key;
+  h.labels(); h.el.querySelectorAll(".lit,.slashlit").forEach(x=>x.classList.remove("lit","slashlit")); h.mod.classList.remove("lit");
+  if(!rootName) return;
+  const {li,acc}=parse(rootName), col=DEMO_COLS.indexOf(rootName[0]), f=devFifths();
+  (HELP_ROWS[q]||[0]).forEach(r=>h.cells[col] && h.cells[col][r].classList.add("lit"));
+  if(acc!==keyAcc(li,f)) h.mod.classList.add("lit");                        // the key doesn't give this root: the modifier too
+  h.mod.textContent = mc.params[31]===1 ? "♭" : "♯";
+  if(bass){ const bc=DEMO_COLS.indexOf(bass[0]); if(bc>=0) h.cells[bc][0].classList.add("slashlit"); }
+}
+// the harp, drawn as the player's harp is laid out, its strings named, the one to pluck lit
+function helperHarp(k){
+  const grid=(saved.harpLayout==="keymaster");
+  const el=document.createElement("div"); el.className="helper hharp "+(grid?"grid":"line");
+  const order = grid ? [9,10,11,6,7,8,3,4,5,0,1,2] : [11,10,9,8,7,6,5,4,3,2,1,0];   // strings, as drawn top row first
+  const cells=[];
+  order.forEach(sI=>{ const c=document.createElement("span"); c.className="hstring"; cells[sI]=c; el.appendChild(c); });
+  const names=()=>{ const st = k==="command" ? hcStrings() : [...Array(12)].map((_,i)=>({name:SHARP_NAMES[i]})); st.forEach((x,i)=>{ if(cells[i]) cells[i].textContent=x.name; }); };
+  names();
+  const cap=document.createElement("small"); cap.textContent="HARP"; el.appendChild(cap);
+  return {el, cells, names};
+}
+function helpString(sI){
+  const h=blast && blast.helpHarp; if(!h) return;
+  if(blast.helpString===sI && !blast.helpNamesStale) return; blast.helpString=sI; blast.helpNamesStale=false;
+  h.names(); h.cells.forEach((c,i)=>c && c.classList.toggle("lit", i===sI));
 }
 
 // ---------- Chord Invaders' own sounds ----------
@@ -2921,6 +3103,7 @@ function blastMenu(over){
   arcadeKeys(ov);
   if(!over) arcadeCredit(ov);
   blast.field.appendChild(ov); blast.overlay=ov;
+  if(!over){ cabinet(ov); return; }
   // attract mode: left on the title screen, the cabinet plays its demo, as arcade machines do
   clearTimeout(blast.attract);
   if(!over) blast.attract=setTimeout(()=>{ if(blast && blast.phase==="menu" && blast.overlay===ov) runDemo(true); }, 25000);
@@ -3041,6 +3224,7 @@ function endDemo(token){
   // back on the title screen, the attract loop runs again after a while
   clearTimeout(blast.attract);
   blast.attract=setTimeout(()=>{ if(blast && blast.phase==="menu" && blast.overlay && !blast.overlay.hidden) runDemo(true); }, 25000);
+  cabRestart();
 }
 
 function beginBlast(level){
@@ -3084,7 +3268,7 @@ function blastHomeKey(){
   if(!blast || !canWrite() || !hasSetting(35) || mc.params[35]===keyIndexOf(0)) return;
   borrow(35, keyIndexOf(0)); modPill();
 }
-function stopBlaster(){ if(blast){ stopDemo(); clearTimeout(blast.attract); blast.over=true; cancelAnimationFrame(blast.raf); poll(false); } blast=null; }
+function stopBlaster(){ if(blast){ stopDemo(); clearTimeout(blast.attract); clearTimeout(blast.cabT); blast.over=true; cancelAnimationFrame(blast.raf); poll(false); } blast=null; }
 function blastBar(){
   if(!blast || !blast.hud) return;
   const key = blast.keyTarget ? ` · KEY ${blast.keyTarget.name}` : "";
@@ -3315,7 +3499,7 @@ function blastTick(now){
     else k.el.style.top=`${24+y*(H-80)}px`;
   }
   const low=lowestBlast(); blast.items.forEach(it=>it.el.classList.toggle("low", it===low && !it.bonus));
-  if(low) arcadeMod(low.root);
+  if(low){ arcadeMod(low.root); helpChord(low.root, low.q, low.bass); } else helpChord(null);
   blast.raf=requestAnimationFrame(blastTick);
 }
 function blastMiss(it){
@@ -3807,6 +3991,7 @@ function answerChord(voices){
   }
 }
 function answerNote(pc, pickedName){
+  if(cabWaiting()){ cabWake(); return; }
   if(q && q.kind==="command") return commandNote(pc);
   if(q && q.kind==="snake") return snakeHarp(pc);
   if(q && q.kind==="asteroids") return asteroidsNote(pc);
@@ -3988,7 +4173,7 @@ function buildSpecial(){
     const hd=document.createElement("div"); hd.className="heard"; field.appendChild(hd);
     box.append(field);
     if(blast){ blast.items.filter(i=>!i.done).forEach(i=>field.appendChild(i.el)); blast.field=field; setTimeout(applyChordSize); blast.hud=hud; blast.heard=hd; blast.fx=fxInit(field); if(blast.overlay) field.appendChild(blast.overlay); }
-    blastBar(); return;
+    blastBar(); setTimeout(helperSync); return;
   }
   const chip=(text,state)=>{ const b=document.createElement("span"); b.textContent=text;
     b.style.cssText=`font:600 1.5rem var(--hand);min-width:1.4em;padding:0 .15em;text-align:center;border-bottom:3px solid ${state==="now"?"var(--accent)":"transparent"};color:${state==="done"?"var(--v1)":state==="now"?"var(--ink)":"var(--muted)"}`;
