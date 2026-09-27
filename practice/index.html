@@ -148,11 +148,12 @@
 .heard{position:absolute;left:10px;bottom:10px;z-index:3;font:400 .55rem "Minichord Lab Accidentals","Press Start 2P",monospace;color:#9A93B5;pointer-events:none}
 .heard b{color:#F1E8D2;font-weight:400}
 .heard.no b{color:#FF7A6E}
-.banner{position:absolute;left:0;right:0;top:36%;text-align:center;z-index:4;pointer-events:none;color:#FFD35A;font:400 1.9rem "Press Start 2P",monospace;text-shadow:0 0 14px rgba(255,200,60,.8),3px 3px 0 #000;animation:banner 2.2s ease-out forwards}
+.banner{position:absolute;left:0;right:0;top:36%;text-align:center;z-index:8;pointer-events:none;color:#FFD35A;font:400 1.9rem "Press Start 2P",monospace;text-shadow:0 0 14px rgba(255,200,60,.8),3px 3px 0 #000;animation:banner 2.2s ease-out forwards}
 .banner small{display:block;margin-top:14px;font-size:.6rem;color:#F1E8D2;text-shadow:2px 2px 0 #000;line-height:1.6;padding:0 20px}
 @keyframes banner{0%{transform:scale(.3);opacity:0}12%{transform:scale(1.12);opacity:1}22%{transform:scale(1)}80%{opacity:1}100%{opacity:0;transform:translateY(-20px)}}
 .popup{position:absolute;z-index:3;transform:translateX(-50%);font:400 .7rem "Press Start 2P",monospace;color:#FFD35A;pointer-events:none;animation:popup .9s ease-out forwards;text-shadow:2px 2px 0 #000}
 @keyframes popup{0%{opacity:1;transform:translate(-50%,0)}100%{opacity:0;transform:translate(-50%,-34px)}}
+.overlay[hidden]{display:none!important}
 .overlay{position:absolute;inset:0;z-index:5;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:rgba(7,6,12,.72);color:#F1E8D2;text-align:center;padding:16px}
 .overlay h3{margin:0;font:400 1.7rem "Press Start 2P",monospace;color:#FFD35A;text-shadow:3px 3px 0 #000}
 .overlay h3.over{color:#FF4B3E}
@@ -163,6 +164,37 @@
 .overlay button.go{background:var(--felt);border-color:#FFD35A;color:#FFF8E7;font-size:.8rem;padding:.7rem 1.1rem}
 .overlay button small{display:block;font-size:.45rem;color:#9A93B5;margin-top:5px}
 .blink{animation:blink 1s steps(2) infinite}@keyframes blink{50%{opacity:0}}
+
+
+/* the demo's pixel minichord */
+.overlay button.howto{border-color:#FFD35A;color:#FFD35A}
+.demo{position:absolute;inset:0;z-index:5;display:flex;flex-direction:column;justify-content:flex-start;padding:10px 14px;pointer-events:none}
+.demo .demohead{display:flex;align-items:center;gap:14px;font:400 .75rem "Press Start 2P",monospace;color:#F1E8D2}
+.demo .demotag{color:#FF4B3E}
+.demo .demotitle{flex:1;color:#FFD35A;font-size:1rem}
+.demo .demoskip{pointer-events:auto;font:400 .55rem "Press Start 2P",monospace;background:#16132A;color:#F1E8D2;border:2px solid #F1E8D2;border-radius:0;padding:.35rem .5rem}
+.demo .democap{margin:10px auto 0;text-align:center;font:400 .88rem/1.75 "Minichord Lab Accidentals","Press Start 2P",monospace;color:#FFD35A;text-shadow:2px 2px 0 #000;min-height:3.6em;padding:6px 12px;background:rgba(7,6,12,.82);max-width:92%}
+/* while the demo plays, the game's score, level and readout step aside */
+.field.demoing .hud, .field.demoing .heard{visibility:hidden}
+@media (max-width:560px){.demo .democap{font-size:.62rem}}
+.demo .board{position:absolute;right:14px;bottom:14px;width:max-content;background:#1A1712;border:3px solid #F1E8D2;padding:8px 10px 10px;box-shadow:0 0 0 3px #000,6px 6px 0 #000}
+.demo .boardtop{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.demo .mod,.demo .pre,.demo .cell{font:400 .55rem "Minichord Lab Accidentals","Press Start 2P",monospace;color:#F1E8D2;background:#2A2520;border:2px solid #8C8270;display:flex;align-items:center;justify-content:center}
+.demo .mod{width:34px;height:24px;font-size:.8rem}
+.demo .presets{display:flex;align-items:center;gap:6px}
+.demo .prestack{display:flex;flex-direction:column;gap:3px}   /* the preset buttons sit one above the other, as on the case */
+.demo .presets small{font:400 .4rem "Press Start 2P",monospace;color:#9A93B5}
+.demo .pre{width:26px;height:16px;font-size:.45rem}
+.demo .led{width:10px;height:10px;border-radius:50%;background:#FF4B3E;box-shadow:0 0 6px #FF4B3E}
+.demo .led.blinking{animation:blink .3s steps(2) infinite}
+.demo .grid{display:grid;grid-template-columns:auto repeat(7,46px);gap:4px}
+.demo .rowtag{font:400 .45rem "Minichord Lab Accidentals","Press Start 2P",monospace;color:#9A93B5;align-self:center;padding-right:4px;white-space:nowrap}
+.demo .cell{height:28px}
+.demo .lit{background:#FFD35A!important;color:#16132A!important;border-color:#FFF4C2!important;box-shadow:0 0 10px rgba(255,211,90,.8)}
+.demo .slashlit{background:#7FE9FF!important;color:#16132A!important;border-color:#E0FBFF!important;box-shadow:0 0 10px rgba(127,233,255,.8)}
+.demo.keymode .cell{border-color:#5FA8FF;color:#B9E0FF}
+.field.arcade .fchord.democh{z-index:6}
+@media (max-width:560px){.demo .grid{grid-template-columns:auto repeat(7,30px)}.demo .cell{font-size:.42rem;height:24px}.demo .board{bottom:8px;right:6px}}
 
 /* ---------- ivory and ebony ---------- */
 .zone.gamesel{border:none;border-top:2px solid var(--ink);border-radius:0;background:transparent;padding:12px 0 4px;margin-top:6px}
@@ -1309,6 +1341,11 @@ function sfx(kind){
   else if(kind==="key")  { [784,988,1175,1568].forEach((f,i)=>tone("triangle",f,0,i*.06,.14,.7)); }
   else if(kind==="over") { [392,370,349,330,311,294,262].forEach((f,i)=>tone("square",f,0,i*.16,.2,.5)); tone("triangle",131,0,1.12,.8,.8); }
   else if(kind==="start"){ [262,330,392,523].forEach((f,i)=>tone("square",f,0,i*.08,.11,.45)); }
+  else if(kind==="press"){ tone("square",1760,1320,0,.05,.35); }                                  // a button going down
+  else if(kind==="combo"){ tone("square",392,784,0,.18,.4); tone("square",494,988,.02,.18,.3); }  // both preset buttons: key change mode
+  else if(kind==="blinks"){ [0,.3,.6].forEach(at=>tone("square",2093,0,at,.04,.25)); }            // the light blinking
+  else if(kind==="letgo"){ tone("square",988,494,0,.2,.4); }
+  else if(kind==="attract"){ [523,659,784,659,523,784,1047].forEach((f,i)=>tone("square",f,0,i*.09,.1,.35)); }
 }
 
 // Levels, as the menu names them
@@ -1345,6 +1382,7 @@ function blastMenu(over){
     sfx("over");
   } else {
     ov.innerHTML=`<h3>CHORD INVADERS</h3><p>PLAY EACH CHORD BEFORE IT LANDS. ★ CHORDS SCORE BIG AND NEVER HURT.${keyComboReady() ? " SET THE KEY WHEN A KEY BAR FALLS." : ""}</p><p class="blink">CHOOSE A LEVEL</p>`;
+    const how=document.createElement("button"); how.className="howto"; how.textContent="▶ HOW TO PLAY"; how.onclick=()=>runDemo(); ov.appendChild(how);
   }
   // the speed, chosen here and remembered
   const sp=document.createElement("div"); sp.className="levels";
@@ -1361,22 +1399,130 @@ function blastMenu(over){
   ov.appendChild(lv);
   if(!over && best) { const p=document.createElement("p"); p.textContent=`BEST ${best}`; ov.appendChild(p); }
   blast.field.appendChild(ov); blast.overlay=ov;
+  // attract mode: left on the title screen, the cabinet plays its demo, as arcade machines do
+  clearTimeout(blast.attract);
+  if(!over) blast.attract=setTimeout(()=>{ if(blast && blast.phase==="menu" && blast.overlay===ov) runDemo(true); }, 25000);
 }
+
+// ---------- the demo: how to play the minichord ----------
+// An arcade attract mode that teaches the instrument. A pixel minichord sits at the foot of the
+// field: the modifier, the preset buttons with their light, and the 21 chord buttons, seven
+// columns F C G D A E B, three rows major, minor and 7. Each scene drops a chord, lights the
+// buttons that play it, and the pressed buttons shoot it down. Then the slash chord, and last
+// the key change combo: both preset buttons held, the rows turning into sharp, natural and flat
+// keys, one pressed. It runs from HOW TO PLAY, and on its own after a while on the title screen.
+const DEMO_COLS=["F","C","G","D","A","E","B"];
+const DEMO_ROWS=[["MAJ",""],["MIN","m"],["7","7"]];
+const DEMO_SCENES=[
+  {title:"THE MINICHORD", text:"SEVEN COLUMNS, ONE FOR EACH NOTE. THREE ROWS: MAJOR, MINOR AND 7.", hold:3600},
+  {chord:"C",     col:1, rows:[0], text:"A MAJOR CHORD: ITS COLUMN'S TOP BUTTON"},
+  {chord:"Am",    col:4, rows:[1], text:"A MINOR CHORD: THE MIDDLE ROW"},
+  {chord:"G7",    col:2, rows:[2], text:"A 7 CHORD: THE BOTTOM ROW"},
+  {chord:"Fmaj7", col:0, rows:[0,2], text:"MAJ7: MAJOR AND 7 TOGETHER"},
+  {chord:"Dm7",   col:3, rows:[1,2], text:"M7: MINOR AND 7 TOGETHER"},
+  {chord:"B°",    col:6, rows:[0,1], text:"DIMINISHED: MAJOR AND MINOR TOGETHER"},
+  {chord:"C+",    col:1, rows:[0,1,2], text:"AUGMENTED: ALL THREE"},
+  {chord:"F♯m",   col:0, rows:[1], mod:true, text:"SHARPS AND FLATS: HOLD THE MODIFIER TOO"},
+  {chord:"C/E",   col:1, rows:[0], slash:5, text:"SLASH CHORDS: HOLD THE CHORD, THEN ANY BUTTON IN THE BASS NOTE'S COLUMN"},
+  {key:true, title:"SETTING THE KEY", text:"HOLD BOTH PRESET BUTTONS. THE LIGHT BLINKS.", hold:3200},
+  {key:true, keyPress:[3,1], text:"THE ROWS ARE NOW SHARP, NATURAL AND FLAT KEYS. PRESS ONE.", hold:3400},
+  {key:false, keyDone:"D", text:"LET GO: YOU'RE IN D MAJOR. ITS F AND C BUTTONS NOW PLAY F♯ AND C♯.", hold:3800},
+  {title:"READY?", text:"CHOOSE A LEVEL. PLAY EACH CHORD BEFORE IT LANDS.", hold:2800},
+];
+function stopDemo(){ if(blast && blast.demo){ blast.demo.run=false; blast.demo.el.remove(); blast.demo=null; } if(blast && blast.field) blast.field.classList.remove("demoing"); }
+function runDemo(attract){
+  if(!blast) return;
+  stopDemo(); clearTimeout(blast.attract);
+  piano.start();
+  if(blast.overlay) blast.overlay.hidden=true;
+  blast.phase="demo";
+  const el=document.createElement("div"); el.className="demo"; blast.field.appendChild(el);
+  blast.field.classList.add("demoing");
+  const token={run:true, el}; blast.demo=token;
+  el.innerHTML=`<div class="demohead"><span class="demotag blink">DEMO</span><span class="demotitle"></span><button class="demoskip">SKIP ▶</button></div>
+    <p class="democap"></p>
+    <div class="board">
+      <div class="boardtop"><div class="mod" title="the modifier">♯</div><div class="presets"><small>PRESET</small><div class="prestack"><div class="pre">▲</div><div class="pre">▼</div></div><span class="led"></span></div></div>
+      <div class="grid"></div>
+    </div>`;
+  el.querySelector(".demoskip").onclick=()=>endDemo(token);
+  const grid=el.querySelector(".grid");
+  const cells=[];
+  DEMO_ROWS.forEach(([tag],r)=>{ const t=document.createElement("span"); t.className="rowtag"; t.textContent=tag; grid.appendChild(t);
+    DEMO_COLS.forEach((c,ci)=>{ const b=document.createElement("div"); b.className="cell"; (cells[ci]||=[])[r]=b; grid.appendChild(b); }); });
+  const label=keyMode=>{ DEMO_ROWS.forEach(([tag,suf],r)=>{ grid.children[r*8].textContent = keyMode ? ["♯ KEYS","♮ KEYS","♭ KEYS"][r] : tag;
+    DEMO_COLS.forEach((c,ci)=>cells[ci][r].textContent = keyMode ? c+["♯","","♭"][r] : c+suf); }); };
+  label(false);
+  const $d=s=>el.querySelector(s), sleep=ms=>new Promise(r=>setTimeout(r,ms));
+  const clear=()=>{ el.querySelectorAll(".lit").forEach(x=>x.classList.remove("lit")); el.querySelectorAll(".slashlit").forEach(x=>x.classList.remove("slashlit")); };
+  sfx("attract");
+  // the chord a scene teaches, as it sounds: its notes on the piano, a slash chord with its bass below
+  const chordNotes=sc=>{ const m=sc.chord.match(/^([A-G][♯♭]?)([^/]*)(?:\/(.+))?$/); if(!m) return [];
+    const r=pcOfName(m[1]), qq=m[2], iv=(FORM[qq]||FORM[""]).map(f=>f[1]);
+    return [...(m[3]?[36+pcOfName(m[3])]:[]), ...iv.map(x=>48+r+x)]; };
+  const playChord=sc=>{ if(settings.sounds && piano.ctx) piano.play(chordNotes(sc),{when:.02,dur:1.3,vel:80}); };
+  (async()=>{
+    for(const sc of DEMO_SCENES){
+      if(!token.run) return;
+      clear(); $d(".demotitle").textContent=sc.title||""; $d(".democap").textContent=sc.text;
+      el.classList.toggle("keymode", !!sc.key);
+      $d(".led").classList.toggle("blinking", !!sc.key);
+      el.querySelectorAll(".pre").forEach(p=>p.classList.toggle("lit", !!sc.key));
+      label(!!sc.key || !!sc.keyPress);
+      if(sc.key && !sc.keyPress){ sfx("combo"); setTimeout(()=>token.run && sfx("blinks"), 450); }
+      if(sc.keyPress){ await sleep(900); if(!token.run) return; cells[sc.keyPress[0]][sc.keyPress[1]].classList.add("lit"); sfx("press"); setTimeout(()=>token.run && sfx("key"), 120); }
+      if(sc.keyDone){ label(false); sfx("letgo"); banner(`KEY OF ${sc.keyDone}`, "D MAJOR: F♯ AND C♯"); }
+      if(sc.title==="READY?") sfx("level");
+      if(sc.chord){
+        // the chord falls, the buttons light one after another, and they shoot it down
+        const ch=document.createElement("span"); ch.className="fchord democh"; ch.textContent=sc.chord; ch.style.left="24%"; ch.style.top="92px";
+        blast.field.appendChild(ch);
+        requestAnimationFrame(()=>{ ch.style.transition="top 2.2s linear"; ch.style.top="210px"; });
+        await sleep(700); if(!token.run){ ch.remove(); return; }
+        if(sc.mod){ $d(".mod").classList.add("lit"); sfx("press"); await sleep(350); }
+        for(const r of sc.rows){ cells[sc.col][r].classList.add("lit"); sfx("press"); await sleep(330); if(!token.run){ ch.remove(); return; } }
+        if(sc.slash!=null){ await sleep(350); cells[sc.slash][0].classList.add("slashlit"); sfx("press"); }   // any button in the bass note's column
+        playChord(sc);                                   // what those buttons play
+        await sleep(450); if(!token.run){ ch.remove(); return; }
+        // the ship fires, as it does in the game
+        const fld=blast.field, x0=fld.clientWidth/2, y0=fld.clientHeight-22, x1=ch.offsetLeft, y1=ch.offsetTop+ch.offsetHeight/2;
+        sfx("shoot");
+        blast.fx.missiles.push({x0:x0/PX, y0:y0/PX, x1:x1/PX, y1:y1/PX, t0:performance.now(), dur:220,
+          hit:()=>{ sfx("boom"); explode(x1,y1); ch.remove(); }});
+        await sleep(1300);
+      } else await sleep(sc.hold||3000);
+    }
+    if(token.run) endDemo(token);
+  })();
+}
+function endDemo(token){
+  if(!blast || blast.demo!==token) return;
+  stopDemo(); blast.phase="menu";
+  if(blast.overlay){ blast.overlay.hidden=false; }
+  // back on the title screen, the attract loop runs again after a while
+  clearTimeout(blast.attract);
+  blast.attract=setTimeout(()=>{ if(blast && blast.phase==="menu" && blast.overlay && !blast.overlay.hidden) runDemo(true); }, 25000);
+}
+
 function beginBlast(level){
   piano.start();
   cancelAnimationFrame(blast.raf); blast.last=performance.now(); blast.raf=requestAnimationFrame(blastTick);   // one loop, running, whatever happened before
   if(blast.overlay){ blast.overlay.remove(); blast.overlay=null; }
+  stopDemo();
   blast.items.forEach(i=>i.el.remove()); if(blast.keyBar) blast.keyBar.el.remove();
   Object.assign(blast,{items:[], score:0, lives:3, level, startLevel:level, hits:0, next:performance.now()+900,
     fall:9000*Math.pow(.92,level)*speedMul(), gap:2600*Math.pow(.92,level)*speedMul(), over:false, phase:"play", keyBar:null, keyTarget:null, pauseForBarry:false});
   if(BLAST_LEVELS[level].barry && !blast.barry){ blast.barry=true; ensure(33,1); modPill(); }
+  // every game starts in C major, whatever key the last one ended in, so the first chords are the
+  // plain buttons; the player's own key goes back when they leave
+  if(canWrite() && hasSetting(35)){ ensure(35, keyIndexOf(0)); blast.dir = Math.random()<.5 ? 1 : -1; ensure(31, blast.dir>0 ? 0 : 1); modPill(); }
   settings.blastStart=String(level+1); save();
   stats.streak=0; scoreboard(); blastBar();
   banner(`LEVEL ${level+1}`, `${LEVEL_NAMES[level].toUpperCase()} · ${(SPEEDS[+saved.speed]||SPEEDS[0])[0].toUpperCase()}`);
   sfx("start");
   if(canWrite()) poll(true);
 }
-function stopBlaster(){ if(blast){ blast.over=true; cancelAnimationFrame(blast.raf); poll(false); } blast=null; }
+function stopBlaster(){ if(blast){ stopDemo(); clearTimeout(blast.attract); blast.over=true; cancelAnimationFrame(blast.raf); poll(false); } blast=null; }
 function blastBar(){
   if(!blast || !blast.hud) return;
   const key = blast.keyTarget ? ` · KEY ${blast.keyTarget.name}` : "";
@@ -1552,6 +1698,7 @@ function heard(name, hit){
   blast.heard.innerHTML=`HEARD <b>${name||"?"}</b>${hit?"":" · NOT FALLING"}`;
 }
 function blasterChord(voices){
+  if(blast && blast.phase==="demo" && blast.demo){ endDemo(blast.demo); return; }
   if(!blast || blast.phase!=="play") return;
   const pitches=voices.map(v=>v.pitch);
   const matches=i=>{
