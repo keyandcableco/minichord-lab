@@ -1364,6 +1364,7 @@ function blastMenu(over){
 }
 function beginBlast(level){
   piano.start();
+  cancelAnimationFrame(blast.raf); blast.last=performance.now(); blast.raf=requestAnimationFrame(blastTick);   // one loop, running, whatever happened before
   if(blast.overlay){ blast.overlay.remove(); blast.overlay=null; }
   blast.items.forEach(i=>i.el.remove()); if(blast.keyBar) blast.keyBar.el.remove();
   Object.assign(blast,{items:[], score:0, lives:3, level, startLevel:level, hits:0, next:performance.now()+900,
@@ -1514,7 +1515,8 @@ function blastTick(now){
   const H=blast.field ? blast.field.clientHeight : 420;
   for(const it of live){
     const y=(now-it.t0)/blast.fall;
-    if(y>=1){ blastMiss(it); if(!blast || blast.phase!=="play") return; continue; }
+    // a landing that ends the game must keep the frames coming, or the stars freeze and Play again finds nothing running
+    if(y>=1){ blastMiss(it); if(!blast) return; if(blast.phase!=="play"){ blast.raf=requestAnimationFrame(blastTick); return; } continue; }
     it.el.style.top=`${24+y*(H-70)}px`;
   }
   const k=blast.keyBar;
@@ -1522,7 +1524,7 @@ function blastTick(now){
     const y=(now-k.t0)/(blast.fall*1.6);
     if(y>=1){ k.el.classList.add("miss"); setTimeout(()=>k.el.remove(),600); blast.keyBar=null; blast.lives--; blastBar(); buzz(blast.field, true); sfx("miss");
       banner(`KEY OF ${k.name} LANDED`, "ITS CHORDS NEED THE MODIFIER NOW");
-      if(blast.lives<=0){ blastOver(); return; } }
+      if(blast.lives<=0){ blastOver(); blast.raf=requestAnimationFrame(blastTick); return; } }
     else k.el.style.top=`${24+y*(H-80)}px`;
   }
   const low=lowestBlast(); blast.items.forEach(it=>it.el.classList.toggle("low", it===low && !it.bonus));
