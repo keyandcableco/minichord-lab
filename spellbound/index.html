@@ -1813,7 +1813,7 @@ function endSprint(){
 }
 
 // ---------- your minichord ----------
-const ADDR_NAMES={35:"key signature",23:"slash replaces",33:"Barry Harris mode",30:"transpose",31:"modifier",36:"harp scale mode",98:"chromatic harp",109:"tuning",110:"MPE",111:"voice leading",113:"slash voice",236:"custom scale",237:"temperament"};
+const ADDR_NAMES={35:"key signature",23:"slash replaces",33:"Barry Harris mode",30:"transpose",31:"modifier",36:"harp scale mode",98:"chromatic harp",109:"tuning",110:"MPE",111:"voice leading",113:"slash voice",114:"slash re-voice",115:"cantus",116:"harp rank",236:"custom scale",237:"temperament"};
 function mine(){
   const strip=$("mystrip");
   if(mc.params[35]===undefined){ strip.hidden=true; return; }
