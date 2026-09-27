@@ -179,6 +179,7 @@
 /* Harp Command: the string labels along the bottom, and staff notes falling */
 .field.arcade.command .strings{position:absolute;left:0;right:0;bottom:30px;height:24px;z-index:3;pointer-events:none}
 .field.arcade.command.frozen .strings span{color:#7FE9FF}
+.sntile,.snseg,.stcell,.fnote,.rock-note,.field.arcade.command .strings span,#pickBody button,.solchip{white-space:pre-line}   /* the syllable sits under the letter */
 .field.arcade.command .strings span{position:absolute;bottom:0;transform:translateX(-50%);font:400 .55rem/1.5 "Minichord Lab Accidentals","Press Start 2P",monospace;color:#9A93B5;text-align:center}
 .field.arcade .fnote{text-align:center}
 .field.arcade .fnote .minstaff{display:block;color:#F1E8D2}
@@ -417,7 +418,7 @@ details.fold[open] .nowplaying{display:none}
         <label>Scales <select id="scaleset"><option value="everyday">Everyday scales</option><option value="modes">The seven modes</option><option value="exotic">Exotic scales</option><option value="all">All of them</option></select></label>
         <label>Directions <select id="dirset"><option value="steps">Half and whole steps</option><option value="thirds">Plus thirds</option><option value="fifths">Plus fourths and fifths</option><option value="all">Plus sixths and the tritone</option></select></label>
         <label>Key <select id="keysrc"><option value="follow">The minichord's key</option><option value="random">A different key each time</option><option value="set">A new key each time, set on the minichord</option></select></label>
-        <label>Note names <select id="noteNames"><option value="letters">Letters (C D E)</option><option value="movable">Solfège, movable do (do re mi in the key)</option><option value="fixed">Solfège, fixed do (Do is always C)</option><option value="both">Letters and movable do</option></select></label>
+        <label>Solfège beside notes <select id="noteNames"><option value="letters">Off</option><option value="movable">Movable do (do re mi in the key)</option><option value="fixed">Fixed do (Do is always C)</option></select></label>
         <label>Minor keys in movable do <select id="laMinor"><option value="do">Do-based (do me sol)</option><option value="la">La-based (la do mi)</option></select></label>
         <label>After a right answer <select id="advance"><option value="quick">Move on quickly</option><option value="slow">Move on after a few seconds</option><option value="wait">Wait for Next</option></select></label>
         <label>Text size <select id="textSize"><option value="1">Normal</option><option value="1.2">Larger</option><option value="1.4">Largest</option></select></label>
@@ -2680,22 +2681,23 @@ function endStDemo(token){
 }
 
 
-// ---------- note names: letters or solfège ----------
-// One setting names notes everywhere in the Practice Room and its arcade games: letters, movable do
-// (do re mi on the key, with di ra ri me fi se si le li te for the notes between), fixed do (Do is
-// always C, as in much of Europe), or letters with movable do beside them. Nothing is written to the
-// games' text for it: as each game draws a prompt, a picker, a feedback line, a keyboard label or a
-// falling note, the note and chord names in it are respelled, and the originals are kept so a change
-// of setting redraws them. Chord symbols keep their quality: G7 is sol7 in C, Sol7 in fixed do.
+// ---------- solfège beside the notes ----------
+// Single notes can carry their solfège beside the letter name: movable do (do re mi on the key, with
+// di ra ri me fi se si le li te for the notes between) or fixed do (Do is always C). It's for the
+// games about single notes: Harp Command, Chord Snake's notes, Asteroids' note rocks, Chord Stack's
+// blocks, and the Practice Room's note games (missing notes, harp hunts, melodies, scales). Chord
+// symbols are left as they are, and so is Chord Invaders, which is all chords. Nothing in the games'
+// text is written for it: as a game draws a note, the syllable is added beside it, under the letter on
+// a tile or a button, in brackets in a sentence, and the originals are kept so a change of setting
+// redraws them.
 const SOL_MOVE=["do","re","mi","fa","sol","la","ti"], SOL_FIXED=["Do","Re","Mi","Fa","Sol","La","Si"];
 const SOL_UP={do:"di",re:"ri",fa:"fi",sol:"si",la:"li"}, SOL_DOWN={re:"ra",mi:"me",sol:"se",la:"le",ti:"te"};
 const SOL_ACC={"-2":"𝄫","-1":"♭","0":"","1":"♯","2":"𝄪"};
-const solMode=()=>settings.noteNames||"letters";
+const solMode=()=>{ const m=settings.noteNames||"letters"; return m==="both" ? "movable" : m; };
 // the key that movable do counts from: the arcade game's own key where it has one, the question's, or the minichord's
 function solTonic(){
   let tonic=null, minor=false;
   if(blast && blast.kind==="command" && blast.wave && blast.wave.kind==="scale"){ tonic=blast.wave.tonic; minor=/minor|dorian|phrygian|locrian/.test(blast.wave.scale); }
-  else if(blast && blast.kind==="blaster" && blast.keyTarget) tonic=blast.keyTarget.name;
   else if(q && typeof q.context==="number" && KEY_BY_FIFTHS[q.context]) tonic=KEY_BY_FIFTHS[q.context];
   if(!tonic) tonic=KEY_BY_FIFTHS[devFifths()]||"C";
   if(minor && settings.laMinor==="la") tonic=above(tonic,2,3)||tonic;   // la-based minor: do is the relative major's tonic
@@ -2704,48 +2706,46 @@ function solTonic(){
 function solMovable(name, tonic){
   const n=parse(name), t=parse(tonic); if(n.li<0 || t.li<0) return name;
   const deg=mod(n.li-t.li,7), semis=mod(NAT[n.li]+n.acc-NAT[t.li]-t.acc,12);
-  let diff=mod(semis-[0,2,4,5,7,9,11][deg]+6,12)-6;
-  const base=SOL_MOVE[deg];
+  const diff=mod(semis-[0,2,4,5,7,9,11][deg]+6,12)-6, base=SOL_MOVE[deg];
   if(diff===0) return base;
   if(diff===1) return SOL_UP[base] || base+"♯";
   if(diff===-1) return SOL_DOWN[base] || base+"♭";
   return base+(SOL_ACC[diff]||"");
 }
-/** a spelled note name as the setting names it; key names stay letters in movable do, where they'd mean nothing */
-function solName(name, keyName=false){
-  const mode=solMode(); if(mode==="letters") return name;
-  const n=parse(name); if(n.li<0) return name;
-  if(mode==="fixed") return SOL_FIXED[n.li]+(SOL_ACC[n.acc]||"");
-  if(keyName) return name;
-  const syl=solMovable(name, solTonic());
-  return mode==="both" ? `${name}·${syl}` : syl;
+/** a spelled note's syllable, as the setting has it */
+function solSyllable(name){
+  const n=parse(name); if(n.li<0) return "";
+  return solMode()==="fixed" ? SOL_FIXED[n.li]+(SOL_ACC[n.acc]||"") : solMovable(name, solTonic());
 }
-// note names in running text: a letter with an accidental always is one; a bare letter is one when
-// a chord quality, a slash, a number, punctuation, the end, or another note or a scale word follows,
-// so "A WRONG STRING" and "A note falls" keep their A
-const SOL_WORDS=/^\s+(?:[A-G](?:𝄪|𝄫|♯|♭)?(?=[\s,.;:)·|]|$)|major|minor|MAJOR|MINOR|harmonic|natural|melodic|dorian|phrygian|lydian|mixolydian|locrian|pentatonic|blues|string|STRING|scale|SCALE|diminished|augmented)/;
-function solText(text){
+// single notes in running text: a letter with an accidental, or a bare letter followed by punctuation,
+// the end, or another note; never a chord symbol (a letter followed by a quality or a slash) or a key
+// ("E♭ major"), and never an article ("A note falls")
+const SOL_NEXT_NOTE=/^\s+[A-G](?:𝄪|𝄫|♯|♭)?(?=[\s,.;:)·|?]|$)/;
+function solText(text, beside){
   if(solMode()==="letters" || !/[A-G]/.test(text)) return text;
   return text.replace(/([A-G])(𝄪|𝄫|♯|♭)?/g, (m, L, acc, i, str)=>{
     const prev=str[i-1]||"", rest=str.slice(i+m.length);
-    if(/[A-Za-z0-9]/.test(prev) && prev!=="/") return m;            // inside a word (or a number like 7)
-    const quality=/^(?:m(?![a-z])|m(?=aj)|maj|°|ø|\+|[0-9]|sus|add|\/)/.test(rest);
-    const ends=/^(?:$|[,.;:)·|–\-!?])/.test(rest);
-    if(!acc && !quality && !ends && !SOL_WORDS.test(rest)) return m;
-    const keyName=/(?:key of|KEY OF|Key of)\s*$/.test(str.slice(0,i)) || /^\s+(?:major|minor|MAJOR|MINOR)/.test(rest);
-    // letters and movable do side by side reads well for a note, not inside a chord symbol: those keep their letters
-    if(solMode()==="both" && quality) return m;
-    return solName(L+(acc||""), keyName);
+    if(/[A-Za-z0-9/]/.test(prev)) return m;                                     // inside a word or after a slash
+    if(/^(?:m(?![a-z])|maj|°|ø|\+|[0-9]|sus|add|\/)/.test(rest)) return m;       // a chord symbol
+    if(/^\s+(?:major|minor|MAJOR|MINOR|harmonic|natural|melodic|dorian|mixolydian|lydian|phrygian|locrian|pentatonic)/.test(rest)) return m;   // a key
+    if(!acc && !/^(?:$|[,.;:)·|?!\s]*$|[,.;:)·|?!])/.test(rest) && !SOL_NEXT_NOTE.test(rest)) return m;   // a word like the article A
+    return beside(m, solSyllable(L+(acc||"")));
   });
 }
-// where names are shown: the prompt, the feedback, the pickers, the keyboard's labels, the special
-// box's chips and every arcade label; never the title screens' and demos' prose, which names buttons A and B
-const SOL_WHERE="#prompt, #feedback, #pickBody, #keys, .solchip, .fchord, .snseg, .sntile, .stcell, .stcol, .strings, .banner, .popup, .hud, .heard, .combo, .lastround, .stnext";
+// where it's added: under the letter on tiles, blocks, rocks, string labels, picker buttons and chips;
+// in brackets in prompts and feedback. The Practice Room's own text only in its note games.
+const SOL_LABELS=".fnote, .rock-note, .sntile, .snseg, .stcell, .strings span, #pickBody button, .solchip";
+const SOL_PROSE="#prompt, #feedback, .lastround";
+const SOL_NOTE_GAMES=new Set(["note","melody","simon","dirs","collect","sequence"]);
+const solNoteGame=()=> blast ? ["command","snake","asteroids","stack"].includes(blast.kind) : !!(q && q.answer && SOL_NOTE_GAMES.has(q.answer.type));
 const solOrig=new WeakMap(), solShown=new WeakMap();
 function solNode(n){
-  const el=n.parentElement; if(!el || !el.closest(SOL_WHERE) || el.closest(".overlay, .demo, script, style")) return;
-  const orig = solShown.get(n)===n.data ? solOrig.get(n) : n.data;   // changed since we respelled it: that's the new original
-  const out=solText(orig);
+  const el=n.parentElement; if(!el || el.closest(".overlay, .demo, script, style, #keys")) return;
+  const label=el.closest(SOL_LABELS), prose=!label && el.closest(SOL_PROSE);
+  if(!label && !prose) return;
+  const orig = solShown.get(n)===n.data ? solOrig.get(n) : n.data;
+  const inArcade=!!el.closest(".field.arcade");
+  const out = (inArcade || solNoteGame()) ? solText(orig, label ? (m,syl)=>`${m}\n${syl}` : (m,syl)=>`${m} (${syl})`) : orig;
   solOrig.set(n,orig); solShown.set(n,out);
   if(n.data!==out) n.data=out;
 }
@@ -2754,19 +2754,17 @@ new MutationObserver(ms=>{ for(const m of ms){
   if(m.type==="characterData") solNode(m.target);
   else m.addedNodes.forEach(a=>{ if(a.nodeType===3) solNode(a); else if(a.nodeType===1) solWalk(a); });
 } }).observe(document.querySelector("main"), {subtree:true, childList:true, characterData:true});
-// a change of setting respells what's showing
 function solRefresh(){ solWalk(document.querySelector("main")); }
-// the arcade title screens' own row for it
-function solRow(ov, before){
-  const r=document.createElement("div"); r.className="optrow"; const l=document.createElement("span"); l.className="optlabel"; l.textContent="NOTE NAMES";
+// the note games' title screens have their own row for it
+function solRow(ov){
+  const r=document.createElement("div"); r.className="optrow"; const l=document.createElement("span"); l.className="optlabel"; l.textContent="SOLFÈGE";
   const g=document.createElement("div"); g.className="levels";
-  const opts=[["letters","LETTERS"],["movable","MOVABLE DO"],["fixed","FIXED DO"],["both","BOTH"]];
   const mark=b=>{ [...g.children].forEach(x=>{ x.style.background=""; x.style.color=""; }); b.style.background="#F1E8D2"; b.style.color="#16132A"; };
-  opts.forEach(([v,t])=>{ const b=document.createElement("button"); b.textContent=t; if(solMode()===v) mark(b);
+  [["letters","OFF"],["movable","MOVABLE DO"],["fixed","FIXED DO"]].forEach(([v,t])=>{ const b=document.createElement("button"); b.textContent=t; if(solMode()===v) mark(b);
     b.onclick=()=>{ settings.noteNames=v; save(); mark(b); if($("noteNames")) $("noteNames").value=v; solRefresh();
       if(blast && blast.kind==="command") hcLabels(); if(blast && blast.kind==="stack") stDraw(); if(blast && blast.kind==="snake") snDraw(); };
     g.appendChild(b); });
-  r.append(l,g); before ? ov.insertBefore(r,before) : ov.appendChild(r);
+  r.append(l,g); ov.appendChild(r);
 }
 
 // ---------- Chord Invaders' own sounds ----------
@@ -2868,7 +2866,6 @@ function blastMenu(over){
   SIZES.forEach(([n],i)=>{ const b=document.createElement("button"); b.textContent=n; if((saved.chordSize??1)===i) mark(b);
     b.onclick=()=>{ saved.chordSize=i; save(); applyChordSize(); mark(b); }; sz.appendChild(b); });
   const szRow=document.createElement("div"); szRow.className="optrow"; szRow.append(szl, sz); ov.append(szRow);
-  solRow(ov);
   if(!over){ const lvl=document.createElement("p"); lvl.className="blink"; lvl.textContent="CHOOSE A LEVEL"; ov.appendChild(lvl); }
   const lv=document.createElement("div"); lv.className="levels";
   LEVEL_NAMES.forEach((n,i)=>{ const ok=levelOk(i);   // every level listed, the ones this minichord can't play marked
