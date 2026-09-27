@@ -417,6 +417,8 @@ details.fold[open] .nowplaying{display:none}
         <label>Scales <select id="scaleset"><option value="everyday">Everyday scales</option><option value="modes">The seven modes</option><option value="exotic">Exotic scales</option><option value="all">All of them</option></select></label>
         <label>Directions <select id="dirset"><option value="steps">Half and whole steps</option><option value="thirds">Plus thirds</option><option value="fifths">Plus fourths and fifths</option><option value="all">Plus sixths and the tritone</option></select></label>
         <label>Key <select id="keysrc"><option value="follow">The minichord's key</option><option value="random">A different key each time</option><option value="set">A new key each time, set on the minichord</option></select></label>
+        <label>Note names <select id="noteNames"><option value="letters">Letters (C D E)</option><option value="movable">Solfège, movable do (do re mi in the key)</option><option value="fixed">Solfège, fixed do (Do is always C)</option><option value="both">Letters and movable do</option></select></label>
+        <label>Minor keys in movable do <select id="laMinor"><option value="do">Do-based (do me sol)</option><option value="la">La-based (la do mi)</option></select></label>
         <label>After a right answer <select id="advance"><option value="quick">Move on quickly</option><option value="slow">Move on after a few seconds</option><option value="wait">Wait for Next</option></select></label>
         <label>Text size <select id="textSize"><option value="1">Normal</option><option value="1.2">Larger</option><option value="1.4">Largest</option></select></label>
         <label>Prompt font <select id="promptFont"><option value="serif">Serif</option><option value="plain">Plain and extra legible</option></select></label>
@@ -1520,6 +1522,7 @@ function commandMenu(over){
     r.append(l,g); ov.appendChild(r); };
   row("SPEED", SPEEDS.map(x=>x[0].toUpperCase()), ()=>+saved.speed||0, i=>{ saved.speed=i; save(); });
   row("NOTE SIZE", SIZES.map(x=>x[0]), ()=>saved.chordSize??1, i=>{ saved.chordSize=i; save(); applyChordSize(); });
+  solRow(ov);
   const lp=document.createElement("p"); lp.className = over ? "" : "blink"; lp.textContent = over ? "OR START FROM" : "CHOOSE A LEVEL"; ov.appendChild(lp);
   const lv=document.createElement("div"); lv.className="levels";
   HC_LEVELS.forEach((L,i)=>{ const b=document.createElement("button"); const ok=hcLevelOk(i);
@@ -1841,6 +1844,7 @@ function snMenu(over){
   row("HARP", ["STANDARD STRIP","KEYMASTER GRID"], ()=>saved.harpLayout==="keymaster"?1:0, i=>{ saved.harpLayout = i ? "keymaster" : "strip"; save();
     if(blast && blast.strip){ blast.strip.remove(); blast.strip=kmStrip(blast.field); snLayout(); snDraw(); } });
   row("HARP SOUND", ["NORMAL","QUIET","OFF"], ()=>saved.harpSound??1, i=>{ saved.harpSound=i; save(); if(blast && blast.setupDone) kmHarp(); });
+  solRow(ov);
   const lp=document.createElement("p"); lp.className = over ? "" : "blink"; lp.textContent = over ? "OR START FROM" : "CHOOSE A LEVEL"; ov.appendChild(lp);
   const lv=document.createElement("div"); lv.className="levels";
   SN_LEVELS.forEach((L,i)=>{ const b=document.createElement("button"), ok=snLevelOk(i);
@@ -2145,6 +2149,7 @@ function asMenu(over){
     r.append(l,g); ov.appendChild(r); };
   row("SPEED", SPEEDS.map(x=>x[0].toUpperCase()), ()=>+saved.speed||0, i=>{ saved.speed=i; save(); });
   row("LABEL SIZE", SIZES.map(x=>x[0]), ()=>saved.chordSize??1, i=>{ saved.chordSize=i; save(); applyChordSize(); });
+  solRow(ov);
   const lp=document.createElement("p"); lp.className = over ? "" : "blink"; lp.textContent = over ? "OR START FROM" : "CHOOSE A LEVEL"; ov.appendChild(lp);
   const lv=document.createElement("div"); lv.className="levels";
   AS_LEVELS.forEach((L,i)=>{ const b=document.createElement("button"), ok=asLevelOk(i);
@@ -2462,6 +2467,7 @@ function stMenu(over){
   row("HARP", ["STANDARD STRIP","KEYMASTER GRID"], ()=>saved.harpLayout==="keymaster"?1:0, i=>{ saved.harpLayout = i ? "keymaster" : "strip"; save();
     if(blast && blast.strip){ blast.strip.remove(); blast.strip=kmStrip(blast.field); } });
   row("HARP SOUND", ["NORMAL","QUIET","OFF"], ()=>saved.harpSound??1, i=>{ saved.harpSound=i; save(); if(blast && blast.setupDone) kmHarp(); });
+  solRow(ov);
   const lp=document.createElement("p"); lp.className = over ? "" : "blink"; lp.textContent = over ? "OR START FROM" : "CHOOSE A LEVEL"; ov.appendChild(lp);
   const lv=document.createElement("div"); lv.className="levels";
   ST_LEVELS.forEach((L,i)=>{ const b=document.createElement("button"); b.innerHTML=`${i+1}<small>${L.n}</small>`; b.onclick=()=>beginStack(i); lv.appendChild(b); });
@@ -2673,6 +2679,96 @@ function endStDemo(token){
   blast.attract=setTimeout(()=>{ if(blast && blast.kind==="stack" && blast.phase==="menu" && blast.overlay && !blast.overlay.hidden) stDemo(); }, 25000);
 }
 
+
+// ---------- note names: letters or solfège ----------
+// One setting names notes everywhere in the Practice Room and its arcade games: letters, movable do
+// (do re mi on the key, with di ra ri me fi se si le li te for the notes between), fixed do (Do is
+// always C, as in much of Europe), or letters with movable do beside them. Nothing is written to the
+// games' text for it: as each game draws a prompt, a picker, a feedback line, a keyboard label or a
+// falling note, the note and chord names in it are respelled, and the originals are kept so a change
+// of setting redraws them. Chord symbols keep their quality: G7 is sol7 in C, Sol7 in fixed do.
+const SOL_MOVE=["do","re","mi","fa","sol","la","ti"], SOL_FIXED=["Do","Re","Mi","Fa","Sol","La","Si"];
+const SOL_UP={do:"di",re:"ri",fa:"fi",sol:"si",la:"li"}, SOL_DOWN={re:"ra",mi:"me",sol:"se",la:"le",ti:"te"};
+const SOL_ACC={"-2":"𝄫","-1":"♭","0":"","1":"♯","2":"𝄪"};
+const solMode=()=>settings.noteNames||"letters";
+// the key that movable do counts from: the arcade game's own key where it has one, the question's, or the minichord's
+function solTonic(){
+  let tonic=null, minor=false;
+  if(blast && blast.kind==="command" && blast.wave && blast.wave.kind==="scale"){ tonic=blast.wave.tonic; minor=/minor|dorian|phrygian|locrian/.test(blast.wave.scale); }
+  else if(blast && blast.kind==="blaster" && blast.keyTarget) tonic=blast.keyTarget.name;
+  else if(q && typeof q.context==="number" && KEY_BY_FIFTHS[q.context]) tonic=KEY_BY_FIFTHS[q.context];
+  if(!tonic) tonic=KEY_BY_FIFTHS[devFifths()]||"C";
+  if(minor && settings.laMinor==="la") tonic=above(tonic,2,3)||tonic;   // la-based minor: do is the relative major's tonic
+  return tonic;
+}
+function solMovable(name, tonic){
+  const n=parse(name), t=parse(tonic); if(n.li<0 || t.li<0) return name;
+  const deg=mod(n.li-t.li,7), semis=mod(NAT[n.li]+n.acc-NAT[t.li]-t.acc,12);
+  let diff=mod(semis-[0,2,4,5,7,9,11][deg]+6,12)-6;
+  const base=SOL_MOVE[deg];
+  if(diff===0) return base;
+  if(diff===1) return SOL_UP[base] || base+"♯";
+  if(diff===-1) return SOL_DOWN[base] || base+"♭";
+  return base+(SOL_ACC[diff]||"");
+}
+/** a spelled note name as the setting names it; key names stay letters in movable do, where they'd mean nothing */
+function solName(name, keyName=false){
+  const mode=solMode(); if(mode==="letters") return name;
+  const n=parse(name); if(n.li<0) return name;
+  if(mode==="fixed") return SOL_FIXED[n.li]+(SOL_ACC[n.acc]||"");
+  if(keyName) return name;
+  const syl=solMovable(name, solTonic());
+  return mode==="both" ? `${name}·${syl}` : syl;
+}
+// note names in running text: a letter with an accidental always is one; a bare letter is one when
+// a chord quality, a slash, a number, punctuation, the end, or another note or a scale word follows,
+// so "A WRONG STRING" and "A note falls" keep their A
+const SOL_WORDS=/^\s+(?:[A-G](?:𝄪|𝄫|♯|♭)?(?=[\s,.;:)·|]|$)|major|minor|MAJOR|MINOR|harmonic|natural|melodic|dorian|phrygian|lydian|mixolydian|locrian|pentatonic|blues|string|STRING|scale|SCALE|diminished|augmented)/;
+function solText(text){
+  if(solMode()==="letters" || !/[A-G]/.test(text)) return text;
+  return text.replace(/([A-G])(𝄪|𝄫|♯|♭)?/g, (m, L, acc, i, str)=>{
+    const prev=str[i-1]||"", rest=str.slice(i+m.length);
+    if(/[A-Za-z0-9]/.test(prev) && prev!=="/") return m;            // inside a word (or a number like 7)
+    const quality=/^(?:m(?![a-z])|m(?=aj)|maj|°|ø|\+|[0-9]|sus|add|\/)/.test(rest);
+    const ends=/^(?:$|[,.;:)·|–\-!?])/.test(rest);
+    if(!acc && !quality && !ends && !SOL_WORDS.test(rest)) return m;
+    const keyName=/(?:key of|KEY OF|Key of)\s*$/.test(str.slice(0,i)) || /^\s+(?:major|minor|MAJOR|MINOR)/.test(rest);
+    // letters and movable do side by side reads well for a note, not inside a chord symbol: those keep their letters
+    if(solMode()==="both" && quality) return m;
+    return solName(L+(acc||""), keyName);
+  });
+}
+// where names are shown: the prompt, the feedback, the pickers, the keyboard's labels, the special
+// box's chips and every arcade label; never the title screens' and demos' prose, which names buttons A and B
+const SOL_WHERE="#prompt, #feedback, #pickBody, #keys, .solchip, .fchord, .snseg, .sntile, .stcell, .stcol, .strings, .banner, .popup, .hud, .heard, .combo, .lastround, .stnext";
+const solOrig=new WeakMap(), solShown=new WeakMap();
+function solNode(n){
+  const el=n.parentElement; if(!el || !el.closest(SOL_WHERE) || el.closest(".overlay, .demo, script, style")) return;
+  const orig = solShown.get(n)===n.data ? solOrig.get(n) : n.data;   // changed since we respelled it: that's the new original
+  const out=solText(orig);
+  solOrig.set(n,orig); solShown.set(n,out);
+  if(n.data!==out) n.data=out;
+}
+function solWalk(root){ const w=document.createTreeWalker(root, NodeFilter.SHOW_TEXT); let n; while((n=w.nextNode())) solNode(n); }
+new MutationObserver(ms=>{ for(const m of ms){
+  if(m.type==="characterData") solNode(m.target);
+  else m.addedNodes.forEach(a=>{ if(a.nodeType===3) solNode(a); else if(a.nodeType===1) solWalk(a); });
+} }).observe(document.querySelector("main"), {subtree:true, childList:true, characterData:true});
+// a change of setting respells what's showing
+function solRefresh(){ solWalk(document.querySelector("main")); }
+// the arcade title screens' own row for it
+function solRow(ov, before){
+  const r=document.createElement("div"); r.className="optrow"; const l=document.createElement("span"); l.className="optlabel"; l.textContent="NOTE NAMES";
+  const g=document.createElement("div"); g.className="levels";
+  const opts=[["letters","LETTERS"],["movable","MOVABLE DO"],["fixed","FIXED DO"],["both","BOTH"]];
+  const mark=b=>{ [...g.children].forEach(x=>{ x.style.background=""; x.style.color=""; }); b.style.background="#F1E8D2"; b.style.color="#16132A"; };
+  opts.forEach(([v,t])=>{ const b=document.createElement("button"); b.textContent=t; if(solMode()===v) mark(b);
+    b.onclick=()=>{ settings.noteNames=v; save(); mark(b); if($("noteNames")) $("noteNames").value=v; solRefresh();
+      if(blast && blast.kind==="command") hcLabels(); if(blast && blast.kind==="stack") stDraw(); if(blast && blast.kind==="snake") snDraw(); };
+    g.appendChild(b); });
+  r.append(l,g); before ? ov.insertBefore(r,before) : ov.appendChild(r);
+}
+
 // ---------- Chord Invaders' own sounds ----------
 // Chiptune effects from square waves and noise, only in this game and only with sounds on:
 // a laser for each shot, a crunchy burst for each hit, a sparkle for a ★, a thud for a miss,
@@ -2733,7 +2829,7 @@ const applyChordSize=()=>{ if(blast && blast.field) blast.field.style.setPropert
 const LEVEL_NAMES=["Major and minor","Add 7ths","Sharps and flats","maj7 and m7","Every chord type","Inversions","Any slash chord","Barry Harris"];
 function startBlaster(){
   const f=canWrite() ? devFifths() : 0;
-  blast={items:[], score:0, lives:3, level:0, hits:0, dir: f<0 ? -1 : f>0 ? 1 : (Math.random()<.5?1:-1),
+  blast={kind:"blaster", items:[], score:0, lives:3, level:0, hits:0, dir: f<0 ? -1 : f>0 ? 1 : (Math.random()<.5?1:-1),
     next:0, fall:9000, gap:2600, over:true, phase:"menu", raf:0, field:null, hud:null,
     barry:false, pauseForBarry:false, keyBar:null, keyTarget:null, fx:null, last:performance.now()};
   blastSetup(); blastHomeKey();
@@ -2772,6 +2868,7 @@ function blastMenu(over){
   SIZES.forEach(([n],i)=>{ const b=document.createElement("button"); b.textContent=n; if((saved.chordSize??1)===i) mark(b);
     b.onclick=()=>{ saved.chordSize=i; save(); applyChordSize(); mark(b); }; sz.appendChild(b); });
   const szRow=document.createElement("div"); szRow.className="optrow"; szRow.append(szl, sz); ov.append(szRow);
+  solRow(ov);
   if(!over){ const lvl=document.createElement("p"); lvl.className="blink"; lvl.textContent="CHOOSE A LEVEL"; ov.appendChild(lvl); }
   const lv=document.createElement("div"); lv.className="levels";
   LEVEL_NAMES.forEach((n,i)=>{ const ok=levelOk(i);   // every level listed, the ones this minichord can't play marked
@@ -3049,7 +3146,7 @@ function explode(x,y,n=26,colours=["#FFD35A","#FF8A3D","#FFF4C2","#FF4B3E"]){
 //   snake      a dim grid of dots, like the playfield of an old handheld
 //   stack      a wall of dark bricks behind the board
 function fxBackground(g, W, H, now, dt){
-  const kind=blast.kind, fx=blast.fx;
+  const kind=blast.kind||"blaster", fx=blast.fx;   // Chord Invaders' state has no kind of its own
   if(kind==="blaster"){
     const speed=blast.phase==="play" ? 1+blast.level*.25 : .6;
     g.fillStyle="#07060C"; g.fillRect(0,0,W,H);
@@ -3260,7 +3357,7 @@ $("restore").onclick=()=>{ userRestored=true; restoreAll(); needs(); feedback("Y
 addEventListener("pagehide", restoreAll);
 
 // ---------- settings and scores (remembered) ----------
-const settings={mode:"spell", set:"standard", order:"ordered", doubles:"off", secondary:"off", keysrc:"follow", scaleset:"everyday", dirset:"steps", sounds:true, tuneWave:"sine", blastStart:"1", advance:"slow", textSize:"1", promptFont:"serif", reshapeLevel:"1", hiddenPool:"basic", shadesMode:"order"};
+const settings={mode:"spell", set:"standard", order:"ordered", doubles:"off", secondary:"off", keysrc:"follow", scaleset:"everyday", dirset:"steps", sounds:true, tuneWave:"sine", blastStart:"1", advance:"slow", textSize:"1", promptFont:"serif", reshapeLevel:"1", hiddenPool:"basic", shadesMode:"order", noteNames:"letters", laMinor:"do"};
 const saved={best:{}, sprint:{}};
 // saved under its old name, so settings and best scores carry over from when it was Spellbound
 try{ const s=JSON.parse(localStorage.getItem("lab-spellbound")||"{}"); Object.assign(settings,s.settings||{}); Object.assign(saved,s.saved||{}); }catch(e){}
@@ -3273,7 +3370,7 @@ const GAME_SLUGS={invaders:"blaster", "chord-invaders":"blaster", "harp-command"
 const solo=urlParams.has("solo") && LABELS[settings.mode] && !!urlParams.get("game");
 if(!SETS[settings.set] || settings.set==="alt") settings.set="standard";
 const save=()=>{ try{ localStorage.setItem("lab-spellbound",JSON.stringify({settings,saved})); }catch(e){} };
-for(const id of ["set","order","doubles","secondary","keysrc","scaleset","dirset","advance","textSize","promptFont","reshapeLevel","hiddenPool","shadesMode"]){ $(id).value=settings[id]; $(id).onchange=e=>{ settings[id]=e.target.value; save(); buildPicker(); applyDisplay(); }; }
+for(const id of ["set","order","doubles","secondary","keysrc","scaleset","dirset","advance","textSize","promptFont","reshapeLevel","hiddenPool","shadesMode","noteNames","laMinor"]){ $(id).value=settings[id]; $(id).onchange=e=>{ settings[id]=e.target.value; save(); buildPicker(); solRefresh(); applyDisplay(); }; }
 // Display: the whole page scales with the text size, and the plain font swaps the serif of
 // prompts and chord names for Atkinson Hyperlegible
 function applyDisplay(){
@@ -3812,7 +3909,7 @@ function buildSpecial(){
     if(blast){ blast.items.filter(i=>!i.done).forEach(i=>field.appendChild(i.el)); blast.field=field; setTimeout(applyChordSize); blast.hud=hud; blast.heard=hd; blast.fx=fxInit(field); if(blast.overlay) field.appendChild(blast.overlay); }
     blastBar(); return;
   }
-  const chip=(text,state)=>{ const b=document.createElement("span"); b.textContent=text;
+  const chip=(text,state)=>{ const b=document.createElement("span"); b.className="solchip"; b.textContent=text;
     b.style.cssText=`font:600 1.5rem var(--hand);min-width:1.4em;padding:0 .15em;text-align:center;border-bottom:3px solid ${state==="now"?"var(--accent)":"transparent"};color:${state==="done"?"var(--v1)":state==="now"?"var(--ink)":"var(--muted)"}`;
     box.appendChild(b); return b; };
   if(q.kind==="simon"){
