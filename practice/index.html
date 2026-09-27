@@ -157,7 +157,9 @@
 .overlay{position:absolute;inset:0;z-index:5;display:flex;flex-direction:column;align-items:center;justify-content:safe center;overflow-y:auto;gap:10px;background:rgba(7,6,12,.72);color:#F1E8D2;text-align:center;padding:16px}
 .overlay h3{margin:0;font:400 1.5rem "Press Start 2P",monospace;color:#FFD35A;text-shadow:3px 3px 0 #000}
 .overlay h3.over{color:#FF4B3E}
+.pstar{width:1.05em;height:.82em;fill:#7FE9FF;vertical-align:-.05em;margin-right:.35em;filter:drop-shadow(0 0 4px rgba(127,233,255,.8))}
 .overlay p{margin:0;font:400 .62rem/1.7 "Press Start 2P",monospace;color:#CFC6E6;max-width:60ch;text-wrap:balance}
+.overlay p.starline{color:#7FE9FF}
 .overlay .levels{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;max-width:560px}
 .overlay .optrow{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:10px}
 .overlay .optlabel{font:400 .55rem "Press Start 2P",monospace;color:#9A93B5}
@@ -1324,8 +1326,16 @@ function blastRoots(plainOnly){
 // a laser for each shot, a crunchy burst for each hit, a sparkle for a ★, a thud for a miss,
 // a rising fanfare for a new level, a jingle for a key set, and a falling tune for game over.
 let noiseBuf=null;
+// A pixel star in the game's style, drawn as blocks: the arcade font has no ★ of its own, and
+// the one the browser borrowed looked like a small asterisk.
+const PIXEL_STAR=(()=>{ const rows=["....#....","...###...","#########",".#######.","..#####..","..##.##..",".##...##."];
+  const r=[]; rows.forEach((row,y)=>[...row].forEach((c,x)=>{ if(c==="#") r.push(`<rect x="${x}" y="${y}" width="1" height="1"/>`); }));
+  return `<svg class="pstar" viewBox="0 0 9 7" aria-hidden="true" shape-rendering="crispEdges">${r.join("")}</svg>`; })();
+// Some browsers pause a page's audio after a stretch of silence (the wait before the attract
+// demo is one). A paused context is woken and the sound played once it's back, rather than skipped.
 function sfx(kind){
-  if(!settings.sounds || !piano.ctx || piano.ctx.state!=="running") return;
+  if(!settings.sounds || !piano.ctx) return;
+  if(piano.ctx.state!=="running"){ piano.ctx.resume().then(()=>{ if(piano.ctx.state==="running") sfx(kind); }).catch(()=>{}); return; }
   const ctx=piano.ctx, t=ctx.currentTime+.005, out=ctx.createGain(); out.gain.value=.16; out.connect(ctx.destination);
   const tone=(type,f0,f1,at,dur,vol=1)=>{ const o=ctx.createOscillator(), g=ctx.createGain(); o.type=type;
     o.frequency.setValueAtTime(f0,t+at); if(f1) o.frequency.exponentialRampToValueAtTime(f1,t+at+dur);
@@ -1387,7 +1397,8 @@ function blastMenu(over){
     const p=document.createElement("p"); p.textContent="OR START FROM"; ov.appendChild(p);
     sfx("over");
   } else {
-    ov.innerHTML=`<h3>CHORD INVADERS</h3><p>PLAY EACH CHORD BEFORE IT LANDS. ★ CHORDS SCORE BIG AND NEVER HURT.${keyComboReady() ? " SET THE KEY WHEN A KEY BAR FALLS." : ""}</p>`;
+    // each rule on its own line, the star chords with the star itself in front
+    ov.innerHTML=`<h3>CHORD INVADERS</h3><p>PLAY EACH CHORD BEFORE IT LANDS.</p><p class="starline">${PIXEL_STAR}CHORDS SCORE BIG AND NEVER HURT.</p>${keyComboReady() ? "<p>SET THE KEY WHEN A KEY BAR FALLS.</p>" : ""}`;
     const how=document.createElement("button"); how.className="howto"; how.textContent="▶ HOW TO PLAY"; how.onclick=()=>runDemo(); ov.appendChild(how);
   }
   // the speed, chosen here and remembered
@@ -1473,7 +1484,8 @@ function runDemo(attract){
   const chordNotes=sc=>{ const m=sc.chord.match(/^([A-G][♯♭]?)([^/]*)(?:\/(.+))?$/); if(!m) return [];
     const r=pcOfName(m[1]), qq=m[2], iv=(FORM[qq]||FORM[""]).map(f=>f[1]);
     return [...(m[3]?[36+pcOfName(m[3])]:[]), ...iv.map(x=>48+r+x)]; };
-  const playChord=sc=>{ if(settings.sounds && piano.ctx) piano.play(chordNotes(sc),{when:.02,dur:1.3,vel:80}); };
+  const playChord=sc=>{ if(!settings.sounds || !piano.ctx) return; const go=()=>piano.play(chordNotes(sc),{when:.02,dur:1.3,vel:80});
+    if(piano.ctx.state==="running") go(); else piano.ctx.resume().then(go).catch(()=>{}); };
   (async()=>{
     for(const sc of DEMO_SCENES){
       if(!token.run) return;
@@ -1588,7 +1600,7 @@ function spawnBlast(now){
     const c=pickBlastChord(slashNow); if(!c) continue;
     const sym=c.root+c.qq+(c.bass?`/${c.bass}`:"");
     if(onScreen.has(sym)) continue;
-    const el=document.createElement("span"); el.className="fchord"+(bonus?" bonus":""); el.textContent=(bonus?"★":"")+sym;
+    const el=document.createElement("span"); el.className="fchord"+(bonus?" bonus":""); el.innerHTML=(bonus?PIXEL_STAR:""); el.append(sym);
     el.style.left=`${12+Math.random()*76}%`; el.style.top="24px";
     blast.field.appendChild(el);
     blast.items.push({el, sym, root:c.root, q:c.qq, bass:c.bass, bonus, rootPc:pcOfName(c.root), bassPc:c.bass?pcOfName(c.bass):null, t0:now});
@@ -1833,7 +1845,8 @@ function scoreboard(){
 // a single short note for each right step of a path, scale or chord, and a rising pair for
 // a right answer. Off with the Sounds button.
 function chime(kind){
-  if(!settings.sounds || !piano.ctx || piano.ctx.state!=="running") return;
+  if(!settings.sounds || !piano.ctx) return;
+  if(piano.ctx.state!=="running"){ piano.ctx.resume().then(()=>{ if(piano.ctx.state==="running") chime(kind); }).catch(()=>{}); return; }
   const ctx=piano.ctx, t0=ctx.currentTime+.01;
   const bell=(freq,at,level,dur)=>{
     for(const [mult,amp] of [[1,1],[2.76,.12],[5.4,.04]]){          // a bell's inharmonic partials, faint
