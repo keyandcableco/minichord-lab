@@ -2970,6 +2970,7 @@ function cabinet(ov){
   [...ov.children].forEach(c=>opts.appendChild(c));
   opts.querySelector("h3")?.classList.add("small");
   beginnerRow(opts);
+  if(["breakout","fifths","stack"].includes(cabKind()) && knobsReady()) knobRow(opts);
   ov.append(title, roll, opts);
   ov.addEventListener("click", e=>{ if(ov.dataset.stage!=="options"){ e.stopPropagation(); cabWake(); } }, true);
   inner.addEventListener("animationend", ()=>{ if(blast && blast.overlay===ov && ov.dataset.stage==="rules" && blast.phase==="menu"){ const d=DEMO_FOR[cabKind()]; if(d) d(); } });
@@ -3159,7 +3160,7 @@ function buildBreakoutField(box){
     setTimeout(()=>{ applyChordSize(); boLayout(); });
     if(blast.overlay) field.appendChild(blast.overlay);
     // the mouse or a finger can steer too
-    field.addEventListener("pointermove", e=>{ if(blast && blast.kind==="breakout"){ const r=field.getBoundingClientRect(); blast.paddle.target=e.clientX-r.left-blast.paddle.w/2; blast.steer="mouse"; } });
+    field.addEventListener("pointermove", e=>{ if(blast && blast.kind==="breakout" && mouseMaySteer()){ const r=field.getBoundingClientRect(); blast.paddle.target=e.clientX-r.left-blast.paddle.w/2; blast.steer="mouse"; } });
   }
   boBar(); setTimeout(helperSync);
 }
@@ -3176,7 +3177,7 @@ function boMenu(over){
     again.onclick=()=>beginBreakout(blast.startLevel); ov.appendChild(again);
     sfx("over");
   } else {
-    ov.innerHTML=`<h3>CHORD BREAKOUT</h3><p>${knobsReady() ? "TURN ANY KNOB ON THE MINICHORD TO MOVE THE PADDLE." : "MOVE THE PADDLE WITH THE MOUSE OR THE ARROW KEYS. WITH FIRMWARE 17, A KNOB ON THE MINICHORD DOES IT."}</p><p>THE BALL CRACKS A CHORD BRICK. PLAY ITS CHORD BEFORE THE BALL COMES BACK AND IT BREAKS.</p><p>MISS IT AND THE BRICK HEALS. LET THE BALL PAST AND IT COSTS A LIFE.</p><p class="starline">${PIXEL_STAR}BRICKS SCORE FIVE TIMES AS MUCH.</p>`;
+    ov.innerHTML=`<h3>CHORD BREAKOUT</h3><p>${knobsReady() ? "TURN A KNOB ON THE MINICHORD TO MOVE THE PADDLE (THE MOD KNOB, OR CHOOSE ANOTHER)." : "MOVE THE PADDLE WITH THE MOUSE OR THE ARROW KEYS. WITH FIRMWARE 17, A KNOB ON THE MINICHORD DOES IT."}</p><p>THE BALL CRACKS A CHORD BRICK. PLAY ITS CHORD BEFORE THE BALL COMES BACK AND IT BREAKS.</p><p>MISS IT AND THE BRICK HEALS. LET THE BALL PAST AND IT COSTS A LIFE.</p><p class="starline">${PIXEL_STAR}BRICKS SCORE FIVE TIMES AS MUCH.</p>`;
     const how=document.createElement("button"); how.className="howto"; how.textContent="▶ HOW TO PLAY"; how.onclick=()=>boDemo(); ov.appendChild(how);
   }
   const row=(label, list, get, set)=>{ const r=document.createElement("div"); r.className="optrow"; const l=document.createElement("span"); l.className="optlabel"; l.textContent=label;
@@ -3346,14 +3347,42 @@ document.addEventListener("keydown", e=>{
 });
 document.addEventListener("keyup", e=>{ if(blast && blast.kind==="breakout" && ["ArrowLeft","KeyA","ArrowRight","KeyD"].includes(e.code)) blast.keyDir=0; });
 // a knob: it wakes a title screen; in the games that use one, it steers
+// Only the chosen knob steers (the modulation knob unless the player picks another on the title
+// screen), so brushing a neighbour mid-game doesn't throw the paddle or the aim across the screen.
+// A one-step wobble back the way it came is ignored, so a knob resting between two values holds
+// still. And while the minichord is sending its knobs, the mouse doesn't steer, so a hand resting on
+// the mouse can't fight the knob.
+const KNOB_NAMES=["CHORD","HARP","MOD"];
+const steerKnob=()=> saved.steerKnob ?? 2;
+const knobHold={};
 mc.addEventListener("knob", e=>{
   if(!blast || !blast.field) return;
-  if(cabWaiting()){ cabWake(); return; }
-  if(blast.kind==="stack") return stKnob(e.detail.value);
-  if(blast.kind==="fifths") return fdKnob(e.detail.value);
+  const {knob, value}=e.detail;
+  if(cabWaiting()){ if(knob===steerKnob()) cabWake(); return; }
+  if(knob!==steerKnob()) return;
+  const step=Math.round(value*127), h=knobHold[knob] || (knobHold[knob]={last:null, dir:0});
+  const d = h.last==null ? 1 : step-h.last;                                   // the first reading always counts
+  if(d===0 || (h.last!=null && Math.abs(d)===1 && h.dir && Math.sign(d)!==h.dir)) return;   // a wobble back: hold
+  h.dir=Math.sign(d); h.last=step; blast.knobAt=performance.now();
+  const v=step/127;
+  if(blast.kind==="stack") return stKnob(v);
+  if(blast.kind==="fifths") return fdKnob(v);
   if(blast.kind!=="breakout") return;
-  const W=blast.W||blast.field.clientWidth; blast.paddle.target=e.detail.value*(W-blast.paddle.w); blast.steer="knob";
+  const W=blast.W||blast.field.clientWidth; blast.paddle.target=v*(W-blast.paddle.w); blast.steer="knob";
 });
+// the mouse steers only when the knobs can't: no minichord sending them, and none turned lately
+const mouseMaySteer=()=> !knobsReady() && performance.now()-(blast?.knobAt||0)>4000;
+// the knob games' title screens: which knob steers
+function knobRow(opts){
+  const r=document.createElement("div"); r.className="optrow"; const l=document.createElement("span"); l.className="optlabel"; l.textContent="STEER WITH";
+  const g=document.createElement("div"); g.className="levels";
+  const mark=b=>{ [...g.children].forEach(x=>{ x.style.background=""; x.style.color=""; }); b.style.background="#F1E8D2"; b.style.color="#16132A"; };
+  KNOB_NAMES.forEach((n,i)=>{ const b=document.createElement("button"); b.textContent=`${n} KNOB`; if(steerKnob()===i) mark(b);
+    b.onclick=()=>{ saved.steerKnob=i; save(); mark(b); }; g.appendChild(b); });
+  r.append(l,g);
+  const before=opts.querySelector("p.blink") || [...opts.querySelectorAll(".levels")].pop();
+  opts.insertBefore(r, before);
+}
 
 // ---------- Chord Breakout's demo ----------
 // The game plays itself: the paddle follows the ball, and each brick cracked is played a moment later.
@@ -3447,7 +3476,7 @@ function buildFifthsField(box){
     setTimeout(()=>{ fdLayout(); fdLabels(); });
     if(blast.overlay) field.appendChild(blast.overlay);
     // the mouse aims too: at the spoke nearest where it points
-    field.addEventListener("pointermove", e=>{ if(!blast || blast.kind!=="fifths" || blast.phase!=="play") return; const r=field.getBoundingClientRect();
+    field.addEventListener("pointermove", e=>{ if(!blast || blast.kind!=="fifths" || blast.phase!=="play" || !mouseMaySteer()) return; const r=field.getBoundingClientRect();
       const a=Math.atan2(e.clientX-r.left-blast.cx, -(e.clientY-r.top-blast.cy)); fdAimAt(mod(Math.round(a/(Math.PI/6)),12)); });
   }
   fdBar(); setTimeout(helperSync);
