@@ -1,0 +1,392 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>String quartet · Minichord Lab</title>
+<meta name="description" content="The minichord's four chord voices played by a string quartet: cello, viola and two violins, each on its own string, with arco, pizzicato, tremolo, sul ponticello and con sordino.">
+<link rel="icon" href="../core/logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../core/lab.css">
+<script src="../core/theme.js"></script>
+<style>
+/* the platform: ebony in both themes, the four players on it in ivory and brass */
+.platform{position:relative;background:#171412;border:2px solid #000;border-top:10px solid var(--felt);border-radius:2px;margin-top:14px;overflow:hidden}
+#stage{display:block;width:100%;height:auto}
+#stage .floor{fill:url(#boards)}
+#stage .body{fill:#3A2414;stroke:#D4A017;stroke-width:1.6}
+#stage .body.lit{fill:#5A3418}
+#stage .fhole{fill:none;stroke:#0E0A08;stroke-width:1.6;stroke-linecap:round}
+#stage .neck{fill:#0E0A08;stroke:#D4A017;stroke-width:1}
+#stage .scroll{fill:#0E0A08;stroke:#D4A017;stroke-width:1}
+#stage .string{stroke:#E8DCC0;stroke-width:.9;opacity:.55}
+#stage .string.lit{stroke:#FF5A4E;stroke-width:1.8;opacity:1}
+#stage .bow{stroke:#E8DCC0;stroke-width:2.2;stroke-linecap:round}
+#stage .hair{stroke:#FFF8E7;stroke-width:.8;opacity:.8}
+#stage .bowgroup{opacity:0;transition:opacity .25s}
+#stage .bowgroup.on{opacity:1}
+#stage .pluck{fill:none;stroke:#FF5A4E;stroke-width:2;opacity:0}
+#stage .part{fill:#FFF8E7;font:600 17px "EB Garamond",Garamond,Georgia,serif;text-anchor:middle}
+#stage .note{fill:#D4A017;font:700 26px "EB Garamond",Garamond,Georgia,serif;text-anchor:middle}
+#stage .where{fill:#CFC3A6;font:italic 400 14px "EB Garamond",Garamond,Georgia,serif;text-anchor:middle}
+#stage .muted .body{opacity:.35} #stage .muted text{opacity:.45}
+#stage .seat{cursor:pointer}
+.startcurtain{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;background:rgba(15,12,10,.82);color:#FFF8E7;text-align:center;padding:20px}
+.startcurtain[hidden]{display:none}
+.startcurtain p{margin:0;max-width:44ch;color:#E4D9BF}
+.desk{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 34px;margin-top:22px}
+@media (max-width:820px){.desk{grid-template-columns:1fr}}
+.seg{display:flex;flex-wrap:wrap;gap:6px;margin:.3rem 0 .2rem}
+.ctl{margin:0 0 12px}
+.ctl .lbl{display:block;font-weight:700;margin-bottom:2px}
+.ctl .fine{margin:.25rem 0 0}
+.ctl input[type=range]{width:100%;accent-color:var(--felt)}
+.switchrow{display:flex;flex-wrap:wrap;gap:8px 18px;margin:.3rem 0}
+.switchrow label{display:flex;gap:8px;align-items:center}
+.switchrow input{accent-color:var(--felt);width:1.05rem;height:1.05rem}
+.tests{display:flex;flex-wrap:wrap;gap:6px;margin-top:.4rem}
+</style>
+</head>
+<body>
+<main>
+  <div class="labbar">
+    <a class="crumb" href="../">Minichord Lab</a>
+    <div class="connect">
+      <button id="connect" class="primary">Connect minichord</button>
+      <select id="input" aria-label="MIDI input" disabled><option>No MIDI yet</option></select>
+    </div>
+  </div>
+
+  <h1>String quartet</h1>
+  <p class="lede">The minichord's four chord voices, played by a string quartet. The lowest voice goes to the cello, the next to the viola, and the top two to the second and first violins. Each part shows the string it would play on. Click a player to rest them.</p>
+  <p class="status" id="status">Connect the minichord, or take your seats and try the test chords below.</p>
+
+  <div class="platform">
+    <svg id="stage" viewBox="0 0 1000 520" role="img" aria-label="The quartet on stage, each player's string lit as they play"></svg>
+    <div class="startcurtain" id="curtain">
+      <button id="start" class="primary">Take your seats</button>
+      <p id="loadNote">The browser needs a click before it plays anything. The players' recordings load once you do.</p>
+    </div>
+  </div>
+
+  <div class="desk">
+    <section class="panel">
+      <h2>How they play</h2>
+      <div class="ctl"><span class="lbl">Articulation</span><div class="seg" id="artic"></div><p class="fine" id="articNote"></p></div>
+      <div class="ctl"><span class="lbl">Dynamic</span><div class="seg" id="dyn"></div></div>
+      <div class="ctl"><label class="lbl" for="hall">Hall</label><input id="hall" type="range" min="0" max="100" value="35"><p class="fine">From a dry studio to a stone church.</p></div>
+    </section>
+    <section class="panel">
+      <h2>The parts</h2>
+      <div class="ctl"><span class="lbl">Seating</span><div class="seg" id="seating"></div><p class="fine" id="seatNote"></p></div>
+      <div class="switchrow">
+        <label><input type="checkbox" id="celloDown"> Cello an octave down</label>
+        <label><input type="checkbox" id="inRange" checked> Keep each part in its range</label>
+      </div>
+      <p class="fine">In range, a part asked for a note below its lowest open string plays it an octave up, as a player would. An octave-down cello gives the bass the weight of a larger group.</p>
+      <div class="ctl" style="margin-top:14px"><span class="lbl">Test chords</span>
+        <div class="tests" id="tests"></div>
+        <div class="tests"><button id="prog">Play a progression</button><button id="stop">Stop</button></div>
+      </div>
+    </section>
+  </div>
+
+  <footer>
+    <p>Part of <a href="../">Minichord Lab</a>. Violin, viola, cello, pizzicato and tremolo recordings from the Musyng Kite soundfont (CC BY-SA 3.0), as rendered by <a href="https://github.com/gleitz/midi-js-soundfonts">midi-js-soundfonts</a>; see <a href="https://github.com/keyandcableco/minichord-lab/blob/main/samples/README.md">samples/README.md</a>. The minichord is <a href="https://github.com/BenjaminPoilve/minichord">Benjamin Poilve's open-source instrument</a>; each voice keeps its own glide with MPE on the unofficial <a href="https://github.com/keyandcableco/minichord/tree/test-allFeatures">test-allFeatures firmware</a>.</p>
+    <p>Made by <a href="https://keyandcable.com">The Key &amp; Cable Company</a>. Source on <a href="https://github.com/keyandcableco/minichord-lab">GitHub</a>.</p>
+  </footer>
+</main>
+
+<script type="module">
+import {Minichord, spell} from "../core/minichord.js";
+
+const mc=new Minichord(); window.mc=mc;
+const $=id=>document.getElementById(id);
+const mod=(a,n)=>((a%n)+n)%n;
+
+// ---------- the parts ----------
+// open strings low to high, the range each keeps to, and the size it's drawn at
+const PARTS=[
+  {id:"cello",  name:"Cello",         open:[36,43,50,57], strings:["C","G","D","A"], lo:36, hi:81, sample:"cello",  scale:1.45},
+  {id:"viola",  name:"Viola",         open:[48,55,62,69], strings:["C","G","D","A"], lo:48, hi:88, sample:"viola",  scale:1.12},
+  {id:"vln2",   name:"Second violin", open:[55,62,69,76], strings:["G","D","A","E"], lo:55, hi:96, sample:"violin", scale:1},
+  {id:"vln1",   name:"First violin",  open:[55,62,69,76], strings:["G","D","A","E"], lo:55, hi:100, sample:"violin", scale:1},
+];
+// seat positions across the platform, left to right, and their place in the stereo field
+const SEATINGS={
+  classic:{n:"Violins left, cello right", note:"The usual layout today: first and second violins together on the left, viola and cello on the right.", order:["vln1","vln2","viola","cello"]},
+  facing:{n:"Violins facing", note:"The older layout: the two violins face each other across the front, answering from left and right, with the cello and viola between.", order:["vln1","cello","viola","vln2"]},
+};
+const ARTICS={
+  arco:{n:"Arco", note:"Bowed: the notes sustain and slide into each other."},
+  pizz:{n:"Pizzicato", note:"Plucked with a finger: each new note is a pluck that rings away."},
+  trem:{n:"Tremolo", note:"The bow shakes rapidly on the string: a shimmer, or a storm at forte."},
+  pont:{n:"Sul ponticello", note:"Bowed right by the bridge: glassy and thin, the fundamental falls away."},
+  sord:{n:"Con sordino", note:"With a mute clipped to the bridge: veiled and far away."},
+};
+const DYNS=[["pp",.28,1600],["p",.4,2400],["mp",.55,3600],["mf",.7,5200],["f",.86,7500],["ff",1,11000]];
+let artic="arco", dyn=3, seating="classic", celloDown=false, inRange=true;
+const muted=new Set();
+
+// ---------- sound ----------
+let ctx=null, master, wet, dry, bus={}, ready=false;
+const SAMPLE_SETS={violin:[54,100],viola:[46,88],cello:[34,80],pizz:[34,100],trem:[34,100]};
+const banks={};   // folder -> Map(midi -> {buf, loopStart, loopEnd, norm})
+function loopify(buf, oneShot){
+  const sr=buf.sampleRate, L=buf.length;
+  let e=0,n=0; for(let c=0;c<buf.numberOfChannels;c++){ const d=buf.getChannelData(c); for(let i=0;i<Math.min(L,sr*.8);i++){ e+=d[i]*d[i]; n++; } }
+  const rms=Math.sqrt(e/Math.max(1,n)), norm = rms>0 ? .18/rms : 1;
+  if(oneShot) return {buf, norm};
+  // a seamless sustain: the loop's end crossfaded into the audio just before its start
+  const ls=Math.floor(1.0*sr), le=Math.min(L-1, Math.floor((buf.duration-.12)*sr)), xf=Math.floor(.3*sr);
+  for(let c=0;c<buf.numberOfChannels;c++){
+    const d=buf.getChannelData(c);
+    for(let i=0;i<xf;i++){ const t=i/xf; d[le-xf+i]=d[le-xf+i]*Math.cos(t*Math.PI/2)+d[ls-xf+i]*Math.sin(t*Math.PI/2); }
+    for(let i=0;i<128 && le+i<L;i++) d[le+i]=d[ls+i];
+  }
+  return {buf, loopStart:ls/sr, loopEnd:le/sr, norm};
+}
+async function loadAll(){
+  const jobs=[]; let done=0, total=0;
+  for(const [dir,[lo,hi]] of Object.entries(SAMPLE_SETS)){
+    banks[dir]=new Map();
+    for(let m=lo;m<=hi;m+=2){ total++;
+      jobs.push(fetch(`../samples/quartet/${dir}/${m}.mp3`).then(r=>{ if(!r.ok) throw new Error(r.status); return r.arrayBuffer(); })
+        .then(a=>ctx.decodeAudioData(a)).then(b=>{ banks[dir].set(m, loopify(b, dir==="pizz")); done++; $("loadNote").textContent=`Tuning up: ${done} of ${total}`; })); }
+  }
+  await Promise.all(jobs);
+}
+// a hall: a stereo impulse of decaying noise, a little darker as it fades
+function hallImpulse(seconds){
+  const sr=ctx.sampleRate, L=Math.floor(sr*seconds), ir=ctx.createBuffer(2,L,sr);
+  for(let c=0;c<2;c++){ const d=ir.getChannelData(c); let lp=0;
+    for(let i=0;i<L;i++){ const t=i/L, k=.25+.7*t; lp=lp*k+(Math.random()*2-1)*(1-k); d[i]=lp*Math.pow(1-t,2.6)*(i<sr*.012?i/(sr*.012):1); } }
+  return ir;
+}
+async function startAudio(){
+  ctx=new AudioContext();
+  const comp=ctx.createDynamicsCompressor(); comp.threshold.value=-14; comp.ratio.value=3; comp.connect(ctx.destination);
+  master=ctx.createGain(); master.gain.value=.9; master.connect(comp);
+  dry=ctx.createGain(); wet=ctx.createGain(); dry.connect(master); wet.connect(master);
+  const verb=ctx.createConvolver(); verb.buffer=hallImpulse(2.6); verb.connect(wet);
+  bus.verbIn=verb; setHall();
+  // one channel strip a part: articulation colour, dynamic brightness, seat in the stereo field
+  for(const p of PARTS){
+    const input=ctx.createGain(), colour=ctx.createBiquadFilter(), colour2=ctx.createBiquadFilter(), bright=ctx.createBiquadFilter(), pan=ctx.createStereoPanner(), out=ctx.createGain();
+    colour.type="peaking"; colour2.type="highpass"; colour2.frequency.value=20; bright.type="lowpass";
+    input.connect(colour).connect(colour2).connect(bright).connect(pan).connect(out);
+    out.connect(dry); out.connect(bus.verbIn);
+    p.strip={input, colour, colour2, bright, pan, out};
+  }
+  applyStrips(); setSeating(seating);
+  await loadAll();
+  ready=true;
+}
+function setHall(){ if(!ctx) return; const h=+$("hall").value/100; wet.gain.setTargetAtTime(h*.9, ctx.currentTime, .05); dry.gain.setTargetAtTime(1-h*.35, ctx.currentTime, .05); }
+// the articulation's colour and the dynamic's brightness on every part's strip
+function applyStrips(){
+  if(!ctx) return; const t=ctx.currentTime, [,level,cut]=DYNS[dyn];
+  for(const p of PARTS){ const s=p.strip;
+    s.colour.frequency.setTargetAtTime(artic==="pont"?3400:1000, t, .05);
+    s.colour.gain.setTargetAtTime(artic==="pont"?9:0, t, .05);
+    s.colour.Q.value=artic==="pont"?1.2:.7;
+    s.colour2.frequency.setTargetAtTime(artic==="pont"?(p.id==="cello"?260:520):20, t, .05);   // the fundamental falls away by the bridge
+    s.bright.frequency.setTargetAtTime(artic==="sord"?Math.min(cut,1500):cut, t, .05);
+    s.out.gain.setTargetAtTime(muted.has(p.id)?0:level*(artic==="sord"?.75:1), t, .05);
+  }
+}
+function setSeating(key){
+  seating=key; const order=SEATINGS[key].order;
+  PARTS.forEach(p=>{ p.seat=order.indexOf(p.id); if(p.strip) p.strip.pan.pan.setTargetAtTime(-.62+p.seat*.41, ctx.currentTime, .1); });
+  drawStage();
+}
+
+// ---------- a player's note ----------
+const nearest=(dir,m)=>{ const [lo,hi]=SAMPLE_SETS[dir]; let s=m-mod(m-lo,2); if(m-s>1) s+=2; return Math.max(lo,Math.min(hi,s)); };
+function glideTo(param,v,t,tc){ param.cancelScheduledValues(t); param.setTargetAtTime(v,t,tc); }
+function startNote(p, pitch){
+  const dir = artic==="pizz" ? "pizz" : artic==="trem" ? "trem" : p.sample;
+  const bank=banks[dir]; if(!bank || !ready) return null;
+  const m=nearest(dir, Math.round(pitch)), e=bank.get(m); if(!e) return null;
+  const now=ctx.currentTime, src=ctx.createBufferSource(), env=ctx.createGain();
+  src.buffer=e.buf; src.playbackRate.value=Math.pow(2,(pitch-m)/12);
+  if(dir!=="pizz"){ src.loop=true; src.loopStart=e.loopStart; src.loopEnd=e.loopEnd; }
+  const level=e.norm*(dir==="pizz"?1.3:1);
+  env.gain.setValueAtTime(0,now);
+  if(dir==="pizz") env.gain.linearRampToValueAtTime(level, now+.004);
+  else env.gain.linearRampToValueAtTime(level, now+(artic==="trem"?.03:.09));   // the bow takes the string
+  src.connect(env).connect(p.strip.input); src.start(now);
+  return {src, env, m, dir, pitch, oneShot:dir==="pizz"};
+}
+function stopNote(n, fast){
+  if(!n) return; const t=ctx.currentTime, g=n.env.gain;
+  if(g.cancelAndHoldAtTime) g.cancelAndHoldAtTime(t); else { g.cancelScheduledValues(t); g.setValueAtTime(g.value,t); }
+  g.setTargetAtTime(0,t, n.oneShot ? .35 : fast ? .03 : .16);
+  n.src.stop(t+(n.oneShot?2:1.2));
+}
+
+// ---------- the minichord's voices to the parts ----------
+// Lowest voice to the cello, up to the first violin. A voice that glides (the same note, bent)
+// slides on the same bow; a new note is a new bow, or with pizzicato a new pluck.
+const playing=new Map();   // part id -> {key, note, shown}
+function partPitch(p, pitch){
+  let x=pitch;
+  if(p.id==="cello" && celloDown) x-=12;
+  if(inRange){ while(x<p.open[0]) x+=12; while(x>p.hi) x-=12; }
+  return x;
+}
+function update(){
+  const vs=mc.voices.slice(0,4);
+  // with fewer than four voices, the top parts rest
+  PARTS.forEach((p,i)=>{
+    const v=vs[i], cur=playing.get(p.id);
+    if(!v){ if(cur){ if(ctx) stopNote(cur.note); playing.delete(p.id); } return; }
+    const key = v.voice!=null ? `v${v.voice}:${v.note}` : `${v.ch}:${v.note}`, pitch=partPitch(p, v.pitch);
+    if(cur && cur.key===key){
+      if(cur.note && !cur.note.oneShot) glideTo(cur.note.src.playbackRate, Math.pow(2,(pitch-cur.note.m)/12), ctx.currentTime, .006);
+      cur.pitch=pitch; return;
+    }
+    const legato = cur && artic!=="pizz";
+    if(cur && ctx) stopNote(cur.note, legato);
+    const note = ctx && ready && !muted.has(p.id) ? startNote(p, pitch) : null;
+    playing.set(p.id, {key, note, pitch, t:performance.now(), pluck:artic==="pizz"});
+  });
+  drawStage();
+}
+mc.addEventListener("voices", update);
+
+// ---------- the platform ----------
+const NS="http://www.w3.org/2000/svg";
+const el=(t,a,parent)=>{ const e=document.createElementNS(NS,t); for(const k in a) e.setAttribute(k,a[k]); (parent||$("stage")).appendChild(e); return e; };
+const IV_WORDS=["open","a semitone up","a whole tone up","a minor third up","a major third up","a fourth up","a tritone up","a fifth up","a minor sixth up","a major sixth up","a minor seventh up","a major seventh up","an octave up"];
+/** the string a player would take this note on (the one that keeps the hand lowest), and how far up it */
+function whereOn(p, pitch){
+  const n=Math.round(pitch); let s=0;
+  for(let i=0;i<4;i++) if(p.open[i]<=n) s=i;
+  const up=n-p.open[s];
+  return {string:s, text: up===0 ? `the open ${p.strings[s]} string` : up<=12 ? `${IV_WORDS[up]} the ${p.strings[s]} string` : `high on the ${p.strings[s]} string`};
+}
+let parts={};   // drawn elements per part
+function drawStage(){
+  const svg=$("stage"); svg.innerHTML="";
+  const defs=el("defs",{});
+  const pat=el("pattern",{id:"boards",width:120,height:22,patternUnits:"userSpaceOnUse"},defs);
+  el("rect",{width:120,height:22,fill:"#1D1814"},pat); el("path",{d:"M0 21.5H120M60 0V22",stroke:"#120F0C","stroke-width":1},pat);
+  el("rect",{class:"floor",x:0,y:0,width:1000,height:520});
+  parts={};
+  for(const p of PARTS){
+    const x=145+p.seat*237, big=p.scale, cy= p.id==="cello" ? 272 : 218;
+    const g=el("g",{class:"seat"+(muted.has(p.id)?" muted":""),transform:`translate(${x} ${cy})`,tabindex:0,role:"button","aria-label":`${p.name}: click to ${muted.has(p.id)?"bring back in":"rest"}`});
+    g.onclick=g.onkeydown=e=>{ if(e.type==="keydown" && e.key!=="Enter" && e.key!==" ") return; e.preventDefault?.(); toggleMute(p); };
+    const s=big*46, h=big*98;   // half width and half height of the body
+    // the body: two bouts and a waist, as a violin family outline
+    const body=`M0 ${-h} C ${s*.9} ${-h} ${s} ${-h*.7} ${s*.95} ${-h*.42} C ${s*.9} ${-h*.2} ${s*.62} ${-h*.12} ${s*.64} 0 C ${s*.66} ${h*.12} ${s*1.02} ${h*.2} ${s*1.03} ${h*.5} C ${s*1.05} ${h*.85} ${s*.7} ${h} 0 ${h} C ${-s*.7} ${h} ${-s*1.05} ${h*.85} ${-s*1.03} ${h*.5} C ${-s*1.02} ${h*.2} ${-s*.66} ${h*.12} ${-s*.64} 0 C ${-s*.62} ${-h*.12} ${-s*.9} ${-h*.2} ${-s*.95} ${-h*.42} C ${-s} ${-h*.7} ${-s*.9} ${-h} 0 ${-h} Z`;
+    el("rect",{class:"neck",x:-big*6,y:-h-big*78,width:big*12,height:big*80,rx:2},g);
+    el("ellipse",{class:"scroll",cx:0,cy:-h-big*82,rx:big*7,ry:big*9},g);
+    const bodyEl=el("path",{class:"body",d:body},g);
+    el("path",{class:"fhole",d:`M${-s*.38} ${-h*.12} c ${-s*.1} ${h*.15} ${s*.1} ${h*.3} 0 ${h*.45}`},g);
+    el("path",{class:"fhole",d:`M${s*.38} ${-h*.12} c ${s*.1} ${h*.15} ${-s*.1} ${h*.3} 0 ${h*.45}`},g);
+    el("rect",{x:-s*.3,y:h*.3,width:s*.6,height:big*4,fill:"#D4A017"},g);   // the bridge
+    const strings=[0,1,2,3].map(i=>{ const sx=(i-1.5)*big*3.4; return el("line",{class:"string",x1:sx,y1:-h-big*74,x2:sx*1.4,y2:h*.86},g); });
+    // the bow, crossing the strings between bridge and fingerboard
+    const bowg=el("g",{class:"bowgroup"},g);
+    const bow=el("line",{class:"bow",x1:-s*1.5,y1:h*.12,x2:s*1.5,y2:h*.04},bowg);
+    const hair=el("line",{class:"hair",x1:-s*1.5,y1:h*.16,x2:s*1.5,y2:h*.08},bowg);
+    const pluck=el("circle",{class:"pluck",cx:0,cy:-h*.05,r:big*8},g);
+    const nameY=h+big*22+(p.id==="cello"?0:34);
+    el("text",{class:"part",x:0,y:nameY},g).textContent=p.name;
+    const noteT=el("text",{class:"note",x:0,y:nameY+30},g);
+    const whereT=el("text",{class:"where",x:0,y:nameY+50},g);
+    parts[p.id]={g, bodyEl, strings, bowg, bow, hair, pluck, noteT, whereT, s, h, big};
+  }
+  paint();
+}
+function paint(){
+  for(const p of PARTS){
+    const d=parts[p.id], cur=playing.get(p.id); if(!d) continue;
+    d.strings.forEach(s=>s.classList.remove("lit")); d.bodyEl.classList.remove("lit");
+    if(!cur || muted.has(p.id)){ d.noteT.textContent=""; d.whereT.textContent=muted.has(p.id)?"resting":""; d.bowg.classList.remove("on"); continue; }
+    const w=whereOn(p, cur.pitch);
+    d.strings[w.string].classList.add("lit"); d.bodyEl.classList.add("lit");
+    d.noteT.textContent=spell(mod(Math.round(cur.pitch),12), mc.keyFifths)+(Math.floor(Math.round(cur.pitch)/12)-1);
+    d.whereT.textContent=w.text;
+    d.bowg.classList.toggle("on", artic!=="pizz");
+  }
+}
+// the bows move while they play: a slow stroke for arco, a shiver for tremolo; a pluck ring for pizzicato
+function animate(ts){
+  for(const p of PARTS){
+    const d=parts[p.id], cur=playing.get(p.id); if(!d) continue;
+    if(cur && !muted.has(p.id) && artic!=="pizz"){
+      const age=(ts-cur.t)/1000, phase = artic==="trem" ? Math.sin(ts/28)*.08 : Math.sin(age*1.4)*.55;
+      d.bowg.setAttribute("transform",`translate(${phase*d.s} 0)`);
+    }
+    if(cur && cur.pluck){ const age=(ts-cur.t)/1000; d.pluck.setAttribute("opacity", Math.max(0,.9-age*1.6)); d.pluck.setAttribute("r", d.big*(8+age*40)); }
+    else d.pluck.setAttribute("opacity",0);
+  }
+  requestAnimationFrame(animate);
+}
+function toggleMute(p){
+  if(muted.has(p.id)) muted.delete(p.id); else { muted.add(p.id); const cur=playing.get(p.id); if(cur && ctx) stopNote(cur.note); playing.delete(p.id); }
+  applyStrips(); drawStage(); update();
+}
+
+// ---------- controls ----------
+function seg(host, entries, current, onPick){
+  host.innerHTML="";
+  for(const [k,label] of entries){ const b=document.createElement("button"); b.textContent=label; b.setAttribute("aria-pressed", String(k===current));
+    b.onclick=()=>{ onPick(k); [...host.children].forEach(x=>x.setAttribute("aria-pressed", String(x===b))); }; host.appendChild(b); }
+}
+seg($("artic"), Object.entries(ARTICS).map(([k,v])=>[k,v.n]), artic, k=>{ artic=k; $("articNote").textContent=ARTICS[k].note; applyStrips(); rebow(); });
+$("articNote").textContent=ARTICS[artic].note;
+seg($("dyn"), DYNS.map((d,i)=>[i,d[0]]), dyn, k=>{ dyn=k; applyStrips(); });
+seg($("seating"), Object.entries(SEATINGS).map(([k,v])=>[k,v.n]), seating, k=>{ setSeating(k); $("seatNote").textContent=SEATINGS[k].note; });
+$("seatNote").textContent=SEATINGS[seating].note;
+$("hall").oninput=setHall;
+$("celloDown").onchange=e=>{ celloDown=e.target.checked; rebow(); };
+$("inRange").onchange=e=>{ inRange=e.target.checked; rebow(); };
+// a change of articulation or range takes effect on the notes already sounding
+function rebow(){ if(ctx) for(const cur of playing.values()) stopNote(cur.note, true); playing.clear(); update(); }
+
+$("start").onclick=async e=>{
+  e.target.disabled=true;
+  try{ await startAudio(); $("curtain").hidden=true; rebow(); }
+  catch(err){ $("loadNote").textContent = location.protocol==="file:" ? "The recordings can't load from a file. Serve the folder (python3 -m http.server) and open it from localhost." : "The recordings didn't load. Reload to try again."; e.target.disabled=false; }
+};
+
+// ---------- connection ----------
+mc.addEventListener("status", e=>$("status").textContent=e.detail);
+mc.addEventListener("device", paint);
+mc.addEventListener("ports", ()=>{
+  const sel=$("input"), ins=mc.inputs; sel.innerHTML=""; sel.disabled=false;
+  sel.add(new Option("Minichord chord port (auto)","auto")); sel.add(new Option("All MIDI inputs","all"));
+  ins.forEach(i=>sel.add(new Option(i.name,i.id)));
+  sel.value = [...sel.options].some(o=>o.value===mc.inputChoice) ? mc.inputChoice : "auto";
+});
+$("input").onchange=e=>mc.selectInput(e.target.value);
+$("connect").onclick=async e=>{ e.target.disabled=true; if(await mc.connect()) e.target.textContent="Connected"; else e.target.disabled=false; };
+
+// ---------- test chords, through the same path as the minichord (MPE-style, one voice a channel) ----------
+const TESTS={"C":[48,55,64,72],"Am":[45,57,60,64],"F":[41,57,60,65],"G7":[43,53,59,62],"Dm7":[50,57,60,65],"E7":[40,56,59,62]};
+let sounding=[], progTimer=null;
+function play(notes){
+  sounding.forEach(([ch,n])=>mc.handle([0x80|ch,n,0]));
+  sounding=notes.map((n,i)=>[1+i,n]);
+  sounding.forEach(([ch,n])=>mc.handle([0x90|ch,n,90]));
+}
+for(const [k,v] of Object.entries(TESTS)){ const b=document.createElement("button"); b.textContent=k; b.onclick=()=>{ clearTimeout(progTimer); play(v); }; $("tests").appendChild(b); }
+$("stop").onclick=()=>{ clearTimeout(progTimer); play([]); };
+$("prog").onclick=()=>{
+  // Pachelbel's ground, voice-led: each part moves as little as it can
+  const seq=[[48,55,64,72],[43,55,62,71],[45,57,60,69],[40,55,59,67],[41,57,60,65],[36,55,64,72],[41,57,60,69],[43,55,62,71],[48,55,64,72]];
+  let i=0; clearTimeout(progTimer);
+  const step=()=>{ play(seq[i]); i++; if(i<seq.length) progTimer=setTimeout(step,1500); else progTimer=setTimeout(()=>play([]),2200); };
+  step();
+};
+
+setSeating("classic");
+requestAnimationFrame(animate);
+</script>
+<!-- say-thanks -->
+<p style="text-align:center;margin:28px 0 18px;font-size:14px;opacity:0.8">Minichord Lab by <a href="https://keyandcable.com/projects.html" target="_blank" rel="noopener" style="color:inherit">The Key &amp; Cable Company</a> &middot; <a href="https://keyandcable.com/thanks.html" target="_blank" rel="noopener" style="color:inherit;font-weight:bold">Say thanks</a></p>
+</body>
+</html>

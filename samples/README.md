@@ -4,6 +4,12 @@
 
 License: [Creative Commons Attribution 3.0](https://creativecommons.org/licenses/by/3.0/us/), as stated by the midi-js-soundfonts project.
 
+## quartet
+
+`quartet/` holds the General MIDI violin, viola, cello, pizzicato strings (`pizz`) and tremolo strings (`trem`) from the Musyng Kite soundfont, as pre-rendered one note per file by the same project. Every second semitone across each part's range is included, named by MIDI note number, unmodified; `tools/fetch-quartet-samples.sh` fetches them. The quartet view builds its sustain loops at load time.
+
+License: [Creative Commons Attribution Share-Alike 3.0](https://creativecommons.org/licenses/by-sa/3.0/), as stated by the midi-js-soundfonts project. The share-alike terms apply to these samples and anything made from them, not to the lab's code.
+
 ## choir
 
 `choir/` holds the General MIDI "Choir Aahs" (`aah`) and "Voice Oohs" (`ooh`) instruments from three free soundfonts, as pre-rendered one note per file by the same project. Every second semitone from C2 to E6 is included, named by MIDI note number, unmodified. The choir view builds its sustain loops at load time.
