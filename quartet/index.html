@@ -7,14 +7,15 @@
 <meta name="description" content="The minichord's four chord voices played by a string quartet: cello, viola and two violins, each on its own string, with arco, pizzicato, tremolo, sul ponticello and con sordino.">
 <link rel="icon" href="../core/logo.svg" type="image/svg+xml">
 <link rel="stylesheet" href="../core/lab.css">
+<link rel="stylesheet" href="../core/music.css">
 <script src="../core/theme.js"></script>
 <style>
 /* the platform: ebony in both themes, the four players on it in ivory and brass */
 .platform{position:relative;background:#171412;border:2px solid #000;border-top:10px solid var(--felt);border-radius:2px;margin-top:14px;overflow:hidden}
 #stage{display:block;width:100%;height:auto}
 #stage .floor{fill:url(#boards)}
-#stage .body{fill:#3A2414;stroke:#D4A017;stroke-width:1.6}
-#stage .body.lit{fill:#5A3418}
+#stage .body{stroke:#D4A017;stroke-width:1.4}
+#stage .body.lit{filter:brightness(1.25)}
 #stage .fhole{fill:none;stroke:#0E0A08;stroke-width:1.6;stroke-linecap:round}
 #stage .neck{fill:#0E0A08;stroke:#D4A017;stroke-width:1}
 #stage .scroll{fill:#0E0A08;stroke:#D4A017;stroke-width:1}
@@ -44,6 +45,15 @@
 .switchrow label{display:flex;gap:8px;align-items:center}
 .switchrow input{accent-color:var(--felt);width:1.05rem;height:1.05rem}
 .tests{display:flex;flex-wrap:wrap;gap:6px;margin-top:.4rem}
+/* the score: four staves on manuscript paper, the music written in as it's played and carried off to the left */
+.scorewrap{margin-top:18px;background:var(--panel);border:1px solid var(--ink);border-radius:2px}
+#score{display:block;width:100%;height:330px}
+.scorecap{display:flex;flex-wrap:wrap;gap:8px 20px;align-items:center;justify-content:space-between;margin:.4rem 0 0}
+/* the minichord's own settings */
+.devgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px 26px;margin-top:6px}
+.devgrid .ctl{margin:0}
+.devgrid select{width:100%}
+.devgrid output{font-weight:400;color:var(--muted);margin-left:.4rem}
 </style>
 </head>
 <body>
@@ -61,12 +71,34 @@
   <p class="status" id="status">Connect the minichord, or take your seats and try the test chords below.</p>
 
   <div class="platform">
-    <svg id="stage" viewBox="0 0 1000 520" role="img" aria-label="The quartet on stage, each player's string lit as they play"></svg>
+    <svg id="stage" viewBox="0 0 1000 510" role="img" aria-label="The quartet on stage, each player's string lit as they play"></svg>
     <div class="startcurtain" id="curtain">
       <button id="start" class="primary">Take your seats</button>
       <p id="loadNote">The browser needs a click before it plays anything. The players' recordings load once you do.</p>
     </div>
   </div>
+
+  <div class="scorewrap"><canvas id="score" aria-label="An open score of the four parts, written as they play"></canvas></div>
+  <div class="scorecap">
+    <p class="fine" style="margin:0">Each part on its own staff, first violin at the top, the viola in its alto clef and the cello in bass clef, in your minichord's key signature. A note is written as it starts and drawn out as long as it lasts; a glide bends its line.</p>
+    <label class="inline" style="display:flex;gap:8px;align-items:center;color:var(--muted)">Across the page <select id="span"><option value="8">8 seconds</option><option value="14" selected>14 seconds</option><option value="24">24 seconds</option></select></label>
+  </div>
+
+  <section class="panel" id="devpanel" style="margin-top:22px">
+    <h2>On the minichord</h2>
+    <p class="status" id="devNote">Connect the minichord to set these from here.</p>
+    <div class="devgrid">
+      <div class="ctl"><span class="lbl">MPE output</span><button id="mpeBtn" disabled>Off</button></div>
+      <label class="ctl"><span class="lbl">Voice leading</span><select id="vlSel" disabled><option value="0">Off</option><option value="1">On</option><option value="2">Strict: no parallel fifths or octaves</option></select></label>
+      <label class="ctl"><span class="lbl">Leading range <output id="vlrOut"></output></span><input type="range" id="vlr" min="0" max="24" step="1" disabled></label>
+      <label class="ctl"><span class="lbl">Glide <output id="glOut"></output></span><input type="range" id="gl" min="0" max="1500" step="10" disabled></label>
+      <label class="ctl"><span class="lbl">Temperament</span><select id="temp" disabled></select></label>
+      <label class="ctl" data-fw="13"><span class="lbl">Slash voice</span><select id="slashVoice" disabled><option value="0">Off (slash level)</option><option value="1">Bass: the cello</option><option value="2">Tenor: the viola</option><option value="3">Alto: the second violin</option><option value="4">Soprano: the first violin</option></select></label>
+      <div class="ctl" data-fw="13"><span class="lbl">Re-voice</span><button id="revoiceBtn" disabled>Off</button></div>
+      <label class="ctl" data-fw="14"><span class="lbl">Cantus</span><select id="cantusSel" disabled><option value="0">Off</option><option value="1">Bass: the cello</option><option value="2">Tenor: the viola</option><option value="3">Alto: the second violin</option><option value="4">Soprano: the first violin</option><option value="5">Nearest</option></select></label>
+    </div>
+    <p class="fine">Changes here are live on the minichord and last until the preset changes; save the preset in Sound Lab to keep them. With MPE each part follows one voice, so voice leading and glide show as each player's line moving on the score. Slash voice and cantus choose which player takes a slash note or the harp's note.</p>
+  </section>
 
   <div class="desk">
     <section class="panel">
@@ -97,7 +129,7 @@
 </main>
 
 <script type="module">
-import {Minichord, spell} from "../core/minichord.js";
+import {Minichord, spell, TEMPERAMENTS} from "../core/minichord.js";
 
 const mc=new Minichord(); window.mc=mc;
 const $=id=>document.getElementById(id);
@@ -239,16 +271,18 @@ function update(){
   // with fewer than four voices, the top parts rest
   PARTS.forEach((p,i)=>{
     const v=vs[i], cur=playing.get(p.id);
-    if(!v){ if(cur){ if(ctx) stopNote(cur.note); playing.delete(p.id); } return; }
+    if(!v){ if(cur){ if(ctx) stopNote(cur.note); playing.delete(p.id); scoreEnd(p.id, performance.now()); } return; }
     const key = v.voice!=null ? `v${v.voice}:${v.note}` : `${v.ch}:${v.note}`, pitch=partPitch(p, v.pitch);
     if(cur && cur.key===key){
       if(cur.note && !cur.note.oneShot) glideTo(cur.note.src.playbackRate, Math.pow(2,(pitch-cur.note.m)/12), ctx.currentTime, .006);
+      if(Math.abs(pitch-(cur.pitch??pitch))>.01) scoreGlide(p.id, pitch, performance.now());
       cur.pitch=pitch; return;
     }
     const legato = cur && artic!=="pizz";
     if(cur && ctx) stopNote(cur.note, legato);
     const note = ctx && ready && !muted.has(p.id) ? startNote(p, pitch) : null;
-    playing.set(p.id, {key, note, pitch, t:performance.now(), pluck:artic==="pizz"});
+    const now=performance.now(); if(cur) scoreEnd(p.id, now); scoreNote(p.id, pitch, now);
+    playing.set(p.id, {key, note, pitch, t:now, pluck:artic==="pizz"});
   });
   drawStage();
 }
@@ -266,37 +300,74 @@ function whereOn(p, pitch){
   return {string:s, text: up===0 ? `the open ${p.strings[s]} string` : up<=12 ? `${IV_WORDS[up]} the ${p.strings[s]} string` : `high on the ${p.strings[s]} string`};
 }
 let parts={};   // drawn elements per part
+// A violin-family outline from its proportions, right half first and mirrored: the upper bout,
+// a pointed corner, the waist of the C-bout, the lower corner and the wider lower bout.
+// Violin, viola and cello share nearly the same proportions; what differs is the size.
+function outline(s,h){
+  const R=[ // cubic segments on the right side, top to bottom: [c1, c2, end]
+    [[.45*s,-h],[.80*s,-.86*h],[.80*s,-.58*h]],
+    [[.80*s,-.44*h],[.78*s,-.33*h],[.74*s,-.27*h]],
+    [[.60*s,-.24*h],[.54*s,-.14*h],[.54*s,-.02*h]],
+    [[.54*s,.10*h],[.66*s,.18*h],[.88*s,.20*h]],
+    [[.97*s,.26*h],[s,.36*h],[s,.52*h]],
+    [[s,.82*h],[.55*s,h],[0,h]],
+  ];
+  const f=([x,y])=>`${x.toFixed(1)} ${y.toFixed(1)}`;
+  let d=`M0 ${(-h).toFixed(1)}`;
+  for(const [c1,c2,e] of R) d+=` C${f(c1)} ${f(c2)} ${f(e)}`;
+  // back up the left side: each segment mirrored and reversed
+  const pts=[[0,-h],...R.map(r=>r[2])];
+  for(let i=R.length-1;i>=0;i--){ const [c1,c2]=R[i], start=pts[i]; d+=` C${f([-c2[0],c2[1]])} ${f([-c1[0],c1[1]])} ${f([-start[0],start[1]])}`; }
+  return d+" Z";
+}
+const SIZES={cello:{s:66,cy:262,endpin:true}, viola:{s:46,cy:200}, vln2:{s:40,cy:196}, vln1:{s:40,cy:196}};
 function drawStage(){
   const svg=$("stage"); svg.innerHTML="";
   const defs=el("defs",{});
   const pat=el("pattern",{id:"boards",width:120,height:22,patternUnits:"userSpaceOnUse"},defs);
   el("rect",{width:120,height:22,fill:"#1D1814"},pat); el("path",{d:"M0 21.5H120M60 0V22",stroke:"#120F0C","stroke-width":1},pat);
-  el("rect",{class:"floor",x:0,y:0,width:1000,height:520});
+  const varn=el("linearGradient",{id:"varnish",x1:0,y1:0,x2:1,y2:1},defs);
+  el("stop",{offset:"0","stop-color":"#6B3A1A"},varn); el("stop",{offset:".55","stop-color":"#4A2612"},varn); el("stop",{offset:"1","stop-color":"#2E170B"},varn);
+  el("rect",{class:"floor",x:0,y:0,width:1000,height:510});
   parts={};
   for(const p of PARTS){
-    const x=145+p.seat*237, big=p.scale, cy= p.id==="cello" ? 272 : 218;
+    const {s,cy,endpin}=SIZES[p.id], h=1.72*s, x=145+p.seat*237;
     const g=el("g",{class:"seat"+(muted.has(p.id)?" muted":""),transform:`translate(${x} ${cy})`,tabindex:0,role:"button","aria-label":`${p.name}: click to ${muted.has(p.id)?"bring back in":"rest"}`});
     g.onclick=g.onkeydown=e=>{ if(e.type==="keydown" && e.key!=="Enter" && e.key!==" ") return; e.preventDefault?.(); toggleMute(p); };
-    const s=big*46, h=big*98;   // half width and half height of the body
-    // the body: two bouts and a waist, as a violin family outline
-    const body=`M0 ${-h} C ${s*.9} ${-h} ${s} ${-h*.7} ${s*.95} ${-h*.42} C ${s*.9} ${-h*.2} ${s*.62} ${-h*.12} ${s*.64} 0 C ${s*.66} ${h*.12} ${s*1.02} ${h*.2} ${s*1.03} ${h*.5} C ${s*1.05} ${h*.85} ${s*.7} ${h} 0 ${h} C ${-s*.7} ${h} ${-s*1.05} ${h*.85} ${-s*1.03} ${h*.5} C ${-s*1.02} ${h*.2} ${-s*.66} ${h*.12} ${-s*.64} 0 C ${-s*.62} ${-h*.12} ${-s*.9} ${-h*.2} ${-s*.95} ${-h*.42} C ${-s} ${-h*.7} ${-s*.9} ${-h} 0 ${-h} Z`;
-    el("rect",{class:"neck",x:-big*6,y:-h-big*78,width:big*12,height:big*80,rx:2},g);
-    el("ellipse",{class:"scroll",cx:0,cy:-h-big*82,rx:big*7,ry:big*9},g);
-    const bodyEl=el("path",{class:"body",d:body},g);
-    el("path",{class:"fhole",d:`M${-s*.38} ${-h*.12} c ${-s*.1} ${h*.15} ${s*.1} ${h*.3} 0 ${h*.45}`},g);
-    el("path",{class:"fhole",d:`M${s*.38} ${-h*.12} c ${s*.1} ${h*.15} ${-s*.1} ${h*.3} 0 ${h*.45}`},g);
-    el("rect",{x:-s*.3,y:h*.3,width:s*.6,height:big*4,fill:"#D4A017"},g);   // the bridge
-    const strings=[0,1,2,3].map(i=>{ const sx=(i-1.5)*big*3.4; return el("line",{class:"string",x1:sx,y1:-h-big*74,x2:sx*1.4,y2:h*.86},g); });
-    // the bow, crossing the strings between bridge and fingerboard
-    const bowg=el("g",{class:"bowgroup"},g);
-    const bow=el("line",{class:"bow",x1:-s*1.5,y1:h*.12,x2:s*1.5,y2:h*.04},bowg);
-    const hair=el("line",{class:"hair",x1:-s*1.5,y1:h*.16,x2:s*1.5,y2:h*.08},bowg);
-    const pluck=el("circle",{class:"pluck",cx:0,cy:-h*.05,r:big*8},g);
-    const nameY=h+big*22+(p.id==="cello"?0:34);
-    el("text",{class:"part",x:0,y:nameY},g).textContent=p.name;
-    const noteT=el("text",{class:"note",x:0,y:nameY+30},g);
-    const whereT=el("text",{class:"where",x:0,y:nameY+50},g);
-    parts[p.id]={g, bodyEl, strings, bowg, bow, hair, pluck, noteT, whereT, s, h, big};
+    const neck=.74*h, nutY=-h-neck, box=.36*h;
+    if(endpin) el("line",{x1:0,y1:h,x2:0,y2:h+.3*h,stroke:"#D4A017","stroke-width":2},g);
+    // pegbox and scroll above the nut
+    el("path",{class:"scroll",d:`M${-.09*s} ${nutY} L${-.07*s} ${nutY-box} L${.07*s} ${nutY-box} L${.09*s} ${nutY} Z`},g);
+    el("circle",{class:"scroll",cx:0,cy:nutY-box-.1*s,r:.13*s},g);
+    for(const py of [.25,.55,.8]) el("line",{x1:-.18*s,y1:nutY-box*py,x2:.18*s,y2:nutY-box*py,stroke:"#0E0A08","stroke-width":2.2,"stroke-linecap":"round"},g);   // the pegs
+    const bodyEl=el("path",{class:"body",d:outline(s,h),fill:"url(#varnish)"},g);
+    el("path",{d:outline(s*.94,h*.955),fill:"none",stroke:"#D4A017","stroke-width":.6,opacity:.55},g);   // purfling
+    // the neck and fingerboard, running out over the upper bout
+    el("path",{class:"neck",d:`M${-.11*s} ${nutY} L${.11*s} ${nutY} L${.24*s} ${-.08*h} L${-.24*s} ${-.08*h} Z`},g);
+    // f-holes either side of the bridge
+    for(const sd of [-1,1]){
+      el("path",{class:"fhole",d:`M${sd*.36*s} ${-.2*h} c ${-sd*.12*s} ${.12*h} ${sd*.14*s} ${.26*h} ${sd*.02*s} ${.44*h}`},g);
+      el("circle",{cx:sd*.36*s,cy:-.2*h,r:.035*s+.6,fill:"#0E0A08"},g); el("circle",{cx:sd*.38*s,cy:.24*h,r:.035*s+.6,fill:"#0E0A08"},g);
+    }
+    // the tailpiece and the bridge
+    el("path",{class:"neck",d:`M${-.15*s} ${.46*h} L${.15*s} ${.46*h} L${.08*s} ${.9*h} L${-.08*s} ${.9*h} Z`},g);
+    const bridgeY=.1*h;
+    el("path",{d:`M${-.3*s} ${bridgeY+2} Q0 ${bridgeY-4} ${.3*s} ${bridgeY+2} L${.3*s} ${bridgeY+4} L${-.3*s} ${bridgeY+4} Z`,fill:"#E0C27A"},g);
+    // four strings, nut to bridge to tailpiece
+    const strings=[0,1,2,3].map(i=>{ const k=i-1.5;
+      return el("polyline",{class:"string",fill:"none",points:`${k*.05*s},${nutY} ${k*.14*s},${bridgeY} ${k*.07*s},${.46*h}`},g); });
+    // the bow, between the bridge and the end of the fingerboard
+    const bowg=el("g",{class:"bowgroup"},g), by=.0*h;
+    el("line",{class:"bow",x1:-1.6*s,y1:by+4,x2:1.6*s,y2:by-6},bowg);
+    el("line",{class:"hair",x1:-1.6*s,y1:by+8,x2:1.6*s,y2:by-2},bowg);
+    const pluck=el("circle",{class:"pluck",cx:0,cy:-.12*h,r:.2*s},g);
+    // the labels line up across the platform, whatever the instrument's size
+    const lab=el("g",{transform:`translate(${x} 0)`});
+    el("text",{class:"part",x:0,y:440},lab).textContent=p.name;
+    const noteT=el("text",{class:"note",x:0,y:470},lab);
+    const whereT=el("text",{class:"where",x:0,y:492},lab);
+    if(muted.has(p.id)) lab.classList.add("muted");
+    parts[p.id]={g, bodyEl, strings, bowg, pluck, noteT, whereT, s, h, big:s/40};
   }
   paint();
 }
@@ -314,6 +385,7 @@ function paint(){
 }
 // the bows move while they play: a slow stroke for arco, a shiver for tremolo; a pluck ring for pizzicato
 function animate(ts){
+  drawScore(ts);
   for(const p of PARTS){
     const d=parts[p.id], cur=playing.get(p.id); if(!d) continue;
     if(cur && !muted.has(p.id) && artic!=="pizz"){
@@ -328,6 +400,118 @@ function animate(ts){
 function toggleMute(p){
   if(muted.has(p.id)) muted.delete(p.id); else { muted.add(p.id); const cur=playing.get(p.id); if(cur && ctx) stopNote(cur.note); playing.delete(p.id); }
   applyStrips(); drawStage(); update();
+}
+
+
+// ---------- the minichord's own settings ----------
+const canWrite=()=>!!(mc.sysex && mc.out && mc.params[35]!==undefined);
+TEMPERAMENTS.forEach((n,i)=>$("temp").add(new Option(n,String(i))));
+function renderDevice(){
+  const ok=canWrite(), fw=mc.params[7]??0;
+  $("devNote").textContent = !mc.out ? "Connect the minichord to set these from here."
+    : !mc.sysex ? "Reload and allow system-exclusive MIDI access to set these from here." : ok ? "" : "Reading the minichord…";
+  document.querySelectorAll("#devpanel [data-fw]").forEach(c=>c.hidden = ok && fw<+c.dataset.fw);
+  const set=(id,v,out,fmt)=>{ const e=$(id); e.disabled=!ok || v==null; if(v!=null && document.activeElement!==e) e.value=v; if(out) $(out).textContent = v==null ? "" : fmt(+e.value); };
+  set("vlSel", ok ? Math.min(2,mc.params[111]??0) : null);
+  set("vlr", ok ? Math.min(24,mc.params[112]??12) : null, "vlrOut", v=>`${v} semitones`);
+  set("gl", ok ? Math.min(1500,mc.params[199]??0) : null, "glOut", v=>v ? `${v} ms` : "off");
+  set("temp", ok ? Math.min(TEMPERAMENTS.length-1, mc.params[237]??0) : null);
+  set("slashVoice", ok ? Math.min(4,mc.params[113]??0) : null);
+  set("cantusSel", ok ? Math.min(5,mc.params[115]??0) : null);
+  const mpe=mc.params[110]===1, rv=mc.params[114]===1;
+  $("mpeBtn").disabled=!ok; $("mpeBtn").setAttribute("aria-pressed",String(mpe)); $("mpeBtn").textContent=mpe?"On":"Off";
+  $("revoiceBtn").disabled=!ok || (mc.params[113]??0)<2; $("revoiceBtn").setAttribute("aria-pressed",String(rv)); $("revoiceBtn").textContent=rv?"On":"Off";
+}
+const write=(a,v)=>{ if(canWrite()) mc.writeParam(a,v); };
+let resyncT=null; const resync=()=>{ clearTimeout(resyncT); resyncT=setTimeout(()=>mc.requestDump(),300); };
+$("mpeBtn").onclick=()=>{ write(110, mc.params[110]===1?0:1); rebow(); resync(); };
+$("vlSel").onchange=e=>{ write(111,+e.target.value); resync(); };
+$("temp").onchange=e=>{ write(237,+e.target.value); resync(); };
+$("slashVoice").onchange=e=>{ const v=+e.target.value; write(113,v); if(v>0 && mc.params[23]!==0) write(23,0); resync(); };
+$("revoiceBtn").onclick=()=>{ write(114, mc.params[114]===1?0:1); resync(); };
+$("cantusSel").onchange=e=>{ write(115,+e.target.value); resync(); };
+for(const [id,addr] of [["vlr",112],["gl",199]]){
+  const e=$(id); let last=0;
+  e.oninput=()=>{ renderDevice(); const now=performance.now(); if(now-last>40){ last=now; write(addr,+e.value); } };
+  e.onchange=()=>{ write(addr,+e.value); resync(); };
+}
+mc.addEventListener("device", renderDevice);
+
+// ---------- the score ----------
+// Four staves, first violin at the top, in the minichord's key signature. Each note is written
+// at its start (with an accidental if the signature doesn't give it) and drawn out as a line for
+// as long as it lasts, bending with any glide, then carried off to the left.
+const STAVES=[{id:"vln1",name:"Vln. I",clef:"treble"},{id:"vln2",name:"Vln. II",clef:"treble"},{id:"viola",name:"Vla.",clef:"alto"},{id:"cello",name:"Vc.",clef:"bass"}];
+// diatonic steps (C4 = 28): the clef's glyph sits on `on`, the staff's top line is `top`; signatures are the treble's lowered by `sig`
+const CLEFS={treble:{g:"\uE050",on:32,top:38,sig:0}, alto:{g:"\uE05C",on:28,top:32,sig:7}, bass:{g:"\uE062",on:24,top:26,sig:14}};
+const SIG_SHARPS=[38,35,39,36,33,37,34], SIG_FLATS=[34,37,33,36,32,35,31];
+const LET="CDEFGAB", NATS=[0,2,4,5,7,9,11];
+const sigAcc=(li,f)=>{ const i="FCGDAEB".indexOf(LET[li]); return f>0 ? (i<f?1:0) : f<0 ? (6-i< -f ? -1 : 0) : 0; };
+const lines={};   // part id -> [{t0, t1, pts:[[t,pitch]], li, acc, dn, base}]
+let spanSecs=14;
+$("span").onchange=e=>spanSecs=+e.target.value;
+function spelled(midi){
+  const name=spell(mod(midi,12), mc.keyFifths), li=LET.indexOf(name[0]);
+  const acc=[...name.slice(1)].reduce((a,c)=>a+({"♯":1,"♭":-1,"𝄪":2,"𝄫":-2}[c]||0),0);
+  const oct=Math.floor((midi-acc)/12)-1;
+  return {li, acc, dn:oct*7+li};
+}
+function scoreNote(id, pitch, t){ const r=Math.round(pitch), sp=spelled(r); (lines[id]||=[]).push({t0:t, t1:null, pts:[[t,pitch]], base:r, ...sp}); }
+function scoreGlide(id, pitch, t){ const L=lines[id]; if(L && L.length){ const g=L[L.length-1]; if(g.t1==null) g.pts.push([t,pitch]); } }
+function scoreEnd(id, t){ const L=lines[id]; if(L && L.length){ const g=L[L.length-1]; if(g.t1==null) g.t1=t; } }
+function drawScore(now){
+  const cv=$("score"), dpr=window.devicePixelRatio||1, W=cv.clientWidth, H=cv.clientHeight;
+  if(cv.width!==Math.round(W*dpr) || cv.height!==Math.round(H*dpr)){ cv.width=Math.round(W*dpr); cv.height=Math.round(H*dpr); }
+  const c=cv.getContext("2d"); c.setTransform(dpr,0,0,dpr,0,0);
+  const css=getComputedStyle(document.documentElement), ink=css.getPropertyValue("--ink").trim(), paper=css.getPropertyValue("--panel").trim(),
+        felt=css.getPropertyValue("--felt").trim(), muted=css.getPropertyValue("--muted").trim(), rule=css.getPropertyValue("--rule").trim();
+  c.fillStyle=paper; c.fillRect(0,0,W,H);
+  const SP=7, gap=(H-24)/4, left=178, f=mc.keyFifths;
+  const top=k=>14+k*gap+ (gap-4*SP)/2, y=(k,clef,dn)=>top(k)+(CLEFS[clef].top-dn)*SP/2;
+  const pxs=(W-left-10)/(spanSecs*1000), xOf=t=>W-10-(now-t)*pxs;
+  // bar lines every two seconds, carried along with the music
+  c.strokeStyle=rule; c.lineWidth=1;
+  for(let t=Math.floor((now-spanSecs*1000)/2000)*2000; t<=now; t+=2000){ const x=xOf(t); if(x<left) continue; c.beginPath(); c.moveTo(x,top(0)); c.lineTo(x,top(3)+4*SP); c.stroke(); }
+  // the system's bracket
+  c.fillStyle=ink; c.fillRect(left-116, top(0)-2, 3, top(3)+4*SP-top(0)+4);
+  STAVES.forEach((st,k)=>{
+    const cl=CLEFS[st.clef];
+    c.strokeStyle=ink; c.lineWidth=1; c.globalAlpha=.8;
+    for(let l=0;l<5;l++){ const yy=top(k)+l*SP; c.beginPath(); c.moveTo(left-113,yy); c.lineTo(W-6,yy); c.stroke(); }
+    c.globalAlpha=1;
+    c.font=`italic 600 16px "EB Garamond",Garamond,Georgia,serif`; c.fillStyle=ink; c.textAlign="left"; c.textBaseline="middle";
+    c.fillText(st.name, 6, top(k)+2*SP);
+    c.textAlign="left"; c.textBaseline="alphabetic";
+    c.font=`${4*SP}px "Minichord Lab Music"`;
+    c.fillText(cl.g, left-106, y(k,st.clef,cl.on));
+    // the key signature
+    const n=Math.abs(f), pos=f>0?SIG_SHARPS:SIG_FLATS;
+    for(let i=0;i<n;i++) c.fillText(f>0?"\uE262":"\uE260", left-72+i*SP*.95, y(k,st.clef,pos[i]-cl.sig));
+    // the part's notes
+    c.save(); c.beginPath(); c.rect(left,0,W-left,H); c.clip();
+    for(const g of lines[st.id]||[]){
+      const x0=xOf(g.t0), x1=xOf(g.t1??now); if(x1<left) continue;
+      const yOf=p=>y(k,st.clef,g.dn)-(p-g.base)*(SP/2)*(7/12);
+      const live=g.t1==null;
+      c.strokeStyle=live?felt:ink; c.lineWidth=2.4; c.lineCap="round";
+      c.beginPath(); c.moveTo(x0,yOf(g.pts[0][1]));
+      for(const [t,p] of g.pts.slice(1)) c.lineTo(xOf(t),yOf(p));
+      c.lineTo(x1,yOf(g.pts[g.pts.length-1][1])); c.stroke();
+      if(x0<left-8) continue;
+      const yy=y(k,st.clef,g.dn);
+      // ledger lines above or below the staff
+      c.strokeStyle=ink; c.lineWidth=1;
+      for(let L=cl.top-10; L>=g.dn; L-=2){ const ly=y(k,st.clef,L); c.beginPath(); c.moveTo(x0-SP*1.1,ly); c.lineTo(x0+SP*1.1,ly); c.stroke(); }
+      for(let L=cl.top+2; L<=g.dn; L+=2){ const ly=y(k,st.clef,L); c.beginPath(); c.moveTo(x0-SP*1.1,ly); c.lineTo(x0+SP*1.1,ly); c.stroke(); }
+      c.fillStyle=live?felt:ink; c.font=`${4*SP}px "Minichord Lab Music"`; c.textAlign="center";
+      c.fillText("\uE0A4", x0, yy);
+      if(g.acc!==sigAcc(g.li,f)) c.fillText({"-1":"\uE260","0":"\uE261","1":"\uE262"}[g.acc]||"", x0-SP*1.7, yy);
+      c.textAlign="left";
+    }
+    c.restore();
+  });
+  // forget what has scrolled off
+  for(const id in lines) lines[id]=lines[id].filter(g=>g.t1==null || xOf(g.t1)>=left-40);
 }
 
 // ---------- controls ----------
@@ -345,7 +529,7 @@ $("hall").oninput=setHall;
 $("celloDown").onchange=e=>{ celloDown=e.target.checked; rebow(); };
 $("inRange").onchange=e=>{ inRange=e.target.checked; rebow(); };
 // a change of articulation or range takes effect on the notes already sounding
-function rebow(){ if(ctx) for(const cur of playing.values()) stopNote(cur.note, true); playing.clear(); update(); }
+function rebow(){ if(ctx) for(const cur of playing.values()) stopNote(cur.note, true); const now=performance.now(); for(const id of playing.keys()) scoreEnd(id,now); playing.clear(); update(); }
 
 $("start").onclick=async e=>{
   e.target.disabled=true;
@@ -356,6 +540,7 @@ $("start").onclick=async e=>{
 // ---------- connection ----------
 mc.addEventListener("status", e=>$("status").textContent=e.detail);
 mc.addEventListener("device", paint);
+renderDevice();
 mc.addEventListener("ports", ()=>{
   const sel=$("input"), ins=mc.inputs; sel.innerHTML=""; sel.disabled=false;
   sel.add(new Option("Minichord chord port (auto)","auto")); sel.add(new Option("All MIDI inputs","all"));
