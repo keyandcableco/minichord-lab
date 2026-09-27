@@ -93,6 +93,7 @@ label.inline{display:flex;align-items:center;gap:8px;color:var(--muted);font-siz
     <section class="panel">
       <h2>Reading the chart</h2>
       <p class="fine">The numerals count up the scale: capitals for major chords, small letters for minor, ° for diminished and + for augmented. In a major key the pattern is always the same: I, IV and V major, ii, iii and vi minor, vii° diminished, which is why a song's chords so often come from those seven. A chord outside the key is named for the job it's doing: a secondary dominant (V of vi) pulls toward another chord of the key; a borrowed chord comes from the parallel minor or major (♭VI from C minor in C major).</p>
+      <p class="fine">Scales of six or eight notes are counted 1 to 8 rather than in numerals. Barry Harris's sixth-diminished scales show why he built them: every other note gives the sixth chord and the diminished seventh by turns, each in all its inversions, so a melody moving through the scale is harmonized a chord a note. Play any diminished seventh and all four of its rows light, since B°7, D°7, F°7 and G♯°7 are the same four notes.</p>
     </section>
   </div>
 
@@ -124,12 +125,30 @@ function above(name, steps, semis){
 const KEY_BY_FIFTHS={"-6":"G♭","-5":"D♭","-4":"A♭","-3":"E♭","-2":"B♭","-1":"F","0":"C","1":"G","2":"D","3":"A","4":"E","5":"B","6":"F♯","7":"C♯"};
 
 // ---------- scales, and the chords they stack ----------
+// iv: semitones above the tonic. st: letters above the tonic, for scales that don't take one letter a
+// note (an eight-note scale repeats one, a six-note one skips one). g: the group in the menu.
 const SCALES=[
-  {n:"Major", iv:[0,2,4,5,7,9,11]}, {n:"Natural minor", iv:[0,2,3,5,7,8,10]},
-  {n:"Harmonic minor", iv:[0,2,3,5,7,8,11]}, {n:"Melodic minor", iv:[0,2,3,5,7,9,11]},
-  {n:"Dorian", iv:[0,2,3,5,7,9,10]}, {n:"Phrygian", iv:[0,1,3,5,7,8,10]}, {n:"Lydian", iv:[0,2,4,6,7,9,11]},
-  {n:"Mixolydian", iv:[0,2,4,5,7,9,10]}, {n:"Locrian", iv:[0,1,3,5,6,8,10]},
+  {g:"The major scale and its modes", n:"Major", iv:[0,2,4,5,7,9,11]},
+  {g:"The major scale and its modes", n:"Dorian", iv:[0,2,3,5,7,9,10]},
+  {g:"The major scale and its modes", n:"Phrygian", iv:[0,1,3,5,7,8,10]},
+  {g:"The major scale and its modes", n:"Lydian", iv:[0,2,4,6,7,9,11]},
+  {g:"The major scale and its modes", n:"Mixolydian", iv:[0,2,4,5,7,9,10]},
+  {g:"The major scale and its modes", n:"Natural minor", iv:[0,2,3,5,7,8,10]},
+  {g:"The major scale and its modes", n:"Locrian", iv:[0,1,3,5,6,8,10]},
+  {g:"Minors and their relatives", n:"Harmonic minor", iv:[0,2,3,5,7,8,11]},
+  {g:"Minors and their relatives", n:"Melodic minor", iv:[0,2,3,5,7,9,11]},
+  {g:"Minors and their relatives", n:"Phrygian dominant (flamenco)", iv:[0,1,4,5,7,8,10], note:"the fifth mode of harmonic minor: the dominant chord of a minor key as a home of its own"},
+  {g:"Minors and their relatives", n:"Harmonic major", iv:[0,2,4,5,7,8,11], note:"major with a flat sixth, so iv minor and a diminished seventh on vii live in a major key"},
+  {g:"Minors and their relatives", n:"Lydian dominant", iv:[0,2,4,6,7,9,10], note:"the fourth mode of melodic minor, the sound of a 7♯11 chord"},
+  {g:"Minors and their relatives", n:"Altered", iv:[0,1,3,4,6,8,10], note:"the seventh mode of melodic minor, every tension a dominant chord can take"},
+  {g:"Barry Harris and friends", n:"Major 6th diminished", iv:[0,2,4,5,7,8,9,11], st:[0,1,2,3,4,4,5,6], note:"Barry Harris's major scale with a passing note: its chords alternate the major sixth chord and the diminished seventh a note above"},
+  {g:"Barry Harris and friends", n:"Minor 6th diminished", iv:[0,2,3,5,7,8,9,11], st:[0,1,2,3,4,4,5,6], note:"the minor version: minor sixth chords alternating with diminished sevenths"},
+  {g:"Barry Harris and friends", n:"Bebop dominant", iv:[0,2,4,5,7,9,10,11], st:[0,1,2,3,4,5,6,6], note:"Mixolydian with the major seventh as a passing note, so the chord tones land on the beats"},
+  {g:"Barry Harris and friends", n:"Whole tone", iv:[0,2,4,6,8,10], st:[0,1,2,3,4,5], note:"six equal steps: every chord it stacks is augmented"},
 ];
+/** the scale's notes on a tonic, spelled by its letters */
+const scaleNames=(t,sc)=>sc.iv.map((x,k)=>above(t, sc.st ? sc.st[k] : k, x));
+const ORDINAL=["first","second","third","fourth","fifth","sixth","seventh","eighth"];
 // a chord by the semitones above its root: its symbol, its family (for colour and the numeral's case) and its name
 const KINDS={"0,4,7":["","major","major"],"0,3,7":["m","minor","minor"],"0,3,6":["°","dim","diminished"],"0,4,8":["+","aug","augmented"],
   "0,4,7,11":["maj7","major","major seventh"],"0,4,7,10":["7","major","dominant seventh"],"0,3,7,10":["m7","minor","minor seventh"],
@@ -144,15 +163,35 @@ function numeral(deg, kind, pre=""){
   else if(sym==="7"||sym==="m7"||sym==="+7") r+="7"; else if(sym==="m(maj7)") r+="(maj7)"; else if(sym==="6"||sym==="m6") r+="6";
   return r;
 }
-/** the chords a scale stacks in thirds: one per degree */
+const familyOf=q=> /°|ø|m7♭5/.test(q) ? "dim" : /\+/.test(q) ? "aug" : /^m(?!aj)/.test(q) ? "minor" : "major";
+/** the chords a scale stacks, every other note from each degree: one per degree. In a seven-note
+ *  scale that's thirds; in Barry Harris's eight-note scales it's the sixth chord and the diminished
+ *  seventh taking turns, inversions included (C6/E), which is the point of them. */
 function harmonize(tonic, sc, size){
-  const names=sc.iv.map((x,k)=>above(tonic,k,x));
-  return sc.iv.map((x,k)=>{
-    const ks=[0,2,4,6].slice(0,size).map(j=>k+j);
-    const semis=ks.map(j=>sc.iv[j%7]+12*Math.floor(j/7)-x);
-    const kind=KINDS[semis.join(",")] || [semis.join("-"),"other","chord"];
-    return {deg:k, root:names[k], rootOff:x, semis, tones:ks.map(j=>names[j%7]), kind, rn:numeral(k,kind), name:names[k]+kind[0]};
+  const names=scaleNames(tonic,sc), L=sc.iv.length, T=pcOfName(tonic), rows=[];
+  sc.iv.forEach((x,k)=>{
+    // every other note from this degree, without repeating a pitch class (a six-note scale comes back round)
+    const ks=[], seen=new Set();
+    for(let j=k; ks.length<size && j<k+2*L; j+=2){ const pc=sc.iv[j%L]; if(!seen.has(pc)){ seen.add(pc); ks.push(j); } }
+    const semis=ks.map(j=>sc.iv[j%L]+12*Math.floor(j/L)-x);
+    const set=[...seen].sort((a,b)=>a-b).join(",");
+    // the same notes as an earlier row: an inversion of that chord, named over this degree's note
+    // (Barry Harris's C6/E, not Am7/E)
+    const same=rows.find(r=>r.set===set);
+    let kind=KINDS[semis.join(",")], rootPc=mod(T+x,12), q, name, rootName=names[k];
+    if(same){ kind=[same.q, same.kind[1], `${same.kind[2].replace(/, inverted$/,"")}, inverted`]; q=same.q; rootPc=same.rootPc; rootName=same.rootName; name=`${same.rootName}${q}/${names[k]}`; }
+    else if(kind){ q=kind[0]; name=names[k]+q; }
+    else {
+      const id=chordId(semis.map(s=>48+T+x+s));
+      if(id){ const ri=ks.findIndex(j=>mod(T+sc.iv[j%L],12)===id.root); rootName = ri>=0 ? names[ks[ri]%L] : names[k];
+        q=id.quality; rootPc=id.root; name = id.root===mod(T+x,12) ? rootName+q : `${rootName}${q}/${names[k]}`;
+        kind=[q, familyOf(q), `${(Object.values(KINDS).find(v=>v[0]===q)||[,,"chord"])[2]}${id.root===mod(T+x,12)?"":", inverted"}`]; }
+      else { q=semis.join("-"); name=names[k]+"?"; kind=[q,"other","chord"]; }
+    }
+    const rn = L===7 ? numeral(k,kind) : String(k+1);
+    rows.push({deg:k, root:names[k], rootName, rootOff:x, rootPc, q, set, semis, tones:ks.map(j=>names[j%L]), kind, rn, name});
   });
+  return rows;
 }
 
 // ---------- state ----------
@@ -162,7 +201,9 @@ const tonic=()=> KEY_BY_FIFTHS[keyFifths()];
 { const ks=$("keysel"); ks.add(new Option("Follow the minichord","follow"));
   for(const f of [0,1,2,3,4,5,6,-1,-2,-3,-4,-5,-6]) ks.add(new Option(`${KEY_BY_FIFTHS[f]}`,String(f)));
   ks.onchange=()=>{ keyChoice=ks.value; draw(); };
-  SCALES.forEach((s,i)=>$("scalesel").add(new Option(s.n,String(i))));
+  // grouped in the menu: the modes, the minors and their relatives, Barry Harris's scales
+  const groups=new Map();
+  SCALES.forEach((s,i)=>{ if(!groups.has(s.g)){ const og=document.createElement("optgroup"); og.label=s.g; groups.set(s.g,og); $("scalesel").appendChild(og); } groups.get(s.g).appendChild(new Option(s.n,String(i))); });
   $("scalesel").onchange=e=>{ scaleIdx=+e.target.value; draw(); };
   $("size").onchange=e=>{ size=+e.target.value; draw(); }; }
 
@@ -172,12 +213,12 @@ function analyse(id, rows, t, sc){
   const isDom = sym===""||sym==="7";
   // a secondary dominant: a major or 7 chord a fifth above a chord of the key that it can resolve to
   if(isDom){
-    const target=rows.find(r=>r.deg!==0 && r.kind[1]!=="dim" && mod(r.rootOff+7,12)===off);
+    const target=rows.find(r=>r.deg!==0 && r.kind[1]!=="dim" && !r.name.includes("/") && mod(r.rootPc-pcOfName(t)+7,12)===off);
     if(target) return {root:above(target.root,4,7), rn:`${sym==="7"?"V7":"V"}/${target.rn.replace(/[0-9ø°+]|maj7|\(maj7\)/g,"")}`, why:`a secondary dominant: the V${sym==="7"?"7":""} of ${target.name}, so it pulls toward ${target.name} the way V pulls home`};
   }
   // borrowed from the parallel key (minor for a major key, major for a minor one)
   const parallel = sc.n==="Major" ? SCALES[1] : SCALES[0];
-  const prow=[...harmonize(t, parallel, 3), ...harmonize(t, parallel, 4)].find(r=>mod(pcOfName(t)+r.rootOff,12)===id.root && r.kind[0]===sym);
+  const prow=[...harmonize(t, parallel, 3), ...harmonize(t, parallel, 4)].find(r=>r.rootPc===id.root && r.q===sym);
   if(prow){
     // a root below the key's own degree is written flat: ♭VI, ♭VII in a major key
     const pre = prow.rootOff<sc.iv[prow.deg] ? "♭" : prow.rootOff>sc.iv[prow.deg] ? "♯" : "";
@@ -193,20 +234,26 @@ function cellDiv(cls, text){ const d=document.createElement("div"); d.className=
 function drawChart(){
   const t=tonic(), sc=SCALES[scaleIdx], rows=harmonize(t, sc, size), chart=$("chart"), T=pcOfName(t);
   const f=keyFifths(), follow=keyChoice==="follow";
-  $("keyline").innerHTML=`${t} ${sc.n.toLowerCase()}<small>${follow && mc.keyIndex!=null ? "from your minichord's key signature" : follow ? "C until a minichord reports its key" : "chosen here"}</small>`;
+  $("keyline").innerHTML=`${t} ${sc.n.charAt(0).toLowerCase()+sc.n.slice(1)}<small>${follow && mc.keyIndex!=null ? "from your minichord's key signature" : follow ? "C until a minichord reports its key" : "chosen here"}</small>`;
   chart.innerHTML="";
   // header: interval names, then the scale's notes in their columns
   chart.append(cellDiv("h",""));
   HEAD1.forEach((h,c)=>chart.append(cellDiv("h"+(c===12?" oct":""),h)));
   chart.append(cellDiv("h","quality"));
   chart.append(cellDiv("h","scale"));
-  const names=sc.iv.map((x,k)=>above(t,k,x));
+  const names=scaleNames(t,sc);
   for(let c=0;c<24;c++){ const k=sc.iv.indexOf(c%12); chart.append(cellDiv("sc"+(k>=0?" in":"")+(c===12?" oct":""), k>=0 ? names[k] : "·")); }
   chart.append(cellDiv("h",""));
   // held chord: which row is it, if any?
   const hid=held && held.id, hset=held ? new Set(held.pitches.map(p=>mod(Math.round(p),12))) : null;
   let match=null;
-  if(hid) match=rows.find(r=>mod(T+r.rootOff,12)===hid.root && (r.kind[0]===hid.quality || harmonize(t,sc,size===3?4:3)[r.deg].kind[0]===hid.quality));
+  // every row that is this chord (an eight-note scale has each sixth chord twice, once inverted)
+  const other=harmonize(t,sc,size===3?4:3);
+  // matched by its notes, not its name: a diminished seventh is B°7, D°7, F°7 or G♯°7 by its bass alone
+  const rowSet=r=>[...new Set(r.semis.map(x=>mod(T+r.rootOff+x,12)))].sort((a,b)=>a-b).join(",");
+  const heldSet = hset ? [...hset].sort((a,b)=>a-b).join(",") : null;
+  const matches = hid ? rows.filter((r,i)=>rowSet(r)===heldSet || rowSet(other[i])===heldSet) : [];
+  if(matches.length) match=matches[0];
   const addRow=(r, on, extra)=>{
     const lab=cellDiv("lab"+(on?" row-on":"")); lab.innerHTML=`<span class="rn">${r.rn||"chromatic"}</span><span class="nm">${r.name}</span>`; chart.append(lab);
     const cols=new Map(r.semis.map((s,i)=>[r.rootOff+s, i]));
@@ -217,7 +264,7 @@ function drawChart(){
     }
     chart.append(cellDiv("qual"+(on?" row-on":""), r.kind[2]));
   };
-  rows.forEach(r=>addRow(r, match===r));
+  rows.forEach(r=>addRow(r, matches.includes(r)));
   // a chord from outside the key gets its own row, with what it's doing there
   let outside=null;
   if(hid && !match){
@@ -239,9 +286,12 @@ function readout(match, outside, hid, t, sc, names){
   if(!hid){ $("chordName").textContent = held ? "That chord has no name here" : "Play a chord"; $("chordFn").textContent="Its place in the key shows here."; $("chordNotes").textContent=""; return; }
   if(match){
     // played as a seventh on a triad chart (or a triad on a seventh chart): name what was played
-    const m = match.kind[0]===hid.quality ? match : harmonize(t,sc,size===3?4:3)[match.deg];
-    $("chordName").textContent=m.name;
-    $("chordFn").innerHTML=`<b>${m.rn}</b> in ${t} ${sc.n.toLowerCase()}: the ${m.kind[2]} chord on the scale's ${["first","second","third","fourth","fifth","sixth","seventh"][m.deg]} note.`;
+    const T=pcOfName(t), same=r=>[...new Set(r.semis.map(x=>mod(T+r.rootOff+x,12)))].sort((a,b)=>a-b).join(",")===[...new Set(held.pitches.map(p=>mod(Math.round(p),12)))].sort((a,b)=>a-b).join(",");
+    const m = same(match) ? match : harmonize(t,sc,size===3?4:3)[match.deg];
+    // name what was played; when the chart spells the same notes from another root, say so
+    const played=spellTones(held.pitches, keyFifths()), pname=played.get(hid.root)+hid.quality;
+    $("chordName").textContent = m.rootPc===hid.root ? m.name : `${pname} = ${m.name}`;
+    $("chordFn").innerHTML=`<b>${m.rn}</b> in ${t} ${sc.n.toLowerCase()}: the ${m.kind[2]} chord on the scale's ${ORDINAL[m.deg]} note.${sc.note ? ` ${sc.n}: ${sc.note}.` : ""}`;
     $("chordNotes").textContent=`Notes: ${m.tones.join(" ")}, every one of them in the scale.`;
     return;
   }

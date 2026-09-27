@@ -13,7 +13,12 @@
 <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Source+Serif+4:opsz,wght@8..60,600..700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="core/lab.css">
 <style>
-.views{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;margin-top:22px}
+.views{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;margin-top:12px}
+/* three kinds of view, each under its own heading with a rule above it */
+.group{margin-top:34px;padding-top:18px;border-top:2px solid var(--rule)}
+.group:first-of-type{margin-top:22px}
+.grouphead{font-size:.95rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);margin:0}
+.groupblurb{color:var(--muted);margin:.2rem 0 0}
 .view{display:block;text-decoration:none;color:inherit;background:var(--panel);border:1px solid var(--rule);border-radius:12px;padding:16px 18px}
 .view:hover{border-color:var(--ink)}
 .view h2{font-family:var(--hand);font-size:2rem;line-height:1;margin:0 0 .4rem}
@@ -27,7 +32,14 @@
   <h1>Minichord Lab</h1>
   <p class="lede">Small web views that use the minichord as an interface for music theory. Each one listens to the chord buttons over MIDI, reading every voice's exact pitch, the key and the temperament, and draws what the chord is doing.</p>
 
-  <div class="views">
+  <section class="group">
+    <h2 class="grouphead">See the harmony</h2>
+    <p class="groupblurb">What the chords are and how they relate: shapes, maps and charts that fill in as you play.</p>
+    <div class="views">
+    <a class="view" href="harmony/">
+      <h2>Harmony chart</h2>
+      <p>Every chord of a key on one chart, one column per semitone, filled in from the key signature you set with the key change combo. Play a chord and its row lights up; a chord from outside the key gets its own row and a name for what it's doing.</p>
+    </a>
     <a class="view" href="clock/">
       <h2>Pitch-class clock</h2>
       <p>Every chord as a shape on a clock face. Transposing turns it, major to minor flips it, and the clock follows 19- and 31-note temperaments.</p>
@@ -36,6 +48,17 @@
       <h2>Tonnetz</h2>
       <p>Each triad lights a triangle on the map of harmony, and the trail names every P, L and R flip, beside how far your voices moved against the smoothest way.</p>
     </a>
+    <a class="view" href="geometry/">
+      <h2>Chord geometry</h2>
+      <p>Every three-note chord as a point in Tymoczko's twisted prism. Going up transposes, going across changes shape, and the line between two chords is the smoothest voice leading.</p>
+    </a>
+    </div>
+  </section>
+
+  <section class="group">
+    <h2 class="grouphead">Hear the tuning</h2>
+    <p class="groupblurb">What the temperaments do to a chord, measured and drawn.</p>
+    <div class="views">
     <a class="view" href="roughness/">
       <h2>Roughness</h2>
       <p>How rough each chord sounds in every temperament the minichord knows: one number per chord, the sweet and sour keys, and the dissonance curve behind them.</p>
@@ -44,31 +67,31 @@
       <h2>Beats</h2>
       <p>Two voices drawn against each other like an oscilloscope: still for a pure ratio, rolling when tempered. How fast every interval beats, in every temperament.</p>
     </a>
-    <a class="view" href="ear/">
-      <h2>Ear trainer</h2>
-      <p>Hear a chord or a progression in your key, then play it back on the chord buttons. It checks the chord, and the bass note if you like, with hints when you miss.</p>
-    </a>
-    <a class="view" href="geometry/">
-      <h2>Chord geometry</h2>
-      <p>Every three-note chord as a point in Tymoczko's twisted prism. Going up transposes, going across changes shape, and the line between two chords is the smoothest voice leading.</p>
-    </a>
-    <a class="view" href="stage/">
-      <h2>Stage</h2>
-      <p>Full-screen visuals for a projector at a gig: ribbons, blooms and constellations drawn live from the voices, with rough chords shimmering and sweet ones still.</p>
-    </a>
-    <a class="view" href="harmony/">
-      <h2>Harmony chart</h2>
-      <p>Every chord of a key on one chart, one column per semitone, filled in from the key signature you set with the key change combo. Play a chord and its row lights up; a chord from outside the key gets its own row and a name for what it's doing.</p>
-    </a>
+    </div>
+  </section>
+
+  <section class="group">
+    <h2 class="grouphead">Play and practise</h2>
+    <p class="groupblurb">Games, ear training, and the minichord as a choir or a light show.</p>
+    <div class="views">
     <a class="view" href="spellbound/">
       <h2>Spellbound</h2>
       <p>A game that makes you quick on the minichord: read a chord by its letters, numeral, staff or key and find it on the buttons, play scales and tunes on the harp, chain smooth voice-leading moves, or work out what a secret setting did.</p>
+    </a>
+    <a class="view" href="ear/">
+      <h2>Ear trainer</h2>
+      <p>Hear a chord or a progression in your key, then play it back on the chord buttons. It checks the chord, and the bass note if you like, with hints when you miss.</p>
     </a>
     <a class="view" href="choir/">
       <h2>Choir</h2>
       <p>Each voice of the chord sung by its own singer, with voice leading, glide and temperament controls and an MPE recorder.</p>
     </a>
-  </div>
+    <a class="view" href="stage/">
+      <h2>Stage</h2>
+      <p>Full-screen visuals for a projector at a gig: ribbons, blooms and constellations drawn live from the voices, with rough chords shimmering and sweet ones still.</p>
+    </a>
+    </div>
+  </section>
 
   <section class="next">
     <p>You'll need a minichord with the unofficial <a href="https://github.com/keyandcableco/minichord/tree/test-allFeatures">test-allFeatures firmware</a> for MPE, key and temperament, and Chrome, Edge or Opera. Every view also has test chords that work without one.</p>
