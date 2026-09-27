@@ -35,6 +35,13 @@ export class Minichord extends EventTarget {
     this.params={};               // raw values from the dump, by address
     this.notes=new Map();         // "ch:note" -> {ch, note, vel, t}
     this._frame=0; this._settle=0; this._lastChordKey="";
+    // Coming back: once a minichord has been connected on any of the Lab's pages, the next page
+    // connects by itself, as long as the browser still holds its MIDI permission. It presses the
+    // page's own Connect button, so each page sets up exactly as if you had. Run a moment later,
+    // once the page has attached its listeners.
+    setTimeout(async()=>{ if(this.midi || !(await midiRemembered())) return;
+      const b=typeof document!=="undefined" && document.getElementById("connect");
+      if(b && !b.disabled) b.click(); else this.connect(); }, 0);
   }
 
   // ---------- what the pages read ----------
@@ -70,6 +77,7 @@ export class Minichord extends EventTarget {
     }
     this.midi.onstatechange=()=>this._ports();
     this._ports();
+    try{ localStorage.setItem(MIDI_REMEMBER,"1"); }catch(e){}
     return true;
   }
   get inputs(){ return this.midi ? [...this.midi.inputs.values()] : []; }
@@ -193,6 +201,17 @@ export class Minichord extends EventTarget {
 // ---------- spelling and theory helpers shared by the views ----------
 const LETTERS=["F","C","G","D","A","E","B"];
 /** name a pitch class (0..11) the way the key would spell it, on the line of fifths */
+// Remembered across the Lab's pages: connected once, later pages reconnect by themselves while the
+// browser still grants MIDI with system-exclusive messages. A browser that can't say so never does.
+const MIDI_REMEMBER="minichord-lab-midi";
+export async function midiRemembered(){
+  try{
+    if(typeof localStorage==="undefined" || localStorage.getItem(MIDI_REMEMBER)!=="1" || !navigator.requestMIDIAccess || !navigator.permissions) return false;
+    const st=await navigator.permissions.query({name:"midi", sysex:true});
+    return st.state==="granted";
+  }catch(e){ return false; }
+}
+
 export function spell(pc, keyFifths=0){
   const centre=keyFifths+2;   // middle of the key's seven diatonic fifths
   const accOf=q=>Math.floor((q+1)/7);

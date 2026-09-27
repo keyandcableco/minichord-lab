@@ -461,7 +461,7 @@ let reverb=null, wet=null, reverbOn=false;
 let glottalWave=null;
 let ctx=null, master=null, noiseBuf=null, organWave=null, midi=null;
 const TEMPERAMENTS=["Equal","Meantone","Just","Pythagorean","Werckmeister III","Kirnberger III","Vallotti","Young","Kellner","1/6 Meantone","19-EDO","31-EDO"];
-const dev={7:null,23:null,110:null,111:null,112:null,113:null,114:null,115:null,199:null,237:null};
+const dev={7:null,23:null,35:null,110:null,111:null,112:null,113:null,114:null,115:null,199:null,237:null};
 let zoneSeen=false, out=null, sysexOK=false, deviceMpe=null, singlePort=null, zoneWatch=null;
 // the minichord's chord port (Port 1) carries the chord and the sysex; Port 2 is the harp
 const isChordPort = n => /minichord/i.test(n) && (n.includes("1") || n.trim().toLowerCase()==="minichord");
@@ -838,7 +838,50 @@ function reportParallels(notes, flags, hadPrev){
 }
 // Spelling with the choir's fixed sharps and flats: letter index (C=0) and alteration.
 const SPELL=[[0,0],[0,1],[1,0],[2,-1],[2,0],[3,0],[3,1],[4,0],[5,-1],[5,0],[6,-1],[6,0]];
-const SCORE_GLYPH={treble:"\uE050", bass:"\uE062", head:"\uE0A4", "-1":"\uE260", "0":"\uE261", "1":"\uE262"};
+// ---------- spelling a chord's notes as the chord's own ----------
+// The notes were named from one fixed list (A♭ for every G♯), so an E7 read E A♭ B D. Now a chord's
+// notes are spelled from its root, a letter a third: the chord is recognised from the pitch
+// classes sounding, its root is spelled for the minichord's key signature (C major until the
+// minichord reports one), and each other note takes the letter its interval calls for, E7 being
+// E G♯ B D. A note that isn't the chord's (a slash bass, a passing tone) is spelled for the key.
+const KEY_FIFTHS_CHOIR=[0,1,2,3,4,5,-1,-2,-3,-4,-5,-6,6,7,8,9,10,11,12,-8,-7];
+const LET="CDEFGAB", NAT=[0,2,4,5,7,9,11];
+const keyFifthsChoir=()=> dev[35]==null ? 0 : (KEY_FIFTHS_CHOIR[dev[35]] ?? 0);
+function spellForKey(pc, f){   // the spelling nearest the key on the line of fifths: [letter index, alteration]
+  const centre=f+2; let best=null;
+  const cost=q=>Math.abs(q-centre)+(Math.abs(Math.floor((q+1)/7))>=2?3:0);
+  for(let q=-15;q<=19;q++){ if(((q*7)%12+12)%12!==pc) continue; if(best===null || cost(q)<cost(best)) best=q; }
+  const i=best+1; return [LET.indexOf("FCGDAEB"[((i%7)+7)%7]), Math.floor(i/7)];   // line of fifths: F C G D A E B, then sharps
+}
+const CHORD_SHAPES=[   // intervals above the root, and the letter steps each takes
+  [[0,4,7,10],[0,2,4,6]],[[0,4,7,11],[0,2,4,6]],[[0,3,7,10],[0,2,4,6]],[[0,3,6,10],[0,2,4,6]],[[0,3,6,9],[0,2,4,6]],
+  [[0,4,7,9],[0,2,4,5]],[[0,3,7,9],[0,2,4,5]],[[0,4,8],[0,2,4]],[[0,4,7],[0,2,4]],[[0,3,7],[0,2,4]],[[0,3,6],[0,2,4]],
+  [[0,5,7],[0,3,4]],[[0,2,7],[0,1,4]],[[0,5,7,10],[0,3,4,6]]];
+/** a Map from pitch class to [letter index, alteration] for the notes sounding together */
+function chordSpelling(pitches){
+  const pcs=[...new Set(pitches.map(p=>((Math.round(p)%12)+12)%12))], bass=((Math.round(Math.min(...pitches))%12)+12)%12, f=keyFifthsChoir();
+  let best=null;
+  for(const r of pcs) for(const [iv,steps] of CHORD_SHAPES){
+    const tones=iv.map(x=>(r+x)%12);
+    const covered=pcs.filter(pc=>tones.includes(pc)).length;
+    if(covered<pcs.length || !pcs.includes((r+iv[1])%12)) continue;       // every note in the chord, and its third (or sus) there
+    const score=covered*10 - (tones.length-covered)*3 + (r===bass?2:0);
+    if(!best || score>best.score) best={r, iv, steps, score};
+  }
+  const out=new Map();
+  if(best){
+    const [rl]=spellForKey(best.r,f);
+    best.iv.forEach((x,k)=>{ const li=(rl+best.steps[k])%7, pc=(best.r+x)%12; let a=pc-NAT[li]; a=((a+6)%12+12)%12-6; out.set(pc,[li,a]); });
+  }
+  for(const pc of pcs) if(!out.has(pc)) out.set(pc, spellForKey(pc,f));
+  return out;
+}
+const ACC_TEXT={"-2":"𝄫","-1":"♭","0":"","1":"♯","2":"𝄪"};
+const spelledName=([li,a])=>LET[li]+ACC_TEXT[a];
+// the octave follows the letter: B♯3 and C4 are the same key, but B♯ belongs to octave 3
+const spelledOctave=(midi,[li,a])=>Math.floor((Math.round(midi)-a)/12)-1;
+
+const SCORE_GLYPH={treble:"\uE050", bass:"\uE062", head:"\uE0A4", "-2":"\uE264", "-1":"\uE260", "0":"\uE261", "1":"\uE262", "2":"\uE263"};
 function renderScore(){
   const svg=document.getElementById("score"), NS="http://www.w3.org/2000/svg";
   const SP=9, HW=1.18*SP, COL=5.6*SP, X0=5.2*SP, W=X0+SCORE_COLS*COL+SP;
@@ -857,10 +900,11 @@ function renderScore(){
     const x=X0+c*COL+1.6*SP;
     const flagged=new Set(); col.flags.forEach(f=>{ flagged.add(f.a); flagged.add(f.b); });
     const order=[...col.notes.keys()].sort((a,b)=>col.notes.get(a)-col.notes.get(b));
+    const spelling=chordSpelling([...col.notes.values()]);
     const nBass=Math.floor(order.length/2);
     for(const [k,group] of [["bass",order.slice(0,nBass)],["treble",order.slice(nBass)]]){
       const st=staff[k];
-      const ns=group.map(i=>{ const m=col.notes.get(i), [li,alt]=SPELL[((m%12)+12)%12]; return {i, dn:(Math.floor(m/12)-1)*7+li, alt}; });
+      const ns=group.map(i=>{ const m=col.notes.get(i), sp=spelling.get(((m%12)+12)%12)||SPELL[((m%12)+12)%12], [li,alt]=sp; return {i, dn:spelledOctave(m,sp)*7+li, alt}; });
       // the upper voice of the staff stems up, the lower down; a second puts the lower note to the right
       ns.forEach((n,j)=>{ n.up = j===ns.length-1; n.x=x; });
       if(ns.length===2 && ns[1].dn-ns[0].dn===1) ns[0].x=x+HW;
@@ -870,7 +914,7 @@ function renderScore(){
         for(let L=st.low-2; L>=n.dn; L-=2) el("line",{class:"ledger",x1:n.x-.35*SP,x2:n.x+HW+.35*SP,y1:st.y(L),y2:st.y(L)});
         for(let L=st.high+2; L<=n.dn; L+=2) el("line",{class:"ledger",x1:n.x-.35*SP,x2:n.x+HW+.35*SP,y1:st.y(L),y2:st.y(L)});
         const prevAlt=alters[k].has(n.dn) ? alters[k].get(n.dn) : 0;
-        if(n.alt!==prevAlt){ accX-=1.05*SP; el("text",{class:cls,"font-size":4*SP,x:accX,y:yy},SCORE_GLYPH[String(n.alt)]); }
+        if(n.alt!==prevAlt){ accX-=1.05*SP; el("text",{class:cls,"font-size":4*SP,x:accX,y:yy},SCORE_GLYPH[String(n.alt)]||""); }
         alters[k].set(n.dn,n.alt);
         el("text",{class:cls,"font-size":4*SP,x:n.x,y:yy},SCORE_GLYPH.head);
         const sx = n.up ? n.x+HW-.06*SP : n.x+.06*SP, sy = n.up ? yy-3.5*SP : yy+3.5*SP;
@@ -954,7 +998,7 @@ function checkSlashMove(){
       if(whole || alone){
         const slot = alone ? prev.slot : sv.i, note=slots[slot].note;
         if(!slashState) slashState={pcs:prev.pcs, slot, from: alone ? m.get(prev.slot) : slotsNoteBefore(prev, slot)};
-        slashMarks.push({t,slot,pitch:note,label:"/"+NAMES[((note%12)+12)%12]});
+        slashMarks.push({t,slot,pitch:note,label:"/"+spelledName(spellForKey(((note%12)+12)%12, keyFifthsChoir()))});
       } else if(slashState && !(m.size===1 && m.has(slashState.slot))) slashState=null;   // a new chord
     }
     if(slashMarks.length>40) slashMarks.shift();
@@ -966,7 +1010,7 @@ function checkSlashMove(){
   if(slots.filter((s,i)=>i!==k && s.key).length<2) return;
   const s=slots[k], from=m.get(k);
   if(from==null) return;
-  const name=NAMES[((s.note%12)+12)%12];
+  const name=spelledName(spellForKey(((s.note%12)+12)%12, keyFifthsChoir()));   // a slash note, spelled for the key
   if(slashState && slashState.slot===k && s.note===slashState.from){ slashMarks.push({t,slot:k,pitch:s.note,label:"back"}); slashState=null; }
   else { if(!slashState) slashState={slot:k, from}; slashMarks.push({t,slot:k,pitch:s.note,label:"/"+name}); }
   if(slashMarks.length>40) slashMarks.shift();
@@ -1018,7 +1062,15 @@ async function initMidi(){
     catch(e2){ status.innerHTML="MIDI access was blocked. If this page is shown inside another page, open it in its own tab and allow MIDI when asked."; return; }
   }
   midi.onstatechange=populateInputs; populateInputs();
+  try{ localStorage.setItem("minichord-lab-midi","1"); }catch(e){}   // the Lab's other pages reconnect by themselves after this
 }
+// Coming back: connected on any of the Lab's pages before, the choir listens again by itself while the
+// browser still grants MIDI. The sound still waits for Start, since browsers only allow it after a click.
+(async()=>{ try{
+  if(localStorage.getItem("minichord-lab-midi")!=="1" || !navigator.permissions || !navigator.requestMIDIAccess) return;
+  const st=await navigator.permissions.query({name:"midi", sysex:true});
+  if(st.state==="granted" && !midi) await initMidi();
+}catch(e){} })();
 function populateInputs(){
   const sel=document.getElementById("input"), prev=sel.value;
   const inputs=[...midi.inputs.values()];
@@ -1046,7 +1098,7 @@ function handleDump(d){
   const p=i=>d[1+2*i]+128*d[2+2*i];
   singlePort = p(108)===1;
   const mpe = p(110)===1 ? 1 : 0;
-  dev[111]=Math.min(2,p(111)); dev[112]=Math.min(24,p(112)); dev[199]=Math.min(1500,p(199)); dev[237]=Math.min(11,p(237)); dev[23]=Math.min(2,p(23)); dev[7]=p(7); dev[113]=Math.min(4,p(113)); dev[114]=p(114)?1:0; dev[115]=Math.min(5,p(115));
+  dev[35]=p(35); dev[111]=Math.min(2,p(111)); dev[112]=Math.min(24,p(112)); dev[199]=Math.min(1500,p(199)); dev[237]=Math.min(11,p(237)); dev[23]=Math.min(2,p(23)); dev[7]=p(7); dev[113]=Math.min(4,p(113)); dev[114]=p(114)?1:0; dev[115]=Math.min(5,p(115));
   if(!mpe && zone.known){ zone.known=false; zone.type="lower"; updateZoneInfo(); renderRoutes(); }
   if(mpe && !zone.known){ zone.type="lower"; zone.members = singlePort ? 15 : 4; zone.known=true; updateZoneInfo(); renderRoutes(); }
   setDeviceMpe(mpe);
@@ -1474,9 +1526,10 @@ matchMedia("(prefers-color-scheme: dark)").addEventListener("change",readColors)
 window.addEventListener("themechange",readColors);   // the Lab's light and dark button
 const view={lo:40,hi:80}; const SPAN=8000;
 const emptyEl=document.getElementById("empty");
-function noteLabel(p){
-  const r=Math.round(p), c=Math.round((p-r)*100);
-  return [NAMES[((r%12)+12)%12]+(Math.floor(r/12)-1), c ? (c>0?"+":"−")+Math.abs(c)+"¢" : ""];
+function noteLabel(p, spelling){
+  const r=Math.round(p), c=Math.round((p-r)*100), sp=spelling && spelling.get(((r%12)+12)%12);
+  const name = sp ? spelledName(sp)+spelledOctave(r,sp) : NAMES[((r%12)+12)%12]+(Math.floor(r/12)-1);
+  return [name, c ? (c>0?"+":"−")+Math.abs(c)+"¢" : ""];
 }
 let lastDraw=0, lastSample=0;
 function frame(){
@@ -1486,13 +1539,14 @@ function frame(){
   lastDraw=now;
   const sample = now-lastSample >= 33; if(sample) lastSample=now;
   let lo=1e9, hi=-1e9, any=false;
+  const sounding=slots.filter(s=>s.key).map(s=>pitchFor(s)), spelling = sounding.length>=2 ? chordSpelling(sounding) : null;
   slots.forEach(s=>{
     const p = s.key ? pitchFor(s) : null;
     const prev=s.hist[s.hist.length-1];
     if(sample || !prev || (prev[1]===null)!==(p===null)) s.hist.push([now,p]);
     while(s.hist.length && s.hist[0][0] < now-SPAN-200) s.hist.shift();
     for(const [,q] of s.hist) if(q!==null){ lo=Math.min(lo,q); hi=Math.max(hi,q); any=true; }
-    const txt = p===null ? "–|" : noteLabel(p).join("|");
+    const txt = p===null ? "–|" : noteLabel(p, spelling).join("|");
     if(txt!==s.shown){ s.shown=txt; const [a,b]=txt.split("|"); s.el.querySelector(".note span").textContent=a; s.el.querySelector(".note small").textContent=b; }
     s.el.classList.toggle("on", !!s.key);
   });
