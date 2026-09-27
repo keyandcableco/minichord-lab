@@ -1417,6 +1417,11 @@ const HC_LEVELS=[
 const HC_SCALES={"major":[0,2,4,5,7,9,11],"natural minor":[0,2,3,5,7,8,10],"harmonic minor":[0,2,3,5,7,8,11],
   "dorian":[0,2,3,5,7,9,10],"mixolydian":[0,2,4,5,7,9,10],"major pentatonic":[0,2,4,7,9],"minor pentatonic":[0,3,5,7,10]};
 const HC_DEG=["1","2","3","4","5","6","7"];
+// notes on screen at once, and how much sooner the next one comes
+const HC_DENSITY=[["FEW",2,1.4],["SOME",4,1],["MANY",7,.62],["SWARM",10,.42]];
+const hcDensity=()=>HC_DENSITY[saved.hcDensity??1]||HC_DENSITY[1];
+// hits to reach the next level: more than before, and a few more at each level
+const hcHitsToLevel=level=>14+3*level;
 const customHarp=()=>canWrite() && hasSetting(236) && (mc.params[7]??0)>9;
 const hcLevelOk=i=>{ const L=HC_LEVELS[i]; return !(L.custom && !customHarp()); };
 function genCommand(){
@@ -1450,6 +1455,7 @@ function hcNewWave(quiet){
 // set the harp for the wave: chromatic, or the scale on the key; harp mode last, so the strings retune
 function hcTuneHarp(){
   if(!canWrite()) return;
+  harpInOrder();
   const w=blast.wave;
   if(w.kind==="chrom"){ if(hasSetting(116)) borrow(116,1); borrow(98,1); if(hasSetting(36)) borrow(36, mc.params[36] ?? 0); return; }
   borrow(98,0);
@@ -1505,7 +1511,8 @@ function buildCommandField(box){
 function blastBarCommand(){
   if(!blast || blast.kind!=="command" || !blast.hud) return;
   const w=blast.wave, key = w && w.kind==="scale" ? ` · ${w.tonic} ${w.scale.toUpperCase()}` : "";
-  blast.hud.innerHTML=`<span>SCORE ${blast.score}</span><span class="lvl">LEVEL ${blast.level+1}${key}</span><span class="lives">${"♥".repeat(Math.max(0,blast.lives))||"-"}</span>`;
+  const toGo = blast.phase==="play" ? ` · NEXT ${Math.max(0,hcHitsToLevel(blast.level)-(blast.levelHits||0))}` : "";
+  blast.hud.innerHTML=`<span>SCORE ${blast.score}</span><span class="lvl">LEVEL ${blast.level+1}${key}${toGo}</span><span class="lives">${"♥".repeat(Math.max(0,blast.lives))||"-"}</span>`;
 }
 function commandMenu(over){
   const ov=document.createElement("div"); ov.className="overlay";
@@ -1526,6 +1533,8 @@ function commandMenu(over){
     r.append(l,g); ov.appendChild(r); };
   row("SPEED", SPEEDS.map(x=>x[0].toUpperCase()), ()=>+saved.speed||0, i=>{ saved.speed=i; save(); });
   row("NOTE SIZE", SIZES.map(x=>x[0]), ()=>saved.chordSize??1, i=>{ saved.chordSize=i; save(); applyChordSize(); });
+  // how many notes fall at once: more targets on the screen, more chances at the right string, at any speed
+  row("NOTES AT ONCE", HC_DENSITY.map(x=>x[0]), ()=>saved.hcDensity??1, i=>{ saved.hcDensity=i; save(); });
   const lp=document.createElement("p"); lp.className = over ? "" : "blink"; lp.textContent = over ? "OR START FROM" : "CHOOSE A LEVEL"; ov.appendChild(lp);
   const lv=document.createElement("div"); lv.className="levels";
   HC_LEVELS.forEach((L,i)=>{ const b=document.createElement("button"); const ok=hcLevelOk(i);
@@ -1542,7 +1551,7 @@ function beginCommand(level){
   cancelAnimationFrame(blast.raf); blast.last=performance.now(); blast.raf=requestAnimationFrame(commandTick);
   if(blast.overlay){ blast.overlay.remove(); blast.overlay=null; }
   blast.items.forEach(i=>i.el.remove());
-  Object.assign(blast,{items:[], score:0, lives:3, level, startLevel:level, hits:0, next:performance.now()+1400,
+  Object.assign(blast,{items:[], score:0, lives:3, level, startLevel:level, hits:0, levelHits:0, next:performance.now()+1400,
     fall:9000*Math.pow(.93,level)*speedMul(), gap:2400*Math.pow(.93,level)*speedMul(), over:false, phase:"play"});
   saved.commandStart=level; save();
   stats.streak=0; scoreboard(); hcLayout();
@@ -1594,7 +1603,8 @@ function commandTick(now){
   if(blast.fx) fxDraw(now, dt);
   if(blast.phase!=="play"){ blast.raf=requestAnimationFrame(commandTick); return; }
   const live=blast.items.filter(i=>!i.done);
-  if(now>=blast.next && live.length<5){ hcSpawn(now); blast.next=now+blast.gap*(.8+Math.random()*.4); }
+  const [,most,gapMul]=hcDensity();
+  if(now>=blast.next && live.length<most){ hcSpawn(now); blast.next=now+blast.gap*gapMul*(.8+Math.random()*.4); }
   const H=blast.field ? blast.field.clientHeight : 460;
   for(const it of live){
     const y=(now-it.t0)/blast.fall;
@@ -1640,7 +1650,9 @@ function commandNote(pc){
   blast.fx.missiles.push({x0:c.x/PX, y0:(fr.clientHeight-30)/PX, x1:x/PX, y1:y/PX, t0:performance.now(), dur:160,
     hit:()=>{ sfx(hit.bonus?"bonus":"boom"); hit.el.classList.add("gone"); setTimeout(()=>hit.el.remove(),50); explode(x,y, hit.bonus?44:26, hit.bonus?["#7FE9FF","#FFFFFF","#B9F3FF","#FFD35A"]:undefined); popup(x,y-10,`+${pts}`, hit.bonus?"#7FE9FF":undefined); }});
   blast.hits++; blast.score+=pts; stats.streak=blast.hits; scoreboard();
-  if(blast.hits%8===0){
+  blast.levelHits=(blast.levelHits||0)+1;
+  if(blast.levelHits>=hcHitsToLevel(blast.level)){
+    blast.levelHits=0;
     const was=blast.level;
     for(let n=blast.level+1;n<HC_LEVELS.length;n++) if(hcLevelOk(n)){ blast.level=n; break; }
     blast.fall=Math.max(3500*speedMul(), blast.fall*.9); blast.gap=Math.max(900*speedMul(), blast.gap*.9);
@@ -1744,8 +1756,12 @@ function kmStrip(field){
 }
 function kmFlash(strip, pc){ if(!strip) return; const c=strip.querySelector(`[data-pc="${mod(pc,12)}"]`); if(!c) return; c.classList.remove("hit"); void c.offsetWidth; c.classList.add("hit"); }
 // set the harp up as a controller: chromatic, first rank, untransposed, and as loud as the player chose
+// A preset's harp shuffling (address 40) swaps strings round, so the section you touch plays another
+// string's note: every game that reads the harp turns it off while it plays, and gives it back after.
+const harpInOrder=()=>{ if(hasSetting(40)) ensure(40,0); };
 function kmHarp(){
   if(!canWrite()) return;
+  harpInOrder();
   if(hasSetting(116)) borrow(116,1);
   borrow(98,1); if(hasSetting(36)) borrow(36, mc.params[36] ?? 0);   // harp mode written last: the strings retune
   if(hasSetting(30)) ensure(30,0);
@@ -2098,6 +2114,7 @@ function asNearest(kind){
 // the harp plays notes here, not a d-pad: chromatic from C, untransposed, at its own volume
 function asHarp(){
   if(!canWrite()) return;
+  harpInOrder();
   if(hasSetting(116)) borrow(116,1);
   borrow(98,1); if(hasSetting(36)) borrow(36, mc.params[36] ?? 0);
   if(hasSetting(30)) ensure(30,0);
@@ -4007,7 +4024,7 @@ mc.addEventListener("ports", ()=>{
 });
 $("input").onchange=e=>mc.selectInput(e.target.value);
 $("connect").onclick=async e=>{ e.target.disabled=true; piano.start(); if(await mc.connect()) e.target.textContent="Connected"; else e.target.disabled=false; };
-window.__sb={get q(){ return q; }, get arcade(){ return blast; }, get snakeReady(){ return snReady(); }, get stackReady(){ return stReadyRows(); }, stackDraw:()=>stDraw(), next:nextQuestion,
+window.__sb={get q(){ return q; }, get arcade(){ return blast; }, get snakeReady(){ return snReady(); }, get stackReady(){ return stReadyRows(); }, stackDraw:()=>stDraw(), kmControl:pc=>kmControl(pc), next:nextQuestion,
   draw:(r,qq)=>{ const t=spellChord(r,qq); if(!t) return null; FORM_STEPS=FORM[qq].map(f=>f[0]); $("staff").removeAttribute("hidden"); drawStaff(t); return t; },
   get smooth(){ return smooth; }, get simon(){ return simon; }, get dirs(){ return dirs; }, pcOf:pcOfName, answerChord, answerNote, answerKey, answerChoice, borrowed, restoreAll, pressRoot, get tune(){ return tuneState; }};
 $("prompt").textContent="Press Start";
