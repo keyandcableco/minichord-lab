@@ -213,6 +213,21 @@
 /* Chord Asteroids: labels ride the rocks, which are drawn on the canvas */
 .field.arcade .fchord.rock{transform:translate(-50%,-50%);pointer-events:none}
 .field.arcade .fchord.rock-note{font-size:calc(var(--chord-size,1.25rem)*.75)}
+
+/* Chord Stack: the board of twelve columns, its cells, and the next piece */
+.field.arcade.stack .stboard{position:absolute;z-index:2;border:2px solid rgba(241,232,210,.4);border-top:none;background:rgba(7,6,12,.55)}
+.stboard .stcell{position:absolute;box-sizing:border-box;display:flex;align-items:center;justify-content:center;font-family:"Minichord Lab Accidentals","Press Start 2P",monospace;color:#16132A;background:#F1E8D2;border:2px solid #07060C}
+.stboard .stcell.piece{background:#FFD35A}
+.stboard .stcell.ghost{background:transparent;border:2px dashed rgba(255,211,90,.45)}
+.stboard .stcell.ready{background:#7FE9FF;box-shadow:0 0 10px rgba(127,233,255,.9);animation:snready .6s steps(2) infinite}
+.stboard .stcol{position:absolute;text-align:center;font:400 .45rem/1.5 "Minichord Lab Accidentals","Press Start 2P",monospace;color:#9A93B5}
+.stboard .stcell.respelled{animation:respell .9s ease-out}
+@keyframes respell{0%{background:#FFFFFF;transform:scale(1.25)}100%{transform:scale(1)}}
+.field.arcade.stack .stnext{position:absolute;z-index:3;display:flex;flex-direction:column;gap:8px;align-items:flex-start;font:400 .55rem "Press Start 2P",monospace;color:#9A93B5}
+.stnext .stnshape{display:flex;gap:2px}
+.stnext .stnshape i{display:block;width:10px;height:14px;border:1px solid #3D3656}
+.stnext .stnshape i.on{background:#FFD35A;border-color:#FFD35A}
+.stnext .stnname{color:#FFD35A}
 /* the demo's pixel minichord */
 .overlay button.howto{border-color:#FFD35A;color:#FFD35A}
 .demo{position:absolute;inset:0;z-index:5;display:flex;flex-direction:column;justify-content:flex-start;padding:10px 14px;pointer-events:none}
@@ -296,7 +311,8 @@ details.fold[open] .nowplaying{display:none}
     <button data-mode="command">Harp Command</button>
     <button data-mode="snake">Chord Snake</button>
     <button data-mode="asteroids">Chord Asteroids</button>
-    <span class="arcadelinks">or on their own pages: <a href="../invaders/">Chord Invaders</a> · <a href="../harp-command/">Harp Command</a> · <a href="../chord-snake/">Chord Snake</a> · <a href="../chord-asteroids/">Chord Asteroids</a></span>
+    <button data-mode="stack">Chord Stack</button>
+    <span class="arcadelinks">or on their own pages: <a href="../invaders/">Chord Invaders</a> · <a href="../harp-command/">Harp Command</a> · <a href="../chord-snake/">Chord Snake</a> · <a href="../chord-asteroids/">Chord Asteroids</a> · <a href="../chord-stack/">Chord Stack</a></span>
   </div>
   <div class="modes" role="group" aria-label="Read and play">
     <span class="grp">Read and play</span>
@@ -2328,6 +2344,335 @@ function endAsDemo(token){
   blast.attract=setTimeout(()=>{ if(blast && blast.kind==="asteroids" && blast.phase==="menu" && blast.overlay && !blast.overlay.hidden) asDemo(); }, 25000);
 }
 
+
+// ---------- Chord Stack ----------
+// A falling-block game about intervals as shapes. The board is twelve columns wide, one for each
+// pitch class, C to B, and wraps round like the pitch-class clock. Each piece is a shape of notes in
+// a row, a single note, an interval, or a whole chord shape, labelled by the columns it sits over,
+// so sliding it sideways transposes it: the shape stays, the notes change. When a row's notes make
+// a chord, it glows; play that chord on the minichord and the row clears. Up (or A) flips the
+// shape, turning a major third into a minor sixth's worth of room, or a major triad into a minor
+// one; B drops it. The stack reaching the top ends the game. It steers on the harp played as a
+// d-pad, or the arrow keys.
+const ST_LEVELS=[
+  {n:"Thirds", pieces:[[0],[0,4],[0,3]], qs:["","m"]},
+  {n:"Thirds and fifths", pieces:[[0],[0,4],[0,3],[0,7]], qs:["","m"]},
+  {n:"Diminished and augmented", pieces:[[0],[0,4],[0,3],[0,7],[0,6]], qs:["","m","°","+"]},
+  {n:"Sevenths", pieces:[[0],[0,4],[0,3],[0,7],[0,10],[0,11]], qs:["","m","7","maj7","m7"]},
+  {n:"Chord shapes", pieces:[[0],[0,4],[0,3],[0,4,7],[0,3,7],[0,10],[0,11]], qs:["","m","°","+","7","maj7","m7","m7♭5","°7"]},
+];
+const ST_ROWS=14;
+const ST_Q_SETS={"":[0,4,7],"m":[0,3,7],"°":[0,3,6],"+":[0,4,8],"7":[0,4,7,10],"maj7":[0,4,7,11],"m7":[0,3,7,10],"m7♭5":[0,3,6,10],"°7":[0,3,6,9]};
+const ST_NAMES=["C","C♯","D","E♭","E","F","F♯","G","A♭","A","B♭","B"];
+const ST_INTERVAL={1:"m2",2:"M2",3:"m3",4:"M3",5:"P4",6:"TT",7:"P5",8:"m6",9:"M6",10:"m7",11:"M7"};
+function genStack(){
+  return {kind:"stack", prompt:"Chord Stack", sub:"Pieces of notes fall onto a board with a column for each note, C to B. Slide a piece sideways to transpose it; when it lands, each note falls down its column. When a row holds a chord, play it to clear those notes. A inverts, B drops, up swaps sharps and flats.",
+    answer:{type:"stack", get name(){ const r=stReadyRows()[0]; return r ? r.name : "a chord from a row"; }},
+    get hint(){ const r=stReadyRows()[0]; return r ? `Row ${ST_ROWS-r.y} spells ${r.name}.` : "Build a chord in a row: a root, a third above it, and a fifth."; },
+    context:0};
+}
+// the chord a set of pitch classes makes, if the level has one: its root, quality and name
+// The chord a row's notes hold, if the level has one: its notes all in the row, other notes or not,
+// the largest chord first (a row of D F♯ A C is D7 where sevenths count, D otherwise)
+function stChordOf(pcs){
+  if(pcs.length<3) return null;
+  const have=new Set(pcs), L=ST_LEVELS[blast.level];
+  let best=null;
+  for(const q of L.qs) for(let r=0;r<12;r++){
+    const want=ST_Q_SETS[q].map(x=>(r+x)%12);
+    if(!want.every(pc=>have.has(pc)) || (best && best.pcs.length>=want.length)) continue;
+    const tn=spellTones(ST_Q_SETS[q].map(x=>48+r+x),0);
+    best={root:r, q, pcs:want, name:(tn.get(r)||ST_NAMES[r])+q, tones:ST_Q_SETS[q].map(x=>tn.get((r+x)%12))};
+  }
+  return best;
+}
+// A row that makes a chord is matched by its notes, whatever they're called (C, E♭ and F♯ make C°), and
+// then takes the chord's own spelling, from its root: the F♯ turns into G♭ with a flash, so the
+// enharmonic change is seen. The root keeps the name it was dropped with.
+function stRespell(){
+  for(const r of stReadyRows()){
+    const row=blast.grid[r.y], rootName=(row[r.root] && row[r.root].name) || ST_NAMES[r.root];
+    const tones=spellChord(rootName, r.q) || r.tones;
+    ST_Q_SETS[r.q].forEach((iv,i)=>{ const x=(r.root+iv)%12, cell=row[x]; if(cell && tones[i] && cell.name!==tones[i]){ cell.was=cell.name; cell.name=tones[i]; cell.flash=performance.now(); } });
+    r.name=rootName+r.q;
+  }
+}
+function stReadyRows(){
+  if(!blast || blast.kind!=="stack") return [];
+  const out=[]; blast.grid.forEach((row,y)=>{ const pcs=row.map((c,x)=>c?x:-1).filter(x=>x>=0); const ch=stChordOf(pcs);
+    if(ch){ const rc=row[ch.root]; if(rc && rc.name) ch.name=rc.name+ch.q; out.push({y, ...ch}); } });
+  return out;
+}
+function startStack(){
+  blast={kind:"stack", grid:[], piece:null, next:null, score:0, lives:1, level:0, clears:0, over:true, phase:"menu", raf:0, field:null, hud:null, fx:null,
+    noShip:true, last:performance.now(), nextFall:0};
+  stDevice();
+  stats.streak=0; scoreboard(); buildSpecial();
+  stMenu();
+  blast.raf=requestAnimationFrame(stTick);
+}
+function stDevice(){
+  if(!blast || blast.kind!=="stack" || !canWrite()) return;
+  if(!blast.setupDone){ blast.setupDone=true; poll(true); kmHarp(); }
+}
+function buildStackField(box){
+  const field=document.createElement("div"); field.className="field arcade stack"; field.setAttribute("aria-label","The Chord Stack board");
+  const hud=document.createElement("div"); hud.className="hud"; field.appendChild(hud);
+  const hd=document.createElement("div"); hd.className="heard"; field.appendChild(hd);
+  const board=document.createElement("div"); board.className="stboard"; field.appendChild(board);
+  const nextBox=document.createElement("div"); nextBox.className="stnext"; field.appendChild(nextBox);
+  box.append(field);
+  if(blast && blast.kind==="stack"){
+    blast.field=field; blast.hud=hud; blast.heard=hd; blast.boardEl=board; blast.nextEl=nextBox; blast.fx=fxInit(field); blast.strip=kmStrip(field);
+    setTimeout(()=>{ stLayout(); stDraw(); });
+    if(blast.overlay) field.appendChild(blast.overlay);
+  }
+  stBar();
+}
+function stLayout(){
+  const f=blast.field, H=f.clientHeight-96, cell=Math.max(22, Math.min(36, Math.floor(H/ST_ROWS)));
+  blast.cell=cell;
+  const W=12*cell, left=Math.max(120, Math.floor((f.clientWidth-W)/2)-30);
+  blast.bx=left; blast.by=44;
+  blast.boardEl.style.cssText=`left:${left}px;top:${blast.by}px;width:${W}px;height:${ST_ROWS*cell+30}px`;
+  blast.nextEl.style.cssText=`left:${Math.max(10,left-110)}px;top:${blast.by}px`;
+}
+function stBar(){
+  if(!blast || blast.kind!=="stack" || !blast.hud) return;
+  blast.hud.innerHTML=`<span>SCORE ${blast.score}</span><span class="lvl">LEVEL ${blast.level+1} · ${ST_LEVELS[blast.level].n.toUpperCase()}</span><span>CLEARED ${blast.clears}</span>`;
+}
+function stMenu(over){
+  const ov=document.createElement("div"); ov.className="overlay";
+  const best=saved.best.stack||0;
+  if(over){
+    ov.innerHTML=`<h3 class="over">GAME OVER</h3><p>SCORE ${blast.score} · ROWS ${blast.clears} · BEST ${best}</p>`;
+    const again=document.createElement("button"); again.className="go"; again.innerHTML=`PLAY AGAIN<small>from level ${blast.startLevel+1}</small>`;
+    again.onclick=()=>beginStack(blast.startLevel); ov.appendChild(again);
+    sfx("over");
+  } else {
+    ov.innerHTML=`<h3>CHORD STACK</h3><p>ONE COLUMN FOR EACH NOTE, C TO B. SLIDE A PIECE TO TRANSPOSE IT.</p><p>NOTES FALL DOWN THEIR COLUMNS. WHEN A ROW HOLDS A CHORD, PLAY IT TO CLEAR IT.</p><p>A INVERTS · B DROPS · UP SWAPS SHARPS AND FLATS</p>`;
+    const how=document.createElement("button"); how.className="howto"; how.textContent="▶ HOW TO PLAY"; how.onclick=()=>stDemo(); ov.appendChild(how);
+  }
+  const row=(label, list, get, set)=>{ const r=document.createElement("div"); r.className="optrow"; const l=document.createElement("span"); l.className="optlabel"; l.textContent=label;
+    const g=document.createElement("div"); g.className="levels";
+    const mark=b=>{ [...g.children].forEach(x=>{ x.style.background=""; x.style.color=""; }); b.style.background="#F1E8D2"; b.style.color="#16132A"; };
+    list.forEach((n,i)=>{ const b=document.createElement("button"); b.textContent=n; if(get()===i) mark(b); b.onclick=()=>{ set(i); mark(b); }; g.appendChild(b); });
+    r.append(l,g); ov.appendChild(r); };
+  row("SPEED", SPEEDS.map(x=>x[0].toUpperCase()), ()=>+saved.speed||0, i=>{ saved.speed=i; save(); });
+  row("HARP", ["STANDARD STRIP","KEYMASTER GRID"], ()=>saved.harpLayout==="keymaster"?1:0, i=>{ saved.harpLayout = i ? "keymaster" : "strip"; save();
+    if(blast && blast.strip){ blast.strip.remove(); blast.strip=kmStrip(blast.field); } });
+  row("HARP SOUND", ["NORMAL","QUIET","OFF"], ()=>saved.harpSound??1, i=>{ saved.harpSound=i; save(); if(blast && blast.setupDone) kmHarp(); });
+  const lp=document.createElement("p"); lp.className = over ? "" : "blink"; lp.textContent = over ? "OR START FROM" : "CHOOSE A LEVEL"; ov.appendChild(lp);
+  const lv=document.createElement("div"); lv.className="levels";
+  ST_LEVELS.forEach((L,i)=>{ const b=document.createElement("button"); b.innerHTML=`${i+1}<small>${L.n}</small>`; b.onclick=()=>beginStack(i); lv.appendChild(b); });
+  ov.appendChild(lv);
+  if(!over && best){ const p=document.createElement("p"); p.textContent=`BEST ${best}`; ov.appendChild(p); }
+  if(!over) arcadeCredit(ov);
+  blast.field.appendChild(ov); blast.overlay=ov;
+  clearTimeout(blast.attract);
+  if(!over) blast.attract=setTimeout(()=>{ if(blast && blast.kind==="stack" && blast.phase==="menu" && blast.overlay===ov) stDemo(); }, 25000);
+}
+// A piece is spelled by its intervals, the way chords are built: its lowest note named for its
+// column (a black-key column as a sharp or a flat, the piece's own choice, kept as it slides), and
+// each other note the letter its interval calls for, a third two letters up, a fifth four. So a
+// minor third on E♭ is E♭ and G♭, and the same third on D♯ is D♯ and F♯.
+const ST_STEPS={1:1,2:1,3:2,4:2,5:3,6:4,7:4,8:5,9:5,10:6,11:6};   // letters above the lowest note for each interval; the tritone as a diminished fifth
+const ST_SHARPS=["C","C♯","D","D♯","E","F","F♯","G","G♯","A","A♯","B"], ST_FLATS=["C","D♭","D","E♭","E","F","G♭","G","A♭","A","B♭","B"];
+// the note d semitones above (or, if d is negative, below) a named note, a letter per step of the interval
+function stFrom(name, d){
+  if(d===0) return name;
+  const {li,acc}=parse(name), steps=Math.sign(d)*ST_STEPS[Math.abs(d)], tl=mod(li+steps,7), target=mod(NAT[li]+acc+d,12);
+  let a=mod(target-NAT[tl],12); if(a>6) a-=12;
+  return Math.abs(a)>2 ? null : LETTERS[tl]+ACC[a];
+}
+// A piece is spelled from its anchor: the note it keeps when inverted (its lowest, until it's turned
+// over), named for its column as a sharp or a flat; every other note by its interval from there.
+function stSpell(p){
+  const a=p.anchor||0, anchorName=(p.flat ? ST_FLATS : ST_SHARPS)[(p.x+a)%12];
+  return p.shape.map(o=> stFrom(anchorName, o-a) || ST_NAMES[(p.x+o)%12]);
+}
+const stRandPiece=()=>{ const L=ST_LEVELS[blast.level], shape=rnd(L.pieces); return {shape:[...shape], x:Math.floor(Math.random()*12), y:0, flat:Math.random()<.5}; };
+function beginStack(level){
+  piano.start(); stopDemo(); clearTimeout(blast.attract);
+  if(blast.overlay){ blast.overlay.remove(); blast.overlay=null; }
+  Object.assign(blast,{grid:[...Array(ST_ROWS)].map(()=>Array(12).fill(null)), score:0, level, startLevel:level, clears:0, phase:"play", over:false,
+    fallMs:760*speedMul()*Math.pow(.92,level)});
+  saved.stackStart=level; save();
+  stats.streak=0; scoreboard(); stLayout();
+  blast.next=stRandPiece(); stSpawn();
+  cancelAnimationFrame(blast.raf); blast.last=performance.now(); blast.nextFall=performance.now()+900; blast.raf=requestAnimationFrame(stTick);
+  banner(`LEVEL ${level+1}`, `${ST_LEVELS[level].n.toUpperCase()} · ${(SPEEDS[+saved.speed]||SPEEDS[0])[0].toUpperCase()}`);
+  sfx("start"); stBar(); stDraw();
+}
+const stCols=p=>p.shape.map(o=>(p.x+o)%12);
+const stFits=(p,x,y)=>y<ST_ROWS && p.shape.every(o=>!blast.grid[y][(x+o)%12]);
+function stSpawn(){
+  blast.piece=blast.next; blast.piece.y=0; blast.next=stRandPiece();
+  if(!stFits(blast.piece, blast.piece.x, 0)) return stOver();
+}
+function stTick(now){
+  if(!blast || blast.kind!=="stack") return;
+  const dt=Math.min(.05,(now-blast.last)/1000); blast.last=now;
+  if(blast.fx) fxDraw(now, dt);
+  if(blast.phase==="play" && now>=blast.nextFall){ stFall(); blast.nextFall=now+blast.fallMs; }
+  blast.raf=requestAnimationFrame(stTick);
+}
+function stFall(){
+  const p=blast.piece; if(!p) return;
+  if(stFits(p, p.x, p.y+1)){ p.y++; stDraw(); return; }
+  stLock();
+}
+// Where a note dropped in a column comes to rest: the lowest empty cell above whatever is stacked there
+const stRest=x=>{ let y=ST_ROWS-1; while(y>=0 && blast.grid[y][x]) y--; return y; };
+// every column settles, its notes falling until they land on another note or the floor
+function stGravity(){
+  for(let x=0;x<12;x++){ const col=[]; for(let y=ST_ROWS-1;y>=0;y--) if(blast.grid[y][x]) col.push(blast.grid[y][x]);
+    for(let y=ST_ROWS-1, k=0; y>=0; y--, k++) blast.grid[y][x]=col[k]||null; }
+}
+function stLock(){
+  // the piece breaks apart as it lands: each of its notes falls down its own column
+  const p=blast.piece, names=stSpell(p); let over=false;
+  stCols(p).forEach((x,i)=>{ const y=stRest(x); if(y>=0) blast.grid[y][x]={pc:x, name:names[i]}; else over=true; });
+  if(over) return stOver();
+  stRespell();
+  sfx("press");
+  const ready=stReadyRows();
+  if(ready.some(r=>r.y===p.y)) sfx("key");
+  stSpawn(); stDraw(); stBar(); setTimeout(()=>{ if(blast && blast.kind==="stack") stDraw(); }, 950);
+}
+function stMove(dx){ const p=blast.piece; if(!p) return; const nx=(p.x+dx+12)%12; if(stFits(p,nx,p.y)){ p.x=nx; stDraw(); } }
+// flip the shape: its intervals turned upside down, as a major third's room becomes a minor sixth's
+// A inverts. An interval turns upside down, its upper note now the lower: the major third C-E
+// becomes the minor sixth E-C, the same two notes, named from E. A chord shape turns over, major into minor.
+// A turns the piece over around its anchor note, the way a melody is inverted: what went up now goes
+// down. A major third above E♭ (E♭ G) becomes a major third below it (C♭ E♭, on the B column), a
+// major triad on C (C E G) becomes the minor triad on F (F A♭ C), the anchor staying where it is.
+// On a board of pitch classes this is the inversion that moves notes; turning an interval upside
+// down in the ordinary sense (C-E into E-C) leaves the same two columns.
+function stFlip(){
+  const p=blast.piece; if(!p || p.shape.length<2) return;
+  const a=p.anchor||0, ax=(p.x+a)%12, mirrored=p.shape.map(o=>a-(o-a));           // offsets from the old x, turned over
+  const lo=Math.min(...mirrored), shape=mirrored.map(o=>o-lo).sort((x,y)=>x-y);
+  const cand={...p, shape, x:mod(p.x+lo,12), anchor:mod(ax-mod(p.x+lo,12),12)};
+  if(!stFits(cand,cand.x,p.y)){ sfx("miss"); return; }
+  const was=stSpell(p).join(" ");
+  Object.assign(p,cand); sfx("press"); stDraw();
+  popup(blast.bx+(ax+.5)*blast.cell, blast.by+p.y*blast.cell-8, `${was} → ${stSpell(p).join(" ")}`, "#FFD35A");
+}
+// up swaps the piece's spelling, sharps for flats: C♯ E♯ becomes D♭ F
+function stRespellPiece(){ const p=blast.piece; if(!p) return; p.flat=!p.flat; sfx("press"); stDraw(); }
+function stDrop(){ const p=blast.piece; if(!p) return; while(stFits(p,p.x,p.y+1)) p.y++; stLock(); blast.nextFall=performance.now()+blast.fallMs; }
+function stControl(c){
+  if(!blast || blast.kind!=="stack" || blast.phase!=="play") return;
+  if(c==="left") stMove(-1); else if(c==="right") stMove(1);
+  else if(c==="down") stFall();
+  else if(c==="A") stFlip();
+  else if(c==="up") stRespellPiece();
+  else if(c==="B") stDrop();
+}
+function stackHarp(pc){
+  if(!blast || blast.kind!=="stack") return;
+  kmFlash(blast.strip, pc);
+  if(blast.phase==="demo" && blast.demo){ endStDemo(blast.demo); return; }
+  stControl(kmControl(pc));
+}
+document.addEventListener("keydown", e=>{
+  if(!q || q.kind!=="stack" || /INPUT|SELECT|TEXTAREA/.test(document.activeElement?.tagName||"")) return;
+  const c={ArrowLeft:"left",ArrowRight:"right",ArrowDown:"down",ArrowUp:"up",KeyA:"left",KeyD:"right",KeyS:"down",KeyW:"up",KeyZ:"A",Space:"B",KeyX:"B"}[e.code];   // Z inverts, space or X drops, up respells
+  if(c){ e.preventDefault(); stControl(c); }
+});
+// a chord from the buttons: clear the lowest row that spells it
+function stackChord(voices){
+  if(!blast || blast.kind!=="stack") return;
+  if(blast.phase==="demo" && blast.demo){ endStDemo(blast.demo); return; }
+  if(blast.phase!=="play") return;
+  const pitches=voices.map(v=>v.pitch), name=chordName(pitches,0);
+  const rows=stReadyRows().filter(r=>isChord(pitches, r.root, r.q)).sort((a,b)=>b.y-a.y);
+  if(!rows.length){ heard(name,false,"NO ROW SPELLS IT"); if(chordId(pitches)) later(()=>{ sfx("miss"); buzz(blast && blast.field, true); }); return; }
+  heard(name,true);
+  // every row holding this chord gives up its notes at once, with a bonus for more than one;
+  // other notes in those rows stay, and everything above falls into the gaps
+  rows.forEach(r=>{ r.pcs.forEach(x=>{ explode(blast.bx+(x+.5)*blast.cell, blast.by+(r.y+.5)*blast.cell, 8, ["#7FE9FF","#FFD35A","#FFFFFF"]); blast.grid[r.y][x]=null; }); });
+  stGravity(); stRespell();
+  const pts=rows.reduce((a,r)=>a+r.tones.length*15,0)*(blast.level+1)*rows.length;
+  blast.score+=pts; blast.clears+=rows.length; stats.streak=blast.clears; scoreboard();
+  sfx("boom"); popup(blast.bx+6*blast.cell, blast.by+rows[0].y*blast.cell, `${rows[0].name}${rows.length>1?` ×${rows.length}`:""} +${pts}`, "#FFD35A");
+  if(blast.clears>=(blast.level+1)*6 && blast.level<ST_LEVELS.length-1){ blast.level++; blast.fallMs*=.9; sfx("level"); banner(`LEVEL ${blast.level+1}`, ST_LEVELS[blast.level].n.toUpperCase()); }
+  stDraw(); stBar();
+}
+function stOver(){
+  blast.phase="over"; blast.over=true; blast.piece=null;
+  const best=Math.max(saved.best.stack||0, blast.score); saved.best.stack=best; save();
+  stDraw(); stBar(); stMenu(true);
+}
+function stDraw(){
+  if(!blast || blast.kind!=="stack" || !blast.boardEl) return;
+  const b=blast.boardEl, c=blast.cell, ready=new Set(stReadyRows().flatMap(r=>r.pcs.map(x=>r.y+","+x)));   // just the chord's notes glow
+  const cellHtml=(x,y,cls,label)=>`<span class="stcell ${cls}" style="left:${x*c}px;top:${y*c}px;width:${c}px;height:${c}px;font-size:${Math.round(c*.36)}px">${label}</span>`;
+  let h="";
+  const now=performance.now();
+  blast.grid.forEach((row,y)=>row.forEach((cell,x)=>{ if(cell) h+=cellHtml(x,y, (ready.has(y+","+x)?"ready":"")+(cell.flash && now-cell.flash<900?" respelled":""), cell.name||ST_NAMES[x]); }));
+  const p=blast.piece;
+  if(p){
+    // a ghost where it would land, then the piece itself
+    stCols(p).forEach(x=>{ const gy=stRest(x); if(gy>p.y) h+=cellHtml(x,gy,"ghost",""); });   // where each note will come to rest
+    const names=stSpell(p); stCols(p).forEach((x,i)=>{ h+=cellHtml(x,p.y,"piece",names[i]); });
+  }
+  // the column names along the foot of the board
+  for(let x=0;x<12;x++) h+=`<span class="stcol" style="left:${x*c}px;top:${ST_ROWS*c+4}px;width:${c}px">${ST_SHARPS[x]===ST_FLATS[x] ? ST_SHARPS[x] : `${ST_SHARPS[x]}<br>${ST_FLATS[x]}`}</span>`;
+  b.innerHTML=h;
+  // the next piece, with its interval named
+  if(blast.nextEl && blast.next){
+    const n=blast.next, span=Math.max(...n.shape);
+    blast.nextEl.innerHTML=`<span class="stnlabel">NEXT</span><span class="stnshape">${[...Array(span+1)].map((_,i)=>`<i class="${n.shape.includes(i)?"on":""}"></i>`).join("")}</span><span class="stnname">${n.shape.length===1?"A NOTE":n.shape.length===2?ST_INTERVAL[n.shape[1]]:({"0,4,7":"MAJOR","0,3,7":"MINOR"})[n.shape.join()]||"CHORD"}</span>`;
+  }
+}
+
+// ---------- Chord Stack's demo ----------
+function stDemo(){
+  if(!blast || blast.kind!=="stack") return;
+  stopDemo(); clearTimeout(blast.attract); piano.start();
+  if(blast.overlay) blast.overlay.hidden=true;
+  blast.phase="demo"; stLayout();
+  blast.grid=[...Array(ST_ROWS)].map(()=>Array(12).fill(null)); blast.level=0;
+  const el=document.createElement("div"); el.className="demo"; blast.field.appendChild(el); blast.field.classList.add("demoing");
+  const token={run:true, el}; blast.demo=token;
+  el.innerHTML=`<div class="demohead"><span class="demotag blink">DEMO</span><span class="demotitle"></span><button class="demoskip">SKIP ▶</button></div><p class="democap"></p>`;
+  el.querySelector(".demoskip").onclick=()=>endStDemo(token);
+  const $d=s=>el.querySelector(s), sleep=ms=>new Promise(r=>setTimeout(r,ms)), say=(t,c)=>{ $d(".demotitle").textContent=t||""; $d(".democap").textContent=c; };
+  const play=notes=>{ if(settings.sounds && piano.ctx){ const go=()=>piano.play(notes,{when:.02,dur:1.1}); piano.ctx.state==="running"?go():piano.ctx.resume().then(go).catch(()=>{}); } };
+  sfx("attract");
+  (async()=>{
+    const step=async ms=>{ await sleep(ms); if(!token.run) throw 0; };
+    const fall=async n=>{ for(let k=0;k<n;k++){ if(stFits(blast.piece,blast.piece.x,blast.piece.y+1)){ blast.piece.y++; stDraw(); } await step(110); } };
+    try{
+      say("CHORD STACK","TWELVE COLUMNS, ONE FOR EACH NOTE, C TO B, WRAPPING ROUND."); stDraw(); await step(3200);
+      blast.piece={shape:[0,4], x:5, y:0}; blast.next={shape:[0], x:0, y:0}; stDraw();
+      say("TRANSPOSE","A MAJOR THIRD FALLS: F AND A. SLIDE IT AND IT'S STILL A MAJOR THIRD, NOW E AND G♯, NOW C AND E."); await fall(3);
+      for(const x of [4,3,2,1,0]){ blast.piece.x=x; stDraw(); sfx("press"); await step(420); }
+      await step(600); say("DROP","B DROPS IT."); blast.piece.y=ST_ROWS-1; stCols(blast.piece).forEach((x,i)=>blast.grid[ST_ROWS-1][x]={pc:x, name:stSpell(blast.piece)[i]}); blast.piece=null; sfx("press"); stDraw(); await step(1500);
+      blast.piece={shape:[0], x:10, y:0}; blast.next={shape:[0,3], x:0, y:0}; stDraw();
+      say("FINISH THE CHORD","A SINGLE NOTE: SLIDE IT TO G AND DROP IT BESIDE C AND E."); await fall(2);
+      for(const x of [9,8,7]){ blast.piece.x=x; stDraw(); sfx("press"); await step(420); }
+      await step(500); blast.grid[ST_ROWS-1][7]={pc:7, name:"G"}; blast.piece=null; sfx("key"); stDraw();
+      say("PLAY IT","C, E AND G GLOW: THAT ROW SPELLS C MAJOR."); await step(2600);
+      say("CLEAR","PLAY C ON THE MINICHORD AND THE ROW CLEARS."); await step(900);
+      play([48,52,55,60]); for(let x=0;x<12;x++) if(blast.grid[ST_ROWS-1][x]) explode(blast.bx+(x+.5)*blast.cell, blast.by+(ST_ROWS-.5)*blast.cell, 10, ["#7FE9FF","#FFD35A","#FFFFFF"]);
+      blast.grid[ST_ROWS-1]=Array(12).fill(null); sfx("boom"); stDraw(); await step(2000);
+      say("INVERT","A TURNS A PIECE OVER ON ITS FIRST NOTE: E♭ UP TO G BECOMES E♭ DOWN TO C♭, AND A MAJOR CHORD TURNS MINOR. UP SWAPS SHARPS FOR FLATS."); await step(4200);
+      say("READY?","CHOOSE A LEVEL. DON'T LET THE STACK REACH THE TOP."); sfx("level"); await step(2600);
+      endStDemo(token);
+    }catch(e){ /* skipped */ }
+  })();
+}
+function endStDemo(token){
+  if(!blast || blast.demo!==token) return;
+  stopDemo(); blast.phase="menu"; blast.piece=null; blast.grid=[...Array(ST_ROWS)].map(()=>Array(12).fill(null)); stDraw();
+  if(blast.overlay) blast.overlay.hidden=false;
+  clearTimeout(blast.attract);
+  blast.attract=setTimeout(()=>{ if(blast && blast.kind==="stack" && blast.phase==="menu" && blast.overlay && !blast.overlay.hidden) stDemo(); }, 25000);
+}
+
 // ---------- Chord Invaders' own sounds ----------
 // Chiptune effects from square waves and noise, only in this game and only with sounds on:
 // a laser for each shot, a crunchy burst for each hit, a sparkle for a ★, a thud for a miss,
@@ -2815,11 +3160,11 @@ function blasterChord(voices){
   }
   blastBar();
 }
-const GENS={spell:genSpell, command:genCommand, snake:genSnake, asteroids:genAsteroids, hidden:genHidden, oddone:genOddOne, shades:genShades, reshape:genReshape, blaster:genBlaster, diatonic:genDiatonic, numeral:genNumeral, staff:genStaff, slash:genSlash, key:genKey, harp:genHarp, missing:genMissing,
+const GENS={spell:genSpell, command:genCommand, snake:genSnake, asteroids:genAsteroids, stack:genStack, hidden:genHidden, oddone:genOddOne, shades:genShades, reshape:genReshape, blaster:genBlaster, diatonic:genDiatonic, numeral:genNumeral, staff:genStaff, slash:genSlash, key:genKey, harp:genHarp, missing:genMissing,
   melody:genMelody, chordscale:genChordScale, smooth:genSmooth, whichvoice:genWhichVoice, simon:genSimon, directions:genDirections, pluckchord:genPluckChord, buildscale:genBuildScale,
   scale:genScale, transpose:genTranspose, temper:genTemper, tune:genTune};
 const MYSTERY=new Set(["scale","transpose","temper","tune"]);
-const LABELS={spell:"Spell it", hidden:"Hidden layout", oddone:"Odd one out", shades:"Shades of the third", reshape:"Reshape", blaster:"Chord Invaders", command:"Harp Command", snake:"Chord Snake", asteroids:"Chord Asteroids", diatonic:"Seven chords", numeral:"Numerals", staff:"On the staff", slash:"Slash chords", key:"Key detective", harp:"Harp hunt", missing:"Missing note", mix:"Mix",
+const LABELS={spell:"Spell it", hidden:"Hidden layout", oddone:"Odd one out", shades:"Shades of the third", reshape:"Reshape", blaster:"Chord Invaders", command:"Harp Command", snake:"Chord Snake", asteroids:"Chord Asteroids", stack:"Chord Stack", diatonic:"Seven chords", numeral:"Numerals", staff:"On the staff", slash:"Slash chords", key:"Key detective", harp:"Harp hunt", missing:"Missing note", mix:"Mix",
   melody:"Play by number", chordscale:"Chord scales", smooth:"Smooth moves", whichvoice:"Which voice moved?", simon:"Simon says", directions:"Follow the directions", pluckchord:"Pluck the chord", buildscale:"Build the scale",
   scale:"Scale detective", transpose:"Transpose detective", temper:"Temperament taster", tune:"Tune up"};
 
@@ -2869,7 +3214,7 @@ if(!LABELS[settings.mode]) settings.mode="spell";
 // A link can open one game directly, ?game=invaders (or any game's name, like ?game=reshape),
 // and ?solo shows that game on its own, without the menu, the settings or the answer area.
 const urlParams=new URLSearchParams(location.search);
-const GAME_SLUGS={invaders:"blaster", "chord-invaders":"blaster", "harp-command":"command", harpcommand:"command", "chord-snake":"snake", "chord-asteroids":"asteroids", asteroids:"asteroids", sevenchords:"diatonic", layout:"hidden"};
+const GAME_SLUGS={invaders:"blaster", "chord-invaders":"blaster", "harp-command":"command", harpcommand:"command", "chord-snake":"snake", "chord-asteroids":"asteroids", asteroids:"asteroids", "chord-stack":"stack", sevenchords:"diatonic", layout:"hidden"};
 { const g=(urlParams.get("game")||"").toLowerCase(), k=GAME_SLUGS[g]||g; if(LABELS[k]) settings.mode=k; }
 const solo=urlParams.has("solo") && LABELS[settings.mode] && !!urlParams.get("game");
 if(!SETS[settings.set] || settings.set==="alt") settings.set="standard";
@@ -3098,6 +3443,7 @@ function nextQuestion(){
   if(q.kind==="command") startCommand();
   if(q.kind==="snake") startSnake();
   if(q.kind==="asteroids") startAsteroids();
+  if(q.kind==="stack") startStack();
   if(q.kind==="simon") setTimeout(simonPlay,700);
 }
 function feedback(text,kind="",small=""){ const f=$("feedback"); f.className="feedback "+kind; f.textContent=text; if(small){ const s=document.createElement("small"); s.textContent=small; f.appendChild(s); } }
@@ -3199,6 +3545,7 @@ function answerChord(voices){
   if(q.answer.type==="command") return;                  // the harp answers Harp Command, not the chords
   if(q.answer.type==="snake") return snakeChord(voices);
   if(q.answer.type==="asteroids") return asteroidsChord(voices);
+  if(q.answer.type==="stack") return stackChord(voices);
   if(q.answer.type==="diatonic") return answerDiatonic(voices);
   if(q.answer.type==="reshape") return answerReshape(voices);
   if(q.answer.type==="alt") return answerAltChord(voices);
@@ -3231,6 +3578,7 @@ function answerNote(pc, pickedName){
   if(q && q.kind==="command") return commandNote(pc);
   if(q && q.kind==="snake") return snakeHarp(pc);
   if(q && q.kind==="asteroids") return asteroidsNote(pc);
+  if(q && q.kind==="stack") return stackHarp(pc);
   if(!q || solved) return;
   if(q.answer.type==="note" && pc===q.answer.pc && pickedName && q.answer.name && pickedName!==q.answer.name)
     return correct(`Right note: ${q.answer.name}. Here it's spelled ${q.answer.name}, not ${pickedName}.`);
@@ -3396,10 +3744,11 @@ async function startTones(){
   if(!canWrite()){ tones.sim=make((tuneState.secret+tuneState.nudge)/10,.1,settings.tuneWave); tones.push(tones.sim); }   // no minichord: simulate it
 }
 function buildSpecial(){
-  const box=$("special"); box.innerHTML=""; box.hidden = !(q && ["tune","melody","smooth","simon","directions","pluckchord","buildscale","blaster","command","snake","asteroids","diatonic","reshape","hidden","oddone","shades"].includes(q.kind)); if(box.hidden) return;
+  const box=$("special"); box.innerHTML=""; box.hidden = !(q && ["tune","melody","smooth","simon","directions","pluckchord","buildscale","blaster","command","snake","asteroids","stack","diatonic","reshape","hidden","oddone","shades"].includes(q.kind)); if(box.hidden) return;
   if(q.kind==="command"){ buildCommandField(box); return; }
   if(q.kind==="snake"){ buildSnakeField(box); return; }
   if(q.kind==="asteroids"){ buildAsteroidsField(box); return; }
+  if(q.kind==="stack"){ buildStackField(box); return; }
   if(q.kind==="blaster"){
     const field=document.createElement("div"); field.className="field arcade"; field.setAttribute("aria-label","Falling chords");
     const ground=document.createElement("div"); ground.className="ground"; field.appendChild(ground);
@@ -3511,7 +3860,7 @@ function setMode(m){
   $("nowPlaying").textContent = `Playing: ${LABELS[m]||m}`;
   settings.mode=m; save();
   document.querySelectorAll(".modes button[data-mode]").forEach(x=>x.setAttribute("aria-pressed",x.dataset.mode===m));
-  $("sprint").disabled = MYSTERY.has(m) || m==="blaster" || m==="command" || m==="snake" || m==="asteroids";
+  $("sprint").disabled = MYSTERY.has(m) || m==="blaster" || m==="command" || m==="snake" || m==="asteroids" || m==="stack";
   stats.streak=0; scoreboard(); nextQuestion();
   if(switching){
     const back=restoreExcept(new Set([...(q.needs||[]).map(n=>n.addr), ...(q.borrows||[]), ...roundBorrows, 31]));   // keep what the new game uses
@@ -3521,7 +3870,7 @@ function setMode(m){
   }
 }
 document.querySelectorAll(".modes button[data-mode]").forEach(b=>{ b.setAttribute("aria-pressed", b.dataset.mode===settings.mode); b.onclick=()=>setMode(b.dataset.mode); });
-$("sprint").disabled = MYSTERY.has(settings.mode) || settings.mode==="blaster" || settings.mode==="command" || settings.mode==="snake" || settings.mode==="asteroids";
+$("sprint").disabled = MYSTERY.has(settings.mode) || settings.mode==="blaster" || settings.mode==="command" || settings.mode==="snake" || settings.mode==="asteroids" || settings.mode==="stack";
 $("nowPlaying").textContent = `Playing: ${LABELS[settings.mode]||settings.mode}`;
 for(const [id,key] of [["gameMenu","menuOpen"]]){
   const d=$(id); if(saved[key]===false) d.open=false;
@@ -3574,6 +3923,7 @@ mc.addEventListener("device", ()=>{
   if(blast && blast.kind==="command") commandDevice();
   else if(blast && blast.kind==="snake") snDevice();
   else if(blast && blast.kind==="asteroids") asDevice();
+  else if(blast && blast.kind==="stack") stDevice();
   else if(blast){ blastSetup(); if(blast.phase!=="play") blastHomeKey(); blastKey(); }
   if(q && !solved && !rebuilding) applyNeeds();
   mine(); needs();
@@ -3594,7 +3944,7 @@ mc.addEventListener("ports", ()=>{
 });
 $("input").onchange=e=>mc.selectInput(e.target.value);
 $("connect").onclick=async e=>{ e.target.disabled=true; piano.start(); if(await mc.connect()) e.target.textContent="Connected"; else e.target.disabled=false; };
-window.__sb={get q(){ return q; }, get arcade(){ return blast; }, get snakeReady(){ return snReady(); }, next:nextQuestion,
+window.__sb={get q(){ return q; }, get arcade(){ return blast; }, get snakeReady(){ return snReady(); }, get stackReady(){ return stReadyRows(); }, stackDraw:()=>stDraw(), next:nextQuestion,
   draw:(r,qq)=>{ const t=spellChord(r,qq); if(!t) return null; FORM_STEPS=FORM[qq].map(f=>f[0]); $("staff").removeAttribute("hidden"); drawStaff(t); return t; },
   get smooth(){ return smooth; }, get simon(){ return simon; }, get dirs(){ return dirs; }, pcOf:pcOfName, answerChord, answerNote, answerKey, answerChoice, borrowed, restoreAll, pressRoot, get tune(){ return tuneState; }};
 $("prompt").textContent="Press Start";
