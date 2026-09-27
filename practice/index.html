@@ -169,6 +169,7 @@
 .overlay button.go{background:var(--felt);border-color:#FFD35A;color:#FFF8E7;font-size:.8rem;padding:.7rem 1.1rem}
 .overlay button small{display:block;font-size:.45rem;color:#9A93B5;margin-top:5px}
 .overlay button:disabled{opacity:.4;cursor:default}
+.overlay p.padhint{font-size:.45rem;color:#8A83A8;max-width:70ch;line-height:1.8}
 .overlay p.credit{margin-top:6px;font-size:.5rem;color:#8A83A8;letter-spacing:.04em}
 .overlay p.credit a{color:#FFD35A;text-decoration:none;border-bottom:2px solid rgba(255,211,90,.35)}
 .overlay p.credit a:hover,.overlay p.credit a:focus-visible{color:#FFF4C2;border-bottom-color:#FFD35A}
@@ -228,6 +229,13 @@
 .stnext .stnshape i{display:block;width:10px;height:14px;border:1px solid #3D3656}
 .stnext .stnshape i.on{background:#FFD35A;border-color:#FFD35A}
 .stnext .stnname{color:#FFD35A}
+
+/* full screen: a small button in the corner, and the field filling the screen when it's on */
+.fullbtn{position:absolute;right:8px;top:30px;z-index:9;font:400 .8rem "Press Start 2P",monospace;line-height:1;background:rgba(22,19,42,.8);color:#F1E8D2;border:2px solid #5A5470;border-radius:0;padding:.3rem .4rem;cursor:pointer}
+.fullbtn:hover{border-color:#FFD35A;color:#FFD35A}
+.field.arcade:fullscreen{width:100vw;height:100vh;max-width:none;border:none;border-top:8px solid var(--felt)}
+.field.arcade:-webkit-full-screen{width:100vw;height:100vh;max-width:none;border:none;border-top:8px solid var(--felt)}
+.field.arcade:fullscreen .overlay h3{font-size:2.2rem}
 /* the demo's pixel minichord */
 .overlay button.howto{border-color:#FFD35A;color:#FFD35A}
 .demo{position:absolute;inset:0;z-index:5;display:flex;flex-direction:column;justify-content:flex-start;padding:10px 14px;pointer-events:none}
@@ -418,6 +426,7 @@ details.fold[open] .nowplaying{display:none}
         <label>Scales <select id="scaleset"><option value="everyday">Everyday scales</option><option value="modes">The seven modes</option><option value="exotic">Exotic scales</option><option value="all">All of them</option></select></label>
         <label>Directions <select id="dirset"><option value="steps">Half and whole steps</option><option value="thirds">Plus thirds</option><option value="fifths">Plus fourths and fifths</option><option value="all">Plus sixths and the tritone</option></select></label>
         <label>Key <select id="keysrc"><option value="follow">The minichord's key</option><option value="random">A different key each time</option><option value="set">A new key each time, set on the minichord</option></select></label>
+        <label>Double tap on the modifier <select id="modTap"><option value="on">Flips it between sharp and flat</option><option value="off">Leave it as my preset has it</option></select></label>
         <label>After a right answer <select id="advance"><option value="quick">Move on quickly</option><option value="slow">Move on after a few seconds</option><option value="wait">Wait for Next</option></select></label>
         <label>Text size <select id="textSize"><option value="1">Normal</option><option value="1.2">Larger</option><option value="1.4">Largest</option></select></label>
         <label>Prompt font <select id="promptFont"><option value="serif">Serif</option><option value="plain">Plain and extra legible</option></select></label>
@@ -1496,7 +1505,7 @@ function commandDevice(){
 function buildCommandField(box){
   const field=document.createElement("div"); field.className="field arcade command"; field.setAttribute("aria-label","Falling notes over twelve cannons");
   const ground=document.createElement("div"); ground.className="ground"; field.appendChild(ground);
-  const hud=document.createElement("div"); hud.className="hud"; field.appendChild(hud);
+  const hud=document.createElement("div"); hud.className="hud"; field.appendChild(hud); fullButton(field);
   const hd=document.createElement("div"); hd.className="heard"; field.appendChild(hd);
   const labels=document.createElement("div"); labels.className="strings"; field.appendChild(labels);
   box.append(field);
@@ -1541,6 +1550,7 @@ function commandMenu(over){
     b.innerHTML=`${i+1}<small>${L.n}${ok?"":"<br>NEEDS THE TEST FIRMWARE"}</small>`; b.disabled=!ok; b.onclick=()=>beginCommand(i); lv.appendChild(b); });
   ov.appendChild(lv); blast.menuSig=HC_LEVELS.map((_,i)=>hcLevelOk(i)).join();
   if(!over && best){ const p=document.createElement("p"); p.textContent=`BEST ${best}`; ov.appendChild(p); }
+  arcadeKeys(ov);
   if(!over) arcadeCredit(ov);
   blast.field.appendChild(ov); blast.overlay=ov;
   clearTimeout(blast.attract);
@@ -1805,8 +1815,10 @@ function snReady(){
 // the board: a grid of cells, beside the controller strip
 function snLayout(){
   const f=blast.field, W=f.clientWidth-(kmLayout().cols===3 ? 150 : 84), H=f.clientHeight-64;   // room on the right for the controller
-  const cell=Math.max(24, Math.min(34, Math.floor(Math.min(W/24, H/15))));
-  blast.cell=cell; blast.cols=Math.floor(W/cell); blast.rows=Math.floor(H/cell);
+  let cell;
+  if(blast.phase==="play" && blast.cols){ cell=Math.max(12, Math.floor(Math.min(W/blast.cols, H/blast.rows))); }   // mid-game the board keeps its cells and only scales
+  else { cell=Math.max(24, Math.min(34, Math.floor(Math.min(W/24, H/15)))); blast.cols=Math.floor(W/cell); blast.rows=Math.floor(H/cell); }
+  blast.cell=cell;
   blast.ox=Math.floor((W-blast.cols*cell)/2)+8; blast.oy=40+Math.floor((H-blast.rows*cell)/2);
   blast.boardEl.style.cssText=`left:${blast.ox}px;top:${blast.oy}px;width:${blast.cols*cell}px;height:${blast.rows*cell}px`;
 }
@@ -1828,7 +1840,7 @@ function snDevice(){
 const snLevelOk=i=> !SN_LEVELS[i].barry || canWrite();
 function buildSnakeField(box){
   const field=document.createElement("div"); field.className="field arcade snake"; field.setAttribute("aria-label","The Chord Snake board");
-  const hud=document.createElement("div"); hud.className="hud"; field.appendChild(hud);
+  const hud=document.createElement("div"); hud.className="hud"; field.appendChild(hud); fullButton(field);
   const hd=document.createElement("div"); hd.className="heard"; field.appendChild(hd);
   const board=document.createElement("div"); board.className="snboard"; field.appendChild(board);
   box.append(field);
@@ -1871,6 +1883,7 @@ function snMenu(over){
     b.innerHTML=`${i+1}<small>${L.n}${ok?"":"<br>NEEDS A MINICHORD"}</small>`; b.disabled=!ok; b.onclick=()=>beginSnake(i); lv.appendChild(b); });
   ov.appendChild(lv); blast.menuSig=SN_LEVELS.map((_,i)=>snLevelOk(i)).join();
   if(!over && best){ const p=document.createElement("p"); p.textContent=`BEST ${best}`; ov.appendChild(p); }
+  arcadeKeys(ov);
   if(!over) arcadeCredit(ov);
   blast.field.appendChild(ov); blast.overlay=ov;
   clearTimeout(blast.attract);
@@ -2135,7 +2148,7 @@ function asDevice(){
 }
 function buildAsteroidsField(box){
   const field=document.createElement("div"); field.className="field arcade asteroids"; field.setAttribute("aria-label","The Chord Asteroids field");
-  const hud=document.createElement("div"); hud.className="hud"; field.appendChild(hud);
+  const hud=document.createElement("div"); hud.className="hud"; field.appendChild(hud); fullButton(field);
   const hd=document.createElement("div"); hd.className="heard"; field.appendChild(hd);
   box.append(field);
   if(blast && blast.kind==="asteroids"){
@@ -2176,6 +2189,7 @@ function asMenu(over){
     b.innerHTML=`${i+1}<small>${L.n}${ok?"":"<br>NEEDS A MINICHORD"}</small>`; b.disabled=!ok; b.onclick=()=>beginAsteroids(i); lv.appendChild(b); });
   ov.appendChild(lv); blast.menuSig=AS_LEVELS.map((_,i)=>asLevelOk(i)).join();
   if(!over && best){ const p=document.createElement("p"); p.textContent=`BEST ${best}`; ov.appendChild(p); }
+  arcadeKeys(ov);
   if(!over) arcadeCredit(ov);
   blast.field.appendChild(ov); blast.overlay=ov;
   clearTimeout(blast.attract);
@@ -2442,7 +2456,7 @@ function stDevice(){
 }
 function buildStackField(box){
   const field=document.createElement("div"); field.className="field arcade stack"; field.setAttribute("aria-label","The Chord Stack board");
-  const hud=document.createElement("div"); hud.className="hud"; field.appendChild(hud);
+  const hud=document.createElement("div"); hud.className="hud"; field.appendChild(hud); fullButton(field);
   const hd=document.createElement("div"); hd.className="heard"; field.appendChild(hd);
   const board=document.createElement("div"); board.className="stboard"; field.appendChild(board);
   const nextBox=document.createElement("div"); nextBox.className="stnext"; field.appendChild(nextBox);
@@ -2492,6 +2506,7 @@ function stMenu(over){
   ST_LEVELS.forEach((L,i)=>{ const b=document.createElement("button"); b.innerHTML=`${i+1}<small>${L.n}</small>`; b.onclick=()=>beginStack(i); lv.appendChild(b); });
   ov.appendChild(lv);
   if(!over && best){ const p=document.createElement("p"); p.textContent=`BEST ${best}`; ov.appendChild(p); }
+  arcadeKeys(ov);
   if(!over) arcadeCredit(ov);
   blast.field.appendChild(ov); blast.overlay=ov;
   clearTimeout(blast.attract);
@@ -2699,6 +2714,71 @@ function endStDemo(token){
 }
 
 
+
+// ---------- the title screens, from the chord buttons ----------
+// An arcade game's title and game over screens can be run from the minichord alone. The chord
+// buttons' columns, F C G D A E B from the left, count 1 to 7: a column's major button starts that
+// level, its minor button sets that speed, and its 7 button switches to that arcade game. The key
+// signature's sharps and flats don't matter; the column is read from the chord's letter.
+const ARCADE_GAMES=["blaster","command","snake","asteroids","stack"];
+const COLUMN_LETTERS="FCGDAEB";
+function arcadeMenuChord(voices){
+  if(!blast || !["menu","over"].includes(blast.phase) || !blast.overlay || blast.overlay.hidden) return false;
+  const id=chordId(voices.map(v=>v.pitch)); if(!id) return true;
+  const col=COLUMN_LETTERS.indexOf(spell(id.root, devFifths())[0]);   // 0 to 6
+  if(col<0) return true;
+  const ov=blast.overlay, rowOf=label=>[...ov.querySelectorAll(".optrow")].find(r=>r.querySelector(".optlabel")?.textContent===label);
+  const row = ["","6"].includes(id.quality) ? "major" : ["m","m6"].includes(id.quality) ? "minor" : id.quality==="7" ? "seven" : null;
+  if(row==="major"){ const b=[...ov.querySelectorAll(".levels")].pop().querySelectorAll("button")[col]; if(b && !b.disabled) b.click(); }
+  else if(row==="minor"){ const r=rowOf("SPEED"), b=r && r.querySelectorAll("button")[col]; if(b){ b.click(); sfx("press"); } }
+  else if(row==="seven"){ const g=ARCADE_GAMES[col]; if(g && g!==settings.mode) arcadeSwitch(g); }
+  return true;
+}
+function arcadeSwitch(g){
+  if(solo) location.href=`?game=${g}&solo`;       // the stand-alone page becomes the other game's; the minichord reconnects by itself
+  else setMode(g);
+}
+// the line on each title screen that says so
+function arcadeKeys(ov){
+  const p=document.createElement("p"); p.className="padhint";
+  p.textContent="ON THE MINICHORD: A COLUMN'S MAJOR BUTTON STARTS THAT LEVEL · MINOR SETS THE SPEED · 7 SWITCHES GAME";
+  ov.appendChild(p);
+}
+
+
+// ---------- full screen ----------
+// Any arcade game can fill the screen, from the button at the field's top right or F on the keyboard
+// (not from a chord, so a chord can't do it by accident). The field
+// itself goes full screen, title screens and demos with it, and each game lays itself out again for
+// the new size, and again on the way back.
+function fullButton(field){
+  const b=document.createElement("button"); b.className="fullbtn"; b.type="button";
+  const label=()=>{ const on=document.fullscreenElement===field || document.webkitFullscreenElement===field; b.textContent = on ? "✕" : "⛶"; b.title = on ? "Leave full screen (F)" : "Full screen (F)"; b.setAttribute("aria-label", b.title); };
+  b.onclick=()=>toggleFull(field); label(); field.appendChild(b);
+  field._fullLabel=label;
+}
+function toggleFull(field){
+  field = field || (blast && blast.field); if(!field) return;
+  const on=document.fullscreenElement || document.webkitFullscreenElement;
+  if(on) (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+  else (field.requestFullscreen || field.webkitRequestFullscreen || (()=>{})).call(field);
+}
+function arcadeRelayout(){
+  if(!blast || !blast.field) return;
+  if(blast.field._fullLabel) blast.field._fullLabel();
+  const k=blast.kind;
+  if(k==="snake"){ snLayout(); snDraw(); }
+  else if(k==="stack"){ stLayout(); stDraw(); }
+  else if(k==="asteroids") asCentre();
+  else if(k==="command"){ hcLayout(); hcLabels(); }
+}
+for(const ev of ["fullscreenchange","webkitfullscreenchange"]) document.addEventListener(ev, ()=>setTimeout(arcadeRelayout,60));
+window.addEventListener("resize", ()=>setTimeout(arcadeRelayout,60));
+document.addEventListener("keydown", e=>{
+  if(e.code!=="KeyF" || e.repeat || !blast || !blast.field || /INPUT|SELECT|TEXTAREA/.test(document.activeElement?.tagName||"")) return;
+  e.preventDefault(); toggleFull(blast.field);
+});
+
 // ---------- Chord Invaders' own sounds ----------
 // Chiptune effects from square waves and noise, only in this game and only with sounds on:
 // a laser for each shot, a crunchy burst for each hit, a sparkle for a ★, a thud for a miss,
@@ -2804,6 +2884,7 @@ function blastMenu(over){
     const b=document.createElement("button"); b.innerHTML=`${i+1}<small>${n}${ok?"":"<br>NEEDS THE TEST FIRMWARE"}</small>`; b.disabled=!ok; b.onclick=()=>beginBlast(i); lv.appendChild(b); });
   ov.appendChild(lv);
   if(!over && best) { const p=document.createElement("p"); p.textContent=`BEST ${best}`; ov.appendChild(p); }
+  arcadeKeys(ov);
   if(!over) arcadeCredit(ov);
   blast.field.appendChild(ov); blast.overlay=ov;
   // attract mode: left on the title screen, the cabinet plays its demo, as arcade machines do
@@ -3265,6 +3346,18 @@ function borrow(addr,value){
   if(!(addr in borrowed)) borrowed[addr]=mc.params[addr] ?? 0;
   mc.writeParam(addr,value);
   $("restore").hidden=false; mine();
+  if(addr===31) modTap();
+}
+// The double tap, two quick taps of the modifier, flips it between sharp and flat, so a player can
+// switch without reaching for the mouse. The firmware's double tap sets one setting (address 200)
+// to a value (201), and a second double tap puts it back: so the game points it at the modifier and
+// gives it the other direction from the one set now, again whenever it sets the modifier. The
+// player's own double tap goes back when they leave.
+function modTap(){
+  if(settings.modTap==="off" || !canWrite() || !hasSetting(200) || !hasSetting(31)) return;
+  if(mc.params[200]!==31) borrow(200,31);
+  const flip=mc.params[31]===1 ? 0 : 1;
+  if(mc.params[201]!==flip) borrow(201,flip);
 }
 function restoreAll(){
   const back=Object.entries(borrowed);
@@ -3286,7 +3379,7 @@ $("restore").onclick=()=>{ userRestored=true; restoreAll(); needs(); feedback("Y
 addEventListener("pagehide", restoreAll);
 
 // ---------- settings and scores (remembered) ----------
-const settings={mode:"spell", set:"standard", order:"ordered", doubles:"off", secondary:"off", keysrc:"follow", scaleset:"everyday", dirset:"steps", sounds:true, tuneWave:"sine", blastStart:"1", advance:"slow", textSize:"1", promptFont:"serif", reshapeLevel:"1", hiddenPool:"basic", shadesMode:"order"};
+const settings={mode:"spell", set:"standard", order:"ordered", doubles:"off", secondary:"off", keysrc:"follow", scaleset:"everyday", dirset:"steps", sounds:true, tuneWave:"sine", blastStart:"1", advance:"slow", textSize:"1", promptFont:"serif", reshapeLevel:"1", hiddenPool:"basic", shadesMode:"order", modTap:"on"};
 const saved={best:{}, sprint:{}};
 // saved under its old name, so settings and best scores carry over from when it was Spellbound
 try{ const s=JSON.parse(localStorage.getItem("lab-spellbound")||"{}"); Object.assign(settings,s.settings||{}); Object.assign(saved,s.saved||{}); }catch(e){}
@@ -3299,7 +3392,7 @@ const GAME_SLUGS={invaders:"blaster", "chord-invaders":"blaster", "harp-command"
 const solo=urlParams.has("solo") && LABELS[settings.mode] && !!urlParams.get("game");
 if(!SETS[settings.set] || settings.set==="alt") settings.set="standard";
 const save=()=>{ try{ localStorage.setItem("lab-spellbound",JSON.stringify({settings,saved})); }catch(e){} };
-for(const id of ["set","order","doubles","secondary","keysrc","scaleset","dirset","advance","textSize","promptFont","reshapeLevel","hiddenPool","shadesMode"]){ $(id).value=settings[id]; $(id).onchange=e=>{ settings[id]=e.target.value; save(); buildPicker(); applyDisplay(); }; }
+for(const id of ["set","order","doubles","secondary","keysrc","scaleset","dirset","advance","textSize","promptFont","reshapeLevel","hiddenPool","shadesMode","modTap"]){ $(id).value=settings[id]; $(id).onchange=e=>{ settings[id]=e.target.value; save(); buildPicker(); applyDisplay(); }; }
 // Display: the whole page scales with the text size, and the plain font swaps the serif of
 // prompts and chord names for Atkinson Hyperlegible
 function applyDisplay(){
@@ -3515,6 +3608,7 @@ function nextQuestion(){
   // every other game plays the standard chords, whether a layout game or the double tap left the alternate on
   if(!(q.needs||[]).some(n=>n.addr===39) && canWrite() && mc.params[39]!==undefined) q.needs=[...q.needs, STANDARD_LAYOUT];
   applyNeeds();
+  modTap();                                   // the double tap flips the modifier in every game
   modifierFor(q.answer.spellRoot || q.answer.tonicName || q.pressRoot);
   modPill();
   barryFor(q.answer.q!=null ? q.answer.q : (q.answer.type==="key" || q.pressRoot) ? "" : q.barry);
@@ -3621,6 +3715,7 @@ function later(fn){
 function answerChord(voices){
   clearTimeout(pendingWrong); pendingWrong=null;
   if(!q || solved) return;
+  if(arcadeMenuChord(voices)) return;            // an arcade title screen, played from the buttons
   if(q.answer.type==="blaster") return blasterChord(voices);
   if(q.answer.type==="command") return;                  // the harp answers Harp Command, not the chords
   if(q.answer.type==="snake") return snakeChord(voices);
@@ -3832,7 +3927,7 @@ function buildSpecial(){
   if(q.kind==="blaster"){
     const field=document.createElement("div"); field.className="field arcade"; field.setAttribute("aria-label","Falling chords");
     const ground=document.createElement("div"); ground.className="ground"; field.appendChild(ground);
-    const hud=document.createElement("div"); hud.className="hud"; field.appendChild(hud);
+    const hud=document.createElement("div"); hud.className="hud"; field.appendChild(hud); fullButton(field);
     const hd=document.createElement("div"); hd.className="heard"; field.appendChild(hd);
     box.append(field);
     if(blast){ blast.items.filter(i=>!i.done).forEach(i=>field.appendChild(i.el)); blast.field=field; setTimeout(applyChordSize); blast.hud=hud; blast.heard=hd; blast.fx=fxInit(field); if(blast.overlay) field.appendChild(blast.overlay); }
@@ -4000,6 +4095,7 @@ function mine(){
 
 // ---------- connection ----------
 mc.addEventListener("device", ()=>{
+  if(q && settings.modTap!=="off" && canWrite() && mc.params[200]!==31) modTap();   // set it up once connected
   if(blast && blast.kind==="command") commandDevice();
   else if(blast && blast.kind==="snake") snDevice();
   else if(blast && blast.kind==="asteroids") asDevice();
