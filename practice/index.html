@@ -1375,12 +1375,7 @@ function startBlaster(){
   blast={items:[], score:0, lives:3, level:0, hits:0, dir: f<0 ? -1 : f>0 ? 1 : (Math.random()<.5?1:-1),
     next:0, fall:9000, gap:2600, over:true, phase:"menu", raf:0, field:null, hud:null,
     barry:false, pauseForBarry:false, keyBar:null, keyTarget:null, fx:null, last:performance.now()};
-  if(canWrite()){
-    ensure(31, blast.dir>0 ? 0 : 1);
-    if(slashReady()) ensure(113,1);   // for the slash levels, the slash note in the bass
-    if(mc.params[35]!=null && !(35 in borrowed)) borrow(35,mc.params[35]);   // the key you change it to goes back when you leave
-    poll(true);                                             // read the key signature as you change it
-  }
+  blastSetup(); blastHomeKey();
   modPill();
   stats.streak=0; scoreboard(); buildSpecial();
   blastMenu();
@@ -1540,12 +1535,32 @@ function beginBlast(level){
   if(BLAST_LEVELS[level].barry && !blast.barry){ blast.barry=true; ensure(33,1); modPill(); }
   // every game starts in C major, whatever key the last one ended in, so the first chords are the
   // plain buttons; the player's own key goes back when they leave
-  if(canWrite() && hasSetting(35)){ ensure(35, keyIndexOf(0)); blast.dir = Math.random()<.5 ? 1 : -1; ensure(31, blast.dir>0 ? 0 : 1); modPill(); }
+  blastSetup();
+  if(canWrite() && hasSetting(35)){ borrow(35, keyIndexOf(0)); blast.dir = Math.random()<.5 ? 1 : -1; ensure(31, blast.dir>0 ? 0 : 1); modPill(); }   // written every time, whatever the page last read
   settings.blastStart=String(level+1); save();
   stats.streak=0; scoreboard(); blastBar();
   banner(`LEVEL ${level+1}`, `${LEVEL_NAMES[level].toUpperCase()} · ${(SPEEDS[+saved.speed]||SPEEDS[0])[0].toUpperCase()}`);
   sfx("start");
   if(canWrite()) poll(true);
+}
+// The minichord's side of the game, whenever the minichord is there: when the game opens with it
+// already connected, or when it connects later (the page opened on its own, then Connect). Keeps
+// the player's own key signature to give back, sets the modifier and slash voice, and reads the
+// settings every second so a key set with the combo is seen.
+function blastSetup(){
+  if(!blast || !canWrite() || blast.setupDone) return;
+  blast.setupDone=true;
+  if(!(35 in borrowed)) borrow(35, mc.params[35]);           // the key you change it to goes back when you leave
+  ensure(31, blast.dir>0 ? 0 : 1);
+  if(slashReady()) ensure(113,1);                             // for the slash levels, the slash note in the bass
+  poll(true);
+  modPill();
+}
+// Between games (the title screen, the demo, game over) the key signature is C major, so the
+// first chords of the next game are plain buttons. During a game it's the player's to change.
+function blastHomeKey(){
+  if(!blast || !canWrite() || !hasSetting(35) || mc.params[35]===keyIndexOf(0)) return;
+  borrow(35, keyIndexOf(0)); modPill();
 }
 function stopBlaster(){ if(blast){ stopDemo(); clearTimeout(blast.attract); blast.over=true; cancelAnimationFrame(blast.raf); poll(false); } blast=null; }
 function blastBar(){
@@ -2510,7 +2525,7 @@ function mine(){
 
 // ---------- connection ----------
 mc.addEventListener("device", ()=>{
-  if(blast) blastKey();
+  if(blast){ blastSetup(); if(blast.phase!=="play") blastHomeKey(); blastKey(); }
   if(q && !solved && !rebuilding) applyNeeds();
   mine(); needs();
   // a round built before the minichord's settings arrived is rebuilt now, on the minichord
