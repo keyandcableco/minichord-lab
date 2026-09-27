@@ -112,6 +112,43 @@ export function chordName(pitches,keyFifths=0){
   const name=spell(id.root,keyFifths)+id.quality;
   return id.root===id.bass ? name : `${name}/${spell(id.bass,keyFifths)}`;
 }
+// ---------- spelling a chord's own notes ----------
+// A chord's notes are spelled from its root, a letter a third: E7 is E G♯ B D, never E A♭ B D,
+// however the key would spell A♭ on its own. The root is spelled for the key; each other note
+// takes the letter its interval calls for (a third two letters up, a fifth four, a seventh six),
+// with a diminished seventh and an augmented fifth kept on their own letters.
+const TONE_LETTERS=["C","D","E","F","G","A","B"], TONE_NAT=[0,2,4,5,7,9,11];
+function letterStepsFor(semis, quality){
+  if(semis===9 && /°7/.test(quality)) return 6;          // the diminished seventh: C E♭ G♭ B𝄫
+  if(semis===8 && /\+/.test(quality)) return 4;           // the augmented fifth: C E G♯
+  if(semis===6 && /sus|11/.test(quality)) return 3;       // a sharp eleventh / fourth
+  return [0,1,1,2,2,3,4,4,5,5,6,6][semis];
+}
+function toneAbove(root, steps, semis){
+  const li=TONE_LETTERS.indexOf(root[0]);
+  const acc=[...root.slice(1)].reduce((s,c)=>s+({"♯":1,"♭":-1,"𝄪":2,"𝄫":-2}[c]||0),0);
+  const tl=(li+steps)%7, target=mod(TONE_NAT[li]+acc+semis,12);
+  let a=mod(target-TONE_NAT[tl],12); if(a>6) a-=12;
+  if(Math.abs(a)>2) return null;
+  return TONE_LETTERS[tl]+({"-2":"𝄫","-1":"♭","0":"","1":"♯","2":"𝄪"})[a];
+}
+/** each sounding pitch class spelled as the chord's own note: a Map from pitch class (0..11) to name.
+ *  Notes that aren't the chord's (a slash bass, say) fall back to the key's spelling. A caller that
+ *  knows the root's name from the harmony (D♭ for the Neapolitan in C, not C♯) can pass it. */
+export function spellTones(pitches, keyFifths=0, rootName=null){
+  const out=new Map(), id=chordId(pitches);
+  const pcs=pcSet(pitches,12);
+  if(id){
+    const root = rootName && toneAbove(rootName,0,0)!=null && mod(TONE_NAT[TONE_LETTERS.indexOf(rootName[0])]+[...rootName.slice(1)].reduce((s,c)=>s+({"♯":1,"♭":-1,"𝄪":2,"𝄫":-2}[c]||0),0),12)===id.root
+      ? rootName : spell(id.root,keyFifths);
+    for(const pc of pcs){
+      const semis=mod(pc-id.root,12), n=toneAbove(root, letterStepsFor(semis,id.quality), semis);
+      if(n) out.set(pc,n);
+    }
+  }
+  for(const pc of pcs) if(!out.has(pc)) out.set(pc, spell(pc,keyFifths));
+  return out;
+}
 /** could these pitches be the chord with this root and quality symbol? (a missing 5th is allowed) */
 export function isChord(pitches, root, quality){
   const S=pcSet(pitches,12).join(",");

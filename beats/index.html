@@ -114,7 +114,7 @@ label.inline{display:flex;align-items:center;gap:8px;color:var(--muted);font-siz
 
 <script type="module">
 import {Minichord, spell} from "../core/minichord.js";
-import {pcOf, beatInfo, chordName} from "../core/theory.js";
+import {pcOf, beatInfo, chordName, spellTones} from "../core/theory.js";
 import {TEMPERAMENT_TABLE, tune, activeTemperament, soundingPitches} from "../core/temperaments.js";
 
 const mc = new Minichord();
@@ -132,8 +132,9 @@ function takeChord(){
   if(!vs.length) return false;
   const pitches=soundingPitches(mc, vs, pageTemp);
   const order=pitches.map((p,i)=>i).sort((a,b)=>pitches[a]-pitches[b]);
+  const toneNames=spellTones(vs.map(v=>v.note), mc.keyFifths);   // spelled as the chord's own notes
   chord={notes:order.map(i=>vs[i].note), pitches:order.map(i=>pitches[i]),
-         names:order.map(i=>spell(((vs[i].note%12)+12)%12, mc.keyFifths))};
+         names:order.map(i=>toneNames.get(((vs[i].note%12)+12)%12))};
   return true;
 }
 function retune(){ if(chord) chord.pitches=chord.notes.map(n=>tune(n, activeTemp(), mc.keyFifths)); }

@@ -104,7 +104,7 @@ label.inline{display:flex;align-items:center;gap:8px;color:var(--muted);font-siz
 
 <script type="module">
 import {Minichord, spell} from "../core/minichord.js";
-import {chordId} from "../core/theory.js";
+import {chordId, spellTones} from "../core/theory.js";
 
 const mc=new Minichord(); window.mc=mc;
 const $=id=>document.getElementById(id);
@@ -173,7 +173,7 @@ function analyse(id, rows, t, sc){
   // a secondary dominant: a major or 7 chord a fifth above a chord of the key that it can resolve to
   if(isDom){
     const target=rows.find(r=>r.deg!==0 && r.kind[1]!=="dim" && mod(r.rootOff+7,12)===off);
-    if(target) return {rn:`${sym==="7"?"V7":"V"}/${target.rn.replace(/[0-9ø°+]|maj7|\(maj7\)/g,"")}`, why:`a secondary dominant: the V${sym==="7"?"7":""} of ${target.name}, so it pulls toward ${target.name} the way V pulls home`};
+    if(target) return {root:above(target.root,4,7), rn:`${sym==="7"?"V7":"V"}/${target.rn.replace(/[0-9ø°+]|maj7|\(maj7\)/g,"")}`, why:`a secondary dominant: the V${sym==="7"?"7":""} of ${target.name}, so it pulls toward ${target.name} the way V pulls home`};
   }
   // borrowed from the parallel key (minor for a major key, major for a minor one)
   const parallel = sc.n==="Major" ? SCALES[1] : SCALES[0];
@@ -181,9 +181,9 @@ function analyse(id, rows, t, sc){
   if(prow){
     // a root below the key's own degree is written flat: ♭VI, ♭VII in a major key
     const pre = prow.rootOff<sc.iv[prow.deg] ? "♭" : prow.rootOff>sc.iv[prow.deg] ? "♯" : "";
-    return {rn:numeral(prow.deg, prow.kind, pre), why:`borrowed from ${t} ${parallel.n.toLowerCase()}, the parallel ${sc.n==="Major"?"minor":"major"}: same tonic, different scale`};
+    return {root:prow.root, rn:numeral(prow.deg, prow.kind, pre), why:`borrowed from ${t} ${parallel.n.toLowerCase()}, the parallel ${sc.n==="Major"?"minor":"major"}: same tonic, different scale`};
   }
-  if(off===1 && sym==="") return {rn:"♭II", why:"the Neapolitan: a major chord on the lowered second, usually heading to V"};
+  if(off===1 && sym==="") return {root:above(t,1,1), rn:"♭II", why:"the Neapolitan: a major chord on the lowered second, usually heading to V"};
   return {rn:"", why:"a chromatic chord: some of its notes are outside the scale"};
 }
 
@@ -224,9 +224,10 @@ function drawChart(){
     const iv=Object.entries(KINDS).find(([,k])=>k[0]===hid.quality);
     if(iv){
       const semis=iv[0].split(",").map(Number), rootOff=mod(hid.root-T,12);
-      const rootName=spell(hid.root,f);
-      const tones=semis.map(s=>{ const pc=mod(hid.root+s,12), k=sc.iv.indexOf(mod(pc-T,12)); return k>=0 ? names[k] : spell(pc,f); });
-      const an=analyse(hid, rows, t, sc);
+      // the root named by what the chord is doing (D♭ for the Neapolitan in C, G♯ nowhere near it),
+      // then its notes spelled from that root a letter a third: E7 in C is E G♯ B D, not E A♭ B D
+      const an=analyse(hid, rows, t, sc), rootName=an.root || spell(hid.root,f);
+      const tn=spellTones(semis.map(s=>48+hid.root+s), f, rootName), tones=semis.map(s=>tn.get(mod(hid.root+s,12)));
       outside={deg:-1, root:rootName, rootOff, semis, tones, kind:iv[1], rn:an.rn, name:rootName+hid.quality, why:an.why};
       const sep=document.createElement("div"); sep.className="sep"; sep.textContent="Outside the key"; chart.append(sep);
       addRow(outside, true, true);

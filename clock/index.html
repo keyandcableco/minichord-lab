@@ -110,7 +110,7 @@ label.inline{display:flex;align-items:center;gap:8px;color:var(--muted);font-siz
 
 <script type="module">
 import {Minichord, TEMPERAMENTS, spell} from "../core/minichord.js";
-import {pcOf, pcSet, intervalVector, setClass, relation, symmetry, chordName} from "../core/theory.js";
+import {pcOf, pcSet, intervalVector, setClass, relation, symmetry, chordName, spellTones} from "../core/theory.js";
 
 const mc = new Minichord();
 window.mc = mc;   // handy from the console
@@ -203,9 +203,10 @@ function readout(P){
   $("chordName").textContent = name || (n===12 ? "Unnamed chord" : `${set.length} notes in ${n} steps`);
   // notes, lowest first, in voice colours
   const notes=$("notes"); notes.innerHTML="";
+  const toneNames = n===12 ? spellTones(current.voices.map(v=>v.pitch), keyF()) : null;   // spelled as the chord's own notes
   current.voices.forEach((v,i)=>{
     const s=document.createElement("span"); s.style.color=voiceColor(v.voice,i);
-    s.textContent = n===12 ? spell(Math.round(pcOf(v.pitch))%12,keyF()) : stepLabel(Math.round(pcOf(v.pitch)*n/12)%n,n) || `step ${Math.round(pcOf(v.pitch)*n/12)%n}`;
+    s.textContent = n===12 ? toneNames.get(Math.round(pcOf(v.pitch))%12) : stepLabel(Math.round(pcOf(v.pitch)*n/12)%n,n) || `step ${Math.round(pcOf(v.pitch)*n/12)%n}`;
     notes.appendChild(s);
   });
   const sc=setClass(set,n);

@@ -91,7 +91,7 @@
 
 <script type="module">
 import {Minichord, spell} from "../core/minichord.js";
-import {pcOf, chordId, chordName, chordTones} from "../core/theory.js";
+import {pcOf, chordId, chordName, chordTones, spellTones} from "../core/theory.js";
 
 const mc=new Minichord(); window.mc=mc;
 const $=id=>document.getElementById(id);
@@ -173,7 +173,7 @@ function addChord(pitches){
 function readout(){
   const cur=trail[trail.length-1]; if(!cur) return;
   $("chordName").textContent=cur.name || "This chord";
-  const names=cur.three.pcs.map(p=>spell(p,mc.keyFifths));
+  const tn=spellTones(cur.three.pcs.map(p=>60+p), mc.keyFifths), names=cur.three.pcs.map(p=>tn.get(((p%12)+12)%12));
   $("three").textContent=names.join(" ")+(cur.three.note ? `. ${cur.three.note}` : "");
   const id=chordId(cur.three.pcs.map(p=>60+p));
   let ints=cur.c.d;
