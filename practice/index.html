@@ -3041,12 +3041,66 @@ function explode(x,y,n=26,colours=["#FFD35A","#FF8A3D","#FFF4C2","#FF4B3E"]){
   for(let i=0;i<n;i++){ const a=Math.random()*Math.PI*2, v=40+Math.random()*140;
     fx.sparks.push({x:x/PX, y:y/PX, vx:Math.cos(a)*v/PX, vy:Math.sin(a)*v/PX, life:1, c:colours[i%colours.length]}); }
 }
+// Each game has its own sky. Chord Invaders flies through a starfield; the others stay put, so a
+// still background is drawn once to its own canvas and copied each frame, which costs next to nothing.
+//   invaders   stars streaming past, faster at higher levels
+//   asteroids  still stars, a few of them twinkling, as the old vector game had
+//   command    a night over a city: bands of dusk sky, a few stars, a moon, and the skyline the cannons guard
+//   snake      a dim grid of dots, like the playfield of an old handheld
+//   stack      a wall of dark bricks behind the board
+function fxBackground(g, W, H, now, dt){
+  const kind=blast.kind, fx=blast.fx;
+  if(kind==="blaster"){
+    const speed=blast.phase==="play" ? 1+blast.level*.25 : .6;
+    g.fillStyle="#07060C"; g.fillRect(0,0,W,H);
+    for(const s of fx.stars){ s.y+=s.z*speed*dt*9; if(s.y>=H){ s.y-=H; s.x=Math.random()*W; }
+      g.fillStyle = s.z===3 ? "#FFFFFF" : s.z===2 ? "#9D98C9" : "#4B4670"; g.fillRect(Math.floor(s.x),Math.floor(s.y),1,s.z===3?2:1); }
+    return;
+  }
+  if(!fx.bg || fx.bg.width!==W || fx.bg.height!==H || fx.bgKind!==kind){ fx.bg=fxPaintBackground(kind, W, H); fx.bgKind=kind; }
+  g.drawImage(fx.bg, 0, 0);
+  if(kind==="asteroids"){   // a handful of stars twinkle, slowly
+    for(let i=0;i<fx.stars.length;i+=9){ const s=fx.stars[i], on=Math.sin(now/700+i*1.7)>.6; if(on){ g.fillStyle="#FFFFFF"; g.fillRect(Math.floor(s.x),Math.floor(s.y),1,1); } }
+  }
+}
+function fxPaintBackground(kind, W, H){
+  const cv=document.createElement("canvas"); cv.width=W; cv.height=H; const g=cv.getContext("2d");
+  const rand=(seed=>()=>{ seed=(seed*16807)%2147483647; return seed/2147483647; })(kind.length*7919+W);
+  if(kind==="asteroids"){
+    g.fillStyle="#050409"; g.fillRect(0,0,W,H);
+    for(const s of blast.fx.stars){ g.fillStyle = s.z===3 ? "#C9C5E6" : s.z===2 ? "#6E6A94" : "#34304F"; g.fillRect(Math.floor(s.x),Math.floor(s.y),1,1); }
+  } else if(kind==="command"){
+    // dusk in bands, darkest at the top, dithered where they meet
+    const bands=["#07061A","#0B0A26","#120F33","#1C1440","#2A1846","#3B1C44","#4E2140"];
+    const bh=Math.ceil(H*.78/bands.length);
+    bands.forEach((c,i)=>{ g.fillStyle=c; g.fillRect(0,i*bh,W,bh+1);
+      if(i){ g.fillStyle=bands[i-1]; for(let x=0;x<W;x+=2) g.fillRect(x+(i%2),i*bh,1,1); } });
+    for(let i=0;i<W*H/260;i++){ const x=Math.floor(rand()*W), y=Math.floor(rand()*H*.45); g.fillStyle=rand()<.2?"#FFFFFF":"#8F8AB8"; g.fillRect(x,y,1,1); }
+    // a pixel moon
+    const mx=Math.floor(W*.82), my=Math.floor(H*.16), r=6;
+    for(let y=-r;y<=r;y++) for(let x=-r;x<=r;x++){ if(x*x+y*y<=r*r){ g.fillStyle = (x+2)*(x+2)+(y-1)*(y-1)<=r*r*.7 ? "#E8DDC0" : "#B9AE90"; g.fillRect(mx+x,my+y,1,1); } }
+    // the skyline the cannons guard, and the ground they stand on
+    const ground=H-10; g.fillStyle="#0E0B18";
+    for(let x=0;x<W;){ const w=4+Math.floor(rand()*9), h=6+Math.floor(rand()*(H*.16)); g.fillRect(x,ground-h,w,h);
+      g.fillStyle="#E8C35A"; for(let wy=ground-h+2; wy<ground-2; wy+=3) for(let wx=x+1; wx<x+w-1; wx+=2) if(rand()<.18) g.fillRect(wx,wy,1,1);
+      g.fillStyle="#0E0B18"; x+=w+Math.floor(rand()*3); }
+    g.fillStyle="#1A1410"; g.fillRect(0,ground,W,H-ground);
+    g.fillStyle="#2B2118"; for(let x=0;x<W;x+=3) g.fillRect(x,ground,2,1);
+  } else if(kind==="snake"){
+    g.fillStyle="#08100C"; g.fillRect(0,0,W,H);
+    g.fillStyle="#1B3325"; for(let y=1;y<H;y+=4) for(let x=1;x<W;x+=4) g.fillRect(x,y,1,1);
+  } else if(kind==="stack"){
+    g.fillStyle="#0A0810"; g.fillRect(0,0,W,H);
+    // dark bricks, offset every other course
+    g.fillStyle="#17122A";
+    for(let y=0,row=0;y<H;y+=6,row++) for(let x=(row%2)*5-5;x<W;x+=10) g.fillRect(x,y,9,5);
+  } else { g.fillStyle="#07060C"; g.fillRect(0,0,W,H); }
+  return cv;
+}
 function fxDraw(now, dt){
   const fx=blast.fx; if(!fx) return; fx.resize();
-  const g=fx.g, W=fx.w, H=fx.h, speed=blast.phase==="play" ? 1+blast.level*.25 : .6;
-  g.fillStyle="#07060C"; g.fillRect(0,0,W,H);
-  for(const s of fx.stars){ s.y+=s.z*speed*dt*9; if(s.y>=H){ s.y-=H; s.x=Math.random()*W; }
-    g.fillStyle = s.z===3 ? "#FFFFFF" : s.z===2 ? "#9D98C9" : "#4B4670"; g.fillRect(Math.floor(s.x),Math.floor(s.y),1,s.z===3?2:1); }
+  const g=fx.g, W=fx.w, H=fx.h;
+  fxBackground(g, W, H, now, dt);
   if(blast.asteroids) asDraw(g, now);
   else if(blast.noShip){ /* the snake's board has no ship */ }
   else if(blast.cannons){
