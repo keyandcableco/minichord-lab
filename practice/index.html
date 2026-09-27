@@ -8,7 +8,7 @@
 <link rel="icon" href="../core/logo.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Source+Serif+4:opsz,wght@8..60,600..700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Press+Start+2P&family=Source+Serif+4:opsz,wght@8..60,600..700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../core/lab.css">
 <script src="../core/theme.js"></script>
 <link rel="stylesheet" href="../core/music.css">
@@ -115,9 +115,70 @@
 .mine span{color:var(--muted)}
 .mine button{justify-self:start;padding:.25rem .7rem}
 
+
+
+/* the title with the settings button on its right; settings open over the page */
+.titlerow{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+/* one game on its own page: only the game card and the bar at the top */
+.solo .zone.gamesel, .solo .lede, .solo .answers, .solo #hint, .solo #hear, .solo #reveal, .solo #lastBtn, .solo #sprint, .solo #next, .solo .game .sub{display:none!important}
+.morelink{font-size:1rem;margin:.2rem 0 0}
+.morelink[hidden]{display:none}
+#settingsDlg{border:2px solid var(--ink);border-top:8px solid var(--felt);border-radius:var(--radius);background:var(--panel);color:var(--ink);padding:14px 18px 18px;width:min(640px,94vw);max-height:88vh;overflow:auto}
+#settingsDlg::backdrop{background:rgba(20,16,12,.55)}
+.dlghead{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px}
+.dlghead h2{margin:0}
+@media (max-width:600px){#settingsDlg{width:100vw;max-width:100vw;height:100vh;max-height:100vh;margin:0}}
+/* the answer area stands alone under the game */
+.answers{margin-top:22px}
+.answers .picker{max-width:720px}
+/* ---------- Chord Invaders: an arcade cabinet ---------- */
+.field.arcade{height:420px;background:#07060C;border:2px solid #000;border-top:8px solid var(--felt);font-family:"Press Start 2P",monospace;user-select:none}
+.field.arcade canvas.fx{position:absolute;inset:0;width:100%;height:100%;image-rendering:pixelated;z-index:0}
+.field.arcade .fchord{z-index:2;font:400 1.25rem "Minichord Lab Accidentals","Press Start 2P",monospace;color:#F1E8D2;text-shadow:0 0 6px rgba(255,255,255,.35);letter-spacing:-.02em}
+.field.arcade .fchord.low{color:#FFD35A;text-shadow:0 0 10px rgba(255,200,60,.8)}
+.field.arcade .fchord.bonus{color:#7FE9FF;text-shadow:0 0 10px rgba(80,220,255,.9)}
+.field.arcade .fchord.gone{visibility:hidden}
+.field.arcade .fchord.miss{color:#FF4B3E;transition:opacity .5s,transform .5s;opacity:0;transform:translateX(-50%) translateY(18px)}
+.field.arcade .fkey{z-index:2;font:400 .8rem "Press Start 2P",monospace;color:#F1E8D2;background:rgba(80,160,255,.14);border-color:#5FA8FF}
+.field.arcade .fkey small{font:400 .55rem "Press Start 2P",monospace;color:#B9C7E6;margin-top:4px}
+.field.arcade .ground{z-index:1;background:#FF4B3E;opacity:.7;height:2px}
+.hud{position:absolute;top:8px;left:10px;right:10px;display:flex;justify-content:space-between;align-items:center;z-index:3;font:400 .62rem "Press Start 2P",monospace;color:#F1E8D2;pointer-events:none}
+.hud .lives{color:#FF4B3E;letter-spacing:.2em}
+.hud .lvl{color:#FFD35A}
+.heard{position:absolute;left:10px;bottom:10px;z-index:3;font:400 .55rem "Minichord Lab Accidentals","Press Start 2P",monospace;color:#9A93B5;pointer-events:none}
+.heard b{color:#F1E8D2;font-weight:400}
+.heard.no b{color:#FF7A6E}
+.banner{position:absolute;left:0;right:0;top:36%;text-align:center;z-index:4;pointer-events:none;color:#FFD35A;font:400 1.9rem "Press Start 2P",monospace;text-shadow:0 0 14px rgba(255,200,60,.8),3px 3px 0 #000;animation:banner 2.2s ease-out forwards}
+.banner small{display:block;margin-top:14px;font-size:.6rem;color:#F1E8D2;text-shadow:2px 2px 0 #000;line-height:1.6;padding:0 20px}
+@keyframes banner{0%{transform:scale(.3);opacity:0}12%{transform:scale(1.12);opacity:1}22%{transform:scale(1)}80%{opacity:1}100%{opacity:0;transform:translateY(-20px)}}
+.popup{position:absolute;z-index:3;transform:translateX(-50%);font:400 .7rem "Press Start 2P",monospace;color:#FFD35A;pointer-events:none;animation:popup .9s ease-out forwards;text-shadow:2px 2px 0 #000}
+@keyframes popup{0%{opacity:1;transform:translate(-50%,0)}100%{opacity:0;transform:translate(-50%,-34px)}}
+.overlay{position:absolute;inset:0;z-index:5;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:rgba(7,6,12,.72);color:#F1E8D2;text-align:center;padding:16px}
+.overlay h3{margin:0;font:400 1.7rem "Press Start 2P",monospace;color:#FFD35A;text-shadow:3px 3px 0 #000}
+.overlay h3.over{color:#FF4B3E}
+.overlay p{margin:0;font:400 .62rem/1.7 "Press Start 2P",monospace;color:#CFC6E6;max-width:60ch}
+.overlay .levels{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;max-width:560px}
+.overlay button{font:400 .62rem "Press Start 2P",monospace;background:#16132A;color:#F1E8D2;border:2px solid #F1E8D2;border-bottom-width:4px;border-radius:0;padding:.55rem .7rem}
+.overlay button:hover{background:#2A2450}
+.overlay button.go{background:var(--felt);border-color:#FFD35A;color:#FFF8E7;font-size:.8rem;padding:.7rem 1.1rem}
+.overlay button small{display:block;font-size:.45rem;color:#9A93B5;margin-top:5px}
+.blink{animation:blink 1s steps(2) infinite}@keyframes blink{50%{opacity:0}}
+
 /* ---------- ivory and ebony ---------- */
 .zone.gamesel{border:none;border-top:2px solid var(--ink);border-radius:0;background:transparent;padding:12px 0 4px;margin-top:6px}
 .zonehead{font:italic 600 1.35rem var(--hand);letter-spacing:0;text-transform:none;color:var(--felt);margin:0 0 2px}
+/* the game menu and the settings fold away; a triangle marks which way, and the menu names the game while folded */
+details.fold>summary{list-style:none;cursor:pointer;display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+details.fold>summary::-webkit-details-marker{display:none}
+details.fold>summary h2{display:inline}
+details.fold>summary::before{content:"▸";color:var(--felt);font-size:1rem;transition:transform .15s;display:inline-block}
+details.fold[open]>summary::before{transform:rotate(90deg)}
+.nowplaying{color:var(--muted);font-style:italic}
+details.fold[open] .nowplaying{display:none}
+/* the round before this one, kept to look back at */
+.lastround{margin-top:10px;padding:8px 12px;border-left:3px solid var(--rule);background:var(--board)}
+.lastround[hidden]{display:none}
+.lastround .lastprompt{font:700 1.2rem var(--hand);margin:0 0 .2rem}
 .answerhead{border-top:none;margin-top:28px;padding-top:0}
 .modes .grp{font-style:italic;color:var(--muted)}
 /* the game card is the instrument: ivory, an ebony edge, the felt along its top */
@@ -142,12 +203,13 @@
     </div>
   </div>
 
-  <h1>The Practice Room</h1>
+  <div class="titlerow"><h1 id="pageTitle">The Practice Room</h1><button id="settingsBtn" aria-haspopup="dialog" title="Settings">⚙ Settings</button></div>
+  <p class="morelink" id="moreLink" hidden><a href="./">More games in The Practice Room →</a></p>
   <p class="lede">Games for getting to know the minichord, hands and ears as much as head: reading chords and finding them on the buttons, notes on the harp, voice leading, the alternate layout by ear, and a few mysteries. The more you play, the faster you find any chord, any note, and the smoothest way from one chord to the next. Answers are timed, so you can watch yourself get quicker. No minichord? The pickers take answers, and the mysteries play on the piano.</p>
   <p class="status" id="status">Connect the minichord, or play with the pickers.</p>
 
-  <section class="zone gamesel" aria-label="Choose a game">
-  <h2 class="zonehead">Choose a game</h2>
+  <details class="zone gamesel fold" id="gameMenu" open>
+  <summary><h2 class="zonehead">Choose a game</h2><span class="nowplaying" id="nowPlaying"></span></summary>
   <div class="modes" role="group" aria-label="Read and play">
     <span class="grp">Read and play</span>
     <button data-mode="spell">Spell it</button>
@@ -155,7 +217,7 @@
     <button data-mode="staff">On the staff</button>
     <button data-mode="slash">Slash chords</button>
     <button data-mode="key">Key detective</button>
-    <button data-mode="blaster">Sight reader</button>
+    <button data-mode="blaster">Chord Invaders</button>
     <button data-mode="diatonic">Seven chords</button>
     <button data-mode="mix">Mix</button>
   </div>
@@ -192,7 +254,7 @@
     <button data-mode="temper">Temperament taster</button>
     <button data-mode="tune">Tune up</button>
   </div>
-  </section>
+  </details>
 
   <div class="mystrip" id="mystrip" hidden>
     <span class="mylabel">Your minichord</span>
@@ -222,24 +284,25 @@
     <p class="needs" id="needs" hidden></p>
     <p class="feedback" id="feedback" aria-live="polite"></p>
     <svg id="keys" role="img" aria-label="The answer on a piano keyboard" hidden></svg>
+    <div class="lastround" id="lastRound" hidden aria-live="polite"></div>
     <div class="controls">
       <button id="next" class="primary">Start</button>
       <button id="hint" disabled>Hint</button>
       <button id="hear" disabled>Hear it</button>
       <button id="reveal" disabled>Show the answer</button>
+      <button id="lastBtn" disabled title="See the last round's answer again">Last answer</button>
       <button id="sprint">60-second sprint</button>
       <button id="soundBtn" class="sound" aria-pressed="true" title="Chimes for right answers">Sounds on</button>
     </div>
   </section>
 
-  <h2 class="zonehead answerhead">Answer and settings</h2>
-  <div class="grid2">
+  <div class="answers">
     <section class="panel picker">
       <h2 id="pickTitle">Answer without a minichord</h2>
       <div id="pickBody"></div>
     </section>
-    <section class="panel">
-      <h2>Settings</h2>
+    <dialog id="settingsDlg" aria-labelledby="settingsTitle">
+      <div class="dlghead"><h2 id="settingsTitle">Settings</h2><button id="settingsClose" aria-label="Close settings">Done</button></div>
       <div class="settings">
         <label>Chords <select id="set">
           <option value="standard">Standard buttons</option>
@@ -257,10 +320,9 @@
         <label>Hidden layout <select id="hiddenPool"><option value="basic">Triads and sevenths</option><option value="ext">Suspended and extended</option><option value="all">Everything</option></select></label>
         <label>Shades of the third <select id="shadesMode"><option value="order">Order them, darkest to brightest</option><option value="which">Find the one you heard</option></select></label>
         <label>Reshape <select id="reshapeLevel"><option value="1">One voice moves</option><option value="2">Two voices move</option><option value="3">The bass moves</option><option value="4">Aim the cantus yourself</option></select></label>
-        <label>Sight reader <select id="blastStart"><option value="1">Start with major and minor</option><option value="3">Start with sharps and flats</option><option value="5">Start with every chord type</option><option value="6">Start with slash chords</option><option value="7">Start with any slash chord</option></select></label>
       </div>
       <p class="fine">Chord sets follow what the buttons play: standard is major, minor, 7, maj7, m7, diminished (major and minor together) and augmented (all three); Barry Harris mode turns major, minor and diminished into 6, m6 and diminished 7. The alternate layout is left out, since everyone sets up their own. The buttons play their letters with the key signature's sharps or flats, and the game sets the modifier to sharp or flat for each question, and Barry Harris mode on or off for the chord it asks for.</p>
-    </section>
+    </dialog>
   </div>
 
   <footer>
@@ -988,7 +1050,7 @@ function genShades(){
   const combosOf=sh=>COMBOS[slots.indexOf(sh.idx)];
   return {kind:"shades", prompt: mode==="which" ? "Which third did you hear?" : "Darkest to brightest",
     sub: mode==="which" ? `Your minichord is in 31-EDO, with five kinds of triad on ${root} hidden on its button combinations, from subminor to supermajor. Press Hear it, then find that triad on the minichord and press the spacebar (or Found it) while you hold it.`
-      : `Your minichord is in 31-EDO, with five kinds of triad on ${root} hidden on its button combinations: subminor, minor, neutral, major and supermajor, their thirds a 31st of an octave apart. Find them and play them in order from darkest to brightest.`,
+      : `Your minichord is in 31-EDO, with five kinds of triad on ${root} hidden on its button combinations: subminor, minor, neutral, major and supermajor, their thirds a 31st of an octave apart. Try them all as often as you like; when you're holding the darkest, press the spacebar (or Add it) to put it first, then the next brightest, and so on.`,
     needs:altNeeds(slots, extra), pressRoot:root, context:0, barry:"",
     answer:{type:"alt", name: mode==="which" ? `the ${target.n} triad, on ${combosOf(target)}` : "subminor, minor, neutral, major, supermajor"},
     hint: mode==="which" ? `Its third is ${Math.round(target.steps*38.71)} cents: ${["","","","","","","","a septimal minor third, darker than minor","a minor third","halfway between minor and major","a major third","a septimal major third, brighter than major"][target.steps]}.` : "The darker the third, the smaller it is: subminor is about 270 cents, supermajor about 426.",
@@ -997,21 +1059,20 @@ function genShades(){
       target: alt.target ? alt.slots.indexOf(alt.target.idx) : -1}),
     hearFn:()=>{ const sh=target||SHADES[alt.pos]||SHADES[0]; return [[48+rootPc,0],[48+rootPc+sh.steps*EDO31,0],[48+rootPc+18*EDO31,0]]; }};
 }
-function answerAltChord(voices){
-  heldVoices=voices;
-  if(alt && alt.kind==="shades" && alt.mode==="order"){
-    const sh=heldShade(alt.rootPc); if(!sh) return;
-    const want=SHADES[alt.pos];
-    if(sh===want){ alt.pos++; buildSpecial(); if(alt.pos===SHADES.length) return correct("Darkest to brightest: subminor, minor, neutral, major, supermajor."); chime("step"); feedback(`${sh.n[0].toUpperCase()+sh.n.slice(1)}.`,"good"); }
-    else if(alt.pos>0 && sh===SHADES[alt.pos-1]) return;      // still holding the last one
-    else { firstTry=false; buzz(); feedback(`That's the ${sh.n}. ${alt.pos ? `After the ${SHADES[alt.pos-1].n} comes the next brightest.` : "Start with the darkest of the five."}`,"bad"); }
-  }
-}
+// Playing a chord only lets you hear it; the spacebar is what answers, so every combination
+// can be tried and compared as often as you like.
+function answerAltChord(voices){ heldVoices=voices; }
 function submitAlt(){
   if(!q || solved || !alt || !["hidden","oddone","shades"].includes(q.kind)) return;
   if(!heldVoices.length){ feedback("Hold a chord first, then press the spacebar.","bad"); return; }
+  if(alt.kind==="shades" && alt.mode==="order"){
+    const sh=heldShade(alt.rootPc); if(!sh) return wrong("That isn't one of the five triads (sus chords fill the other two combinations).");
+    const want=SHADES[alt.pos];
+    if(sh===want){ alt.pos++; buildSpecial(); if(alt.pos===SHADES.length) return correct("Darkest to brightest: subminor, minor, neutral, major, supermajor."); chime("step"); feedback(`${sh.n[0].toUpperCase()+sh.n.slice(1)}. Now the next brightest.`,"good"); return; }
+    if(alt.pos>0 && SHADES.indexOf(sh)<alt.pos){ feedback(`The ${sh.n} is already in your order.`,""); return; }
+    firstTry=false; buzz(); feedback(`That's the ${sh.n}. ${alt.pos ? `There's one darker than that still to place after the ${SHADES[alt.pos-1].n}.` : "There's a darker one to start with."}`,"bad"); return;
+  }
   if(alt.kind==="shades"){
-    if(alt.mode!=="which") return;
     const sh=heldShade(alt.rootPc); if(!sh){ wrong("That isn't one of the five triads (sus chords fill the other two combinations)."); return; }
     return sh===alt.target ? correct(`The ${sh.n} triad.`) : wrong(`That's the ${sh.n} triad. Listen again: yours was ${sh.steps<alt.target.steps?"brighter":"darker"}.`);
   }
@@ -1020,10 +1081,16 @@ function submitAlt(){
   if(i===alt.target) return correct(`That's it: ${alt.root}${CAT[alt.slots[i]][0]}, on ${COMBOS[i]}.`);
   wrong(`That's the ${CAT[alt.slots[i]][1]}${alt.kind==="oddone"?", one of the family":""}. Keep listening.`);
 }
+// In the layout games the spacebar always answers. A button the mouse last clicked (Next, say)
+// would otherwise take the spacebar as a click of its own, so it's caught first, on the way down,
+// and its release is swallowed too, since buttons fire on the key's release.
+const altKey=e=> e.code==="Space" && q && ["hidden","oddone","shades"].includes(q.kind) && !/INPUT|SELECT|TEXTAREA/.test(document.activeElement?.tagName||"");
 document.addEventListener("keydown", e=>{
-  if(e.code!=="Space" || e.repeat || /INPUT|SELECT|TEXTAREA|BUTTON/.test(document.activeElement?.tagName||"")) return;
-  if(q && ["hidden","oddone","shades"].includes(q.kind)){ e.preventDefault(); submitAlt(); }
-});
+  if(!altKey(e)) return;
+  e.preventDefault(); e.stopPropagation();
+  if(!e.repeat){ if(document.activeElement && document.activeElement.tagName==="BUTTON") document.activeElement.blur(); submitAlt(); }
+}, true);
+document.addEventListener("keyup", e=>{ if(altKey(e)){ e.preventDefault(); e.stopPropagation(); } }, true);
 
 // ---------- Reshape ----------
 // Hold a chord and turn it into another by plucking the harp: the cantus (firmware 14) gives
@@ -1175,7 +1242,7 @@ function answerDiatonic(voices){
   later(()=>wrong(`You played ${said}. ${c.label} in ${diat.name} major is next.`));
 }
 
-// ---------- Sight reader ----------
+// ---------- Chord Invaders (once the Sight reader) ----------
 // An arcade round for everyone: chord symbols fall from the top, and each one played on the
 // buttons before it lands is blasted. Three that land and the round is over. It starts with
 // major and minor on the seven buttons as your key plays them and climbs every eight chords,
@@ -1198,7 +1265,7 @@ function nextLevel(l){ for(let n=l+1;n<BLAST_LEVELS.length;n++) if(levelOk(n)) r
 const BARRY_SWAP={"":"6","m":"m6","°":"°7"};
 let blast=null;
 function genBlaster(){
-  return {kind:"blaster", prompt:"Sight reader", sub:"Chords fall from the top. Play each one on the buttons before it lands; the lowest is lit. Three that land and the round is over. When a key bar falls, set that key signature with the key change combo, and the chords after it get easier.",
+  return {kind:"blaster", prompt:"Chord Invaders", sub:"Chords fall through space. Play each one on the buttons before it lands and the ship shoots it down; the lowest is lit. Three that land and it's game over. ★ chords score five times as much and do no harm if they get past. When a key bar falls, set that key signature with the key change combo, and the chords after it get easier. What the game hears shows at the foot of the field.",
     answer:{type:"blaster", get name(){ const l=lowestBlast(); return l ? l.sym : "the lowest chord"; }},
     get hint(){ const l=lowestBlast(); return l ? `The lowest is ${l.sym}: ${(spellChord(l.root,l.q)||[]).join(" ")}${l.bass?`, over ${l.bass} in the bass`:""}.` : "Wait for a chord to fall."; },
     hearFn:()=>{ const l=lowestBlast(); return l ? [...(l.bass?[[36+pcOfName(l.bass),0]]:[]), ...FORM[l.q].map(f=>[48+pcOfName(l.root)+f[1],0])] : []; },
@@ -1216,12 +1283,45 @@ function blastRoots(plainOnly){
   }
   return out;
 }
+
+// ---------- Chord Invaders' own sounds ----------
+// Chiptune effects from square waves and noise, only in this game and only with sounds on:
+// a laser for each shot, a crunchy burst for each hit, a sparkle for a ★, a thud for a miss,
+// a rising fanfare for a new level, a jingle for a key set, and a falling tune for game over.
+let noiseBuf=null;
+function sfx(kind){
+  if(!settings.sounds || !piano.ctx || piano.ctx.state!=="running") return;
+  const ctx=piano.ctx, t=ctx.currentTime+.005, out=ctx.createGain(); out.gain.value=.16; out.connect(ctx.destination);
+  const tone=(type,f0,f1,at,dur,vol=1)=>{ const o=ctx.createOscillator(), g=ctx.createGain(); o.type=type;
+    o.frequency.setValueAtTime(f0,t+at); if(f1) o.frequency.exponentialRampToValueAtTime(f1,t+at+dur);
+    g.gain.setValueAtTime(vol,t+at); g.gain.exponentialRampToValueAtTime(.001,t+at+dur);
+    o.connect(g).connect(out); o.start(t+at); o.stop(t+at+dur+.02); };
+  const noise=(at,dur,from,to,vol=1)=>{ if(!noiseBuf){ noiseBuf=ctx.createBuffer(1,ctx.sampleRate*.6,ctx.sampleRate); const d=noiseBuf.getChannelData(0); for(let i=0;i<d.length;i++) d[i]=Math.random()*2-1; }
+    const n=ctx.createBufferSource(), f=ctx.createBiquadFilter(), g=ctx.createGain(); n.buffer=noiseBuf; f.type="lowpass";
+    f.frequency.setValueAtTime(from,t+at); f.frequency.exponentialRampToValueAtTime(to,t+at+dur);
+    g.gain.setValueAtTime(vol,t+at); g.gain.exponentialRampToValueAtTime(.001,t+at+dur);
+    n.connect(f).connect(g).connect(out); n.start(t+at); n.stop(t+at+dur+.02); };
+  if(kind==="shoot") tone("square",1400,180,0,.13,.55);
+  else if(kind==="boom"){ noise(0,.35,5000,120,.9); tone("square",160,40,0,.22,.5); }
+  else if(kind==="bonus"){ [1319,1568,1976,2637].forEach((f,i)=>tone("square",f,0,i*.05,.09,.35)); noise(0,.3,6000,300,.5); }
+  else if(kind==="miss") { tone("square",220,70,0,.35,.7); noise(0,.2,900,100,.4); }
+  else if(kind==="level"){ [523,659,784,1047,1319].forEach((f,i)=>tone("square",f,0,i*.07,.12,.45)); tone("triangle",1047,0,.36,.4,.6); }
+  else if(kind==="key")  { [784,988,1175,1568].forEach((f,i)=>tone("triangle",f,0,i*.06,.14,.7)); }
+  else if(kind==="over") { [392,370,349,330,311,294,262].forEach((f,i)=>tone("square",f,0,i*.16,.2,.5)); tone("triangle",131,0,1.12,.8,.8); }
+  else if(kind==="start"){ [262,330,392,523].forEach((f,i)=>tone("square",f,0,i*.08,.11,.45)); }
+}
+
+// Levels, as the menu names them
+// Speed: how long a chord takes to fall, and how often they come, as a multiple of the level's own.
+// Relaxed is the default; Wild is for showing off.
+const SPEEDS=[["Relaxed",1.8],["Steady",1.35],["Brisk",1],["Fast",.75],["Wild",.55]];
+const speedMul=()=> (SPEEDS[+saved.speed]||SPEEDS[0])[1];
+const LEVEL_NAMES=["Major and minor","Add 7ths","Sharps and flats","maj7 and m7","Every chord type","Inversions","Any slash chord","Barry Harris"];
 function startBlaster(){
   const f=canWrite() ? devFifths() : 0;
-  let start=Math.max(0,Math.min(BLAST_LEVELS.length-1,(+settings.blastStart||1)-1)); while(start>0 && !levelOk(start)) start--;
-  blast={items:[], score:0, lives:3, level:start, hits:0, dir: f<0 ? -1 : f>0 ? 1 : (Math.random()<.5?1:-1),
-    next:performance.now()+700, fall:9000*Math.pow(.92,start), gap:2600*Math.pow(.92,start), over:false, raf:0, field:null, bar:null,
-    barry:false, pauseForBarry:false, keyBar:null, keyTarget:null};
+  blast={items:[], score:0, lives:3, level:0, hits:0, dir: f<0 ? -1 : f>0 ? 1 : (Math.random()<.5?1:-1),
+    next:0, fall:9000, gap:2600, over:true, phase:"menu", raf:0, field:null, hud:null,
+    barry:false, pauseForBarry:false, keyBar:null, keyTarget:null, fx:null, last:performance.now()};
   if(canWrite()){
     ensure(31, blast.dir>0 ? 0 : 1);
     if(slashReady()) ensure(113,1);   // for the slash levels, the slash note in the bass
@@ -1230,13 +1330,66 @@ function startBlaster(){
   }
   modPill();
   stats.streak=0; scoreboard(); buildSpecial();
+  blastMenu();
   blast.raf=requestAnimationFrame(blastTick);
+}
+// the cabinet's menu, and its game over: choose a level to start from
+function blastMenu(over){
+  const ov=document.createElement("div"); ov.className="overlay";
+  const best=saved.best.blaster||0;
+  if(over){
+    ov.innerHTML=`<h3 class="over">GAME OVER</h3><p>SCORE ${blast.score} · LEVEL ${blast.level+1} · BEST ${best}</p>`;
+    const again=document.createElement("button"); again.className="go"; again.innerHTML=`PLAY AGAIN<small>from level ${blast.startLevel+1}</small>`;
+    again.onclick=()=>beginBlast(blast.startLevel); ov.appendChild(again);
+    const p=document.createElement("p"); p.textContent="OR START FROM"; ov.appendChild(p);
+    sfx("over");
+  } else {
+    ov.innerHTML=`<h3>CHORD INVADERS</h3><p>PLAY EACH CHORD BEFORE IT LANDS. ★ CHORDS SCORE BIG AND NEVER HURT. SET THE KEY WHEN A KEY BAR FALLS.</p><p class="blink">CHOOSE A LEVEL</p>`;
+  }
+  // the speed, chosen here and remembered
+  const sp=document.createElement("div"); sp.className="levels";
+  const spl=document.createElement("p"); spl.textContent="SPEED";
+  SPEEDS.forEach(([n],i)=>{ const b=document.createElement("button"); b.textContent=n.toUpperCase(); b.setAttribute("aria-pressed", String((+saved.speed||0)===i));
+    if((+saved.speed||0)===i){ b.style.background="#F1E8D2"; b.style.color="#16132A"; }
+    b.onclick=()=>{ saved.speed=i; save(); [...sp.children].forEach(x=>{ x.style.background=""; x.style.color=""; }); b.style.background="#F1E8D2"; b.style.color="#16132A"; };
+    sp.appendChild(b); });
+  ov.append(spl, sp);
+  const lvl=document.createElement("p"); lvl.textContent = over ? "" : "LEVEL"; if(!over) ov.appendChild(lvl);
+  const lv=document.createElement("div"); lv.className="levels";
+  LEVEL_NAMES.forEach((n,i)=>{ if(!levelOk(i)) return;
+    const b=document.createElement("button"); b.innerHTML=`${i+1}<small>${n}</small>`; b.onclick=()=>beginBlast(i); lv.appendChild(b); });
+  ov.appendChild(lv);
+  if(!over && best) { const p=document.createElement("p"); p.textContent=`BEST ${best}`; ov.appendChild(p); }
+  blast.field.appendChild(ov); blast.overlay=ov;
+}
+function beginBlast(level){
+  piano.start();
+  if(blast.overlay){ blast.overlay.remove(); blast.overlay=null; }
+  blast.items.forEach(i=>i.el.remove()); if(blast.keyBar) blast.keyBar.el.remove();
+  Object.assign(blast,{items:[], score:0, lives:3, level, startLevel:level, hits:0, next:performance.now()+900,
+    fall:9000*Math.pow(.92,level)*speedMul(), gap:2600*Math.pow(.92,level)*speedMul(), over:false, phase:"play", keyBar:null, keyTarget:null, pauseForBarry:false});
+  if(BLAST_LEVELS[level].barry && !blast.barry){ blast.barry=true; ensure(33,1); modPill(); }
+  settings.blastStart=String(level+1); save();
+  stats.streak=0; scoreboard(); blastBar();
+  banner(`LEVEL ${level+1}`, `${LEVEL_NAMES[level].toUpperCase()} · ${(SPEEDS[+saved.speed]||SPEEDS[0])[0].toUpperCase()}`);
+  sfx("start");
+  if(canWrite()) poll(true);
 }
 function stopBlaster(){ if(blast){ blast.over=true; cancelAnimationFrame(blast.raf); poll(false); } blast=null; }
 function blastBar(){
-  if(!blast || !blast.bar) return;
-  const key = blast.keyTarget ? `<span>Key <b>${blast.keyTarget.name}</b></span>` : "";
-  blast.bar.innerHTML=`<span>Score <b>${blast.score}</b></span><span>Lives <b>${"♥".repeat(Math.max(0,blast.lives))||"–"}</b></span><span>Level <b>${blast.level+1}</b></span>${key}<span>Best <b>${saved.best.blaster||0}</b></span>`;
+  if(!blast || !blast.hud) return;
+  const key = blast.keyTarget ? ` · KEY ${blast.keyTarget.name}` : "";
+  blast.hud.innerHTML=`<span>SCORE ${blast.score}</span><span class="lvl">LEVEL ${blast.level+1}${key}</span><span class="lives">${"♥".repeat(Math.max(0,blast.lives))||"-"}</span>`;
+}
+// a big message across the middle of the field: a new level, a key to set, Barry Harris
+function banner(big, small){
+  if(!blast || !blast.field) return;
+  const b=document.createElement("div"); b.className="banner"; b.innerHTML=`${big}${small?`<small>${small}</small>`:""}`;
+  blast.field.appendChild(b); setTimeout(()=>b.remove(),2300);
+}
+function popup(x,y,text,colour){
+  const p=document.createElement("div"); p.className="popup"; p.textContent=text; p.style.left=`${x}px`; p.style.top=`${y}px`; if(colour) p.style.color=colour;
+  blast.field.appendChild(p); setTimeout(()=>p.remove(),950);
 }
 // the next chord: from the key bar's key once one has fallen, otherwise any button's
 function pickBlastChord(slashNow){
@@ -1270,14 +1423,15 @@ function spawnBlast(now){
   const lv=BLAST_LEVELS[blast.level];
   const onScreen=new Set(blast.items.filter(i=>!i.done).map(i=>i.sym));
   const slashNow = lv.slash && Math.random()<.35;        // on the slash levels about one chord in three
+  const bonus = Math.random()<.13;                       // a ★ chord: five times the points, and harmless if it lands
   for(let k=0;k<40;k++){
     const c=pickBlastChord(slashNow); if(!c) continue;
     const sym=c.root+c.qq+(c.bass?`/${c.bass}`:"");
     if(onScreen.has(sym)) continue;
-    const el=document.createElement("span"); el.className="fchord"; el.textContent=sym;
-    el.style.left=`${10+Math.random()*80}%`; el.style.top="0px";
+    const el=document.createElement("span"); el.className="fchord"+(bonus?" bonus":""); el.textContent=(bonus?"★":"")+sym;
+    el.style.left=`${12+Math.random()*76}%`; el.style.top="24px";
     blast.field.appendChild(el);
-    blast.items.push({el, sym, root:c.root, q:c.qq, bass:c.bass, rootPc:pcOfName(c.root), bassPc:c.bass?pcOfName(c.bass):null, t0:now});
+    blast.items.push({el, sym, root:c.root, q:c.qq, bass:c.bass, bonus, rootPc:pcOfName(c.root), bassPc:c.bass?pcOfName(c.bass):null, t0:now});
     return;
   }
 }
@@ -1285,89 +1439,152 @@ function spawnKeyBar(now){
   if(!canWrite() || blast.keyBar) return;
   const here=devFifths(), f=rnd([-5,-4,-3,-2,-1,0,1,2,3,4,5,6].filter(x=>x!==here)), name=KEY_BY_FIFTHS[f];
   const el=document.createElement("div"); el.className="fkey";
-  el.innerHTML=`Key of ${name} major<small>${sigText(f)}${f?`: ${sigList(f).join(" ")}`:""} · set it with the key change combo</small>`;
-  el.style.top="0px"; blast.field.appendChild(el);
+  el.innerHTML=`KEY OF ${name} MAJOR<small>${sigText(f)}${f?`: ${sigList(f).join(" ")}`:""} · set it with the key change combo</small>`;
+  el.style.top="24px"; blast.field.appendChild(el);
   blast.keyBar={el, f, name, t0:now}; blast.keyTarget={f, name};
-  feedback(`Key of ${name} major is falling.`,"",`Set the key signature to ${name} with the key change combo before it lands, and the chords after it are all plain buttons.`);
+  banner(`KEY OF ${name}`, "SET IT WITH THE KEY CHANGE COMBO");
   blastBar();
 }
 // called whenever the minichord reports its settings: has the key been set?
 function blastKey(){
   const k=blast && blast.keyBar;
   if(!k || blast.over || !canWrite() || devFifths()!==k.f) return;
-  k.el.classList.add("hit"); setTimeout(()=>k.el.remove(),500); blast.keyBar=null;
-  blast.score+=50; chime("done");
+  const r=k.el.getBoundingClientRect(), fr=blast.field.getBoundingClientRect();
+  explode(r.left-fr.left+r.width/2, r.top-fr.top+r.height/2, 40, ["#5FA8FF","#B9E0FF","#FFFFFF"]);
+  k.el.remove(); blast.keyBar=null;
+  blast.score+=50; sfx("key"); popup(r.left-fr.left+r.width/2, r.top-fr.top, "+50 KEY SET", "#B9E0FF");
   feedback(`Key of ${k.name} major: set. +50`,"good",`${sigText(k.f)}${k.f?`, ${sigList(k.f).join(", ")}`:""}: every chord of the key is a plain button now.`);
   blastBar();
 }
+
+// ---------- the space the chords fall through ----------
+// A small canvas scaled up without smoothing, so every star, spark and missile is a chunky
+// pixel: three layers of stars streaming past, the ship at the bottom, its missiles, and the
+// sparks of each chord that's hit. Drawn at a quarter of the pixels, it's cheap on a slow laptop.
+const PX=3;
+function fxInit(field){
+  const cv=document.createElement("canvas"); cv.className="fx"; field.prepend(cv);
+  const fx={cv, g:cv.getContext("2d"), stars:[], missiles:[], sparks:[], w:0, h:0};
+  fx.resize=()=>{ const W=Math.max(1,Math.floor(field.clientWidth/PX)), H=Math.max(1,Math.floor(field.clientHeight/PX));
+    if(W===fx.w && H===fx.h) return; fx.w=W; fx.h=H; cv.width=W; cv.height=H;
+    fx.stars=[...Array(Math.floor(W*H/140))].map(()=>({x:Math.random()*W, y:Math.random()*H, z:1+Math.floor(Math.random()*3)})); };
+  fx.resize();
+  return fx;
+}
+function explode(x,y,n=26,colours=["#FFD35A","#FF8A3D","#FFF4C2","#FF4B3E"]){
+  const fx=blast && blast.fx; if(!fx) return;
+  for(let i=0;i<n;i++){ const a=Math.random()*Math.PI*2, v=40+Math.random()*140;
+    fx.sparks.push({x:x/PX, y:y/PX, vx:Math.cos(a)*v/PX, vy:Math.sin(a)*v/PX, life:1, c:colours[i%colours.length]}); }
+}
+function fxDraw(now, dt){
+  const fx=blast.fx; if(!fx) return; fx.resize();
+  const g=fx.g, W=fx.w, H=fx.h, speed=blast.phase==="play" ? 1+blast.level*.25 : .6;
+  g.fillStyle="#07060C"; g.fillRect(0,0,W,H);
+  for(const s of fx.stars){ s.y+=s.z*speed*dt*9; if(s.y>=H){ s.y-=H; s.x=Math.random()*W; }
+    g.fillStyle = s.z===3 ? "#FFFFFF" : s.z===2 ? "#9D98C9" : "#4B4670"; g.fillRect(Math.floor(s.x),Math.floor(s.y),1,s.z===3?2:1); }
+  // the ship: a little pixel cannon at the bottom centre
+  const sx=Math.floor(W/2), sy=H-6;
+  g.fillStyle="#F1E8D2"; g.fillRect(sx-1,sy-4,2,3); g.fillRect(sx-3,sy-1,6,2); g.fillRect(sx-5,sy+1,10,2);
+  g.fillStyle="#FF4B3E"; g.fillRect(sx-1,sy+3,2,1+Math.floor(now/80)%2);
+  // missiles: a bright head and a short trail, flying to the chord they were fired at
+  fx.missiles=fx.missiles.filter(m=>{
+    const t=Math.min(1,(now-m.t0)/m.dur), x=m.x0+(m.x1-m.x0)*t, y=m.y0+(m.y1-m.y0)*t;
+    g.fillStyle="#FFD35A"; g.fillRect(Math.floor(x)-1,Math.floor(y)-1,2,3);
+    g.fillStyle="rgba(255,120,60,.8)"; for(let k=1;k<4;k++){ const tx=x-(m.x1-m.x0)*.04*k, ty=y-(m.y1-m.y0)*.04*k; g.fillRect(Math.floor(tx),Math.floor(ty),1,1); }
+    if(t>=1){ m.hit(); return false; } return true;
+  });
+  fx.sparks=fx.sparks.filter(p=>{ p.x+=p.vx*dt; p.y+=p.vy*dt; p.vy+=30*dt; p.life-=dt*1.6;
+    if(p.life<=0) return false; g.globalAlpha=Math.max(0,p.life); g.fillStyle=p.c; g.fillRect(Math.floor(p.x),Math.floor(p.y),1+(p.life>.6?1:0),1+(p.life>.6?1:0)); g.globalAlpha=1; return true; });
+}
 function blastTick(now){
-  if(!blast || blast.over) return;
+  if(!blast) return;
+  const dt=Math.min(.05,(now-blast.last)/1000); blast.last=now;
+  if(blast.fx) fxDraw(now, dt);
+  if(blast.phase!=="play"){ blast.raf=requestAnimationFrame(blastTick); return; }
   const live=blast.items.filter(i=>!i.done);
   if(blast.pauseForBarry && !live.length){
-    blast.pauseForBarry=false; blast.barry=true; borrow(33,1); modPill(); chime("done");
-    feedback("Barry Harris mode is on.","good","Major now plays 6, minor m6, and diminished °7: the chords that fall next are written that way.");
+    blast.pauseForBarry=false; blast.barry=true; borrow(33,1); modPill(); sfx("level");
+    banner("BARRY HARRIS","MAJOR PLAYS 6 · MINOR m6 · DIM °7");
     blast.next=now+1500;
   }
   if(!blast.pauseForBarry && now>=blast.next && live.length<5){ spawnBlast(now); blast.next=now+blast.gap*(.8+Math.random()*.4); }
-  const H=blast.field ? blast.field.clientHeight : 300;
+  const H=blast.field ? blast.field.clientHeight : 420;
   for(const it of live){
     const y=(now-it.t0)/blast.fall;
-    if(y>=1){ blastMiss(it); if(!blast || blast.over) return; continue; }
-    it.el.style.top=`${y*(H-44)}px`;
+    if(y>=1){ blastMiss(it); if(!blast || blast.phase!=="play") return; continue; }
+    it.el.style.top=`${24+y*(H-70)}px`;
   }
   const k=blast.keyBar;
   if(k){
     const y=(now-k.t0)/(blast.fall*1.6);
-    if(y>=1){ k.el.classList.add("miss"); setTimeout(()=>k.el.remove(),600); blast.keyBar=null; blast.lives--; blastBar(); buzz(blast.field);
-      feedback(`The key of ${k.name} major landed.`,"bad",`Its chords keep falling: each needs its own button and modifier until you set the key.`);
+    if(y>=1){ k.el.classList.add("miss"); setTimeout(()=>k.el.remove(),600); blast.keyBar=null; blast.lives--; blastBar(); buzz(blast.field, true); sfx("miss");
+      banner(`KEY OF ${k.name} LANDED`, "ITS CHORDS NEED THE MODIFIER NOW");
       if(blast.lives<=0){ blastOver(); return; } }
-    else k.el.style.top=`${y*(H-52)}px`;
+    else k.el.style.top=`${24+y*(H-80)}px`;
   }
-  const low=lowestBlast(); blast.items.forEach(it=>it.el.classList.toggle("low", it===low));
+  const low=lowestBlast(); blast.items.forEach(it=>it.el.classList.toggle("low", it===low && !it.bonus));
   blast.raf=requestAnimationFrame(blastTick);
 }
 function blastMiss(it){
   it.done=true; it.el.classList.add("miss"); setTimeout(()=>it.el.remove(),600);
-  blast.lives--; blastBar(); buzz(blast.field);
+  const x=it.el.offsetLeft, y=blast.field.clientHeight-40;
+  if(it.bonus){ popup(x,y,"GONE","#7FE9FF"); return; }                 // a ★ chord costs nothing if it lands
+  blast.lives--; blastBar(); buzz(blast.field, true); sfx("miss"); popup(x,y,"MISS","#FF4B3E");
   feedback(`${it.sym} landed.`,"bad", `On your minichord: ${howTo(it.root,it.q)}${it.bass?`, then press ${pressRoot(it.bass)} as well`:""}.`);
   if(blast.lives<=0) blastOver();
 }
 function blastOver(){
-  blast.over=true; cancelAnimationFrame(blast.raf); poll(false);
+  blast.over=true; blast.phase="over"; poll(false);
   const best=Math.max(saved.best.blaster||0, blast.score); saved.best.blaster=best; save();
   blast.items.forEach(i=>i.el.remove()); if(blast.keyBar) blast.keyBar.el.remove();
-  feedback(`Game over: ${blast.score} points, level ${blast.level+1}.`, "", `Your best: ${best}. Press Next to play again.`);
-  blastBar();
+  feedback(`Game over: ${blast.score} points, level ${blast.level+1}.`, "", `Your best: ${best}.`);
+  blastBar(); blastMenu(true);
+}
+// what the game heard, at the foot of the field: a chord that sounds but hits nothing says so here
+function heard(name, hit){
+  if(!blast || !blast.heard) return;
+  blast.heard.className="heard"+(hit?"":" no");
+  blast.heard.innerHTML=`HEARD <b>${name||"?"}</b>${hit?"":" · NOT FALLING"}`;
 }
 function blasterChord(voices){
-  if(!blast || blast.over) return;
+  if(!blast || blast.phase!=="play") return;
   const pitches=voices.map(v=>v.pitch);
   const matches=i=>{
     if(i.bassPc==null) return isChord(pitches,i.rootPc,i.q);
     const tones=FORM[i.q].map(f=>mod(i.rootPc+f[1],12)), pcs=pitches.map(p=>mod(Math.round(p),12));
     return mod(Math.round(Math.min(...pitches)),12)===i.bassPc && pcs.every(p=>p===i.bassPc || tones.includes(p)) && pcs.includes(tones[1]);
   };
-  const hit=blast.items.filter(i=>!i.done && matches(i)).sort((a,b)=>a.t0-b.t0)[0];
-  if(!hit){ if(chordId(pitches)) later(()=>{ buzz(blast && blast.field); feedback(`${chordName(pitches,devFifths())||"That"} isn't falling.`,"bad"); }); return; }
-  hit.done=true; hit.el.classList.remove("low"); hit.el.classList.add("hit"); setTimeout(()=>hit.el.remove(),400);
-  blast.hits++; blast.score+=10*(blast.level+1); stats.streak=blast.hits; scoreboard();
+  const name=chordName(pitches,devFifths());
+  // the lowest matching chord, ★ chords only if nothing ordinary matches
+  const hit=blast.items.filter(i=>!i.done && matches(i)).sort((a,b)=>(a.bonus-b.bonus)||(a.t0-b.t0))[0];
+  if(!hit){ heard(name,false); if(chordId(pitches)) later(()=>{ buzz(blast && blast.field, true); sfx("miss"); }); return; }
+  heard(name,true);
+  hit.done=true; hit.el.classList.remove("low");
+  // a missile from the ship to the chord; the chord explodes when it arrives
+  const fr=blast.field, x=hit.el.offsetLeft, y=hit.el.offsetTop+hit.el.offsetHeight/2;
+  const pts=(hit.bonus?50:10)*(blast.level+1);
+  sfx("shoot");
+  blast.fx.missiles.push({x0:fr.clientWidth/2/PX, y0:(fr.clientHeight-22)/PX, x1:x/PX, y1:y/PX, t0:performance.now(), dur:170,
+    hit:()=>{ sfx(hit.bonus?"bonus":"boom"); hit.el.classList.add("gone"); setTimeout(()=>hit.el.remove(),50); explode(x,y, hit.bonus?44:26, hit.bonus?["#7FE9FF","#FFFFFF","#B9F3FF","#FFD35A"]:undefined); popup(x,y-10,`+${pts}`, hit.bonus?"#7FE9FF":undefined); }});
+  blast.hits++; blast.score+=pts; stats.streak=blast.hits; scoreboard();
   if(blast.hits%8===0){
     const was=blast.level; blast.level=nextLevel(blast.level);
-    blast.fall=Math.max(3500, blast.fall*.88); blast.gap=Math.max(900, blast.gap*.88);
-    const lv=BLAST_LEVELS[blast.level], news = blast.level===was ? "" :
-      lv.barry ? ": Barry Harris mode comes on once the field is clear" :
-      lv.slash && !BLAST_LEVELS[was].slash ? ": slash chords. Hold the chord, then press the bass note's button too" : "";
+    blast.fall=Math.max(3500*speedMul(), blast.fall*.88); blast.gap=Math.max(900*speedMul(), blast.gap*.88);
+    const lv=BLAST_LEVELS[blast.level];
+    if(blast.level!==was){
+      banner(`LEVEL ${blast.level+1}`, lv.barry ? "BARRY HARRIS MODE COMES ON ONCE THE FIELD IS CLEAR" : lv.slash && !BLAST_LEVELS[was].slash ? "SLASH CHORDS: HOLD THE CHORD, THEN THE BASS NOTE'S BUTTON" : LEVEL_NAMES[blast.level].toUpperCase());
+    } else banner("FASTER!");
     if(lv.barry && !blast.barry) blast.pauseForBarry=true;
-    chime("done"); feedback(`${hit.sym}! Level ${blast.level+1}${news}.`,"good");
-    if(blast.level>=2) spawnKeyBar(performance.now());
-  } else { chime("step"); feedback(`${hit.sym}!`,"good"); }
+    sfx("level");
+    if(blast.level>=2) setTimeout(()=>{ if(blast && blast.phase==="play") spawnKeyBar(performance.now()); }, 2400);
+  }
   blastBar();
 }
 const GENS={spell:genSpell, hidden:genHidden, oddone:genOddOne, shades:genShades, reshape:genReshape, blaster:genBlaster, diatonic:genDiatonic, numeral:genNumeral, staff:genStaff, slash:genSlash, key:genKey, harp:genHarp, missing:genMissing,
   melody:genMelody, chordscale:genChordScale, smooth:genSmooth, whichvoice:genWhichVoice, simon:genSimon, directions:genDirections, pluckchord:genPluckChord, buildscale:genBuildScale,
   scale:genScale, transpose:genTranspose, temper:genTemper, tune:genTune};
 const MYSTERY=new Set(["scale","transpose","temper","tune"]);
-const LABELS={spell:"Spell it", hidden:"Hidden layout", oddone:"Odd one out", shades:"Shades of the third", reshape:"Reshape", blaster:"Sight reader", diatonic:"Seven chords", numeral:"Numerals", staff:"On the staff", slash:"Slash chords", key:"Key detective", harp:"Harp hunt", missing:"Missing note", mix:"Mix",
+const LABELS={spell:"Spell it", hidden:"Hidden layout", oddone:"Odd one out", shades:"Shades of the third", reshape:"Reshape", blaster:"Chord Invaders", diatonic:"Seven chords", numeral:"Numerals", staff:"On the staff", slash:"Slash chords", key:"Key detective", harp:"Harp hunt", missing:"Missing note", mix:"Mix",
   melody:"Play by number", chordscale:"Chord scales", smooth:"Smooth moves", whichvoice:"Which voice moved?", simon:"Simon says", directions:"Follow the directions", pluckchord:"Pluck the chord", buildscale:"Build the scale",
   scale:"Scale detective", transpose:"Transpose detective", temper:"Temperament taster", tune:"Tune up"};
 
@@ -1414,9 +1631,15 @@ const saved={best:{}, sprint:{}};
 // saved under its old name, so settings and best scores carry over from when it was Spellbound
 try{ const s=JSON.parse(localStorage.getItem("lab-spellbound")||"{}"); Object.assign(settings,s.settings||{}); Object.assign(saved,s.saved||{}); }catch(e){}
 if(!LABELS[settings.mode]) settings.mode="spell";
+// A link can open one game directly, ?game=invaders (or any game's name, like ?game=reshape),
+// and ?solo shows that game on its own, without the menu, the settings or the answer area.
+const urlParams=new URLSearchParams(location.search);
+const GAME_SLUGS={invaders:"blaster", "chord-invaders":"blaster", sevenchords:"diatonic", layout:"hidden"};
+{ const g=(urlParams.get("game")||"").toLowerCase(), k=GAME_SLUGS[g]||g; if(LABELS[k]) settings.mode=k; }
+const solo=urlParams.has("solo") && LABELS[settings.mode] && !!urlParams.get("game");
 if(!SETS[settings.set] || settings.set==="alt") settings.set="standard";
 const save=()=>{ try{ localStorage.setItem("lab-spellbound",JSON.stringify({settings,saved})); }catch(e){} };
-for(const id of ["set","order","doubles","secondary","keysrc","scaleset","dirset","blastStart","advance","textSize","promptFont","reshapeLevel","hiddenPool","shadesMode"]){ $(id).value=settings[id]; $(id).onchange=e=>{ settings[id]=e.target.value; save(); buildPicker(); applyDisplay(); }; }
+for(const id of ["set","order","doubles","secondary","keysrc","scaleset","dirset","advance","textSize","promptFont","reshapeLevel","hiddenPool","shadesMode"]){ $(id).value=settings[id]; $(id).onchange=e=>{ settings[id]=e.target.value; save(); buildPicker(); applyDisplay(); }; }
 // Display: the whole page scales with the text size, and the plain font swaps the serif of
 // prompts and chord names for Atkinson Hyperlegible
 function applyDisplay(){
@@ -1562,6 +1785,7 @@ function altPill(){
 // harp steps by the division's own steps and MIDI rounds to the nearest semitone, and the
 // twelve-note temperaments would colour every listening round.
 const EQUAL={addr:237,value:0,what:"equal temperament"};
+const STANDARD_LAYOUT={addr:39,value:0,what:""};   // said aloud only by the layout pill, not in the list
 // Barry Harris mode (address 33) turns the major, minor and diminished buttons into 6, m6
 // and diminished 7, so each question sets it the way its chord needs, like the modifier:
 // on for those three, off for plain major, minor and diminished, and left alone otherwise.
@@ -1579,7 +1803,27 @@ function applyNeeds(){
   const missing=q.needs.filter(n=> n.ok ? !n.ok(mc.params[n.addr]) : mc.params[n.addr]!==n.value);
   if(missing.length){ missing.forEach(n=>borrow(n.addr,n.value)); setTimeout(()=>mc.requestDump(),200); }
 }
+// The last round, kept when a new one starts: its prompt and everything its answer showed
+// (the explanation, the keyboard, the layout's buttons), for the Last answer button.
+let lastRound=null;
+function keepLastRound(){
+  if(!q || !(solved || revealedThis)) return;
+  const fb=$("feedback").cloneNode(true); fb.removeAttribute("id");
+  const keys=$("keys"); const k = keys.hasAttribute("hidden") ? null : keys.cloneNode(true);
+  if(k) k.removeAttribute("id");
+  lastRound={prompt:$("prompt").textContent, what:$("what").textContent, fb, keys:k};
+  $("lastBtn").disabled=false;
+}
+function showLastRound(){
+  const box=$("lastRound");
+  if(!lastRound || !box.hidden){ box.hidden=true; $("lastBtn").setAttribute("aria-pressed","false"); return; }
+  box.innerHTML=""; const h=document.createElement("p"); h.className="lastprompt"; h.textContent=`Last round (${lastRound.what}): ${lastRound.prompt}`;
+  box.append(h, lastRound.fb.cloneNode(true)); if(lastRound.keys){ const k=lastRound.keys.cloneNode(true); k.style.display="block"; box.append(k); }
+  box.hidden=false; $("lastBtn").setAttribute("aria-pressed","true");
+}
+let revealedThis=false;
 function nextQuestion(){
+  keepLastRound(); revealedThis=false; $("lastRound").hidden=true; $("lastBtn").setAttribute("aria-pressed","false");
   userRestored=false; roundBorrows.clear(); heldVoices=[]; alt=null;
   stopTones(); stopBlaster(); clearTimeout(pendingWrong); pendingWrong=null;
   harpQuietUntil=performance.now()+150;
@@ -1602,6 +1846,8 @@ function nextQuestion(){
   buildPicker();
   if(q.answer.type==="key") poll(true);
   if(q.kind!=="temper" && !(q.needs||[]).some(n=>n.addr===237)) q.needs=[...(q.needs||[]), EQUAL];
+  // every other game plays the standard chords, whether a layout game or the double tap left the alternate on
+  if(!(q.needs||[]).some(n=>n.addr===39) && canWrite() && mc.params[39]!==undefined) q.needs=[...q.needs, STANDARD_LAYOUT];
   applyNeeds();
   modifierFor(q.answer.spellRoot || q.answer.tonicName || q.pressRoot);
   modPill();
@@ -1646,9 +1892,9 @@ function correct(extra){
 function wrong(text){ firstTry=false; stats.streak=0; buzz(); feedback(text,"bad"); scoreboard(); showNumerals(); }
 // A wrong answer flashes the game card red and, with sounds on, plays two soft low notes
 // falling a minor third: noticeable, not a klaxon.
-function buzz(target){
+function buzz(target, silent){
   const g=target || document.querySelector(".game"); g.classList.remove("flash"); void g.offsetWidth; g.classList.add("flash");
-  if(!settings.sounds || !piano.ctx || piano.ctx.state!=="running") return;
+  if(silent || !settings.sounds || !piano.ctx || piano.ctx.state!=="running") return;
   const ctx=piano.ctx, t0=ctx.currentTime+.01;
   [[311.1,0],[261.6,.12]].forEach(([f,at])=>{
     const o=ctx.createOscillator(), g2=ctx.createGain(), lp=ctx.createBiquadFilter();
@@ -1900,11 +2146,13 @@ async function startTones(){
 function buildSpecial(){
   const box=$("special"); box.innerHTML=""; box.hidden = !(q && ["tune","melody","smooth","simon","directions","pluckchord","buildscale","blaster","diatonic","reshape","hidden","oddone","shades"].includes(q.kind)); if(box.hidden) return;
   if(q.kind==="blaster"){
-    const bar=document.createElement("div"); bar.className="fieldbar";
-    const field=document.createElement("div"); field.className="field"; field.setAttribute("aria-label","Falling chords");
+    const field=document.createElement("div"); field.className="field arcade"; field.setAttribute("aria-label","Falling chords");
     const ground=document.createElement("div"); ground.className="ground"; field.appendChild(ground);
-    if(blast){ blast.items.filter(i=>!i.done).forEach(i=>field.appendChild(i.el)); blast.field=field; blast.bar=bar; }
-    box.append(bar, field); blastBar(); return;
+    const hud=document.createElement("div"); hud.className="hud"; field.appendChild(hud);
+    const hd=document.createElement("div"); hd.className="heard"; field.appendChild(hd);
+    box.append(field);
+    if(blast){ blast.items.filter(i=>!i.done).forEach(i=>field.appendChild(i.el)); blast.field=field; blast.hud=hud; blast.heard=hd; blast.fx=fxInit(field); if(blast.overlay) field.appendChild(blast.overlay); }
+    blastBar(); return;
   }
   const chip=(text,state)=>{ const b=document.createElement("span"); b.textContent=text;
     b.style.cssText=`font:600 1.5rem var(--hand);min-width:1.4em;padding:0 .15em;text-align:center;border-bottom:3px solid ${state==="now"?"var(--accent)":"transparent"};color:${state==="done"?"var(--v1)":state==="now"?"var(--ink)":"var(--muted)"}`;
@@ -1920,7 +2168,7 @@ function buildSpecial(){
   if(q.kind==="buildscale"){ q.answer.pcs.forEach((p,i)=>chip(i<q.answer.pos?nameOf(p):"·", i<q.answer.pos?"done":i===q.answer.pos?"now":"")); return; }
   if(["hidden","oddone","shades"].includes(q.kind) && alt && alt.kind===q.kind){
     if(q.kind==="shades" && alt.mode==="order") SHADES.forEach((sh,i)=>chip(i<alt.pos ? sh.n : "?", i<alt.pos?"done":i===alt.pos?"now":""));
-    if(!(q.kind==="shades" && alt.mode==="order")){ const b=document.createElement("button"); b.className="primary"; b.textContent="Found it (spacebar)"; b.onclick=submitAlt; box.appendChild(b); }
+    { const b=document.createElement("button"); b.className="primary"; b.textContent = q.kind==="shades" && alt.mode==="order" ? "Add it (spacebar)" : "Found it (spacebar)"; b.onclick=submitAlt; box.appendChild(b); }
     return;
   }
   if(q.kind==="reshape"){
@@ -1988,8 +2236,12 @@ async function hear(){
 }
 $("hear").onclick=hear;
 $("hint").onclick=()=>{ if(q){ firstTry=false; if(q.kind==="reshape" && reshape){ reshape.showAim=true; buildSpecial(); } feedback(q.hint,""); } };
+$("lastBtn").onclick=showLastRound;
+$("settingsBtn").onclick=()=>$("settingsDlg").showModal();
+$("settingsClose").onclick=()=>$("settingsDlg").close();
+$("settingsDlg").addEventListener("click",e=>{ if(e.target===$("settingsDlg")) $("settingsDlg").close(); });   // a click outside closes it
 $("reveal").onclick=()=>{
-  if(!q) return; firstTry=false; stats.streak=0; scoreboard();
+  if(!q) return; firstTry=false; stats.streak=0; scoreboard(); revealedThis=true;
   const a=q.answer;
   if(a.type==="tune"){ const hz=tuneState.secret/10; feedback(`It was set to A = ${hz.toFixed(1)} Hz, ${Math.abs(1200*Math.log2(hz/440)).toFixed(1)} cents ${hz>440?"sharp":"flat"}.`,"bad","Slide the other way from there, or press Next."); return; }
   feedback(`It's ${a.name}.`, "bad", reveal(a) || (a.type==="choice" ? "Press Next for another." : "Answer it to go on."));
@@ -2001,6 +2253,7 @@ $("next").onclick=()=>{ piano.start(); if(q && !solved && !sprint){ stats.asked+
 // ---------- modes ----------
 function setMode(m){
   const switching = settings.mode!==m;
+  $("nowPlaying").textContent = `Playing: ${LABELS[m]||m}`;
   settings.mode=m; save();
   document.querySelectorAll(".modes button[data-mode]").forEach(x=>x.setAttribute("aria-pressed",x.dataset.mode===m));
   $("sprint").disabled = MYSTERY.has(m) || m==="blaster";
@@ -2014,6 +2267,11 @@ function setMode(m){
 }
 document.querySelectorAll(".modes button[data-mode]").forEach(b=>{ b.setAttribute("aria-pressed", b.dataset.mode===settings.mode); b.onclick=()=>setMode(b.dataset.mode); });
 $("sprint").disabled = MYSTERY.has(settings.mode) || settings.mode==="blaster";
+$("nowPlaying").textContent = `Playing: ${LABELS[settings.mode]||settings.mode}`;
+for(const [id,key] of [["gameMenu","menuOpen"]]){
+  const d=$(id); if(saved[key]===false) d.open=false;
+  d.addEventListener("toggle",()=>{ saved[key]=d.open; save(); });
+}
 
 // ---------- sprint ----------
 $("sprint").onclick=()=>{
@@ -2085,6 +2343,14 @@ $("prompt").textContent="Press Start";
 $("what").textContent=LABELS[settings.mode];
 $("sub").textContent="Choose a game above, then press Start. Answer on the minichord's chord buttons or harp, or with the pickers.";
 buildPicker(); scoreboard(); mine();
+// one game on its own page: named for the game, and started straight away
+if(solo){
+  document.documentElement.classList.add("solo");
+  $("pageTitle").textContent=LABELS[settings.mode]; document.title=`${LABELS[settings.mode]} · Minichord Lab`;
+  $("moreLink").hidden=false;
+  $("gameMenu").open=false;
+  nextQuestion();
+}
 </script>
 <!-- say-thanks -->
 <p style="text-align:center;margin:28px 0 18px;font-size:14px;opacity:0.8">Minichord Lab by <a href="https://keyandcable.com/projects.html" target="_blank" rel="noopener" style="color:inherit">The Key &amp; Cable Company</a> &middot; <a href="https://keyandcable.com/thanks.html" target="_blank" rel="noopener" style="color:inherit;font-weight:bold">Say thanks</a></p>
