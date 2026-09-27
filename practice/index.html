@@ -1883,6 +1883,7 @@ function snMenu(over){
     b.innerHTML=`${i+1}<small>${L.n}${ok?"":"<br>NEEDS A MINICHORD"}</small>`; b.disabled=!ok; b.onclick=()=>beginSnake(i); lv.appendChild(b); });
   ov.appendChild(lv); blast.menuSig=SN_LEVELS.map((_,i)=>snLevelOk(i)).join();
   if(!over && best){ const p=document.createElement("p"); p.textContent=`BEST ${best}`; ov.appendChild(p); }
+  arcadeModNote(ov);
   arcadeKeys(ov);
   if(!over) arcadeCredit(ov);
   blast.field.appendChild(ov); blast.overlay=ov;
@@ -1930,6 +1931,7 @@ function snFill(){
 }
 function snDraw(){
   if(!blast || blast.kind!=="snake" || !blast.boardEl) return;
+  if(blast.phase==="play"){ const r=snReady()[0]; if(r) arcadeMod(r.root); }
   const b=blast.boardEl, ready=new Set((snReady()[0]||{tones:[]}).tones);
   b.innerHTML="";
   for(const t of blast.tiles){ const e=document.createElement("span"); e.className="sntile"+(t.star?" star":""); e.style.cssText=snPos(t.x,t.y); e.innerHTML=(t.star?PIXEL_STAR:"")+t.name; b.appendChild(e); }
@@ -2189,6 +2191,7 @@ function asMenu(over){
     b.innerHTML=`${i+1}<small>${L.n}${ok?"":"<br>NEEDS A MINICHORD"}</small>`; b.disabled=!ok; b.onclick=()=>beginAsteroids(i); lv.appendChild(b); });
   ov.appendChild(lv); blast.menuSig=AS_LEVELS.map((_,i)=>asLevelOk(i)).join();
   if(!over && best){ const p=document.createElement("p"); p.textContent=`BEST ${best}`; ov.appendChild(p); }
+  arcadeModNote(ov);
   arcadeKeys(ov);
   if(!over) arcadeCredit(ov);
   blast.field.appendChild(ov); blast.overlay=ov;
@@ -2251,6 +2254,7 @@ function asTick(now){
     }
     blast.rocks=blast.rocks.filter(r=>!r.dead || now-r.deadAt<60);
     const low=asNearest("chord"); blast.rocks.forEach(r=>r.el.classList.toggle("low", r===low && !r.star));
+    if(low && blast.phase==="play") arcadeMod(low.root);
   }
   if(blast.fx) fxDraw(now, dt);
   blast.raf=requestAnimationFrame(asTick);
@@ -2506,6 +2510,7 @@ function stMenu(over){
   ST_LEVELS.forEach((L,i)=>{ const b=document.createElement("button"); b.innerHTML=`${i+1}<small>${L.n}</small>`; b.onclick=()=>beginStack(i); lv.appendChild(b); });
   ov.appendChild(lv);
   if(!over && best){ const p=document.createElement("p"); p.textContent=`BEST ${best}`; ov.appendChild(p); }
+  arcadeModNote(ov);
   arcadeKeys(ov);
   if(!over) arcadeCredit(ov);
   blast.field.appendChild(ov); blast.overlay=ov;
@@ -2647,6 +2652,7 @@ function stOver(){
 }
 function stDraw(){
   if(!blast || blast.kind!=="stack" || !blast.boardEl) return;
+  if(blast.phase==="play"){ const r=stReadyRows().sort((a,b)=>b.y-a.y)[0]; if(r) arcadeMod(r.tones[0]); }
   const b=blast.boardEl, c=blast.cell, ready=new Set(stReadyRows().flatMap(r=>r.pcs.map(x=>r.y+","+x)));   // just the chord's notes glow
   const cellHtml=(x,y,cls,label)=>`<span class="stcell ${cls}" style="left:${x*c}px;top:${y*c}px;width:${c}px;height:${c}px;font-size:${Math.round(c*.36)}px">${label}</span>`;
   let h="";
@@ -2779,6 +2785,26 @@ document.addEventListener("keydown", e=>{
   e.preventDefault(); toggleFull(blast.field);
 });
 
+
+// ---------- the modifier, offered for the chord you need next ----------
+// The arcade chord games set the modifier's direction for the chord that matters most right now: the
+// lowest falling chord, the nearest rock, a ready row or a chord the snake can cash in. A root the key
+// signature doesn't give needs the modifier: a sharp one "sharpens", a flat one "flattens". It's only
+// set when that chord changes, so a double tap to flip it yourself holds until the next one.
+function arcadeMod(rootName){
+  if(!blast || !rootName || !canWrite() || !hasSetting(31) || blast.modFor===rootName) return;
+  blast.modFor=rootName;
+  const {li,acc}=parse(rootName), ka=keyAcc(li,devFifths());
+  if(acc===ka) return;                                   // a plain button: the modifier isn't needed
+  ensure(31, acc>ka ? 0 : 1); modPill();
+}
+// the instruction on the chord games' title screens
+function arcadeModNote(ov){
+  const p=document.createElement("p"); p.className="padhint";
+  p.textContent="THE MODIFIER: THE GAME SETS SHARP OR FLAT FOR THE CHORD YOU NEED NEXT. DOUBLE-TAP IT TO FLIP IT YOURSELF.";
+  ov.appendChild(p);
+}
+
 // ---------- Chord Invaders' own sounds ----------
 // Chiptune effects from square waves and noise, only in this game and only with sounds on:
 // a laser for each shot, a crunchy burst for each hit, a sparkle for a ★, a thud for a miss,
@@ -2884,6 +2910,7 @@ function blastMenu(over){
     const b=document.createElement("button"); b.innerHTML=`${i+1}<small>${n}${ok?"":"<br>NEEDS THE TEST FIRMWARE"}</small>`; b.disabled=!ok; b.onclick=()=>beginBlast(i); lv.appendChild(b); });
   ov.appendChild(lv);
   if(!over && best) { const p=document.createElement("p"); p.textContent=`BEST ${best}`; ov.appendChild(p); }
+  arcadeModNote(ov);
   arcadeKeys(ov);
   if(!over) arcadeCredit(ov);
   blast.field.appendChild(ov); blast.overlay=ov;
@@ -2911,6 +2938,7 @@ const DEMO_SCENES=[
   {chord:"B°",    col:6, rows:[0,1], text:"DIMINISHED: MAJOR AND MINOR TOGETHER"},
   {chord:"C+",    col:1, rows:[0,1,2], text:"AUGMENTED: ALL THREE"},
   {chord:"F♯m",   col:0, rows:[1], mod:true, text:"SHARPS AND FLATS: HOLD THE MODIFIER TOO"},
+  {flip:true, title:"SHARP OR FLAT?", text:"THE GAME SETS THE MODIFIER FOR THE NEXT CHORD. DOUBLE-TAP IT TO FLIP IT YOURSELF.", hold:4200},
   {chord:"C/E",   col:1, rows:[0], slash:5, text:"SLASH CHORDS: HOLD THE CHORD, THEN ANY BUTTON IN THE BASS NOTE'S COLUMN"},
   {key:true, title:"SETTING THE KEY", text:"HOLD BOTH PRESET BUTTONS. THE LIGHT BLINKS.", hold:3200},
   {key:true, keyPress:[3,1], text:"THE ROWS ARE NOW SHARP, NATURAL AND FLAT KEYS. PRESS ONE.", hold:3400},
@@ -2959,6 +2987,11 @@ function runDemo(attract){
       el.querySelectorAll(".pre").forEach(p=>p.classList.toggle("lit", !!sc.key));
       label(!!sc.key || !!sc.keyPress);
       if(sc.key && !sc.keyPress){ sfx("combo"); setTimeout(()=>token.run && sfx("blinks"), 450); }
+      if(sc.flip){   // the modifier tapped twice: its ♯ turns to ♭
+        const m=$d(".mod");
+        for(let k=0;k<2;k++){ await sleep(420); if(!token.run) return; m.classList.add("lit"); sfx("press"); await sleep(140); m.classList.remove("lit"); }
+        m.textContent="♭"; sfx("letgo"); await sleep(sc.hold-1400); m.textContent="♯"; continue;
+      }
       if(sc.keyPress){ await sleep(900); if(!token.run) return; cells[sc.keyPress[0]][sc.keyPress[1]].classList.add("lit"); sfx("press"); setTimeout(()=>token.run && sfx("key"), 120); }
       if(sc.keyDone){ label(false); sfx("letgo"); banner(`KEY OF ${sc.keyDone}`, "D MAJOR: F♯ AND C♯"); }
       if(sc.title==="READY?") sfx("level");
@@ -3000,7 +3033,7 @@ function beginBlast(level){
   stopDemo();
   blast.items.forEach(i=>i.el.remove()); if(blast.keyBar) blast.keyBar.el.remove();
   Object.assign(blast,{items:[], score:0, lives:3, level, startLevel:level, hits:0, next:performance.now()+900,
-    fall:9000*Math.pow(.92,level)*speedMul(), gap:2600*Math.pow(.92,level)*speedMul(), over:false, phase:"play", keyBar:null, keyTarget:null, keyPaid:null, pauseForBarry:false});
+    fall:9000*Math.pow(.92,level)*speedMul(), gap:2600*Math.pow(.92,level)*speedMul(), over:false, phase:"play", keyBar:null, keyTarget:null, keyPaid:null, pauseForBarry:false, modFor:null});
   if(BLAST_LEVELS[level].barry && !blast.barry){ blast.barry=true; ensure(33,1); modPill(); }
   // every game starts in C major, whatever key the last one ended in, so the first chords are the
   // plain buttons; the player's own key goes back when they leave
@@ -3262,6 +3295,7 @@ function blastTick(now){
     else k.el.style.top=`${24+y*(H-80)}px`;
   }
   const low=lowestBlast(); blast.items.forEach(it=>it.el.classList.toggle("low", it===low && !it.bonus));
+  if(low) arcadeMod(low.root);
   blast.raf=requestAnimationFrame(blastTick);
 }
 function blastMiss(it){
@@ -3513,7 +3547,9 @@ function modPill(){
   el.hidden=false;
   const sharp=mc.params[31]!==1, set=31 in borrowed;
   el.textContent=`Modifier ${sharp?"♯ sharpens":"♭ flattens"}${set?" · set for you":""}${q && q.usesMod && !solved?" · this one needs it":""}`;
-  el.title = set ? "The game switched the modifier this way so every answer is one button plus the modifier. It goes back when you leave." : "The modifier as your minichord has it.";
+  el.title = (set ? "The game switched the modifier this way so every answer is one button plus the modifier. It goes back when you leave." : "The modifier as your minichord has it.")
+    + (settings.modTap!=="off" ? " Double-tap the modifier to flip it between sharp and flat." : "");
+  if(settings.modTap!=="off" && mc.params[200]===31) el.textContent+=" · double-tap flips";
   if(lastMod!==null && lastMod!==mc.params[31]){ el.classList.remove("pulse"); void el.offsetWidth; el.classList.add("pulse"); }
   lastMod=mc.params[31];
   // Barry Harris mode: shown whenever it's on or the game has set it either way
