@@ -184,6 +184,31 @@
 .field.arcade .fnote .minstaff{display:block;color:#F1E8D2}
 .field.arcade .fnote.low .minstaff{color:#FFD35A}
 
+
+/* Chord Snake: the board, the tiles, the snake, and the harp drawn as a controller */
+.field.arcade.snake .snboard{position:absolute;z-index:2;border:2px solid rgba(241,232,210,.35);box-shadow:inset 0 0 0 1px rgba(0,0,0,.6)}
+.snboard .sntile,.snboard .snseg{position:absolute;display:flex;align-items:center;justify-content:center;box-sizing:border-box;font-family:"Minichord Lab Accidentals","Press Start 2P",monospace;line-height:1}
+.snboard .sntile{color:#F1E8D2;border:2px solid #9A93B5;background:rgba(22,19,42,.8)}
+.snboard .sntile.star{color:#7FE9FF;border-color:#7FE9FF;box-shadow:0 0 8px rgba(127,233,255,.6)}
+.snboard .sntile .pstar{width:.8em;height:.62em;margin-right:.1em}
+.snboard .snseg{background:#F1E8D2;color:#16132A;border:2px solid #07060C}
+.snboard .snseg.plain{background:#B5AC96}
+.snboard .snseg.ready{background:#7FE9FF;box-shadow:0 0 10px rgba(127,233,255,.9);animation:snready .6s steps(2) infinite}
+@keyframes snready{50%{background:#E0FBFF}}
+.snboard .snseg.head{background:#FFD35A}
+.snboard .snseg.head::before,.snboard .snseg.head::after{content:"";position:absolute;width:18%;height:18%;background:#16132A}
+.snboard .snseg.head.dir-right::before{right:18%;top:20%}.snboard .snseg.head.dir-right::after{right:18%;bottom:20%}
+.snboard .snseg.head.dir-left::before{left:18%;top:20%}.snboard .snseg.head.dir-left::after{left:18%;bottom:20%}
+.snboard .snseg.head.dir-up::before{top:18%;left:20%}.snboard .snseg.head.dir-up::after{top:18%;right:20%}
+.snboard .snseg.head.dir-down::before{bottom:18%;left:20%}.snboard .snseg.head.dir-down::after{bottom:18%;right:20%}
+.kmstrip{position:absolute;right:14px;z-index:3;display:grid;gap:4px;pointer-events:none}
+.kmstrip.line{top:44px;bottom:30px;width:56px;grid-template-rows:repeat(12,1fr)}                                             /* the standard strip */
+.kmstrip.grid{top:50%;width:120px;height:160px;margin-top:-80px;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(4,1fr)}   /* the keymaster's four rows of three */
+.kmstrip .km{display:flex;align-items:center;justify-content:center;font:400 .6rem "Press Start 2P",monospace;color:#9A93B5;border:2px solid #3D3656;background:rgba(22,19,42,.7)}
+.kmstrip .km-A,.kmstrip .km-B{color:#FFD35A;border-color:#6B5A2A}
+.kmstrip .km.hit{animation:kmhit .25s ease-out}
+@keyframes kmhit{0%{background:#FFD35A;color:#16132A}100%{background:rgba(22,19,42,.7)}}
+.kmstrip .km.demo-on{background:#FFD35A;color:#16132A;border-color:#FFF4C2}
 /* the demo's pixel minichord */
 .overlay button.howto{border-color:#FFD35A;color:#FFD35A}
 .demo{position:absolute;inset:0;z-index:5;display:flex;flex-direction:column;justify-content:flex-start;padding:10px 14px;pointer-events:none}
@@ -265,7 +290,8 @@ details.fold[open] .nowplaying{display:none}
     <span class="grp">Arcade games</span>
     <button data-mode="blaster">Chord Invaders</button>
     <button data-mode="command">Harp Command</button>
-    <span class="arcadelinks">or on their own pages: <a href="../invaders/">Chord Invaders</a> · <a href="../harp-command/">Harp Command</a></span>
+    <button data-mode="snake">Chord Snake</button>
+    <span class="arcadelinks">or on their own pages: <a href="../invaders/">Chord Invaders</a> · <a href="../harp-command/">Harp Command</a> · <a href="../chord-snake/">Chord Snake</a></span>
   </div>
   <div class="modes" role="group" aria-label="Read and play">
     <span class="grp">Read and play</span>
@@ -1658,6 +1684,361 @@ function endCommandDemo(token){
   blast.attract=setTimeout(()=>{ if(blast && blast.kind==="command" && blast.phase==="menu" && blast.overlay && !blast.overlay.hidden) commandDemo(); }, 25000);
 }
 
+
+// ---------- the harp as a game controller ----------
+// With the harp in chromatic mode each section plays one known note (string n, counted from the
+// lowest, plays the nth note up from C), so a game can read the harp as a d-pad. Two layouts:
+//
+// The standard minichord's strip, twelve sections stacked with the high notes at the top: three
+// for up, two left, A, B, two right, three down. The big zones at each end are easy to hit blind.
+// The keymaster harp's four rows of three, a d-pad as it stands: the bottom row (strings 1-3)
+// down, the top row (10-12) up, 4 and 7 left, 6 and 9 right, 5 is B and 8 is A.
+//   standard, top to bottom      keymaster
+//   12 11 10  ▲                  10 11 12   ▲ ▲ ▲
+//    9  8     ◀                   7  8  9   ◀ A ▶
+//    7        A                   4  5  6   ◀ B ▶
+//    6        B                   1  2  3   ▼ ▼ ▼
+//    5  4     ▶
+//    3  2  1  ▼
+const KM_LAYOUTS={
+  strip:{byString:["down","down","down","right","right","B","A","left","left","up","up","up"], drawOrder:[11,10,9,8,7,6,5,4,3,2,1,0], cols:1},
+  keymaster:{byString:["down","down","down","left","B","right","left","A","right","up","up","up"], drawOrder:[9,10,11,6,7,8,3,4,5,0,1,2], cols:3},
+};
+const kmLayout=()=>KM_LAYOUTS[saved.harpLayout==="keymaster" ? "keymaster" : "strip"];
+const KM_GLYPH={up:"▲",left:"◀",A:"A",B:"B",right:"▶",down:"▼"};
+const kmControl=pc=>kmLayout().byString[mod(pc,12)];
+/** the controller drawn beside the field, as the harp is laid out, lit as it's touched */
+function kmStrip(field){
+  const L=kmLayout(), el=document.createElement("div"); el.className="kmstrip "+(L.cols===3?"grid":"line"); el.setAttribute("aria-label","The harp as a controller");
+  L.drawOrder.forEach(pc=>{ const z=L.byString[pc], c=document.createElement("span"); c.className=`km km-${z}`; c.dataset.zone=z; c.dataset.pc=pc; c.textContent=KM_GLYPH[z]; el.appendChild(c); });
+  field.appendChild(el); return el;
+}
+function kmFlash(strip, pc){ if(!strip) return; const c=strip.querySelector(`[data-pc="${mod(pc,12)}"]`); if(!c) return; c.classList.remove("hit"); void c.offsetWidth; c.classList.add("hit"); }
+// set the harp up as a controller: chromatic, first rank, untransposed, and as loud as the player chose
+function kmHarp(){
+  if(!canWrite()) return;
+  if(hasSetting(116)) borrow(116,1);
+  borrow(98,1); if(hasSetting(36)) borrow(36, mc.params[36] ?? 0);   // harp mode written last: the strings retune
+  if(hasSetting(30)) ensure(30,0);
+  const vol=[null,30,0][saved.harpSound??1]; if(vol!=null && hasSetting(97)) borrow(97,vol);
+}
+
+// ---------- Chord Snake ----------
+// Snake, where the snake eats notes. Spelled notes lie around the board; running into one adds it
+// to the snake's tail, and the tail spells what it's carrying. When some of the notes it carries
+// make a chord, those segments glow: play that chord on the minichord and the snake dumps them in a
+// burst of sparks, scoring more for bigger chords and quicker cash-ins, and shrinking back. Every
+// note carried makes it longer; hitting a wall, its own tail, or taking on more than it can carry
+// costs a life. B on the harp drops the oldest note, for a few points. It steers on the harp,
+// played as a controller, or on the arrow keys.
+const SN_LEVELS=[
+  {n:"Major and minor", qs:["","m"], roots:"natural"},
+  {n:"Sharps and flats", qs:["","m"], roots:"all"},
+  {n:"Sevenths", qs:["","m","7","maj7","m7"], roots:"all"},
+  {n:"Diminished and augmented", qs:["","m","7","maj7","m7","°","+"], roots:"all"},
+  {n:"Barry Harris", qs:["6","m6","7","maj7","m7","°7"], roots:"all", barry:true},
+];
+const SN_MAX=[6,6,7,8,8];                 // how many notes the snake can carry at each level
+const SN_DIRS={up:[0,-1],down:[0,1],left:[-1,0],right:[1,0]};
+function genSnake(){
+  return {kind:"snake", prompt:"Chord Snake", sub:"Steer the snake into notes to carry them. When some of the notes it carries spell a chord, they glow: play that chord on the minichord to cash them in. Walls, your own tail and carrying too much cost a life.",
+    answer:{type:"snake", get name(){ const c=blast && blast.kind==="snake" ? snReady()[0] : null; return c ? c.root+c.q : "a chord from the notes you carry"; }},
+    get hint(){ const c=blast && blast.kind==="snake" ? snReady()[0] : null; return c ? `You're carrying ${c.tones.join(" ")}: that's ${c.root}${c.q}.` : "Collect the notes of a chord: a root, its third and its fifth."; },
+    context:0};
+}
+const snRoots=L=> L.roots==="natural" ? ["C","D","E","F","G","A","B"] : ROOTS;
+// every chord of the level that the carried notes can make, largest first
+function snReady(){
+  if(!blast || blast.kind!=="snake") return [];
+  const L=SN_LEVELS[blast.level], names=new Set(blast.tail.map(t=>t.name)), out=[];
+  for(const root of names) for(const q of L.qs){
+    const tones=spellChord(root,q); if(!tones) continue;
+    if(tones.every(t=>names.has(t))) out.push({root, q, tones});
+  }
+  return out.sort((a,b)=>b.tones.length-a.tones.length);
+}
+// the board: a grid of cells, beside the controller strip
+function snLayout(){
+  const f=blast.field, W=f.clientWidth-(kmLayout().cols===3 ? 150 : 84), H=f.clientHeight-64;   // room on the right for the controller
+  const cell=Math.max(24, Math.min(34, Math.floor(Math.min(W/24, H/15))));
+  blast.cell=cell; blast.cols=Math.floor(W/cell); blast.rows=Math.floor(H/cell);
+  blast.ox=Math.floor((W-blast.cols*cell)/2)+8; blast.oy=40+Math.floor((H-blast.rows*cell)/2);
+  blast.boardEl.style.cssText=`left:${blast.ox}px;top:${blast.oy}px;width:${blast.cols*cell}px;height:${blast.rows*cell}px`;
+}
+const snPos=(x,y)=>`left:${x*blast.cell}px;top:${y*blast.cell}px;width:${blast.cell}px;height:${blast.cell}px;font-size:${Math.round(blast.cell*.42)}px`;
+function startSnake(){
+  blast={kind:"snake", items:[], tail:[], body:[], tiles:[], score:0, lives:3, level:0, cashes:0, over:true, phase:"menu", raf:0,
+    field:null, hud:null, fx:null, noShip:true, last:performance.now(), dir:"right", queue:[], nextMove:0};
+  snDevice();
+  stats.streak=0; scoreboard(); buildSpecial();
+  snMenu();
+  blast.raf=requestAnimationFrame(snTick);
+}
+function snDevice(){
+  if(!blast || blast.kind!=="snake" || !canWrite()) return;
+  if(!blast.setupDone){ blast.setupDone=true; poll(true); kmHarp(); }
+  const sig=SN_LEVELS.map((_,i)=>snLevelOk(i)).join();
+  if(blast.phase==="menu" && blast.overlay && blast.menuSig!==sig){ const hid=blast.overlay.hidden; blast.overlay.remove(); blast.overlay=null; snMenu(); blast.overlay.hidden=hid; }
+}
+const snLevelOk=i=> !SN_LEVELS[i].barry || canWrite();
+function buildSnakeField(box){
+  const field=document.createElement("div"); field.className="field arcade snake"; field.setAttribute("aria-label","The Chord Snake board");
+  const hud=document.createElement("div"); hud.className="hud"; field.appendChild(hud);
+  const hd=document.createElement("div"); hd.className="heard"; field.appendChild(hd);
+  const board=document.createElement("div"); board.className="snboard"; field.appendChild(board);
+  box.append(field);
+  if(blast && blast.kind==="snake"){
+    blast.field=field; blast.hud=hud; blast.heard=hd; blast.boardEl=board; blast.fx=fxInit(field); blast.strip=kmStrip(field);
+    setTimeout(()=>{ snLayout(); snDraw(); });
+    if(blast.overlay) field.appendChild(blast.overlay);
+  }
+  snBar();
+}
+function snBar(){
+  if(!blast || blast.kind!=="snake" || !blast.hud) return;
+  const max=SN_MAX[blast.level]||6, load=blast.tail.length;
+  blast.hud.innerHTML=`<span>SCORE ${blast.score}</span><span class="lvl">LEVEL ${blast.level+1} · LOAD ${load}/${max}</span><span class="lives">${"♥".repeat(Math.max(0,blast.lives))||"-"}</span>`;
+}
+function snMenu(over){
+  const ov=document.createElement("div"); ov.className="overlay";
+  const best=saved.best.snake||0;
+  if(over){
+    ov.innerHTML=`<h3 class="over">GAME OVER</h3><p>SCORE ${blast.score} · LEVEL ${blast.level+1} · BEST ${best}</p>`;
+    const again=document.createElement("button"); again.className="go"; again.innerHTML=`PLAY AGAIN<small>from level ${blast.startLevel+1}</small>`;
+    again.onclick=()=>beginSnake(blast.startLevel); ov.appendChild(again);
+    sfx("over");
+  } else {
+    ov.innerHTML=`<h3>CHORD SNAKE</h3><p>EAT NOTES. WHEN THE ONES YOU CARRY SPELL A CHORD, PLAY IT TO CASH THEM IN.</p><p>STEER ON THE HARP OR THE ARROW KEYS. B DROPS YOUR OLDEST NOTE.</p>`;
+    const how=document.createElement("button"); how.className="howto"; how.textContent="▶ HOW TO PLAY"; how.onclick=()=>snDemo(); ov.appendChild(how);
+  }
+  const row=(label, list, get, set)=>{ const r=document.createElement("div"); r.className="optrow"; const l=document.createElement("span"); l.className="optlabel"; l.textContent=label;
+    const g=document.createElement("div"); g.className="levels";
+    const mark=b=>{ [...g.children].forEach(x=>{ x.style.background=""; x.style.color=""; }); b.style.background="#F1E8D2"; b.style.color="#16132A"; };
+    list.forEach((n,i)=>{ const b=document.createElement("button"); b.textContent=n; if(get()===i) mark(b); b.onclick=()=>{ set(i); mark(b); }; g.appendChild(b); });
+    r.append(l,g); ov.appendChild(r); };
+  row("SPEED", SPEEDS.map(x=>x[0].toUpperCase()), ()=>+saved.speed||0, i=>{ saved.speed=i; save(); });
+  row("HARP", ["STANDARD STRIP","KEYMASTER GRID"], ()=>saved.harpLayout==="keymaster"?1:0, i=>{ saved.harpLayout = i ? "keymaster" : "strip"; save();
+    if(blast && blast.strip){ blast.strip.remove(); blast.strip=kmStrip(blast.field); snLayout(); snDraw(); } });
+  row("HARP SOUND", ["NORMAL","QUIET","OFF"], ()=>saved.harpSound??1, i=>{ saved.harpSound=i; save(); if(blast && blast.setupDone) kmHarp(); });
+  const lp=document.createElement("p"); lp.className = over ? "" : "blink"; lp.textContent = over ? "OR START FROM" : "CHOOSE A LEVEL"; ov.appendChild(lp);
+  const lv=document.createElement("div"); lv.className="levels";
+  SN_LEVELS.forEach((L,i)=>{ const b=document.createElement("button"), ok=snLevelOk(i);
+    b.innerHTML=`${i+1}<small>${L.n}${ok?"":"<br>NEEDS A MINICHORD"}</small>`; b.disabled=!ok; b.onclick=()=>beginSnake(i); lv.appendChild(b); });
+  ov.appendChild(lv); blast.menuSig=SN_LEVELS.map((_,i)=>snLevelOk(i)).join();
+  if(!over && best){ const p=document.createElement("p"); p.textContent=`BEST ${best}`; ov.appendChild(p); }
+  if(!over) arcadeCredit(ov);
+  blast.field.appendChild(ov); blast.overlay=ov;
+  clearTimeout(blast.attract);
+  if(!over) blast.attract=setTimeout(()=>{ if(blast && blast.kind==="snake" && blast.phase==="menu" && blast.overlay===ov) snDemo(); }, 25000);
+}
+// a fresh snake in the middle, pointing right, carrying nothing
+function snReset(){
+  const cx=Math.floor(blast.cols/2)-2, cy=Math.floor(blast.rows/2);
+  blast.body=[[cx,cy],[cx-1,cy],[cx-2,cy]]; blast.tail=[]; blast.dir="right"; blast.queue=[];
+}
+function beginSnake(level){
+  piano.start(); stopDemo(); clearTimeout(blast.attract);
+  if(blast.overlay){ blast.overlay.remove(); blast.overlay=null; }
+  Object.assign(blast,{score:0, lives:3, level, startLevel:level, cashes:0, phase:"play", over:false, tiles:[], stepMs:260*speedMul()});
+  if(SN_LEVELS[level].barry && canWrite()) borrow(33,1); else if(canWrite() && hasSetting(33)) ensure(33,0);
+  saved.snakeStart=level; save();
+  stats.streak=0; scoreboard(); snLayout(); snReset(); snFill();
+  cancelAnimationFrame(blast.raf); blast.last=performance.now(); blast.nextMove=performance.now()+900; blast.raf=requestAnimationFrame(snTick);
+  banner(`LEVEL ${level+1}`, `${SN_LEVELS[level].n.toUpperCase()} · ${(SPEEDS[+saved.speed]||SPEEDS[0])[0].toUpperCase()}`);
+  sfx("start"); snBar(); snDraw();
+}
+// keep the board stocked: the notes of a chord or two the level uses, and a stray or two
+function snFree(){
+  const used=new Set([...blast.body.map(([x,y])=>x+","+y), ...blast.tiles.map(t=>t.x+","+t.y)]);
+  for(let k=0;k<200;k++){ const x=Math.floor(Math.random()*blast.cols), y=Math.floor(Math.random()*blast.rows);
+    const h=blast.body[0]; if(Math.abs(x-h[0])+Math.abs(y-h[1])<3) continue;
+    if(!used.has(x+","+y)) return [x,y]; }
+  return null;
+}
+function snFill(){
+  const L=SN_LEVELS[blast.level], want=Math.min(9, 5+blast.level);
+  while(blast.tiles.length<want){
+    // prefer the notes that would finish a chord from what's carried, then a fresh chord's notes
+    const carried=new Set(blast.tail.map(t=>t.name)), onBoard=new Set(blast.tiles.map(t=>t.name));
+    let pool=[];
+    for(let k=0;k<40 && !pool.length;k++){
+      const root = carried.size && Math.random()<.6 ? rnd([...carried]) : rnd(snRoots(L)), q=rnd(L.qs), tones=spellChord(root,q);
+      if(tones) pool=tones.filter(t=>!carried.has(t) && !onBoard.has(t));
+    }
+    const name = pool.length && Math.random()<.8 ? rnd(pool) : rnd(snRoots(L));
+    const at=snFree(); if(!at) break;
+    blast.tiles.push({x:at[0], y:at[1], name, pc:pcOfName(name), star:Math.random()<.08});
+  }
+}
+function snDraw(){
+  if(!blast || blast.kind!=="snake" || !blast.boardEl) return;
+  const b=blast.boardEl, ready=new Set((snReady()[0]||{tones:[]}).tones);
+  b.innerHTML="";
+  for(const t of blast.tiles){ const e=document.createElement("span"); e.className="sntile"+(t.star?" star":""); e.style.cssText=snPos(t.x,t.y); e.innerHTML=(t.star?PIXEL_STAR:"")+t.name; b.appendChild(e); }
+  // the head, then a segment for each carried note, then the plain end of the body
+  blast.body.forEach(([x,y],i)=>{
+    const e=document.createElement("span"), note = i>0 ? blast.tail[i-1] : null;
+    e.className = i===0 ? `snseg head dir-${blast.dir}` : "snseg"+(note && ready.has(note.name) ? " ready" : "")+(note?"":" plain");
+    e.style.cssText=snPos(x,y); if(note) e.textContent=note.name;
+    b.appendChild(e);
+  });
+}
+function snTick(now){
+  if(!blast || blast.kind!=="snake") return;
+  const dt=Math.min(.05,(now-blast.last)/1000); blast.last=now;
+  if(blast.fx) fxDraw(now, dt);
+  if(blast.phase==="play" && now>=blast.nextMove){ snStep(); blast.nextMove=now+blast.stepMs*(1+.03*blast.tail.length); }
+  blast.raf=requestAnimationFrame(snTick);
+}
+function snTurn(d){
+  if(!blast || blast.kind!=="snake" || blast.phase!=="play") return;
+  const last=blast.queue.length ? blast.queue[blast.queue.length-1] : blast.dir, opp={up:"down",down:"up",left:"right",right:"left"};
+  if(d===last || d===opp[last] || blast.queue.length>=2) return;
+  blast.queue.push(d);
+}
+function snStep(){
+  if(blast.queue.length) blast.dir=blast.queue.shift();
+  const [dx,dy]=SN_DIRS[blast.dir], h=blast.body[0], nx=h[0]+dx, ny=h[1]+dy;
+  if(nx<0 || ny<0 || nx>=blast.cols || ny>=blast.rows) return snCrash("WALL");
+  if(blast.body.slice(0,-1).some(([x,y])=>x===nx && y===ny)) return snCrash("OUCH");
+  const ti=blast.tiles.findIndex(t=>t.x===nx && t.y===ny);
+  blast.body.unshift([nx,ny]);
+  if(ti>=0){
+    const t=blast.tiles.splice(ti,1)[0];
+    if(blast.tail.length>=(SN_MAX[blast.level]||6)){ blast.body.shift(); return snCrash("OVERLOADED"); }
+    blast.tail.unshift({name:t.name, pc:t.pc});          // the newest note rides just behind the head
+    sfx("press");
+    if(t.star){ const pts=50*(blast.level+1); blast.score+=pts; sfx("bonus"); snPopup(nx,ny,`+${pts}`,"#7FE9FF"); }
+    if(!blast.demo) snFill();
+    if(snReady().length) sfx("key");
+  } else blast.body.pop();
+  // the body is the head, one segment per note carried, and two plain segments after
+  while(blast.body.length>blast.tail.length+3) blast.body.pop();
+  snBar(); snDraw();
+}
+function snPopup(x,y,text,colour){ popup(blast.ox+(x+.5)*blast.cell, blast.oy+y*blast.cell, text, colour); }
+function snCrash(why){
+  const h=blast.body[0];
+  explode(blast.ox+(h[0]+.5)*blast.cell, blast.oy+(h[1]+.5)*blast.cell, 34, ["#FF4B3E","#FF8A3D","#FFD35A"]);
+  sfx("miss"); buzz(blast.field,true);
+  blast.lives--; banner(why, blast.lives>0 ? `${blast.lives} ${blast.lives===1?"LIFE":"LIVES"} LEFT` : "");
+  if(blast.lives<=0){
+    blast.phase="over"; blast.over=true;
+    const best=Math.max(saved.best.snake||0, blast.score); saved.best.snake=best; save();
+    snBar(); snDraw(); snMenu(true); return;
+  }
+  snReset(); blast.nextMove=performance.now()+1400; snBar(); snDraw();
+}
+// a chord from the minichord: cash in the carried notes it spells
+function snakeChord(voices){
+  if(!blast || blast.kind!=="snake") return;
+  if(blast.phase==="demo" && blast.demo){ endSnDemo(blast.demo); return; }
+  if(blast.phase!=="play") return;
+  const pitches=voices.map(v=>v.pitch), name=chordName(pitches,0);
+  const hit=snReady().find(c=>isChord(pitches, pcOfName(c.root), c.q));
+  if(!hit){ heard(name,false); if(chordId(pitches)) later(()=>{ sfx("miss"); buzz(blast && blast.field, true); }); return; }
+  heard(name,true);
+  // those notes leave the tail in a burst, and the snake shrinks back
+  const gone=new Set(hit.tones), segs=blast.body.slice(1,blast.tail.length+1);
+  segs.forEach(([x,y],i)=>{ if(gone.has(blast.tail[i].name)) explode(blast.ox+(x+.5)*blast.cell, blast.oy+(y+.5)*blast.cell, 18, ["#7FE9FF","#FFD35A","#FFFFFF"]); });
+  // the notes left close up behind the head, and the snake shortens from its end
+  blast.tail=blast.tail.filter(t=>!gone.has(t.name));
+  blast.body=blast.body.slice(0, blast.tail.length+3);
+  const pts=hit.tones.length*15*(blast.level+1);
+  blast.score+=pts; blast.cashes++; stats.streak=blast.cashes; scoreboard();
+  sfx("boom"); const h=blast.body[0]; snPopup(h[0],h[1],`${hit.root}${hit.q} +${pts}`,"#FFD35A");
+  if(blast.cashes%5===0){
+    const was=blast.level;
+    for(let n=blast.level+1;n<SN_LEVELS.length;n++) if(snLevelOk(n)){ blast.level=n; break; }
+    blast.stepMs=Math.max(90, blast.stepMs*.92); sfx("level");
+    if(blast.level!==was){ banner(`LEVEL ${blast.level+1}`, SN_LEVELS[blast.level].n.toUpperCase()); if(SN_LEVELS[blast.level].barry && canWrite()) borrow(33,1); }
+    else banner("FASTER!");
+  }
+  snFill(); snBar(); snDraw();
+}
+// the harp, as a controller
+function snakeHarp(pc){
+  if(!blast || blast.kind!=="snake") return;
+  kmFlash(blast.strip, pc);
+  const c=kmControl(pc);
+  if(blast.phase==="demo" && blast.demo){ endSnDemo(blast.demo); return; }
+  if(blast.phase!=="play") return;
+  if(c==="A") return;                                    // A is spare, for now
+  if(c==="B") return snDrop();
+  snTurn(c);
+}
+function snDrop(){
+  if(!blast.tail.length) return;
+  blast.tail.pop(); blast.body.splice(blast.tail.length+1,1);
+  const cost=5*(blast.level+1); blast.score=Math.max(0,blast.score-cost);
+  sfx("letgo"); const h=blast.body[0]; snPopup(h[0],h[1],`-${cost}`,"#FF7A6E");
+  snBar(); snDraw();
+}
+document.addEventListener("keydown", e=>{
+  if(!q || q.kind!=="snake" || /INPUT|SELECT|TEXTAREA/.test(document.activeElement?.tagName||"")) return;
+  const k={ArrowUp:"up",ArrowDown:"down",ArrowLeft:"left",ArrowRight:"right",KeyW:"up",KeyS:"down",KeyA:"left",KeyD:"right"}[e.code];
+  if(k){ e.preventDefault(); snTurn(k); return; }
+  if(e.code==="KeyX" || e.code==="KeyB"){ e.preventDefault(); if(blast && blast.phase==="play") snDrop(); }
+});
+
+// ---------- Chord Snake's demo ----------
+// The controller strip first, zone by zone; then the snake eats E, G♯ and B, the three glow, E major
+// is played and they burst; then B dropping a note. It runs the real game on a scripted board.
+function snDemo(){
+  if(!blast || blast.kind!=="snake") return;
+  stopDemo(); clearTimeout(blast.attract); piano.start();
+  if(blast.overlay) blast.overlay.hidden=true;
+  blast.phase="demo"; snLayout();
+  const el=document.createElement("div"); el.className="demo"; blast.field.appendChild(el); blast.field.classList.add("demoing");
+  const token={run:true, el}; blast.demo=token;
+  el.innerHTML=`<div class="demohead"><span class="demotag blink">DEMO</span><span class="demotitle"></span><button class="demoskip">SKIP ▶</button></div><p class="democap"></p>`;
+  el.querySelector(".demoskip").onclick=()=>endSnDemo(token);
+  const $d=s=>el.querySelector(s), sleep=ms=>new Promise(r=>setTimeout(r,ms)), say=(t,c)=>{ $d(".demotitle").textContent=t||""; $d(".democap").textContent=c; };
+  const litZone=(...zs)=>{ [...blast.strip.children].forEach(c=>c.classList.toggle("demo-on", zs.includes(c.dataset.zone))); };
+  sfx("attract");
+  (async()=>{
+    const step=async ms=>{ await sleep(ms); if(!token.run) throw 0; };
+    try{
+      const grid=kmLayout().cols===3;
+      say("THE HARP IS YOUR CONTROLLER", grid ? "ITS FOUR ROWS OF THREE ARE A D-PAD, WITH TWO BUTTONS IN THE MIDDLE." : "TOP TO BOTTOM, THE STRIP IS UP, LEFT, TWO BUTTONS, RIGHT AND DOWN."); await step(3200);
+      const tour = grid ? [[["up"],"THE TOP ROW GOES UP"],[["down"],"THE BOTTOM ROW GOES DOWN"],[["left"],"THE LEFT SIDE GOES LEFT"],[["right"],"THE RIGHT SIDE GOES RIGHT"],[["A","B"],"A AND B IN THE MIDDLE: B DROPS YOUR OLDEST NOTE"]]
+        : [[["up"],"THE TOP THREE GO UP"],[["left"],"THE NEXT TWO GO LEFT"],[["A","B"],"A AND B IN THE MIDDLE: B DROPS YOUR OLDEST NOTE"],[["right"],"TWO FOR RIGHT"],[["down"],"AND THE BOTTOM THREE GO DOWN"]];
+      for(const [zs,t] of tour){
+        litZone(...zs); say("THE HARP IS YOUR CONTROLLER", t); sfx("press"); await step(1700); }
+      litZone();
+      say("EAT NOTES","STEER INTO A NOTE AND THE SNAKE CARRIES IT.");
+      snReset(); const [hx,hy]=blast.body[0];
+      blast.tiles=[{x:hx+2,y:hy,name:"E",pc:4},{x:hx+4,y:hy,name:"G♯",pc:8},{x:hx+6,y:hy,name:"B",pc:11},{x:hx+3,y:hy+3,name:"F",pc:5}];
+      blast.stepMs=380; snDraw(); await step(1200);
+      for(let k=0;k<6;k++){ snDemoStep(); await step(420); }
+      say("SPELL A CHORD","E, G♯ AND B GLOW: THEY SPELL E MAJOR."); await step(2600);
+      say("CASH IN","PLAY E MAJOR ON THE MINICHORD AND THEY BURST. BIGGER CHORDS SCORE MORE.");
+      await step(900);
+      if(settings.sounds && piano.ctx){ const go=()=>piano.play([52,56,59,64],{when:.02,dur:1.2}); piano.ctx.state==="running"?go():piano.ctx.resume().then(go).catch(()=>{}); }
+      snDemoCash(); await step(2600);
+      say("WATCH YOUR LOAD","WALLS, YOUR OWN TAIL AND CARRYING TOO MUCH COST A LIFE."); await step(3200);
+      say("READY?","CHOOSE A LEVEL. STEER ON THE HARP OR THE ARROW KEYS."); sfx("level"); await step(2800);
+      endSnDemo(token);
+    }catch(e){ /* skipped */ }
+  })();
+}
+function snDemoStep(){ const saveLives=blast.lives; blast.phase="play"; snStep(); blast.phase="demo"; blast.lives=saveLives; }
+function snDemoCash(){
+  const gone=new Set(["E","G♯","B"]);
+  blast.body.slice(1,blast.tail.length+1).forEach(([x,y],i)=>{ if(gone.has(blast.tail[i].name)) explode(blast.ox+(x+.5)*blast.cell, blast.oy+(y+.5)*blast.cell, 18, ["#7FE9FF","#FFD35A","#FFFFFF"]); });
+  sfx("boom"); const h=blast.body[0]; snPopup(h[0],h[1],"E +45","#FFD35A");
+  blast.tail=blast.tail.filter(t=>!gone.has(t.name)); while(blast.body.length>blast.tail.length+3) blast.body.pop(); snDraw();
+}
+function endSnDemo(token){
+  if(!blast || blast.demo!==token) return;
+  stopDemo(); blast.phase="menu"; blast.tiles=[]; blast.tail=[]; blast.body=[];
+  if(blast.strip) [...blast.strip.children].forEach(c=>c.classList.remove("demo-on"));
+  snDraw();
+  if(blast.overlay) blast.overlay.hidden=false;
+  clearTimeout(blast.attract);
+  blast.attract=setTimeout(()=>{ if(blast && blast.kind==="snake" && blast.phase==="menu" && blast.overlay && !blast.overlay.hidden) snDemo(); }, 25000);
+}
+
 // ---------- Chord Invaders' own sounds ----------
 // Chiptune effects from square waves and noise, only in this game and only with sounds on:
 // a laser for each shot, a crunchy burst for each hit, a sparkle for a ★, a thud for a miss,
@@ -2032,7 +2413,8 @@ function fxDraw(now, dt){
   g.fillStyle="#07060C"; g.fillRect(0,0,W,H);
   for(const s of fx.stars){ s.y+=s.z*speed*dt*9; if(s.y>=H){ s.y-=H; s.x=Math.random()*W; }
     g.fillStyle = s.z===3 ? "#FFFFFF" : s.z===2 ? "#9D98C9" : "#4B4670"; g.fillRect(Math.floor(s.x),Math.floor(s.y),1,s.z===3?2:1); }
-  if(blast.cannons){
+  if(blast.noShip){ /* the snake's board has no ship */ }
+  else if(blast.cannons){
     // Harp Command: a pixel cannon under each of the harp's twelve strings, lowest on the left;
     // one lights as its string is plucked
     const frozen=now<(blast.frozenUntil||0);
@@ -2143,11 +2525,11 @@ function blasterChord(voices){
   }
   blastBar();
 }
-const GENS={spell:genSpell, command:genCommand, hidden:genHidden, oddone:genOddOne, shades:genShades, reshape:genReshape, blaster:genBlaster, diatonic:genDiatonic, numeral:genNumeral, staff:genStaff, slash:genSlash, key:genKey, harp:genHarp, missing:genMissing,
+const GENS={spell:genSpell, command:genCommand, snake:genSnake, hidden:genHidden, oddone:genOddOne, shades:genShades, reshape:genReshape, blaster:genBlaster, diatonic:genDiatonic, numeral:genNumeral, staff:genStaff, slash:genSlash, key:genKey, harp:genHarp, missing:genMissing,
   melody:genMelody, chordscale:genChordScale, smooth:genSmooth, whichvoice:genWhichVoice, simon:genSimon, directions:genDirections, pluckchord:genPluckChord, buildscale:genBuildScale,
   scale:genScale, transpose:genTranspose, temper:genTemper, tune:genTune};
 const MYSTERY=new Set(["scale","transpose","temper","tune"]);
-const LABELS={spell:"Spell it", hidden:"Hidden layout", oddone:"Odd one out", shades:"Shades of the third", reshape:"Reshape", blaster:"Chord Invaders", command:"Harp Command", diatonic:"Seven chords", numeral:"Numerals", staff:"On the staff", slash:"Slash chords", key:"Key detective", harp:"Harp hunt", missing:"Missing note", mix:"Mix",
+const LABELS={spell:"Spell it", hidden:"Hidden layout", oddone:"Odd one out", shades:"Shades of the third", reshape:"Reshape", blaster:"Chord Invaders", command:"Harp Command", snake:"Chord Snake", diatonic:"Seven chords", numeral:"Numerals", staff:"On the staff", slash:"Slash chords", key:"Key detective", harp:"Harp hunt", missing:"Missing note", mix:"Mix",
   melody:"Play by number", chordscale:"Chord scales", smooth:"Smooth moves", whichvoice:"Which voice moved?", simon:"Simon says", directions:"Follow the directions", pluckchord:"Pluck the chord", buildscale:"Build the scale",
   scale:"Scale detective", transpose:"Transpose detective", temper:"Temperament taster", tune:"Tune up"};
 
@@ -2197,7 +2579,7 @@ if(!LABELS[settings.mode]) settings.mode="spell";
 // A link can open one game directly, ?game=invaders (or any game's name, like ?game=reshape),
 // and ?solo shows that game on its own, without the menu, the settings or the answer area.
 const urlParams=new URLSearchParams(location.search);
-const GAME_SLUGS={invaders:"blaster", "chord-invaders":"blaster", "harp-command":"command", harpcommand:"command", sevenchords:"diatonic", layout:"hidden"};
+const GAME_SLUGS={invaders:"blaster", "chord-invaders":"blaster", "harp-command":"command", harpcommand:"command", "chord-snake":"snake", sevenchords:"diatonic", layout:"hidden"};
 { const g=(urlParams.get("game")||"").toLowerCase(), k=GAME_SLUGS[g]||g; if(LABELS[k]) settings.mode=k; }
 const solo=urlParams.has("solo") && LABELS[settings.mode] && !!urlParams.get("game");
 if(!SETS[settings.set] || settings.set==="alt") settings.set="standard";
@@ -2424,6 +2806,7 @@ function nextQuestion(){
   needs();
   if(q.kind==="blaster") startBlaster();
   if(q.kind==="command") startCommand();
+  if(q.kind==="snake") startSnake();
   if(q.kind==="simon") setTimeout(simonPlay,700);
 }
 function feedback(text,kind="",small=""){ const f=$("feedback"); f.className="feedback "+kind; f.textContent=text; if(small){ const s=document.createElement("small"); s.textContent=small; f.appendChild(s); } }
@@ -2523,6 +2906,7 @@ function answerChord(voices){
   if(!q || solved) return;
   if(q.answer.type==="blaster") return blasterChord(voices);
   if(q.answer.type==="command") return;                  // the harp answers Harp Command, not the chords
+  if(q.answer.type==="snake") return snakeChord(voices);
   if(q.answer.type==="diatonic") return answerDiatonic(voices);
   if(q.answer.type==="reshape") return answerReshape(voices);
   if(q.answer.type==="alt") return answerAltChord(voices);
@@ -2553,6 +2937,7 @@ function answerChord(voices){
 }
 function answerNote(pc, pickedName){
   if(q && q.kind==="command") return commandNote(pc);
+  if(q && q.kind==="snake") return snakeHarp(pc);
   if(!q || solved) return;
   if(q.answer.type==="note" && pc===q.answer.pc && pickedName && q.answer.name && pickedName!==q.answer.name)
     return correct(`Right note: ${q.answer.name}. Here it's spelled ${q.answer.name}, not ${pickedName}.`);
@@ -2718,8 +3103,9 @@ async function startTones(){
   if(!canWrite()){ tones.sim=make((tuneState.secret+tuneState.nudge)/10,.1,settings.tuneWave); tones.push(tones.sim); }   // no minichord: simulate it
 }
 function buildSpecial(){
-  const box=$("special"); box.innerHTML=""; box.hidden = !(q && ["tune","melody","smooth","simon","directions","pluckchord","buildscale","blaster","command","diatonic","reshape","hidden","oddone","shades"].includes(q.kind)); if(box.hidden) return;
+  const box=$("special"); box.innerHTML=""; box.hidden = !(q && ["tune","melody","smooth","simon","directions","pluckchord","buildscale","blaster","command","snake","diatonic","reshape","hidden","oddone","shades"].includes(q.kind)); if(box.hidden) return;
   if(q.kind==="command"){ buildCommandField(box); return; }
+  if(q.kind==="snake"){ buildSnakeField(box); return; }
   if(q.kind==="blaster"){
     const field=document.createElement("div"); field.className="field arcade"; field.setAttribute("aria-label","Falling chords");
     const ground=document.createElement("div"); ground.className="ground"; field.appendChild(ground);
@@ -2831,7 +3217,7 @@ function setMode(m){
   $("nowPlaying").textContent = `Playing: ${LABELS[m]||m}`;
   settings.mode=m; save();
   document.querySelectorAll(".modes button[data-mode]").forEach(x=>x.setAttribute("aria-pressed",x.dataset.mode===m));
-  $("sprint").disabled = MYSTERY.has(m) || m==="blaster" || m==="command";
+  $("sprint").disabled = MYSTERY.has(m) || m==="blaster" || m==="command" || m==="snake";
   stats.streak=0; scoreboard(); nextQuestion();
   if(switching){
     const back=restoreExcept(new Set([...(q.needs||[]).map(n=>n.addr), ...(q.borrows||[]), ...roundBorrows, 31]));   // keep what the new game uses
@@ -2841,7 +3227,7 @@ function setMode(m){
   }
 }
 document.querySelectorAll(".modes button[data-mode]").forEach(b=>{ b.setAttribute("aria-pressed", b.dataset.mode===settings.mode); b.onclick=()=>setMode(b.dataset.mode); });
-$("sprint").disabled = MYSTERY.has(settings.mode) || settings.mode==="blaster" || settings.mode==="command";
+$("sprint").disabled = MYSTERY.has(settings.mode) || settings.mode==="blaster" || settings.mode==="command" || settings.mode==="snake";
 $("nowPlaying").textContent = `Playing: ${LABELS[settings.mode]||settings.mode}`;
 for(const [id,key] of [["gameMenu","menuOpen"]]){
   const d=$(id); if(saved[key]===false) d.open=false;
@@ -2892,6 +3278,7 @@ function mine(){
 // ---------- connection ----------
 mc.addEventListener("device", ()=>{
   if(blast && blast.kind==="command") commandDevice();
+  else if(blast && blast.kind==="snake") snDevice();
   else if(blast){ blastSetup(); if(blast.phase!=="play") blastHomeKey(); blastKey(); }
   if(q && !solved && !rebuilding) applyNeeds();
   mine(); needs();
@@ -2912,7 +3299,7 @@ mc.addEventListener("ports", ()=>{
 });
 $("input").onchange=e=>mc.selectInput(e.target.value);
 $("connect").onclick=async e=>{ e.target.disabled=true; piano.start(); if(await mc.connect()) e.target.textContent="Connected"; else e.target.disabled=false; };
-window.__sb={get q(){ return q; }, get arcade(){ return blast; }, next:nextQuestion,
+window.__sb={get q(){ return q; }, get arcade(){ return blast; }, get snakeReady(){ return snReady(); }, next:nextQuestion,
   draw:(r,qq)=>{ const t=spellChord(r,qq); if(!t) return null; FORM_STEPS=FORM[qq].map(f=>f[0]); $("staff").removeAttribute("hidden"); drawStaff(t); return t; },
   get smooth(){ return smooth; }, get simon(){ return simon; }, get dirs(){ return dirs; }, pcOf:pcOfName, answerChord, answerNote, answerKey, answerChoice, borrowed, restoreAll, pressRoot, get tune(){ return tuneState; }};
 $("prompt").textContent="Press Start";
