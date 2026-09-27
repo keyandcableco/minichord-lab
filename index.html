@@ -31,8 +31,8 @@
 .view:hover h2{color:var(--felt)}
 .view p{margin:0;color:var(--muted)}
 /* the arcade: its games shown by their own title screens */
-.group.arcade .view img{display:block;width:100%;height:auto;aspect-ratio:1200/630;border:1px solid var(--ink);margin:2px 0 10px;background:#07060C}
-.group.arcade .view:hover img{outline:2px solid var(--felt);outline-offset:2px}
+.view img{display:block;width:100%;height:auto;aspect-ratio:1200/630;border:1px solid var(--ink);margin:2px 0 10px;background:#07060C}
+.view:hover img{outline:2px solid var(--felt);outline-offset:2px}
 .next{margin-top:26px}
 .next p{color:var(--muted);max-width:70ch}
 </style>
@@ -80,22 +80,58 @@
   </section>
 
   <section class="group">
+    <h2 class="grouphead">Play and practise</h2>
+    <p class="groupblurb">The Practice Room, ear training, and the minichord as a choir, a string quartet or a light show.</p>
+    <div class="views">
+    <a class="view" href="practice/">
+      <img src="practice/card.png" alt="" loading="lazy" width="1200" height="630">
+      <h2>The Practice Room</h2>
+      <p>Games that make you quick on the minichord: read chords and find them on the buttons, play scales and tunes on the harp, reshape one chord into another, find secret chords by ear, and every arcade game too.</p>
+    </a>
+    <a class="view" href="ear/">
+      <img src="ear/card.png" alt="" loading="lazy" width="1200" height="630">
+      <h2>Ear trainer</h2>
+      <p>Hear a chord or a progression in your key, then play it back on the chord buttons. It checks the chord, and the bass note if you like, with hints when you miss.</p>
+    </a>
+    <a class="view" href="choir/">
+      <img src="choir/card.png" alt="" loading="lazy" width="1200" height="630">
+      <h2>Choir</h2>
+      <p>Each voice of the chord sung by its own singer, with voice leading, glide and temperament controls and an MPE recorder.</p>
+    </a>
+    <a class="view" href="quartet/">
+      <img src="quartet/card.png" alt="" loading="lazy" width="1200" height="630">
+      <h2>String quartet</h2>
+      <p>The four chord voices played by cello, viola and two violins, each on the string a player would choose, bowed, plucked, trembling, by the bridge or muted.</p>
+    </a>
+    <a class="view" href="stage/">
+      <img src="stage/card.png" alt="" loading="lazy" width="1200" height="630">
+      <h2>Stage</h2>
+      <p>Full-screen visuals for a projector at a gig: ribbons, blooms and constellations drawn live from the voices, with rough chords shimmering and sweet ones still.</p>
+    </a>
+    </div>
+  </section>
+
+  <section class="group">
     <h2 class="grouphead">See the harmony</h2>
     <p class="groupblurb">What the chords are and how they relate: shapes, maps and charts that fill in as you play.</p>
     <div class="views">
     <a class="view" href="harmony/">
+      <img src="harmony/card.png" alt="" loading="lazy" width="1200" height="630">
       <h2>Harmony chart</h2>
       <p>Every chord of a key on one chart, one column per semitone, filled in from the key signature you set with the key change combo. Play a chord and its row lights up; a chord from outside the key gets its own row and a name for what it's doing.</p>
     </a>
     <a class="view" href="clock/">
+      <img src="clock/card.png" alt="" loading="lazy" width="1200" height="630">
       <h2>Pitch-class clock</h2>
       <p>Every chord as a shape on a clock face. Transposing turns it, major to minor flips it, and the clock follows 19- and 31-note temperaments.</p>
     </a>
     <a class="view" href="tonnetz/">
+      <img src="tonnetz/card.png" alt="" loading="lazy" width="1200" height="630">
       <h2>Tonnetz</h2>
       <p>Each triad lights a triangle on the map of harmony, and the trail names every P, L and R flip, beside how far your voices moved against the smoothest way.</p>
     </a>
     <a class="view" href="geometry/">
+      <img src="geometry/card.png" alt="" loading="lazy" width="1200" height="630">
       <h2>Chord geometry</h2>
       <p>Every three-note chord as a point in Tymoczko's twisted prism. Going up transposes, going across changes shape, and the line between two chords is the smoothest voice leading.</p>
     </a>
@@ -107,39 +143,14 @@
     <p class="groupblurb">What the temperaments do to a chord, measured and drawn.</p>
     <div class="views">
     <a class="view" href="roughness/">
+      <img src="roughness/card.png" alt="" loading="lazy" width="1200" height="630">
       <h2>Roughness</h2>
       <p>How rough each chord sounds in every temperament the minichord knows: one number per chord, the sweet and sour keys, and the dissonance curve behind them.</p>
     </a>
     <a class="view" href="beats/">
+      <img src="beats/card.png" alt="" loading="lazy" width="1200" height="630">
       <h2>Beats</h2>
       <p>Two voices drawn against each other like an oscilloscope: still for a pure ratio, rolling when tempered. How fast every interval beats, in every temperament.</p>
-    </a>
-    </div>
-  </section>
-
-  <section class="group">
-    <h2 class="grouphead">Play and practise</h2>
-    <p class="groupblurb">The Practice Room, ear training, and the minichord as a choir, a string quartet or a light show.</p>
-    <div class="views">
-    <a class="view" href="practice/">
-      <h2>The Practice Room</h2>
-      <p>Games that make you quick on the minichord: read chords and find them on the buttons, play scales and tunes on the harp, reshape one chord into another, find secret chords by ear, and every arcade game too.</p>
-    </a>
-    <a class="view" href="ear/">
-      <h2>Ear trainer</h2>
-      <p>Hear a chord or a progression in your key, then play it back on the chord buttons. It checks the chord, and the bass note if you like, with hints when you miss.</p>
-    </a>
-    <a class="view" href="choir/">
-      <h2>Choir</h2>
-      <p>Each voice of the chord sung by its own singer, with voice leading, glide and temperament controls and an MPE recorder.</p>
-    </a>
-    <a class="view" href="quartet/">
-      <h2>String quartet</h2>
-      <p>The four chord voices played by cello, viola and two violins, each on the string a player would choose, bowed, plucked, trembling, by the bridge or muted.</p>
-    </a>
-    <a class="view" href="stage/">
-      <h2>Stage</h2>
-      <p>Full-screen visuals for a projector at a gig: ribbons, blooms and constellations drawn live from the voices, with rough chords shimmering and sweet ones still.</p>
     </a>
     </div>
   </section>

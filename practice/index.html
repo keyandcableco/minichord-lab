@@ -5,6 +5,17 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>The Practice Room · Minichord Lab</title>
 <meta name="description" content="Games for getting to know the minichord: read a chord's letters, numeral, staff notes or key and answer on the buttons or harp, or work out what a mystery setting did to the instrument.">
+<!-- the card a link to this page unfurls into -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Minichord Lab">
+<meta property="og:title" content="The Practice Room">
+<meta property="og:description" content="Games for getting to know the minichord: read a chord's letters, numeral, staff notes or key and answer on the buttons or harp, or work out what a mystery setting did to the instrument.">
+<meta property="og:url" content="https://chordlab.keyandcable.com/practice/">
+<meta property="og:image" content="https://chordlab.keyandcable.com/practice/card.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://chordlab.keyandcable.com/practice/card.png">
 <link rel="icon" href="../core/logo.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -3122,7 +3133,7 @@ function spawnBlast(now){
     const sym=c.root+c.qq+(c.bass?`/${c.bass}`:"");
     if(onScreen.has(sym)) continue;
     const el=document.createElement("span"); el.className="fchord"+(bonus?" bonus":""); el.innerHTML=(bonus?PIXEL_STAR:""); el.append(sym);
-    el.style.left=`${12+Math.random()*76}%`; el.style.top="24px";
+    el.style.left=`${12+Math.random()*76}%`; el.style.top="0"; el.style.transform="translate(-50%,24px)";
     blast.field.appendChild(el);
     blast.items.push({el, sym, root:c.root, q:c.qq, bass:c.bass, bonus, rootPc:pcOfName(c.root), bassPc:c.bass?pcOfName(c.bass):null, t0:now});
     return;
@@ -3166,13 +3177,16 @@ function blastKey(){
 // A small canvas scaled up without smoothing, so every star, spark and missile is a chunky
 // pixel: three layers of stars streaming past, the ship at the bottom, its missiles, and the
 // sparks of each chord that's hit. Drawn at a quarter of the pixels, it's cheap on a slow laptop.
-const PX=3;
+// canvas pixels per screen pixel: 3 in the page, more as the field grows (full screen), so the canvas
+// stays about the same size to draw however big it's shown
+let PX=3;
 function fxInit(field){
   const cv=document.createElement("canvas"); cv.className="fx"; field.prepend(cv);
   const fx={cv, g:cv.getContext("2d"), stars:[], missiles:[], sparks:[], w:0, h:0};
-  fx.resize=()=>{ const W=Math.max(1,Math.floor(field.clientWidth/PX)), H=Math.max(1,Math.floor(field.clientHeight/PX));
-    if(W===fx.w && H===fx.h) return; fx.w=W; fx.h=H; cv.width=W; cv.height=H;
-    fx.stars=[...Array(Math.floor(W*H/140))].map(()=>({x:Math.random()*W, y:Math.random()*H, z:1+Math.floor(Math.random()*3)})); };
+  fx.resize=()=>{ PX=Math.max(3, Math.ceil(field.clientWidth/340));
+    const W=Math.max(1,Math.floor(field.clientWidth/PX)), H=Math.max(1,Math.floor(field.clientHeight/PX));
+    if(W===fx.w && H===fx.h) return; fx.w=W; fx.h=H; cv.width=W; cv.height=H; fx.bg=null;
+    fx.stars=[...Array(Math.min(420, Math.floor(W*H/140)))].map(()=>({x:Math.random()*W, y:Math.random()*H, z:1+Math.floor(Math.random()*3)})); };
   fx.resize();
   return fx;
 }
@@ -3284,7 +3298,7 @@ function blastTick(now){
     const y=(now-it.t0)/blast.fall;
     // a landing that ends the game must keep the frames coming, or the stars freeze and Play again finds nothing running
     if(y>=1){ blastMiss(it); if(!blast) return; if(blast.phase!=="play"){ blast.raf=requestAnimationFrame(blastTick); return; } continue; }
-    it.el.style.top=`${24+y*(H-70)}px`;
+    it.y=24+y*(H-70); it.el.style.transform=`translate(-50%,${it.y}px)`;   // moved, not re-laid out: cheaper every frame
   }
   const k=blast.keyBar;
   if(k){
@@ -3299,6 +3313,7 @@ function blastTick(now){
   blast.raf=requestAnimationFrame(blastTick);
 }
 function blastMiss(it){
+  it.el.style.top=`${it.y||0}px`; it.el.style.transform="";               // back to top, so the miss animation can move it
   it.done=true; it.el.classList.add("miss"); setTimeout(()=>it.el.remove(),600);
   const x=it.el.offsetLeft, y=blast.field.clientHeight-40;
   if(it.bonus){ popup(x,y,"GONE","#7FE9FF"); return; }                 // a ★ chord costs nothing if it lands
@@ -3336,7 +3351,7 @@ function blasterChord(voices){
   heard(name,true);
   hit.done=true; hit.el.classList.remove("low");
   // a missile from the ship to the chord; the chord explodes when it arrives
-  const fr=blast.field, x=hit.el.offsetLeft, y=hit.el.offsetTop+hit.el.offsetHeight/2;
+  const fr=blast.field, x=hit.el.offsetLeft, y=(hit.y||0)+hit.el.offsetHeight/2;
   const pts=(hit.bonus?50:10)*(blast.level+1);
   sfx("shoot");
   blast.fx.missiles.push({x0:fr.clientWidth/2/PX, y0:(fr.clientHeight-22)/PX, x1:x/PX, y1:y/PX, t0:performance.now(), dur:170,
