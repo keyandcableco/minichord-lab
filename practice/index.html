@@ -209,6 +209,10 @@
 .kmstrip .km.hit{animation:kmhit .25s ease-out}
 @keyframes kmhit{0%{background:#FFD35A;color:#16132A}100%{background:rgba(22,19,42,.7)}}
 .kmstrip .km.demo-on{background:#FFD35A;color:#16132A;border-color:#FFF4C2}
+
+/* Chord Asteroids: labels ride the rocks, which are drawn on the canvas */
+.field.arcade .fchord.rock{transform:translate(-50%,-50%);pointer-events:none}
+.field.arcade .fchord.rock-note{font-size:calc(var(--chord-size,1.25rem)*.75)}
 /* the demo's pixel minichord */
 .overlay button.howto{border-color:#FFD35A;color:#FFD35A}
 .demo{position:absolute;inset:0;z-index:5;display:flex;flex-direction:column;justify-content:flex-start;padding:10px 14px;pointer-events:none}
@@ -291,7 +295,8 @@ details.fold[open] .nowplaying{display:none}
     <button data-mode="blaster">Chord Invaders</button>
     <button data-mode="command">Harp Command</button>
     <button data-mode="snake">Chord Snake</button>
-    <span class="arcadelinks">or on their own pages: <a href="../invaders/">Chord Invaders</a> · <a href="../harp-command/">Harp Command</a> · <a href="../chord-snake/">Chord Snake</a></span>
+    <button data-mode="asteroids">Chord Asteroids</button>
+    <span class="arcadelinks">or on their own pages: <a href="../invaders/">Chord Invaders</a> · <a href="../harp-command/">Harp Command</a> · <a href="../chord-snake/">Chord Snake</a> · <a href="../chord-asteroids/">Chord Asteroids</a></span>
   </div>
   <div class="modes" role="group" aria-label="Read and play">
     <span class="grp">Read and play</span>
@@ -1936,7 +1941,7 @@ function snakeChord(voices){
   if(blast.phase!=="play") return;
   const pitches=voices.map(v=>v.pitch), name=chordName(pitches,0);
   const hit=snReady().find(c=>isChord(pitches, pcOfName(c.root), c.q));
-  if(!hit){ heard(name,false); if(chordId(pitches)) later(()=>{ sfx("miss"); buzz(blast && blast.field, true); }); return; }
+  if(!hit){ heard(name,false,"NOT IN YOUR TAIL"); if(chordId(pitches)) later(()=>{ sfx("miss"); buzz(blast && blast.field, true); }); return; }
   heard(name,true);
   // those notes leave the tail in a burst, and the snake shrinks back
   const gone=new Set(hit.tones), segs=blast.body.slice(1,blast.tail.length+1);
@@ -2037,6 +2042,290 @@ function endSnDemo(token){
   if(blast.overlay) blast.overlay.hidden=false;
   clearTimeout(blast.attract);
   blast.attract=setTimeout(()=>{ if(blast && blast.kind==="snake" && blast.phase==="menu" && blast.overlay && !blast.overlay.hidden) snDemo(); }, 25000);
+}
+
+
+// ---------- Chord Asteroids ----------
+// Asteroids for spelling chords both ways. Big chord asteroids drift in from the edges toward the
+// ship in the middle. Play a rock's chord on the buttons and it cracks into its notes, smaller rocks
+// each spelled as a note of the chord (E7 breaks into E, G♯, B and D), which scatter and then turn
+// back toward the ship. Pluck each note on the harp and the ship turns and shoots it. A rock that
+// reaches the ship costs a life; a string that plays no rock jams the gun for a moment, so
+// strumming doesn't pay. Clearing every note of a chord scores a bonus.
+const AS_LEVELS=[
+  {n:"Major and minor", qs:["","m"], roots:"natural"},
+  {n:"Sharps and flats", qs:["","m"], roots:"all"},
+  {n:"Sevenths", qs:["","m","7","maj7","m7"], roots:"all"},
+  {n:"Diminished and augmented", qs:["","m","7","maj7","m7","°","+"], roots:"all"},
+  {n:"Barry Harris", qs:["6","m6","7","maj7","m7","°7"], roots:"all", barry:true},
+];
+const asLevelOk=i=> !AS_LEVELS[i].barry || canWrite();
+function genAsteroids(){
+  return {kind:"asteroids", prompt:"Chord Asteroids", sub:"Chord asteroids drift toward your ship. Play a rock's chord on the buttons to crack it into its notes, then pluck each note on the harp to shoot it down. A rock that reaches you costs a life.",
+    answer:{type:"asteroids", get name(){ const r=asNearest("chord"); return r ? r.label : "the nearest rock"; }},
+    get hint(){ const n=asNearest("note"), c=asNearest("chord"); return n ? `The nearest note is ${n.label}.` : c ? `The nearest rock is ${c.label}: ${c.tones.join(" ")}.` : "Wait for a rock."; },
+    context:0};
+}
+function asNearest(kind){
+  if(!blast || blast.kind!=="asteroids") return null;
+  const cx=blast.cx, cy=blast.cy;
+  return blast.rocks.filter(r=>!r.dead && r.kind===kind).sort((a,b)=>Math.hypot(a.x-cx,a.y-cy)-Math.hypot(b.x-cx,b.y-cy))[0]||null;
+}
+// the harp plays notes here, not a d-pad: chromatic from C, untransposed, at its own volume
+function asHarp(){
+  if(!canWrite()) return;
+  if(hasSetting(116)) borrow(116,1);
+  borrow(98,1); if(hasSetting(36)) borrow(36, mc.params[36] ?? 0);
+  if(hasSetting(30)) ensure(30,0);
+}
+function startAsteroids(){
+  blast={kind:"asteroids", rocks:[], score:0, lives:3, level:0, clears:0, over:true, phase:"menu", raf:0, field:null, hud:null, fx:null,
+    noShip:true, asteroids:true, last:performance.now(), next:0, shipAng:-Math.PI/2, cx:400, cy:230, jamUntil:0, rockId:0};
+  asDevice();
+  stats.streak=0; scoreboard(); buildSpecial();
+  asMenu();
+  blast.raf=requestAnimationFrame(asTick);
+}
+function asDevice(){
+  if(!blast || blast.kind!=="asteroids" || !canWrite()) return;
+  if(!blast.setupDone){ blast.setupDone=true; poll(true); asHarp(); }
+  const sig=AS_LEVELS.map((_,i)=>asLevelOk(i)).join();
+  if(blast.phase==="menu" && blast.overlay && blast.menuSig!==sig){ const hid=blast.overlay.hidden; blast.overlay.remove(); blast.overlay=null; asMenu(); blast.overlay.hidden=hid; }
+}
+function buildAsteroidsField(box){
+  const field=document.createElement("div"); field.className="field arcade asteroids"; field.setAttribute("aria-label","The Chord Asteroids field");
+  const hud=document.createElement("div"); hud.className="hud"; field.appendChild(hud);
+  const hd=document.createElement("div"); hd.className="heard"; field.appendChild(hd);
+  box.append(field);
+  if(blast && blast.kind==="asteroids"){
+    blast.rocks.filter(r=>!r.dead).forEach(r=>field.appendChild(r.el));
+    blast.field=field; blast.hud=hud; blast.heard=hd; blast.fx=fxInit(field);
+    setTimeout(()=>{ applyChordSize(); asCentre(); });
+    if(blast.overlay) field.appendChild(blast.overlay);
+  }
+  asBar();
+}
+function asCentre(){ if(!blast || !blast.field) return; blast.cx=blast.field.clientWidth/2; blast.cy=blast.field.clientHeight/2+10; }
+function asBar(){
+  if(!blast || blast.kind!=="asteroids" || !blast.hud) return;
+  blast.hud.innerHTML=`<span>SCORE ${blast.score}</span><span class="lvl">LEVEL ${blast.level+1}</span><span class="lives">${"♥".repeat(Math.max(0,blast.lives))||"-"}</span>`;
+}
+function asMenu(over){
+  const ov=document.createElement("div"); ov.className="overlay";
+  const best=saved.best.asteroids||0;
+  if(over){
+    ov.innerHTML=`<h3 class="over">GAME OVER</h3><p>SCORE ${blast.score} · LEVEL ${blast.level+1} · BEST ${best}</p>`;
+    const again=document.createElement("button"); again.className="go"; again.innerHTML=`PLAY AGAIN<small>from level ${blast.startLevel+1}</small>`;
+    again.onclick=()=>beginAsteroids(blast.startLevel); ov.appendChild(again);
+    sfx("over");
+  } else {
+    ov.innerHTML=`<h3>CHORD ASTEROIDS</h3><p>PLAY A ROCK'S CHORD TO CRACK IT INTO ITS NOTES.</p><p>PLUCK EACH NOTE ON THE HARP TO SHOOT IT DOWN.</p><p class="starline">${PIXEL_STAR}ROCKS SCORE BIG AND NEVER HURT.</p>`;
+    const how=document.createElement("button"); how.className="howto"; how.textContent="▶ HOW TO PLAY"; how.onclick=()=>asDemo(); ov.appendChild(how);
+  }
+  const row=(label, list, get, set)=>{ const r=document.createElement("div"); r.className="optrow"; const l=document.createElement("span"); l.className="optlabel"; l.textContent=label;
+    const g=document.createElement("div"); g.className="levels";
+    const mark=b=>{ [...g.children].forEach(x=>{ x.style.background=""; x.style.color=""; }); b.style.background="#F1E8D2"; b.style.color="#16132A"; };
+    list.forEach((n,i)=>{ const b=document.createElement("button"); b.textContent=n; if(get()===i) mark(b); b.onclick=()=>{ set(i); mark(b); }; g.appendChild(b); });
+    r.append(l,g); ov.appendChild(r); };
+  row("SPEED", SPEEDS.map(x=>x[0].toUpperCase()), ()=>+saved.speed||0, i=>{ saved.speed=i; save(); });
+  row("LABEL SIZE", SIZES.map(x=>x[0]), ()=>saved.chordSize??1, i=>{ saved.chordSize=i; save(); applyChordSize(); });
+  const lp=document.createElement("p"); lp.className = over ? "" : "blink"; lp.textContent = over ? "OR START FROM" : "CHOOSE A LEVEL"; ov.appendChild(lp);
+  const lv=document.createElement("div"); lv.className="levels";
+  AS_LEVELS.forEach((L,i)=>{ const b=document.createElement("button"), ok=asLevelOk(i);
+    b.innerHTML=`${i+1}<small>${L.n}${ok?"":"<br>NEEDS A MINICHORD"}</small>`; b.disabled=!ok; b.onclick=()=>beginAsteroids(i); lv.appendChild(b); });
+  ov.appendChild(lv); blast.menuSig=AS_LEVELS.map((_,i)=>asLevelOk(i)).join();
+  if(!over && best){ const p=document.createElement("p"); p.textContent=`BEST ${best}`; ov.appendChild(p); }
+  if(!over) arcadeCredit(ov);
+  blast.field.appendChild(ov); blast.overlay=ov;
+  clearTimeout(blast.attract);
+  if(!over) blast.attract=setTimeout(()=>{ if(blast && blast.kind==="asteroids" && blast.phase==="menu" && blast.overlay===ov) asDemo(); }, 25000);
+}
+function beginAsteroids(level){
+  piano.start(); stopDemo(); clearTimeout(blast.attract);
+  if(blast.overlay){ blast.overlay.remove(); blast.overlay=null; }
+  blast.rocks.forEach(r=>r.el.remove());
+  Object.assign(blast,{rocks:[], score:0, lives:3, level, startLevel:level, clears:0, phase:"play", over:false, jamUntil:0,
+    next:performance.now()+1200, gap:5200*speedMul()*Math.pow(.94,level), drift:34/speedMul()*Math.pow(1.05,level)});
+  if(AS_LEVELS[level].barry && canWrite()) borrow(33,1); else if(canWrite() && hasSetting(33)) ensure(33,0);
+  saved.asteroidsStart=level; save();
+  stats.streak=0; scoreboard(); asCentre();
+  cancelAnimationFrame(blast.raf); blast.last=performance.now(); blast.raf=requestAnimationFrame(asTick);
+  banner(`LEVEL ${level+1}`, `${AS_LEVELS[level].n.toUpperCase()} · ${(SPEEDS[+saved.speed]||SPEEDS[0])[0].toUpperCase()}`);
+  sfx("start"); asBar();
+}
+// a rock: a jagged outline, its label, and where it's heading
+function asRock(kind, x, y, label, extra={}){
+  const r = kind==="chord" ? 46 : 22, n=11, shape=[...Array(n)].map((_,i)=>({a:i/n*Math.PI*2, d:r*(.78+Math.random()*.3)}));
+  const el=document.createElement("span"); el.className=`fchord rock rock-${kind}`+(extra.star?" bonus":"");
+  el.innerHTML=(extra.star?PIXEL_STAR:""); el.append(label);
+  blast.field.appendChild(el);
+  const rock={id:++blast.rockId, kind, x, y, vx:0, vy:0, r, ang:Math.random()*6.28, spin:(Math.random()-.5)*.8, shape, label, el, born:performance.now(), ...extra};
+  blast.rocks.push(rock); return rock;
+}
+function asSpawn(){
+  const L=AS_LEVELS[blast.level], W=blast.field.clientWidth, H=blast.field.clientHeight;
+  for(let k=0;k<40;k++){
+    const root=rnd(L.roots==="natural" ? ["C","D","E","F","G","A","B"] : ROOTS), q=rnd(L.qs), tones=spellChord(root,q);
+    if(!tones) continue;
+    if(blast.rocks.some(r=>!r.dead && r.kind==="chord" && r.label===root+q)) continue;
+    // from a random point on the edge, toward the ship, a little off line
+    const side=Math.floor(Math.random()*4), t=Math.random();
+    const [x,y]=[[t*W,-40],[W+40,t*H],[t*W,H+40],[-40,t*H]][side];
+    const ang=Math.atan2(blast.cy-y, blast.cx-x)+(Math.random()-.5)*.5, sp=blast.drift*(.85+Math.random()*.3);
+    const star=Math.random()<.1;
+    const rock=asRock("chord", x, y, root+q, {root, q, tones, rootPc:pcOfName(root), star});
+    rock.vx=Math.cos(ang)*sp; rock.vy=Math.sin(ang)*sp;
+    return;
+  }
+}
+function asTick(now){
+  if(!blast || blast.kind!=="asteroids") return;
+  const dt=Math.min(.05,(now-blast.last)/1000); blast.last=now;
+  if(blast.phase==="play" || blast.phase==="demo"){
+    if(blast.phase==="play" && now>=blast.next && blast.rocks.filter(r=>!r.dead && r.kind==="chord").length<4){ asSpawn(); blast.next=now+blast.gap*(.8+Math.random()*.4); }
+    for(const r of blast.rocks){
+      if(r.dead) continue;
+      if(r.kind==="note"){
+        // notes scatter from the crack, then turn back toward the ship
+        const ax=blast.cx-r.x, ay=blast.cy-r.y, d=Math.hypot(ax,ay)||1, pull=blast.drift*1.1*Math.min(1,(now-r.born)/1400);
+        r.vx+= (ax/d*pull - r.vx)*dt*.9; r.vy+= (ay/d*pull - r.vy)*dt*.9;
+      }
+      r.x+=r.vx*dt; r.y+=r.vy*dt; r.ang+=r.spin*dt;
+      r.el.style.left=`${r.x}px`; r.el.style.top=`${r.y}px`;
+      if(Math.hypot(r.x-blast.cx, r.y-blast.cy) < r.r*.6+14 && blast.phase==="play") asHitShip(r);
+    }
+    blast.rocks=blast.rocks.filter(r=>!r.dead || now-r.deadAt<60);
+    const low=asNearest("chord"); blast.rocks.forEach(r=>r.el.classList.toggle("low", r===low && !r.star));
+  }
+  if(blast.fx) fxDraw(now, dt);
+  blast.raf=requestAnimationFrame(asTick);
+}
+function asKill(r){ r.dead=true; r.deadAt=performance.now(); r.el.remove(); }
+function asHitShip(r){
+  asKill(r); explode(blast.cx, blast.cy, 30, ["#FF4B3E","#FF8A3D","#FFD35A"]);
+  if(r.star){ popup(blast.cx, blast.cy-30, "GONE", "#7FE9FF"); return; }
+  sfx("miss"); buzz(blast.field,true); blast.lives--; asBar(); blast.shieldAt=performance.now();
+  if(blast.lives<=0){
+    blast.phase="over"; blast.over=true;
+    const best=Math.max(saved.best.asteroids||0, blast.score); saved.best.asteroids=best; save();
+    blast.rocks.forEach(x=>{ if(!x.dead) asKill(x); }); asBar(); asMenu(true);
+  }
+}
+// the ship turns to a target and fires a laser at it
+function asFire(r, then){
+  blast.shipAng=Math.atan2(r.y-blast.cy, r.x-blast.cx);
+  sfx("shoot");
+  blast.fx.missiles.push({x0:blast.cx/PX, y0:blast.cy/PX, x1:r.x/PX, y1:r.y/PX, t0:performance.now(), dur:140, hit:then});
+}
+// a chord from the buttons: crack the nearest rock of that chord into its notes
+function asteroidsChord(voices){
+  if(!blast || blast.kind!=="asteroids") return;
+  if(blast.phase==="demo" && blast.demo){ endAsDemo(blast.demo); return; }
+  if(blast.phase!=="play") return;
+  const pitches=voices.map(v=>v.pitch), name=chordName(pitches,0);
+  const hit=blast.rocks.filter(r=>!r.dead && r.kind==="chord" && isChord(pitches, r.rootPc, r.q)).sort((a,b)=>Math.hypot(a.x-blast.cx,a.y-blast.cy)-Math.hypot(b.x-blast.cx,b.y-blast.cy))[0];
+  if(!hit){ heard(name,false,"NO SUCH ROCK"); if(chordId(pitches)) later(()=>{ sfx("miss"); buzz(blast && blast.field, true); }); return; }
+  heard(name,true);
+  asKill(hit); asCrack(hit);
+}
+function asCrack(hit){
+  explode(hit.x, hit.y, hit.star?46:34, hit.star?["#7FE9FF","#FFFFFF","#FFD35A"]:["#C9C0A8","#FFD35A","#F1E8D2"]);
+  sfx(hit.star?"bonus":"boom");
+  const pts=(hit.star?60:20)*(blast.level+1); blast.score+=pts; popup(hit.x, hit.y-30, `+${pts}`, hit.star?"#7FE9FF":undefined);
+  // its notes fly out in a ring, each spelled as the chord's own
+  const group={id:hit.id, left:hit.tones.length, label:hit.label};
+  hit.tones.forEach((t,i)=>{
+    const a=i/hit.tones.length*Math.PI*2+Math.random()*.4, sp=70+Math.random()*30;
+    const n=asRock("note", hit.x+Math.cos(a)*20, hit.y+Math.sin(a)*20, t, {name:t, pc:pcOfName(t), group});
+    n.vx=Math.cos(a)*sp; n.vy=Math.sin(a)*sp;
+  });
+  asBar();
+}
+// the harp: shoot the nearest rock of the plucked note
+function asteroidsNote(pc){
+  if(!blast || blast.kind!=="asteroids") return;
+  if(blast.phase==="demo" && blast.demo){ endAsDemo(blast.demo); return; }
+  if(blast.phase!=="play") return;
+  const now=performance.now();
+  if(now<blast.jamUntil){ heard("",false,"JAMMED"); return; }
+  const r=blast.rocks.filter(x=>!x.dead && x.kind==="note" && x.pc===pc).sort((a,b)=>Math.hypot(a.x-blast.cx,a.y-blast.cy)-Math.hypot(b.x-blast.cx,b.y-blast.cy))[0];
+  const nm=(r && r.name) || SHARP_NAMES[pc];
+  if(!r){ heard(nm,false,"NO SUCH ROCK"); sfx("freeze"); blast.jamUntil=now+1100+120*blast.level; popup(blast.cx, blast.cy+40, "JAMMED", "#7FE9FF"); return; }
+  heard(nm,true);
+  r.dead=true;                                        // spoken for: no second shot at it
+  asFire(r, ()=>{ r.deadAt=performance.now(); r.el.remove(); explode(r.x, r.y, 16);
+    const pts=10*(blast.level+1); blast.score+=pts; popup(r.x, r.y-14, `+${pts}`);
+    sfx("boom");
+    if(--r.group.left===0) asCleared(r.group, r.x, r.y);
+    asBar(); });
+}
+function asCleared(group, x, y){
+  const pts=25*(blast.level+1); blast.score+=pts; blast.clears++; stats.streak=blast.clears; scoreboard();
+  popup(x, y-34, `${group.label} CLEARED +${pts}`, "#FFD35A");
+  if(blast.clears%6===0){
+    const was=blast.level;
+    for(let n=blast.level+1;n<AS_LEVELS.length;n++) if(asLevelOk(n)){ blast.level=n; break; }
+    blast.gap=Math.max(1800*speedMul(), blast.gap*.9); blast.drift*=1.06; sfx("level");
+    if(blast.level!==was){ banner(`LEVEL ${blast.level+1}`, AS_LEVELS[blast.level].n.toUpperCase()); if(AS_LEVELS[blast.level].barry && canWrite()) borrow(33,1); }
+    else banner("FASTER!");
+  }
+  asBar();
+}
+// the ship, and the rocks' outlines, on the starfield's canvas
+function asDraw(g, now){
+  const P=PX, cx=blast.cx/P, cy=blast.cy/P;
+  for(const r of blast.rocks){ if(r.dead) continue;
+    g.strokeStyle = r.star ? "#7FE9FF" : r.kind==="chord" ? "#C9C0A8" : "#F1E8D2"; g.lineWidth=1;
+    g.beginPath(); r.shape.forEach((p,i)=>{ const x=r.x/P+Math.cos(p.a+r.ang)*p.d/P, y=r.y/P+Math.sin(p.a+r.ang)*p.d/P; i?g.lineTo(x,y):g.moveTo(x,y); }); g.closePath(); g.stroke(); }
+  // the ship: a pixel triangle turned toward its last shot, with a shield flash when hit
+  const a=blast.shipAng, pt=(d,o)=>[cx+Math.cos(a+o)*d, cy+Math.sin(a+o)*d];
+  const hurt=now-(blast.shieldAt||0)<500, jam=now<blast.jamUntil;
+  g.fillStyle = hurt ? "#FF4B3E" : jam ? "#7FE9FF" : "#F1E8D2";
+  g.beginPath(); const [x1,y1]=pt(10,0), [x2,y2]=pt(8,2.5), [x3,y3]=pt(8,-2.5), [x4,y4]=pt(3,Math.PI); g.moveTo(x1,y1); g.lineTo(x2,y2); g.lineTo(x4,y4); g.lineTo(x3,y3); g.closePath(); g.fill();
+  if(hurt){ g.strokeStyle="rgba(255,75,62,.7)"; g.beginPath(); g.arc(cx,cy,10,0,Math.PI*2); g.stroke(); }
+}
+
+// ---------- Chord Asteroids' demo ----------
+function asDemo(){
+  if(!blast || blast.kind!=="asteroids") return;
+  stopDemo(); clearTimeout(blast.attract); piano.start();
+  if(blast.overlay) blast.overlay.hidden=true;
+  blast.phase="demo"; asCentre(); blast.drift=40;
+  const el=document.createElement("div"); el.className="demo"; blast.field.appendChild(el); blast.field.classList.add("demoing");
+  const token={run:true, el}; blast.demo=token;
+  el.innerHTML=`<div class="demohead"><span class="demotag blink">DEMO</span><span class="demotitle"></span><button class="demoskip">SKIP ▶</button></div><p class="democap"></p>`;
+  el.querySelector(".demoskip").onclick=()=>endAsDemo(token);
+  const $d=s=>el.querySelector(s), sleep=ms=>new Promise(r=>setTimeout(r,ms)), say=(t,c)=>{ $d(".demotitle").textContent=t||""; $d(".democap").textContent=c; };
+  const play=notes=>{ if(settings.sounds && piano.ctx){ const go=()=>piano.play(notes,{when:.02,dur:1.1}); piano.ctx.state==="running"?go():piano.ctx.resume().then(go).catch(()=>{}); } };
+  sfx("attract");
+  (async()=>{
+    const step=async ms=>{ await sleep(ms); if(!token.run) throw 0; };
+    try{
+      say("CHORD ASTEROIDS","CHORD ROCKS DRIFT TOWARD YOUR SHIP.");
+      const W=blast.field.clientWidth;
+      const rock=asRock("chord", W*.2, blast.cy-60, "E7", {root:"E", q:"7", tones:["E","G♯","B","D"], rootPc:4});
+      rock.vx=28; rock.vy=12; await step(3000);
+      say("CRACK IT","PLAY ITS CHORD ON THE BUTTONS: E7 CRACKS INTO E, G♯, B AND D."); await step(1400);
+      play([52,56,59,62]); asKill(rock); asCrack(rock); blast.score=0; await step(1300);
+      say("SHOOT THE NOTES","PLUCK EACH NOTE ON THE HARP. THE SHIP TURNS AND FIRES.");
+      for(const nm of ["E","G♯","B","D"]){
+        await step(650);
+        const r=blast.rocks.find(x=>!x.dead && x.kind==="note" && x.name===nm); if(!r) continue;
+        play([60+r.pc]); r.dead=true;
+        asFire(r, ()=>{ r.deadAt=performance.now(); r.el.remove(); explode(r.x,r.y,16); sfx("boom"); });
+      }
+      await step(1000); say("","EVERY NOTE OF A CHORD SHOT DOWN SCORES A BONUS. A WRONG STRING JAMS YOUR GUN."); await step(3400);
+      say("READY?","CHOOSE A LEVEL."); sfx("level"); await step(2600);
+      endAsDemo(token);
+    }catch(e){ /* skipped */ }
+  })();
+}
+function endAsDemo(token){
+  if(!blast || blast.demo!==token) return;
+  stopDemo(); blast.phase="menu"; blast.rocks.forEach(r=>{ if(!r.dead) asKill(r); }); blast.rocks=[]; blast.score=0;
+  if(blast.overlay) blast.overlay.hidden=false;
+  clearTimeout(blast.attract);
+  blast.attract=setTimeout(()=>{ if(blast && blast.kind==="asteroids" && blast.phase==="menu" && blast.overlay && !blast.overlay.hidden) asDemo(); }, 25000);
 }
 
 // ---------- Chord Invaders' own sounds ----------
@@ -2413,7 +2702,8 @@ function fxDraw(now, dt){
   g.fillStyle="#07060C"; g.fillRect(0,0,W,H);
   for(const s of fx.stars){ s.y+=s.z*speed*dt*9; if(s.y>=H){ s.y-=H; s.x=Math.random()*W; }
     g.fillStyle = s.z===3 ? "#FFFFFF" : s.z===2 ? "#9D98C9" : "#4B4670"; g.fillRect(Math.floor(s.x),Math.floor(s.y),1,s.z===3?2:1); }
-  if(blast.noShip){ /* the snake's board has no ship */ }
+  if(blast.asteroids) asDraw(g, now);
+  else if(blast.noShip){ /* the snake's board has no ship */ }
   else if(blast.cannons){
     // Harp Command: a pixel cannon under each of the harp's twelve strings, lowest on the left;
     // one lights as its string is plucked
@@ -2484,10 +2774,10 @@ function blastOver(){
   blastBar(); blastMenu(true);
 }
 // what the game heard, at the foot of the field: a chord that sounds but hits nothing says so here
-function heard(name, hit){
+function heard(name, hit, why="NOT FALLING"){   // each game says why a miss missed
   if(!blast || !blast.heard) return;
   blast.heard.className="heard"+(hit?"":" no");
-  blast.heard.innerHTML=`HEARD <b>${name||"?"}</b>${hit?"":" · NOT FALLING"}`;
+  blast.heard.innerHTML=`HEARD <b>${name||"?"}</b>${hit?"":` · ${why}`}`;
 }
 function blasterChord(voices){
   if(blast && blast.kind==="command") return;           // Harp Command listens to the harp alone
@@ -2525,11 +2815,11 @@ function blasterChord(voices){
   }
   blastBar();
 }
-const GENS={spell:genSpell, command:genCommand, snake:genSnake, hidden:genHidden, oddone:genOddOne, shades:genShades, reshape:genReshape, blaster:genBlaster, diatonic:genDiatonic, numeral:genNumeral, staff:genStaff, slash:genSlash, key:genKey, harp:genHarp, missing:genMissing,
+const GENS={spell:genSpell, command:genCommand, snake:genSnake, asteroids:genAsteroids, hidden:genHidden, oddone:genOddOne, shades:genShades, reshape:genReshape, blaster:genBlaster, diatonic:genDiatonic, numeral:genNumeral, staff:genStaff, slash:genSlash, key:genKey, harp:genHarp, missing:genMissing,
   melody:genMelody, chordscale:genChordScale, smooth:genSmooth, whichvoice:genWhichVoice, simon:genSimon, directions:genDirections, pluckchord:genPluckChord, buildscale:genBuildScale,
   scale:genScale, transpose:genTranspose, temper:genTemper, tune:genTune};
 const MYSTERY=new Set(["scale","transpose","temper","tune"]);
-const LABELS={spell:"Spell it", hidden:"Hidden layout", oddone:"Odd one out", shades:"Shades of the third", reshape:"Reshape", blaster:"Chord Invaders", command:"Harp Command", snake:"Chord Snake", diatonic:"Seven chords", numeral:"Numerals", staff:"On the staff", slash:"Slash chords", key:"Key detective", harp:"Harp hunt", missing:"Missing note", mix:"Mix",
+const LABELS={spell:"Spell it", hidden:"Hidden layout", oddone:"Odd one out", shades:"Shades of the third", reshape:"Reshape", blaster:"Chord Invaders", command:"Harp Command", snake:"Chord Snake", asteroids:"Chord Asteroids", diatonic:"Seven chords", numeral:"Numerals", staff:"On the staff", slash:"Slash chords", key:"Key detective", harp:"Harp hunt", missing:"Missing note", mix:"Mix",
   melody:"Play by number", chordscale:"Chord scales", smooth:"Smooth moves", whichvoice:"Which voice moved?", simon:"Simon says", directions:"Follow the directions", pluckchord:"Pluck the chord", buildscale:"Build the scale",
   scale:"Scale detective", transpose:"Transpose detective", temper:"Temperament taster", tune:"Tune up"};
 
@@ -2579,7 +2869,7 @@ if(!LABELS[settings.mode]) settings.mode="spell";
 // A link can open one game directly, ?game=invaders (or any game's name, like ?game=reshape),
 // and ?solo shows that game on its own, without the menu, the settings or the answer area.
 const urlParams=new URLSearchParams(location.search);
-const GAME_SLUGS={invaders:"blaster", "chord-invaders":"blaster", "harp-command":"command", harpcommand:"command", "chord-snake":"snake", sevenchords:"diatonic", layout:"hidden"};
+const GAME_SLUGS={invaders:"blaster", "chord-invaders":"blaster", "harp-command":"command", harpcommand:"command", "chord-snake":"snake", "chord-asteroids":"asteroids", asteroids:"asteroids", sevenchords:"diatonic", layout:"hidden"};
 { const g=(urlParams.get("game")||"").toLowerCase(), k=GAME_SLUGS[g]||g; if(LABELS[k]) settings.mode=k; }
 const solo=urlParams.has("solo") && LABELS[settings.mode] && !!urlParams.get("game");
 if(!SETS[settings.set] || settings.set==="alt") settings.set="standard";
@@ -2807,6 +3097,7 @@ function nextQuestion(){
   if(q.kind==="blaster") startBlaster();
   if(q.kind==="command") startCommand();
   if(q.kind==="snake") startSnake();
+  if(q.kind==="asteroids") startAsteroids();
   if(q.kind==="simon") setTimeout(simonPlay,700);
 }
 function feedback(text,kind="",small=""){ const f=$("feedback"); f.className="feedback "+kind; f.textContent=text; if(small){ const s=document.createElement("small"); s.textContent=small; f.appendChild(s); } }
@@ -2907,6 +3198,7 @@ function answerChord(voices){
   if(q.answer.type==="blaster") return blasterChord(voices);
   if(q.answer.type==="command") return;                  // the harp answers Harp Command, not the chords
   if(q.answer.type==="snake") return snakeChord(voices);
+  if(q.answer.type==="asteroids") return asteroidsChord(voices);
   if(q.answer.type==="diatonic") return answerDiatonic(voices);
   if(q.answer.type==="reshape") return answerReshape(voices);
   if(q.answer.type==="alt") return answerAltChord(voices);
@@ -2938,6 +3230,7 @@ function answerChord(voices){
 function answerNote(pc, pickedName){
   if(q && q.kind==="command") return commandNote(pc);
   if(q && q.kind==="snake") return snakeHarp(pc);
+  if(q && q.kind==="asteroids") return asteroidsNote(pc);
   if(!q || solved) return;
   if(q.answer.type==="note" && pc===q.answer.pc && pickedName && q.answer.name && pickedName!==q.answer.name)
     return correct(`Right note: ${q.answer.name}. Here it's spelled ${q.answer.name}, not ${pickedName}.`);
@@ -3103,9 +3396,10 @@ async function startTones(){
   if(!canWrite()){ tones.sim=make((tuneState.secret+tuneState.nudge)/10,.1,settings.tuneWave); tones.push(tones.sim); }   // no minichord: simulate it
 }
 function buildSpecial(){
-  const box=$("special"); box.innerHTML=""; box.hidden = !(q && ["tune","melody","smooth","simon","directions","pluckchord","buildscale","blaster","command","snake","diatonic","reshape","hidden","oddone","shades"].includes(q.kind)); if(box.hidden) return;
+  const box=$("special"); box.innerHTML=""; box.hidden = !(q && ["tune","melody","smooth","simon","directions","pluckchord","buildscale","blaster","command","snake","asteroids","diatonic","reshape","hidden","oddone","shades"].includes(q.kind)); if(box.hidden) return;
   if(q.kind==="command"){ buildCommandField(box); return; }
   if(q.kind==="snake"){ buildSnakeField(box); return; }
+  if(q.kind==="asteroids"){ buildAsteroidsField(box); return; }
   if(q.kind==="blaster"){
     const field=document.createElement("div"); field.className="field arcade"; field.setAttribute("aria-label","Falling chords");
     const ground=document.createElement("div"); ground.className="ground"; field.appendChild(ground);
@@ -3217,7 +3511,7 @@ function setMode(m){
   $("nowPlaying").textContent = `Playing: ${LABELS[m]||m}`;
   settings.mode=m; save();
   document.querySelectorAll(".modes button[data-mode]").forEach(x=>x.setAttribute("aria-pressed",x.dataset.mode===m));
-  $("sprint").disabled = MYSTERY.has(m) || m==="blaster" || m==="command" || m==="snake";
+  $("sprint").disabled = MYSTERY.has(m) || m==="blaster" || m==="command" || m==="snake" || m==="asteroids";
   stats.streak=0; scoreboard(); nextQuestion();
   if(switching){
     const back=restoreExcept(new Set([...(q.needs||[]).map(n=>n.addr), ...(q.borrows||[]), ...roundBorrows, 31]));   // keep what the new game uses
@@ -3227,7 +3521,7 @@ function setMode(m){
   }
 }
 document.querySelectorAll(".modes button[data-mode]").forEach(b=>{ b.setAttribute("aria-pressed", b.dataset.mode===settings.mode); b.onclick=()=>setMode(b.dataset.mode); });
-$("sprint").disabled = MYSTERY.has(settings.mode) || settings.mode==="blaster" || settings.mode==="command" || settings.mode==="snake";
+$("sprint").disabled = MYSTERY.has(settings.mode) || settings.mode==="blaster" || settings.mode==="command" || settings.mode==="snake" || settings.mode==="asteroids";
 $("nowPlaying").textContent = `Playing: ${LABELS[settings.mode]||settings.mode}`;
 for(const [id,key] of [["gameMenu","menuOpen"]]){
   const d=$(id); if(saved[key]===false) d.open=false;
@@ -3279,6 +3573,7 @@ function mine(){
 mc.addEventListener("device", ()=>{
   if(blast && blast.kind==="command") commandDevice();
   else if(blast && blast.kind==="snake") snDevice();
+  else if(blast && blast.kind==="asteroids") asDevice();
   else if(blast){ blastSetup(); if(blast.phase!=="play") blastHomeKey(); blastKey(); }
   if(q && !solved && !rebuilding) applyNeeds();
   mine(); needs();

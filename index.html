@@ -30,6 +30,9 @@
 .view:hover h2::after{opacity:1;transform:translateX(3px)}
 .view:hover h2{color:var(--felt)}
 .view p{margin:0;color:var(--muted)}
+/* the arcade: its games shown by their own title screens */
+.group.arcade .view img{display:block;width:100%;height:auto;aspect-ratio:1200/630;border:1px solid var(--ink);margin:2px 0 10px;background:#07060C}
+.group.arcade .view:hover img{outline:2px solid var(--felt);outline-offset:2px}
 .next{margin-top:26px}
 .next p{color:var(--muted);max-width:70ch}
 </style>
@@ -43,6 +46,33 @@
       <p>Pages that turn the minichord into a way to learn and play with harmony. Each listens to the chord buttons over MIDI and shows what your chord is doing.</p>
     </div>
   </header>
+
+  <section class="group arcade">
+    <h2 class="grouphead">The arcade</h2>
+    <p class="groupblurb">Full arcade games played on the minichord itself, each on a page of its own to share.</p>
+    <div class="views">
+    <a class="view" href="invaders/">
+      <img src="invaders/card.png" alt="" loading="lazy" width="1200" height="630">
+      <h2>Chord Invaders</h2>
+      <p>Chords fall through space and your ship shoots each one down when you play it on the buttons. Set the key when a key bar falls.</p>
+    </a>
+    <a class="view" href="harp-command/">
+      <img src="harp-command/card.png" alt="" loading="lazy" width="1200" height="630">
+      <h2>Harp Command</h2>
+      <p>Missile Command for the harp: notes fall toward twelve cannons, one under each string. Pluck the string that plays a note to shoot it down.</p>
+    </a>
+    <a class="view" href="chord-snake/">
+      <img src="chord-snake/card.png" alt="" loading="lazy" width="1200" height="630">
+      <h2>Chord Snake</h2>
+      <p>Snake, steered on the harp as a d-pad: eat notes, and when the ones you carry spell a chord, play it on the buttons to cash them in.</p>
+    </a>
+    <a class="view" href="chord-asteroids/">
+      <img src="chord-asteroids/card.png" alt="" loading="lazy" width="1200" height="630">
+      <h2>Chord Asteroids</h2>
+      <p>Play a chord asteroid's chord to crack it into its notes, then pluck each note on the harp to shoot it down before it reaches your ship.</p>
+    </a>
+    </div>
+  </section>
 
   <section class="group">
     <h2 class="grouphead">See the harmony</h2>
@@ -84,23 +114,11 @@
 
   <section class="group">
     <h2 class="grouphead">Play and practise</h2>
-    <p class="groupblurb">Games, ear training, and the minichord as a choir or a light show.</p>
+    <p class="groupblurb">The Practice Room, ear training, and the minichord as a choir, a string quartet or a light show.</p>
     <div class="views">
-    <a class="view" href="invaders/">
-      <h2>Chord Invaders</h2>
-      <p>An arcade game: chords fall through space and your ship shoots each one down when you play it. Pick a speed and a level, chase the high score, and set the key when a key bar falls.</p>
-    </a>
-    <a class="view" href="harp-command/">
-      <h2>Harp Command</h2>
-      <p>The harp's arcade game: notes fall toward twelve cannons, one under each string. Pluck the string that plays a note and shoot it down, from all twelve notes with their names showing up to scales, degrees and notes on the staff.</p>
-    </a>
-    <a class="view" href="chord-snake/">
-      <h2>Chord Snake</h2>
-      <p>Snake, steered on the harp played as a game controller: eat notes, and when the ones you carry spell a chord, play it on the buttons to cash them in. Watch your load.</p>
-    </a>
     <a class="view" href="practice/">
       <h2>The Practice Room</h2>
-      <p>Games that make you quick on the minichord: read chords and find them on the buttons, play scales and tunes on the harp, reshape one chord into another, find secret chords by ear, or shoot down the falling chords of Chord Invaders.</p>
+      <p>Games that make you quick on the minichord: read chords and find them on the buttons, play scales and tunes on the harp, reshape one chord into another, find secret chords by ear, and every arcade game too.</p>
     </a>
     <a class="view" href="ear/">
       <h2>Ear trainer</h2>
