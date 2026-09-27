@@ -42,6 +42,7 @@ label.inline{display:flex;align-items:center;gap:8px;color:var(--muted);font-siz
 .lower{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;margin-top:18px}
 @media (max-width:860px){.lower{grid-template-columns:1fr}}
 .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:.5rem}
+#roots{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px}
 .chips button[aria-pressed="true"]{background:var(--ink);color:var(--board);border-color:var(--ink)}
 .legend{display:flex;flex-wrap:wrap;gap:12px;margin-top:10px;font-size:.88rem;color:var(--muted)}
 .legend span{display:inline-flex;align-items:center;gap:5px}
@@ -217,7 +218,7 @@ function analyse(id, rows, t, sc){
     if(target) return {root:above(target.root,4,7), rn:`${sym==="7"?"V7":"V"}/${target.rn.replace(/[0-9ø°+]|maj7|\(maj7\)/g,"")}`, why:`a secondary dominant: the V${sym==="7"?"7":""} of ${target.name}, so it pulls toward ${target.name} the way V pulls home`};
   }
   // borrowed from the parallel key (minor for a major key, major for a minor one)
-  const parallel = sc.n==="Major" ? SCALES[1] : SCALES[0];
+  const parallel = SCALES.find(x=>x.n===(sc.n==="Major" ? "Natural minor" : "Major"));   // by name: the menu's order has changed before
   const prow=[...harmonize(t, parallel, 3), ...harmonize(t, parallel, 4)].find(r=>r.rootPc===id.root && r.q===sym);
   if(prow){
     // a root below the key's own degree is written flat: ♭VI, ♭VII in a major key
@@ -321,11 +322,14 @@ $("connect").onclick=async e=>{ e.target.disabled=true; if(await mc.connect()){ 
 
 // ---------- test chords, through the same path as the minichord ----------
 const TEST_Q={"":[0,4,7],"m":[0,3,7],"7":[0,4,7,10],"maj7":[0,4,7,11],"m7":[0,3,7,10],"°":[0,3,6],"+":[0,4,8]};
-let testRoot=0, testQ="", sounding=[];
+let testRoot=0, testRootName="C", testQ="", sounding=[];
 function play(notes){ sounding.forEach(([ch,n])=>mc.handle([0x80|ch,n,0])); sounding=notes.map((n,i)=>[1+i,n]); sounding.forEach(([ch,n])=>mc.handle([0x90|ch,n,100])); }
 function testChips(){
   const r=$("roots"), q=$("quals"); r.innerHTML=""; q.innerHTML="";
-  for(let i=0;i<12;i++){ const pc=mod(7*i+7*keyFifths(),12), b=document.createElement("button"); b.textContent=spell(pc,keyFifths()); b.setAttribute("aria-pressed",pc===testRoot); b.onclick=()=>{ testRoot=pc; testChips(); play(TEST_Q[testQ].map(x=>48+pc+x)); }; r.appendChild(b); }
+  // every letter as flat, natural and sharp, so a chord's root can be picked the way it's spelled
+  for(const [acc,sign] of [[-1,"♭"],[0,""],[1,"♯"]]) for(let li=0;li<7;li++){
+    const name=LETTERS[li]+sign, pc=mod(NAT[li]+acc,12), b=document.createElement("button"); b.textContent=name;
+    b.setAttribute("aria-pressed",name===testRootName); b.onclick=()=>{ testRoot=pc; testRootName=name; testChips(); play(TEST_Q[testQ].map(x=>48+pc+x)); }; r.appendChild(b); }
   for(const k of Object.keys(TEST_Q)){ const b=document.createElement("button"); b.textContent=k===""?"major":k==="m"?"minor":k==="°"?"dim":k==="+"?"aug":k; b.setAttribute("aria-pressed",k===testQ); b.onclick=()=>{ testQ=k; testChips(); play(TEST_Q[k].map(x=>48+testRoot+x)); }; q.appendChild(b); }
 }
 function draw(){ drawChart(); testChips(); }   // the test roots follow the key's spelling
