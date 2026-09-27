@@ -5,10 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Stage · Minichord Lab</title>
 <meta name="description" content="Full-screen visuals for projection at a gig, drawn live from the minichord's voices: ribbons, blooms and constellations.">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✨</text></svg>">
+<link rel="icon" href="../core/logo.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Source+Serif+4:opsz,wght@8..60,600..700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../core/lab.css">
 <script src="../core/theme.js"></script>
 <style>
@@ -21,7 +20,7 @@ body{background:var(--bg,#07090C)}
 .hud.hidden{opacity:0;pointer-events:none}
 body.idle{cursor:none}
 .hud a{color:#E8ECF2;font-weight:700;text-decoration:none;margin-right:6px}
-.hud button,.hud select{background:rgba(20,26,32,.8);color:#E8ECF2;border:1px solid rgba(232,236,242,.25);border-radius:8px;padding:.35rem .7rem;font:700 15px var(--ui)}
+.hud button,.hud select{background:rgba(20,26,32,.8);color:#E8ECF2;border:1px solid rgba(232,236,242,.25);border-radius:var(--radius);padding:.35rem .7rem;font:700 15px var(--ui)}
 .hud button[aria-pressed="true"]{background:#E8ECF2;color:#07090C}
 .hud .grow{flex:1}
 .hud .status{color:rgba(232,236,242,.7);font-size:.85rem}

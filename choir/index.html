@@ -11,13 +11,13 @@
 <meta property="og:url" content="https://keyandcableco.github.io/minichord-lab/choir/">
 <meta property="og:type" content="website">
 <meta name="twitter:card" content="summary_large_image">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎼</text></svg>">
+<link rel="icon" href="../core/logo.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="../core/music.css">
-<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Instrument+Sans:wght@400;500;600;700&family=UnifrakturMaguntia&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=UnifrakturMaguntia&display=swap" rel="stylesheet">
 <style>
-/* two looks share one set of token names: Scriptorium (default) and Workbench */
+/* two looks share one set of token names: Scriptorium (default), and Ivory and ebony, the rest of the Lab's */
 :root{
   --paper:#EADBB8; --panel:#F3E8CF; --ink:#2A1D12; --muted:#6E5A43; --rule:#CDB88F; --rubric:#A5281B; --gilt:#B8862A;
   --v0:#24478F; --v1:#2F6B4F; --v2:#A06A12; --v3:#6B2D5C; --focus:#24478F;
@@ -38,20 +38,20 @@
   --v0:#86A6EE; --v1:#72C39C; --v2:#E6B452; --v3:#C98BBE; --focus:#E0B458;
 }
 :root[data-look="plain"]{
-  --paper:#EDF0F3; --panel:#F8FAFB; --ink:#18202B; --muted:#5A6574; --rule:#CAD1D9; --rubric:#5A6574; --gilt:#CAD1D9;
-  --v0:#3346A8; --v1:#157366; --v2:#9A690B; --v3:#B3365D; --focus:#2F6FE0;
-  --body:"Instrument Sans",system-ui,-apple-system,"Segoe UI",sans-serif; --display:"Instrument Sans",system-ui,sans-serif;
-  --radius:10px; --base:16px;
+  --paper:#F3ECDA; --panel:#FFF8E7; --ink:#2B2B2B; --muted:#6B6358; --rule:#D9CDB2; --rubric:#8B0000; --gilt:#9C7410;
+  --v0:#24466B; --v1:#3F6B35; --v2:#9C7410; --v3:#8B0000; --focus:#9C7410;
+  --body:"EB Garamond",Garamond,Georgia,serif; --display:"EB Garamond",Garamond,Georgia,serif;
+  --radius:2px; --base:18px;
 }
 @media (prefers-color-scheme:dark){
   :root[data-look="plain"]:not([data-theme="light"]){
-    --paper:#141920; --panel:#1C232C; --ink:#E3E8EE; --muted:#93A0AF; --rule:#2E3844; --rubric:#93A0AF; --gilt:#2E3844;
-    --v0:#8E9EF2; --v1:#58C4B2; --v2:#E2B24F; --v3:#EF82A4; --focus:#7FA8FF;
+    --paper:#161412; --panel:#201D1A; --ink:#F1E8D2; --muted:#B3A78F; --rule:#3D3730; --rubric:#E0605A; --gilt:#D4A017;
+    --v0:#9DB8D9; --v1:#A9C98F; --v2:#D4A017; --v3:#E0605A; --focus:#D4A017;
   }
 }
 :root[data-look="plain"][data-theme="dark"]{
-  --paper:#141920; --panel:#1C232C; --ink:#E3E8EE; --muted:#93A0AF; --rule:#2E3844; --rubric:#93A0AF; --gilt:#2E3844;
-  --v0:#8E9EF2; --v1:#58C4B2; --v2:#E2B24F; --v3:#EF82A4; --focus:#7FA8FF;
+  --paper:#161412; --panel:#201D1A; --ink:#F1E8D2; --muted:#B3A78F; --rule:#3D3730; --rubric:#E0605A; --gilt:#D4A017;
+  --v0:#9DB8D9; --v1:#A9C98F; --v2:#D4A017; --v3:#E0605A; --focus:#D4A017;
 }
 html{scroll-padding-top:env(safe-area-inset-top,0px)}
 *,*::before,*::after{box-sizing:inherit}
@@ -193,7 +193,8 @@ footer p{margin:0;max-width:80ch}
         <option value="o">Sing “oh”</option><option value="u">Sing “oo”</option><option value="kyrie">Sing “Kyrie eleison”</option>
       </select>
       <label>Reverb <input type="range" id="nave" min="0" max="1" step="0.01"></label>
-      <select id="look" aria-label="Page look"><option value="scriptorium">Scriptorium look</option><option value="plain">Workbench look</option></select>
+      <span data-theme-host></span>
+      <select id="look" aria-label="Page look"><option value="scriptorium">Scriptorium look</option><option value="plain">Ivory and ebony look</option></select>
       <select id="perf" aria-label="Performance mode"><option value="standard">Standard</option><option value="light">Light, for older computers</option></select>
     </div>
   </div>
@@ -1470,6 +1471,7 @@ function resize(){ const dpr= perf==="light" ? 1 : Math.min(2, window.devicePixe
 readColors(); resize();
 window.addEventListener("resize",resize);
 matchMedia("(prefers-color-scheme: dark)").addEventListener("change",readColors);
+window.addEventListener("themechange",readColors);   // the Lab's light and dark button
 const view={lo:40,hi:80}; const SPAN=8000;
 const emptyEl=document.getElementById("empty");
 function noteLabel(p){

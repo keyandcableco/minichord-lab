@@ -5,10 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Harmony chart · Minichord Lab</title>
 <meta name="description" content="Every chord of a key on one chart, filled in live from the minichord's key signature: the scale across the top, each chord's notes in their semitone columns, and the chord you play lit, with chords from outside the key explained.">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎼</text></svg>">
+<link rel="icon" href="../core/logo.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Source+Serif+4:opsz,wght@8..60,600..700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../core/lab.css">
 <script src="../core/theme.js"></script>
 <style>
@@ -16,22 +15,22 @@
 label.inline{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:.95rem}
 .keyline{font-family:var(--hand);font-size:2rem;font-weight:700;line-height:1.1;margin:0}
 .keyline small{font:400 1rem var(--ui);color:var(--muted);margin-left:.6rem}
-.chartwrap{overflow-x:auto;background:var(--panel);border:1px solid var(--rule);border-radius:12px;padding:12px;margin-top:10px}
+.chartwrap{overflow-x:auto;background:var(--panel);border:1px solid var(--ink);border-radius:var(--radius);padding:12px;margin-top:10px}
 /* one row per chord: its numeral and name, then 24 semitone columns from the tonic, then its quality */
 .chart{display:grid;grid-template-columns:6.4rem repeat(24,minmax(1.75rem,1fr)) 7.2rem;gap:3px;min-width:880px;font-size:.85rem}
 .chart .h{color:var(--muted);text-align:center;font-weight:700;font-size:.78rem;padding:2px 0}
 .chart .h.oct{border-left:2px solid var(--rule)}
-.chart .sc{text-align:center;font:700 .9rem var(--hand);padding:4px 0;border-radius:4px;color:var(--muted);opacity:.35}
+.chart .sc{text-align:center;font:700 .9rem var(--hand);padding:4px 0;border-radius:var(--radius);color:var(--muted);opacity:.35}
 .chart .sc.in{opacity:1;color:var(--ink);background:color-mix(in srgb,var(--accent) 18%,transparent)}
-.chart .lab{display:flex;flex-direction:column;justify-content:center;padding:2px 6px;border-radius:6px}
+.chart .lab{display:flex;flex-direction:column;justify-content:center;padding:2px 6px;border-radius:var(--radius)}
 .chart .lab .rn{font:700 1.05rem var(--hand)}
 .chart .lab .nm{font:600 .85rem var(--hand);color:var(--muted)}
-.chart .cell{min-height:2.2rem;border-radius:4px;border:1px solid color-mix(in srgb,var(--rule) 70%,transparent)}
+.chart .cell{min-height:2.2rem;border-radius:var(--radius);border:1px solid color-mix(in srgb,var(--rule) 70%,transparent)}
 .chart .cell.oct{border-left:2px solid var(--rule)}
-/* chord tones in fixed colours with dark text, readable on the chalkboard and the whiteboard alike */
-.chart .tone{display:flex;align-items:center;justify-content:center;font:700 .85rem var(--hand);color:#1B2430;border:none}
-.chart .q-major{background:#9CC3F0} .chart .q-minor{background:#A8D98A} .chart .q-dim{background:#F29CB0} .chart .q-aug{background:#D9B8F2} .chart .q-other{background:#E6D9A8}
-.chart .tone.root{box-shadow:inset 0 0 0 2px #1B2430}
+/* chord tones in fixed colours with dark text, readable in both themes: ivory gold for major, rose for minor, felt for diminished, grey brass for augmented */
+.chart .tone{display:flex;align-items:center;justify-content:center;font:700 .85rem var(--hand);color:#2B2B2B;border:none}
+.chart .q-major{background:#EAD7A4} .chart .q-minor{background:#E3B5A8} .chart .q-dim{background:#D9877D} .chart .q-aug{background:#BDB3A0} .chart .q-other{background:#D8D0C0}
+.chart .tone.root{box-shadow:inset 0 0 0 2px #2B2B2B}
 .chart .tone.out{outline:3px dashed var(--v2);outline-offset:-3px}
 .chart .qual{display:flex;align-items:center;color:var(--muted);font-size:.85rem;padding-left:6px}
 .chart .row-on{background:color-mix(in srgb,var(--accent) 22%,transparent);outline:2px solid var(--accent)}
@@ -46,7 +45,7 @@ label.inline{display:flex;align-items:center;gap:8px;color:var(--muted);font-siz
 .chips button[aria-pressed="true"]{background:var(--ink);color:var(--board);border-color:var(--ink)}
 .legend{display:flex;flex-wrap:wrap;gap:12px;margin-top:10px;font-size:.88rem;color:var(--muted)}
 .legend span{display:inline-flex;align-items:center;gap:5px}
-.legend i{display:inline-block;width:14px;height:14px;border-radius:3px}
+.legend i{display:inline-block;width:14px;height:14px;border-radius:var(--radius)}
 </style>
 </head>
 <body>
@@ -72,9 +71,9 @@ label.inline{display:flex;align-items:center;gap:8px;color:var(--muted);font-siz
 
   <div class="chartwrap"><div class="chart" id="chart" role="table" aria-label="The key's chords by semitone"></div></div>
   <div class="legend">
-    <span><i style="background:#9CC3F0"></i>major</span><span><i style="background:#A8D98A"></i>minor</span>
-    <span><i style="background:#F29CB0"></i>diminished</span><span><i style="background:#D9B8F2"></i>augmented</span>
-    <span><i style="box-shadow:inset 0 0 0 2px #1B2430;background:#fff"></i>the root</span>
+    <span><i style="background:#EAD7A4"></i>major</span><span><i style="background:#E3B5A8"></i>minor</span>
+    <span><i style="background:#D9877D"></i>diminished</span><span><i style="background:#BDB3A0"></i>augmented</span>
+    <span><i style="box-shadow:inset 0 0 0 2px #2B2B2B;background:#fff"></i>the root</span>
     <span><i style="outline:3px dashed var(--v2);outline-offset:-3px;background:#fff"></i>a note from outside the scale</span>
   </div>
 

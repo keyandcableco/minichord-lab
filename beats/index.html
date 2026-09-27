@@ -5,17 +5,16 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Beats · Minichord Lab</title>
 <meta name="description" content="Two voices of a minichord chord drawn against each other like an oscilloscope, with how fast every interval beats in each temperament.">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>➰</text></svg>">
+<link rel="icon" href="../core/logo.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Source+Serif+4:opsz,wght@8..60,600..700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../core/lab.css">
 <script src="../core/theme.js"></script>
 <style>
 .grid2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px;margin-top:14px}
 @media (max-width:900px){.grid2{grid-template-columns:1fr}}
-/* the scope keeps a dark screen in either theme, like the instrument it imitates */
-.scope{background:#0E1612;border-radius:12px;padding:10px;border:1px solid var(--rule)}
+/* the scope keeps a dark screen in either theme, like the instrument it imitates: ebony, with a brass trace */
+.scope{background:#171412;border-radius:var(--radius);padding:10px;border:1px solid var(--rule)}
 #scope{display:block;width:100%;height:auto;aspect-ratio:1}
 .scopebar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin-top:10px}
 .pairs{display:flex;flex-wrap:wrap;gap:6px}
@@ -42,13 +41,13 @@ tr.pick:hover td{background:var(--board)}
 .temps button{display:grid;grid-template-columns:9.6rem 1fr 5.4rem;align-items:center;gap:10px;text-align:left;font-weight:400;padding:.25rem .5rem;border-color:transparent;background:transparent}
 .temps button:hover{border-color:var(--rule)}
 .temps button[aria-checked="true"]{border-color:var(--ink);background:var(--board);font-weight:700}
-.temps .bar{height:12px;border-radius:6px;background:var(--rule);overflow:hidden}
+.temps .bar{height:12px;border-radius:var(--radius);background:var(--rule);overflow:hidden}
 .temps .bar i{display:block;height:100%;background:var(--accent)}
 .temps .val{text-align:right;font-size:.9rem}
 .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:.5rem}
 label.inline{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:.95rem}
-.scopebar label.inline{color:#A9B3A9}
-.scopebar select{background:#1A2520;color:#ECEADF;border-color:#33443A}
+.scopebar label.inline{color:#CFC3A6}
+.scopebar select{background:#201D1A;color:#F1E8D2;border-color:#3D3730}
 </style>
 </head>
 <body>
@@ -212,15 +211,15 @@ function frame(t){
   const dt=Math.min(.1,(t-lastT)/1000); lastT=t;
   const W=cv.width, H=cv.height, cx=W/2, cy=H/2, r=W*0.42;
   // phosphor: fade the old trace rather than clearing it
-  g.fillStyle="rgba(14,22,18,0.32)"; g.fillRect(0,0,W,H);
-  g.strokeStyle="rgba(120,160,135,0.18)"; g.lineWidth=1;
+  g.fillStyle="rgba(23,20,18,0.32)"; g.fillRect(0,0,W,H);
+  g.strokeStyle="rgba(212,160,23,0.16)"; g.lineWidth=1;
   g.beginPath(); g.moveTo(cx-r,cy); g.lineTo(cx+r,cy); g.moveTo(cx,cy-r); g.lineTo(cx,cy+r); g.stroke();
   const b=info(); if(!b) return;
   const speed=+$("speed").value;
   // x follows the low note, y the high one; with f2/f1 near P/Q, the figure's phase drifts at the beat rate over Q
   const f1=b.f1, f2=b.f2, drift=2*Math.PI*(b.Q*f2-b.P*f1)/b.Q;
   phase += drift*dt*speed;
-  g.strokeStyle="#9CF0B0"; g.lineWidth=3; g.shadowColor="#9CF0B0"; g.shadowBlur=12;
+  g.strokeStyle="#E9C46A"; g.lineWidth=3; g.shadowColor="#D4A017"; g.shadowBlur=12;
   g.beginPath();
   const steps=1400;
   for(let k=0;k<=steps;k++){

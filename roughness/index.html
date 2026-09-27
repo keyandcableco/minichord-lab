@@ -5,10 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Roughness · Minichord Lab</title>
 <meta name="description" content="How rough each chord the minichord plays sounds, in every temperament: one number per chord, the sweet and sour keys, and the dissonance curve behind them.">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>〰️</text></svg>">
+<link rel="icon" href="../core/logo.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Source+Serif+4:opsz,wght@8..60,600..700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../core/lab.css">
 <script src="../core/theme.js"></script>
 <style>
@@ -28,7 +27,7 @@
 .temps .val{text-align:right;font-size:.9rem}
 .div{position:relative;height:14px}
 .div::before{content:"";position:absolute;left:50%;top:-2px;bottom:-2px;border-left:1px solid var(--muted);opacity:.6}
-.div i{position:absolute;top:0;bottom:0;border-radius:3px}
+.div i{position:absolute;top:0;bottom:0;border-radius:var(--radius)}
 .div i.s{background:var(--v1)} .div i.r{background:var(--v2)}
 .axis{display:grid;grid-template-columns:9.6rem 1fr 4.2rem;gap:10px;font-size:.8rem;color:var(--muted);padding:0 .5rem}
 .axis span:nth-child(2){display:flex;justify-content:space-between}
@@ -46,7 +45,7 @@ svg.chart .ghost{fill:none;stroke:var(--ink);stroke-width:1.2;stroke-dasharray:3
 .keys div{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;position:relative}
 .keys .col{position:relative;width:100%;flex:1}
 .keys .col::before{content:"";position:absolute;left:0;right:0;top:50%;border-top:1px solid var(--muted);opacity:.6}
-.keys .col i{position:absolute;left:18%;right:18%;border-radius:3px}
+.keys .col i{position:absolute;left:18%;right:18%;border-radius:var(--radius)}
 .keys .col i.s{background:var(--v1)} .keys .col i.r{background:var(--v2)}
 .keys b{font-size:.85rem;margin-top:4px}
 .keys div.here b{color:var(--accent);text-decoration:underline}

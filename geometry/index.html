@@ -5,16 +5,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Chord geometry · Minichord Lab</title>
 <meta name="description" content="Every three-note chord as a point in Tymoczko's twisted triangular prism, where the straight line between two chords is the smoothest voice leading.">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔷</text></svg>">
+<link rel="icon" href="../core/logo.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Source+Serif+4:opsz,wght@8..60,600..700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../core/lab.css">
 <script src="../core/theme.js"></script>
 <style>
 .grid{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:18px;margin-top:14px}
 @media (max-width:900px){.grid{grid-template-columns:1fr}}
-.space{background:var(--panel);border:1px solid var(--rule);border-radius:12px;padding:8px;position:relative}
+.space{background:var(--panel);border:1px solid var(--rule);border-radius:var(--radius);padding:8px;position:relative}
 #space{display:block;width:100%;height:auto;aspect-ratio:1/1;max-height:76vh;cursor:grab;touch-action:none}
 #space:active{cursor:grabbing}
 .views{display:flex;flex-wrap:wrap;gap:8px;margin:8px 4px 4px}
@@ -196,6 +195,7 @@ const view={yaw:.6, pitch:.35, tyaw:.6, tpitch:.35, spin:true, dragging:false};
 let colors={};
 function readColors(){ const cs=getComputedStyle(document.documentElement); for(const k of ["--ink","--muted","--rule","--panel","--accent","--v0","--v1","--v3"]) colors[k]=cs.getPropertyValue(k).trim(); colors.font=cs.getPropertyValue("--ui").trim(); colors.hand=cs.getPropertyValue("--hand").trim(); }
 readColors(); matchMedia("(prefers-color-scheme: dark)").addEventListener("change",readColors);
+window.addEventListener("themechange",readColors);   // the Lab's light and dark button
 function project([x,y,z]){
   const cy=Math.cos(view.yaw), sy=Math.sin(view.yaw), cp=Math.cos(view.pitch), sp=Math.sin(view.pitch);
   const x1=x*cy - z*sy, z1=x*sy + z*cy;

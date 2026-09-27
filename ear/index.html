@@ -5,16 +5,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Ear trainer · Minichord Lab</title>
 <meta name="description" content="Hear a chord or a progression, then play it back on the minichord's chord buttons. Checks the chord, and the bass note too if you like.">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>👂</text></svg>">
+<link rel="icon" href="../core/logo.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Source+Serif+4:opsz,wght@8..60,600..700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../core/lab.css">
 <script src="../core/theme.js"></script>
 <style>
 .stage{margin-top:14px}
 .steps{display:flex;flex-wrap:wrap;gap:14px;margin:.4rem 0 1rem}
-.step{flex:1 1 150px;max-width:240px;min-height:150px;border:2px dashed var(--rule);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;justify-content:space-between;background:var(--panel)}
+.step{flex:1 1 150px;max-width:240px;min-height:150px;border:2px dashed var(--rule);border-radius:var(--radius);padding:12px 14px;display:flex;flex-direction:column;justify-content:space-between;background:var(--panel)}
 .step.now{border-style:solid;border-color:var(--ink)}
 .step.done{border-style:solid;border-color:var(--v1)}
 .step .n{font-size:.85rem;color:var(--muted)}

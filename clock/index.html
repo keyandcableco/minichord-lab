@@ -5,16 +5,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Pitch-class clock · Minichord Lab</title>
 <meta name="description" content="Every chord the minichord plays, drawn as a shape on a pitch-class clock, with its set class, interval vector and how it relates to the chord before.">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🕛</text></svg>">
+<link rel="icon" href="../core/logo.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Source+Serif+4:opsz,wght@8..60,600..700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../core/lab.css">
 <script src="../core/theme.js"></script>
 <style>
 .stage{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:18px;align-items:start}
 @media (max-width:860px){.stage{grid-template-columns:1fr}}
-.clockwrap{background:var(--panel);border:1px solid var(--rule);border-radius:12px;padding:10px}
+.clockwrap{background:var(--panel);border:1px solid var(--ink);border-radius:var(--radius);padding:10px}
 #clock{display:block;width:100%;height:auto;max-height:78vh}
 #clock .face{fill:none;stroke:var(--ink);stroke-width:1.2;opacity:.55}
 #clock .tick{stroke:var(--ink);stroke-width:1;opacity:.55}
@@ -35,7 +34,7 @@
 .notes span{font-weight:700;margin-right:.55rem}
 .iv{display:flex;align-items:flex-end;gap:5px;height:44px;margin-top:.2rem}
 .iv div{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:.75rem;color:var(--muted)}
-.iv i{display:block;width:16px;background:var(--accent);border-radius:2px 2px 0 0;min-height:2px}
+.iv i{display:block;width:16px;background:var(--accent);border-radius:var(--radius) 0 0;min-height:2px}
 .history{display:flex;gap:10px;overflow-x:auto;padding-bottom:4px}
 .card{flex:0 0 auto;width:92px;text-align:center}
 .card svg{width:84px;height:84px;display:block;margin:0 auto}

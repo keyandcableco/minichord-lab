@@ -18,7 +18,8 @@
     return b;
   }
   document.addEventListener("DOMContentLoaded", ()=>{
-    const host=document.querySelector(".labbar .connect") || document.querySelector(".fallboard");
+    // the top bar, the front page's header, or a page's own marked spot (the choir keeps its own header)
+    const host=document.querySelector(".labbar .connect") || document.querySelector(".fallboard") || document.querySelector("[data-theme-host]");
     if(!host) return;
     const b=makeButton();
     if(host.classList.contains("fallboard")){ b.classList.add("onboard"); host.appendChild(b); } else host.prepend(b);
