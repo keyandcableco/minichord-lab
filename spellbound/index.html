@@ -90,6 +90,17 @@
 .grid2{display:grid;grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr);gap:18px;margin-top:10px}
 @media (max-width:900px){.grid2{grid-template-columns:1fr}}
 .picker .row6{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px;margin:.4rem 0}
+.picker .row7{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px;margin:.25rem 0}
+.picker .row7 button{padding:.3rem 0}
+/* the alternate layout, drawn as the three chord buttons each combination presses */
+.layoutgrid{display:flex;flex-wrap:wrap;gap:10px;margin-top:.6rem}
+.combo{border:1px solid var(--ink);border-radius:var(--radius);padding:6px 9px 5px;text-align:center;background:var(--panel);min-width:5.5rem}
+.combo.target{border:2px solid var(--felt);box-shadow:inset 0 0 0 1px var(--felt)}
+.combo .btns{display:flex;gap:4px;justify-content:center}
+.combo .btns span{width:24px;height:22px;border:1.5px solid var(--ink);border-radius:2px;font:600 .72rem var(--ui);display:flex;align-items:center;justify-content:center;color:var(--muted)}
+.combo .btns span.on{background:var(--ink);color:var(--panel)}
+.combo b{display:block;margin-top:4px;font:700 1.05rem var(--hand)}
+.combo small{display:block;color:var(--muted);font-size:.78rem}
 .picker .row4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin:.4rem 0}
 .picker .row2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin:.4rem 0}
 .picker button{font-weight:700;padding:.45rem .2rem}
@@ -168,6 +179,12 @@
     <button data-mode="whichvoice">Which voice moved?</button>
     <button data-mode="reshape">Reshape</button>
   </div>
+  <div class="modes" role="group" aria-label="Alternate layout">
+    <span class="grp">Alternate layout</span>
+    <button data-mode="hidden">Hidden layout</button>
+    <button data-mode="oddone">Odd one out</button>
+    <button data-mode="shades">Shades of the third</button>
+  </div>
   <div class="modes" role="group" aria-label="Mystery settings">
     <span class="grp">Mystery settings</span>
     <button data-mode="scale">Scale detective</button>
@@ -189,6 +206,7 @@
       <span class="what" id="what"></span>
       <span class="modpill" id="modpill" hidden></span>
       <span class="modpill" id="bhpill" hidden></span>
+      <span class="modpill" id="altpill" hidden></span>
       <div class="chips">
         <span>Streak <b id="streak">0</b></span>
         <span>Best <b id="best">0</b></span>
@@ -236,6 +254,8 @@
         <label>After a right answer <select id="advance"><option value="quick">Move on quickly</option><option value="slow">Move on after a few seconds</option><option value="wait">Wait for Next</option></select></label>
         <label>Text size <select id="textSize"><option value="1">Normal</option><option value="1.2">Larger</option><option value="1.4">Largest</option></select></label>
         <label>Prompt font <select id="promptFont"><option value="serif">Serif</option><option value="plain">Plain and extra legible</option></select></label>
+        <label>Hidden layout <select id="hiddenPool"><option value="basic">Triads and sevenths</option><option value="ext">Suspended and extended</option><option value="all">Everything</option></select></label>
+        <label>Shades of the third <select id="shadesMode"><option value="order">Order them, darkest to brightest</option><option value="which">Find the one you heard</option></select></label>
         <label>Reshape <select id="reshapeLevel"><option value="1">One voice moves</option><option value="2">Two voices move</option><option value="3">The bass moves</option><option value="4">Aim the cantus yourself</option></select></label>
         <label>Sight reader <select id="blastStart"><option value="1">Start with major and minor</option><option value="3">Start with sharps and flats</option><option value="5">Start with every chord type</option><option value="6">Start with slash chords</option><option value="7">Start with any slash chord</option></select></label>
       </div>
@@ -849,6 +869,162 @@ function genTune(){
 }
 
 
+
+// ---------- the alternate layout's games ----------
+// The minichord's alternate chord layout (address 39) lets each of the seven button
+// combinations play any chord from the firmware's catalogue (addresses 202-208). These games
+// load it with chords the player can't see and ask them to find one by ear. The game knows
+// what it loaded, so it can tell which combination is held from the notes that sound. The
+// catalogue's twelve-note chords, as intervals above the root; a five-note chord sounds
+// four of its notes on four voices, so a held chord is matched as a subset.
+const CAT={1:["","major",[0,4,7]],2:["m","minor",[0,3,7]],3:["7","dominant 7th",[0,4,7,10]],4:["maj7","major 7th",[0,4,7,11]],
+  5:["m7","minor 7th",[0,3,7,10]],6:["°","diminished",[0,3,6]],7:["+","augmented",[0,4,8]],8:["6","major 6th",[0,4,7,9]],
+  9:["m6","minor 6th",[0,3,7,9]],10:["°7","diminished 7th",[0,3,6,9]],11:["m7♭5","half-diminished 7th",[0,3,6,10]],
+  12:["sus4","sus4",[0,5,7]],13:["sus2","sus2",[0,2,7]],14:["7sus4","7sus4",[0,5,7,10]],15:["maj9","major 9th",[0,4,7,11,2]],
+  16:["m9","minor 9th",[0,3,7,10,2]],17:["add9","add9",[0,4,7,2]],18:["6/9","6/9",[0,4,7,9,2]]};
+const COMBOS=["the major button","the minor button","the 7 button","major and 7","minor and 7","major and minor","all three"];
+const altReady=()=>canWrite() && mc.params[202]!==undefined;
+let alt=null, heldVoices=[];
+function altNeeds(slots, extra=[]){
+  return [{addr:39,value:1,what:"its alternate chord layout, loaded with secret chords"},
+    ...slots.map((v,i)=>({addr:202+i,value:v,what:""})), ...extra];
+}
+function altRoot(){ const r=rnd(blastRootsPlain()); return {root:r, rootPc:pcOfName(r)}; }
+function blastRootsPlain(){ const f=canWrite()?devFifths():0, out=[]; for(let li=0;li<7;li++){ const ka=keyAcc(li,f); if(Math.abs(ka)<=1) out.push(LETTERS[li]+ACC[ka]); } return out; }
+/** which loaded slot the held notes are: the chord whose notes contain them with the fewest left over */
+function heldSlot(slots, rootPc){
+  const rel=[...new Set(heldVoices.map(v=>mod(Math.round(v.pitch)-rootPc,12)))];
+  if(rel.length<2) return -1;
+  let best=-1, bestLeft=99;
+  slots.forEach((idx,i)=>{ const c=CAT[idx]; if(!c) return; const tones=c[2].map(x=>mod(x,12));
+    if(rel.every(x=>tones.includes(x)) && tones.length-rel.length<bestLeft){ bestLeft=tones.length-rel.length; best=i; } });
+  return best;
+}
+// which of the three chord buttons each of the seven combinations presses, in slot order
+const COMBO_BITS=[[1,0,0],[0,1,0],[0,0,1],[1,0,1],[0,1,1],[1,1,0],[1,1,1]];
+/** the layout as pictures: for each combination, the three buttons with the pressed ones filled, and its chord */
+function layoutDiagram(labels, target, shown){
+  const grid=document.createElement("div"); grid.className="layoutgrid"; grid.setAttribute("aria-label","The alternate layout");
+  labels.forEach((lab,i)=>{
+    if(!lab || (shown && !shown.includes(i))) return;
+    const c=document.createElement("div"); c.className="combo"+(i===target?" target":"");
+    const b=document.createElement("div"); b.className="btns";
+    ["maj","min","7"].forEach((t,k)=>{ const s=document.createElement("span"); s.textContent=t; if(COMBO_BITS[i][k]) s.className="on"; b.appendChild(s); });
+    const n=document.createElement("b"); n.textContent=lab[0]; c.append(b,n);
+    if(lab[1]){ const sm=document.createElement("small"); sm.textContent=lab[1]; c.appendChild(sm); }
+    c.title=`${COMBOS[i]}: ${lab[0]}`;
+    grid.appendChild(c);
+  });
+  return grid;
+}
+function layoutText(slots, root, shown){ return slots.map((idx,i)=>idx&&CAT[idx] ? `${COMBOS[i]}: ${root}${CAT[idx][0]}` : null).filter((x,i)=>x && (!shown || shown.includes(i))).join(" · "); }
+function altOffline(kind, prompt){
+  return {kind, wantsWrite:true, prompt, sub:"This game loads secret chords into your minichord's alternate layout, so it needs a minichord connected on the test-allFeatures firmware.",
+    answer:{type:"alt", name:""}, hint:"Connect a minichord to play.", context:0};
+}
+
+// Hidden layout: seven secret chords, one to find
+const HIDDEN_POOLS={basic:[1,2,3,4,5,6,7,8,9,10,11], ext:[12,13,14,15,16,17,18,3,4,5], all:[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18]};
+function distinctSeven(pool){
+  // seven different chords, no two of which a player could hold identically
+  for(let t=0;t<200;t++){ const pick=[...pool].sort(()=>Math.random()-.5).slice(0,7); if(pick.length<7) continue;
+    const sets=pick.map(i=>CAT[i][2].map(x=>mod(x,12)).sort((a,b)=>a-b).join(","));
+    if(new Set(sets).size===7) return pick; }
+  return [1,2,3,4,5,6,7];
+}
+function genHidden(){
+  if(!altReady()) return altOffline("hidden","Hidden layout");
+  const {root,rootPc}=altRoot(), slots=distinctSeven(HIDDEN_POOLS[settings.hiddenPool]||HIDDEN_POOLS.basic), t=Math.floor(Math.random()*7);
+  alt={kind:"hidden", root, rootPc, slots, target:t};
+  const c=CAT[slots[t]];
+  return {kind:"hidden", prompt:`Find the ${root}${c[0]}`, promptHtml:`Find the <span class="num">${root}${c[0]}</span>`,
+    sub:`Your minichord's alternate layout now holds seven secret chords, all on ${root}. Hold ${pressRoot(root)} with different combinations of the major, minor and 7 buttons, listen, and press the spacebar (or Found it) while you hold the ${c[1]}.`,
+    needs:altNeeds(slots), pressRoot:root, context:0, barry:"",
+    answer:{type:"alt", name:`${root}${c[0]}, on ${COMBOS[t]}`},
+    hint:`A ${c[1]} is ${c[2].map(x=>["1","♭2","2","♭3","3","4","♭5","5","♯5","6","♭7","7"][mod(x,12)]+(x===2?" (the 9th)":"")).join(" ")}.`,
+    get learn(){ return `The layout was ${layoutText(alt.slots, alt.root)}.`; },
+    layout:()=>({labels:alt.slots.map(idx=>CAT[idx]?[alt.root+CAT[idx][0], CAT[idx][1]]:null), target:alt.target}),
+    hearFn:()=>c[2].map(x=>[48+rootPc+x,0])};
+}
+// Odd one out: three chords of a family and an impostor, on four combinations
+const FAMILIES=[
+  {n:"major-colour chords", members:[4,15,18,17,8], imp:[14,3,5,16,11]},
+  {n:"minor-colour chords", members:[2,5,16,9], imp:[4,3,11,17]},
+  {n:"suspended chords", members:[12,13,14], imp:[1,17,2,8]},
+  {n:"diminished chords", members:[6,10,11], imp:[2,7,5]},
+  {n:"dominant chords", members:[3,14], extra:[16], imp:[4,9,13]},
+];
+function genOddOne(){
+  if(!altReady()) return altOffline("oddone","Odd one out");
+  const fam=rnd(FAMILIES.filter(f=>f.members.length>=3)), {root,rootPc}=altRoot();
+  const three=[...fam.members].sort(()=>Math.random()-.5).slice(0,3), imp=rnd(fam.imp), four=[...three,imp].sort(()=>Math.random()-.5);
+  const slots=[...four,0,0,0], t=four.indexOf(imp);
+  alt={kind:"oddone", root, rootPc, slots, target:t};
+  return {kind:"oddone", prompt:"Odd one out", sub:`Four chords on ${root}: ${COMBOS.slice(0,4).join(", ")}. Three of them are ${fam.n}; one isn't. Hold ${pressRoot(root)}, find the impostor by ear, and press the spacebar (or Found it) while you hold it.`,
+    needs:altNeeds(slots), pressRoot:root, context:0, barry:"",
+    answer:{type:"alt", name:`${root}${CAT[imp][0]}, on ${COMBOS[t]}`},
+    hint:`The ${fam.n} here share ${fam.n.startsWith("major")?"a major third and a major 7th or 6th":fam.n.startsWith("minor")?"a minor third":fam.n.startsWith("sus")?"no third at all":"a diminished fifth"}.`,
+    get learn(){ return `${layoutText(alt.slots, alt.root, [0,1,2,3])}. The impostor was the ${CAT[imp][1]}.`; },
+    layout:()=>({labels:alt.slots.map(idx=>CAT[idx]?[alt.root+CAT[idx][0], CAT[idx][1]]:null), target:alt.target, shown:[0,1,2,3]}),
+    hearFn:()=>four.flatMap((idx,k)=>CAT[idx][2].map(x=>[48+rootPc+x,k*1.4]))};
+}
+// Shades of the third: 31-EDO's five thirds on one root, subminor to supermajor
+const SHADES=[{idx:20,n:"subminor",steps:7},{idx:2,n:"minor",steps:8},{idx:21,n:"neutral",steps:9},{idx:1,n:"major",steps:10},{idx:19,n:"supermajor",steps:11}];
+const EDO31=12/31;
+function heldShade(rootPc){
+  // the third's size, in 31-EDO steps, from the voices' exact pitches (MPE)
+  const ps=heldVoices.map(v=>v.pitch); if(ps.length<2) return null;
+  const root=ps.slice().sort((a,b)=>Math.abs(mod(a-rootPc+6,12)-6)-Math.abs(mod(b-rootPc+6,12)-6))[0];
+  for(const p of ps){ const c=mod(p-root,12); if(c>2.3 && c<4.6){ const st=Math.round(c/EDO31); return SHADES.find(x=>x.steps===st)||null; } }
+  return null;
+}
+function genShades(){
+  if(!altReady()) return altOffline("shades","Shades of the third");
+  const {root,rootPc}=altRoot(), order=[0,1,2,3,4,5,6].sort(()=>Math.random()-.5);
+  const slots=Array(7).fill(0); SHADES.forEach((sh,k)=>slots[order[k]]=sh.idx); slots[order[5]]=12; slots[order[6]]=13;   // sus4 and sus2 fill the other two
+  const mode=settings.shadesMode, target = mode==="which" ? rnd(SHADES) : null;
+  alt={kind:"shades", root, rootPc, slots, mode, target, pos:0};
+  const extra=[{addr:237,value:11,what:"31-EDO"},{addr:110,value:1,what:"MPE output, so the exact pitches arrive"}];
+  const combosOf=sh=>COMBOS[slots.indexOf(sh.idx)];
+  return {kind:"shades", prompt: mode==="which" ? "Which third did you hear?" : "Darkest to brightest",
+    sub: mode==="which" ? `Your minichord is in 31-EDO, with five kinds of triad on ${root} hidden on its button combinations, from subminor to supermajor. Press Hear it, then find that triad on the minichord and press the spacebar (or Found it) while you hold it.`
+      : `Your minichord is in 31-EDO, with five kinds of triad on ${root} hidden on its button combinations: subminor, minor, neutral, major and supermajor, their thirds a 31st of an octave apart. Find them and play them in order from darkest to brightest.`,
+    needs:altNeeds(slots, extra), pressRoot:root, context:0, barry:"",
+    answer:{type:"alt", name: mode==="which" ? `the ${target.n} triad, on ${combosOf(target)}` : "subminor, minor, neutral, major, supermajor"},
+    hint: mode==="which" ? `Its third is ${Math.round(target.steps*38.71)} cents: ${["","","","","","","","a septimal minor third, darker than minor","a minor third","halfway between minor and major","a major third","a septimal major third, brighter than major"][target.steps]}.` : "The darker the third, the smaller it is: subminor is about 270 cents, supermajor about 426.",
+    get learn(){ return `The five: ${SHADES.map(sh=>`${sh.n} on ${combosOf(sh)} (a ${Math.round(sh.steps*38.71)}-cent third)`).join(" · ")}.`; },
+    layout:()=>({labels:alt.slots.map(idx=>{ const sh=SHADES.find(x=>x.idx===idx); return sh ? [sh.n, `${Math.round(sh.steps*38.71)}-cent third`] : CAT[idx] ? [alt.root+CAT[idx][0], ""] : null; }),
+      target: alt.target ? alt.slots.indexOf(alt.target.idx) : -1}),
+    hearFn:()=>{ const sh=target||SHADES[alt.pos]||SHADES[0]; return [[48+rootPc,0],[48+rootPc+sh.steps*EDO31,0],[48+rootPc+18*EDO31,0]]; }};
+}
+function answerAltChord(voices){
+  heldVoices=voices;
+  if(alt && alt.kind==="shades" && alt.mode==="order"){
+    const sh=heldShade(alt.rootPc); if(!sh) return;
+    const want=SHADES[alt.pos];
+    if(sh===want){ alt.pos++; buildSpecial(); if(alt.pos===SHADES.length) return correct("Darkest to brightest: subminor, minor, neutral, major, supermajor."); chime("step"); feedback(`${sh.n[0].toUpperCase()+sh.n.slice(1)}.`,"good"); }
+    else if(alt.pos>0 && sh===SHADES[alt.pos-1]) return;      // still holding the last one
+    else { firstTry=false; buzz(); feedback(`That's the ${sh.n}. ${alt.pos ? `After the ${SHADES[alt.pos-1].n} comes the next brightest.` : "Start with the darkest of the five."}`,"bad"); }
+  }
+}
+function submitAlt(){
+  if(!q || solved || !alt || !["hidden","oddone","shades"].includes(q.kind)) return;
+  if(!heldVoices.length){ feedback("Hold a chord first, then press the spacebar.","bad"); return; }
+  if(alt.kind==="shades"){
+    if(alt.mode!=="which") return;
+    const sh=heldShade(alt.rootPc); if(!sh){ wrong("That isn't one of the five triads (sus chords fill the other two combinations)."); return; }
+    return sh===alt.target ? correct(`The ${sh.n} triad.`) : wrong(`That's the ${sh.n} triad. Listen again: yours was ${sh.steps<alt.target.steps?"brighter":"darker"}.`);
+  }
+  const i=heldSlot(alt.slots, alt.rootPc);
+  if(i<0) return wrong(`That isn't one of the chords on ${alt.root}. Hold ${pressRoot(alt.root)} with the combinations.`);
+  if(i===alt.target) return correct(`That's it: ${alt.root}${CAT[alt.slots[i]][0]}, on ${COMBOS[i]}.`);
+  wrong(`That's the ${CAT[alt.slots[i]][1]}${alt.kind==="oddone"?", one of the family":""}. Keep listening.`);
+}
+document.addEventListener("keydown", e=>{
+  if(e.code!=="Space" || e.repeat || /INPUT|SELECT|TEXTAREA|BUTTON/.test(document.activeElement?.tagName||"")) return;
+  if(q && ["hidden","oddone","shades"].includes(q.kind)){ e.preventDefault(); submitAlt(); }
+});
+
 // ---------- Reshape ----------
 // Hold a chord and turn it into another by plucking the harp: the cantus (firmware 14) gives
 // the plucked note to one chord voice, which moves alone while the rest hold. C to Am is one
@@ -1187,11 +1363,11 @@ function blasterChord(voices){
   } else { chime("step"); feedback(`${hit.sym}!`,"good"); }
   blastBar();
 }
-const GENS={spell:genSpell, reshape:genReshape, blaster:genBlaster, diatonic:genDiatonic, numeral:genNumeral, staff:genStaff, slash:genSlash, key:genKey, harp:genHarp, missing:genMissing,
+const GENS={spell:genSpell, hidden:genHidden, oddone:genOddOne, shades:genShades, reshape:genReshape, blaster:genBlaster, diatonic:genDiatonic, numeral:genNumeral, staff:genStaff, slash:genSlash, key:genKey, harp:genHarp, missing:genMissing,
   melody:genMelody, chordscale:genChordScale, smooth:genSmooth, whichvoice:genWhichVoice, simon:genSimon, directions:genDirections, pluckchord:genPluckChord, buildscale:genBuildScale,
   scale:genScale, transpose:genTranspose, temper:genTemper, tune:genTune};
 const MYSTERY=new Set(["scale","transpose","temper","tune"]);
-const LABELS={spell:"Spell it", reshape:"Reshape", blaster:"Sight reader", diatonic:"Seven chords", numeral:"Numerals", staff:"On the staff", slash:"Slash chords", key:"Key detective", harp:"Harp hunt", missing:"Missing note", mix:"Mix",
+const LABELS={spell:"Spell it", hidden:"Hidden layout", oddone:"Odd one out", shades:"Shades of the third", reshape:"Reshape", blaster:"Sight reader", diatonic:"Seven chords", numeral:"Numerals", staff:"On the staff", slash:"Slash chords", key:"Key detective", harp:"Harp hunt", missing:"Missing note", mix:"Mix",
   melody:"Play by number", chordscale:"Chord scales", smooth:"Smooth moves", whichvoice:"Which voice moved?", simon:"Simon says", directions:"Follow the directions", pluckchord:"Pluck the chord", buildscale:"Build the scale",
   scale:"Scale detective", transpose:"Transpose detective", temper:"Temperament taster", tune:"Tune up"};
 
@@ -1233,13 +1409,13 @@ $("restore").onclick=()=>{ userRestored=true; restoreAll(); needs(); feedback("Y
 addEventListener("pagehide", restoreAll);
 
 // ---------- settings and scores (remembered) ----------
-const settings={mode:"spell", set:"standard", order:"ordered", doubles:"off", secondary:"off", keysrc:"follow", scaleset:"everyday", dirset:"steps", sounds:true, tuneWave:"sine", blastStart:"1", advance:"slow", textSize:"1", promptFont:"serif", reshapeLevel:"1"};
+const settings={mode:"spell", set:"standard", order:"ordered", doubles:"off", secondary:"off", keysrc:"follow", scaleset:"everyday", dirset:"steps", sounds:true, tuneWave:"sine", blastStart:"1", advance:"slow", textSize:"1", promptFont:"serif", reshapeLevel:"1", hiddenPool:"basic", shadesMode:"order"};
 const saved={best:{}, sprint:{}};
 try{ const s=JSON.parse(localStorage.getItem("lab-spellbound")||"{}"); Object.assign(settings,s.settings||{}); Object.assign(saved,s.saved||{}); }catch(e){}
 if(!LABELS[settings.mode]) settings.mode="spell";
 if(!SETS[settings.set] || settings.set==="alt") settings.set="standard";
 const save=()=>{ try{ localStorage.setItem("lab-spellbound",JSON.stringify({settings,saved})); }catch(e){} };
-for(const id of ["set","order","doubles","secondary","keysrc","scaleset","dirset","blastStart","advance","textSize","promptFont","reshapeLevel"]){ $(id).value=settings[id]; $(id).onchange=e=>{ settings[id]=e.target.value; save(); buildPicker(); applyDisplay(); }; }
+for(const id of ["set","order","doubles","secondary","keysrc","scaleset","dirset","blastStart","advance","textSize","promptFont","reshapeLevel","hiddenPool","shadesMode"]){ $(id).value=settings[id]; $(id).onchange=e=>{ settings[id]=e.target.value; save(); buildPicker(); applyDisplay(); }; }
 // Display: the whole page scales with the text size, and the plain font swaps the serif of
 // prompts and chord names for Atkinson Hyperlegible
 function applyDisplay(){
@@ -1369,8 +1545,18 @@ function modPill(){
   bh.title = "Barry Harris mode (address 33). The game sets it for each chord it asks for, and it goes back when you leave.";
   if(lastBarry!==null && lastBarry!==mc.params[33]){ bh.classList.remove("pulse"); void bh.offsetWidth; bh.classList.add("pulse"); }
   lastBarry=mc.params[33];
+  altPill();
 }
-let lastBarry=null;
+let lastBarry=null, lastAlt=null;
+// the alternate chord layout: shown whenever it's on, so the switch the games make is never a surprise
+function altPill(){
+  const el=$("altpill"), on=mc.params[39]===1, set=39 in borrowed;
+  el.hidden=!(on || set);
+  el.textContent = on ? `Alternate chord layout on${set?" · set for you":""}` : "Standard chord layout · set for you";
+  el.title="The chord layout (address 39). The alternate layout's games switch it on and load its chords, and it goes back when you leave.";
+  if(lastAlt!==null && lastAlt!==mc.params[39]){ el.classList.remove("pulse"); void el.offsetWidth; el.classList.add("pulse"); }
+  lastAlt=mc.params[39];
+}
 // Every game but the temperament taster runs in equal temperament: in 19 and 31 the chromatic
 // harp steps by the division's own steps and MIDI rounds to the nearest semitone, and the
 // twelve-note temperaments would colour every listening round.
@@ -1393,7 +1579,7 @@ function applyNeeds(){
   if(missing.length){ missing.forEach(n=>borrow(n.addr,n.value)); setTimeout(()=>mc.requestDump(),200); }
 }
 function nextQuestion(){
-  userRestored=false; roundBorrows.clear();
+  userRestored=false; roundBorrows.clear(); heldVoices=[]; alt=null;
   stopTones(); stopBlaster(); clearTimeout(pendingWrong); pendingWrong=null;
   harpQuietUntil=performance.now()+150;
   building=true; try{ q=GENS[modeFor()](); } finally { building=false; } solved=false; firstTry=true; keyAtStart=mc.keyIndex; pick={root:null,q:null,bass:null}; qStart=performance.now();
@@ -1444,6 +1630,7 @@ function correct(extra){
   // how it's built: always for scales, and for chords when the first try missed
   const learn = q.learn || (!firstTry && (a.type==="chord"||a.type==="slash") ? chordLearn(a.spellRoot,a.q) : "");
   if(learn && learn!==reveal(a)){ const s2=document.createElement("small"); s2.className="learn"; s2.textContent=learn; $("feedback").appendChild(s2); }
+  if(q.layout && alt){ const L=q.layout(); $("feedback").appendChild(layoutDiagram(L.labels, L.target, L.shown)); }
   else if(learn){ const sm=$("feedback").querySelector("small"); if(sm) sm.className="learn"; }
   scoreboard(); poll(false);
   // Right first time, the game moves on by itself; after a miss it waits for Next, so there's
@@ -1520,6 +1707,7 @@ function answerChord(voices){
   if(q.answer.type==="blaster") return blasterChord(voices);
   if(q.answer.type==="diatonic") return answerDiatonic(voices);
   if(q.answer.type==="reshape") return answerReshape(voices);
+  if(q.answer.type==="alt") return answerAltChord(voices);
   if(q.answer.type==="choice" && (q.keypad || q.parent!=null)) return answerChoiceByChord(voices);
   if(q.answer.type==="smooth") return answerSmooth(voices);
   const pitches=voices.map(v=>v.pitch), a=q.answer, got=chordId(pitches), said=got ? chordName(pitches, q.context||0) : "that";
@@ -1545,8 +1733,10 @@ function answerChord(voices){
     return later(()=>wrong(`You played ${said}. Hold ${a.name.split("/")[0]} first, then add the slash.`));
   }
 }
-function answerNote(pc){
+function answerNote(pc, pickedName){
   if(!q || solved) return;
+  if(q.answer.type==="note" && pc===q.answer.pc && pickedName && q.answer.name && pickedName!==q.answer.name)
+    return correct(`Right note: ${q.answer.name}. Here it's spelled ${q.answer.name}, not ${pickedName}.`);
   const a=q.answer;
   if(a.type==="reshape"){ if(!cantusOk()) answerReshapeNote(pc); return; }   // with a minichord, the chord tells the story
   if(a.type==="simon"){
@@ -1632,7 +1822,7 @@ function needs(){
   if(!q || !q.needs){ box.hidden=true; return; }
   box.hidden=false;
   const hold = q.holdHint ? ` ${q.holdHint()}` : "";      // worked out now, after the modifier is set
-  const what=q.needs.map(n=>n.what).join(", ");
+  const what=q.needs.map(n=>n.what).filter(Boolean).join(", ");
   if(mc.params[35]===undefined){ box.textContent=`This one needs ${what}. Connect the minichord and the game sets it for you.`; return; }
   if(!canWrite()){ box.textContent=`This one needs ${what}, and the game can't change your minichord's settings: see the line under the title.`; return; }
   const missing=q.needs.filter(n=> n.ok ? !n.ok(mc.params[n.addr]) : mc.params[n.addr]!==n.value);
@@ -1653,11 +1843,18 @@ function buildPicker(){
   if(type==="tune"){ const p=document.createElement("p"); p.className="fine"; p.textContent="Use the slider in the game card, then lock it in."; body.append(p); return; }
   if(type==="choice"){ const r=row(q.choices.length>8?"row6":"row2"); q.choices.forEach(c=>btn(r,c.label,()=>answerChoice(c.value))); return; }   // keypad rounds list C to B
   if(type==="key"){ const r=row("row6"); [0,1,2,3,4,5,6,-1,-2,-3,-4,-5].forEach(f=>btn(r,KEY_BY_FIFTHS[f],()=>answerKey(mod(7*f,12)))); return; }
-  if(["note","melody","simon","dirs","collect","sequence"].includes(type)){ const r=row("row6"); for(let i=0;i<12;i++){ const pc=mod(7*i+7*ctx,12); btn(r,nameOf(pc),()=>answerNote(pc)); } return; }
+  // every letter from double flat to double sharp, so a note can be picked the way it's spelled: G♯ in C♯m, not A♭
+  if(["note","melody","simon","dirs","collect","sequence"].includes(type)){
+    for(const [acc,sign] of [[-2,"𝄫"],[-1,"♭"],[0,""],[1,"♯"],[2,"𝄪"]]){ const r=row("row7");
+      for(let li=0;li<7;li++){ const name=LETTERS[li]+sign; btn(r,name,()=>answerNote(mod(NAT[li]+acc,12), name)); } }
+    return;
+  }
   if(type==="smooth"){
     $("pickTitle").textContent="Pick the next chord";
     const roots=row("row6"), quals=row("row4");
-    for(let i=0;i<12;i++){ const pc=mod(7*i,12); btn(roots,spell(pc,devFifths()),()=>{ pick.root=pc; buildPicker(); },pick.root===pc); }
+    roots.remove();
+    for(const [acc,sign] of [[-1,"♭"],[0,""],[1,"♯"]]){ const r=row("row7"); body.insertBefore(r,quals);
+      for(let li=0;li<7;li++){ const name=LETTERS[li]+sign, pc=mod(NAT[li]+acc,12); btn(r,name,()=>{ pick.root=pc; pick.rootName=name; buildPicker(); }, pick.rootName===name); } }
     for(const qq of ["","m","7","maj7","m7"]) btn(quals,QNAME[qq]??qq,()=>{ pick.q=qq; buildPicker(); },pick.q===qq);
     const go=row("row4"); btn(go,"Play it",()=>{
       if(pick.root==null || pick.q==null) return feedback("Choose a root and a kind of chord first.","bad");
@@ -1668,14 +1865,17 @@ function buildPicker(){
     });
     return;
   }
-  const roots=row("row6"), quals=row("row4");
-  for(let i=0;i<12;i++){ const pc=mod(7*ctx+7*i,12); btn(roots,spell(pc,ctx),()=>{ pick.root=pc; buildPicker(); },pick.root===pc); }
+  // roots as letters with flat, natural and sharp, so C♯ and D♭ are both there
+  const quals=row("row4");
+  for(const [acc,sign] of [[-1,"♭"],[0,""],[1,"♯"]]){ const r=row("row7"); body.insertBefore(r,quals);
+    for(let li=0;li<7;li++){ const name=LETTERS[li]+sign, pc=mod(NAT[li]+acc,12); btn(r,name,()=>{ pick.root=pc; pick.rootName=name; buildPicker(); }, pick.rootName===name); } }
   const qs = type==="slash" ? ["","m","°"] : SETS[settings.set];
   for(const qq of qs) btn(quals,QNAME[qq]??qq,()=>{ pick.q=qq; buildPicker(); },pick.q===qq);
   if(type==="slash"){
     const l=document.createElement("label"); l.textContent="Slash note ";
-    const s=document.createElement("select"); s.add(new Option("choose","")); for(let i=0;i<12;i++){ const pc=mod(7*ctx+7*i,12); s.add(new Option(spell(pc,ctx),String(pc))); }
-    s.value = pick.bass==null ? "" : String(pick.bass); s.onchange=()=>pick.bass = s.value==="" ? null : +s.value; l.append(s); body.append(l);
+    const s=document.createElement("select"); s.add(new Option("choose",""));
+    for(const [acc,sign] of [[0,""],[-1,"♭"],[1,"♯"]]) for(let li=0;li<7;li++){ const name=LETTERS[li]+sign; s.add(new Option(name, `${mod(NAT[li]+acc,12)}|${name}`)); }
+    s.value = pick.bassName ? `${pick.bass}|${pick.bassName}` : ""; s.onchange=()=>{ if(!s.value){ pick.bass=null; pick.bassName=null; return; } const [pc,name]=s.value.split("|"); pick.bass=+pc; pick.bassName=name; }; l.append(s); body.append(l);
   }
   const go=row("row4"); btn(go,"Answer",()=>{
     if(pick.root==null || pick.q==null || (type==="slash" && pick.bass==null)) return feedback("Choose every part of the chord first.","bad");
@@ -1697,7 +1897,7 @@ async function startTones(){
   if(!canWrite()){ tones.sim=make((tuneState.secret+tuneState.nudge)/10,.1,settings.tuneWave); tones.push(tones.sim); }   // no minichord: simulate it
 }
 function buildSpecial(){
-  const box=$("special"); box.innerHTML=""; box.hidden = !(q && ["tune","melody","smooth","simon","directions","pluckchord","buildscale","blaster","diatonic","reshape"].includes(q.kind)); if(box.hidden) return;
+  const box=$("special"); box.innerHTML=""; box.hidden = !(q && ["tune","melody","smooth","simon","directions","pluckchord","buildscale","blaster","diatonic","reshape","hidden","oddone","shades"].includes(q.kind)); if(box.hidden) return;
   if(q.kind==="blaster"){
     const bar=document.createElement("div"); bar.className="fieldbar";
     const field=document.createElement("div"); field.className="field"; field.setAttribute("aria-label","Falling chords");
@@ -1717,6 +1917,11 @@ function buildSpecial(){
   if(q.kind==="directions"){ dirs.path.slice(0,dirs.pos).forEach((p,k)=>chip(dirName(k),"done")); chip("?","now"); return; }
   if(q.kind==="pluckchord"){ q.answer.pcs.forEach(p=>chip(q.answer.got.has(p)?nameOf(p):"?", q.answer.got.has(p)?"done":"")); return; }
   if(q.kind==="buildscale"){ q.answer.pcs.forEach((p,i)=>chip(i<q.answer.pos?nameOf(p):"·", i<q.answer.pos?"done":i===q.answer.pos?"now":"")); return; }
+  if(["hidden","oddone","shades"].includes(q.kind) && alt && alt.kind===q.kind){
+    if(q.kind==="shades" && alt.mode==="order") SHADES.forEach((sh,i)=>chip(i<alt.pos ? sh.n : "?", i<alt.pos?"done":i===alt.pos?"now":""));
+    if(!(q.kind==="shades" && alt.mode==="order")){ const b=document.createElement("button"); b.className="primary"; b.textContent="Found it (spacebar)"; b.onclick=submitAlt; box.appendChild(b); }
+    return;
+  }
   if(q.kind==="reshape"){
     const r=reshape;
     if(!cantusOk()){ r.newPcs.forEach(pc=>chip(r.got.has(pc) ? (r.names.get(pc)||spell(pc,0)) : "?", r.got.has(pc)?"done":"")); return; }
@@ -1788,6 +1993,7 @@ $("reveal").onclick=()=>{
   if(a.type==="tune"){ const hz=tuneState.secret/10; feedback(`It was set to A = ${hz.toFixed(1)} Hz, ${Math.abs(1200*Math.log2(hz/440)).toFixed(1)} cents ${hz>440?"sharp":"flat"}.`,"bad","Slide the other way from there, or press Next."); return; }
   feedback(`It's ${a.name}.`, "bad", reveal(a) || (a.type==="choice" ? "Press Next for another." : "Answer it to go on."));
   showNumerals(); showKeys();
+  if(q.layout && alt){ const L=q.layout(); $("feedback").appendChild(layoutDiagram(L.labels, L.target, L.shown)); }
 };
 $("next").onclick=()=>{ piano.start(); if(q && !solved && !sprint){ stats.asked++; stats.streak=0; scoreboard(); } nextQuestion(); };
 
@@ -1830,7 +2036,8 @@ function endSprint(){
 }
 
 // ---------- your minichord ----------
-const ADDR_NAMES={35:"key signature",23:"slash replaces",33:"Barry Harris mode",30:"transpose",31:"modifier",36:"harp scale mode",98:"chromatic harp",109:"tuning",110:"MPE",111:"voice leading",113:"slash voice",114:"slash re-voice",115:"cantus",116:"harp rank",236:"custom scale",237:"temperament"};
+const ADDR_NAMES={35:"key signature",23:"slash replaces",33:"Barry Harris mode",30:"transpose",31:"modifier",36:"harp scale mode",98:"chromatic harp",109:"tuning",110:"MPE",111:"voice leading",113:"slash voice",114:"slash re-voice",115:"cantus",116:"harp rank",39:"chord layout",
+  202:"alt chord 1",203:"alt chord 2",204:"alt chord 3",205:"alt chord 4",206:"alt chord 5",207:"alt chord 6",208:"alt chord 7",236:"custom scale",237:"temperament"};
 function mine(){
   const strip=$("mystrip");
   if(mc.params[35]===undefined){ strip.hidden=true; return; }
@@ -1838,7 +2045,10 @@ function mine(){
   const f=devFifths(), name=KEY_BY_FIFTHS[f] || mc.keyName || "?";
   $("myKey").textContent=`${name} major`;
   const parts=[sigText(f), `modifier ${modWord()==="sharp"?"sharpens":"flattens"}`];
-  const b=[...new Set(Object.keys(borrowed).map(a=> TONE_ADDRS.has(+a) ? "a plain tone" : ADDR_NAMES[a]||`address ${a}`))];
+  // the alt layout's seven chords read as one item
+  const altN=Object.keys(borrowed).filter(a=>a>=202 && a<=208).length;
+  const b=[...new Set(Object.keys(borrowed).filter(a=>!(a>=202 && a<=208)).map(a=> TONE_ADDRS.has(+a) ? "a plain tone" : ADDR_NAMES[a]||`address ${a}`))];
+  if(altN) b.push(altN===7 ? "alt chords 1–7" : `${altN} alt chords`);
   if(b.length) parts.push(`borrowed for this game: ${b.join(", ")}`);
   $("myInfo").textContent=parts.join(" · ");
   modPill();
