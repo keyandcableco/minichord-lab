@@ -440,7 +440,15 @@ html.arcadepage .titlerow::after{background:radial-gradient(circle,#FFD35A 0 3px
 @keyframes chase{50%{filter:brightness(.35) saturate(.6)}}
 html.arcadepage #pageTitle{margin:0;font:400 clamp(1.1rem,4.4vw,2.4rem)/1.3 "Press Start 2P",monospace;color:#FFE9A8;text-align:center;letter-spacing:.04em;
   text-shadow:0 0 6px #FFD35A,0 0 16px #FF8A3D,0 0 32px #FF5AA0,4px 4px 0 #000}
-html.arcadepage #settingsBtn{position:absolute;right:10px;top:50%;transform:translateY(-50%);font:400 .5rem "Press Start 2P",monospace;background:#0E0A16;color:#9A93B5;border:2px solid #2F2342;padding:6px 8px}
+html.arcadepage #settingsBtn{font:400 .5rem "Press Start 2P",monospace;background:#0E0A16;color:#9A93B5;border:2px solid #2F2342;padding:8px 10px;margin-left:10px}
+html.arcadepage #settingsBtn:hover{color:#FFD35A;border-color:#FFD35A}
+html.arcadepage .labbar .connect{display:flex;align-items:center;flex-wrap:wrap;gap:8px}
+/* the settings dialog, in the arcade's colours */
+html.arcadepage #settingsDlg{background:#130D1E;color:#F1E8D2;border:4px solid #000;box-shadow:0 0 0 3px #2F2342,10px 10px 0 #000;border-radius:0}
+html.arcadepage #settingsDlg::backdrop{background:rgba(7,6,12,.75)}
+html.arcadepage #settingsDlg h2,html.arcadepage #settingsDlg h3{color:#FFD35A}
+html.arcadepage #settingsDlg select,html.arcadepage #settingsDlg input,html.arcadepage #settingsDlg button{background:#0E0A16;color:#F1E8D2;border:2px solid #2F2342}
+html.arcadepage #settingsDlg .fine,html.arcadepage #settingsDlg label{color:#D8D0E8}
 html.arcadepage .morelink,html.arcadepage .status{text-align:center;font:400 .52rem/2 "Press Start 2P",monospace;color:#9A93B5}
 html.arcadepage .morelink a{color:#FFD35A;text-decoration:none;border-bottom:2px solid rgba(255,211,90,.35)}
 /* the cabinet round the game */
@@ -5507,6 +5515,10 @@ function arcadePage(){
   const crumb=document.querySelector(".labbar .crumb"); crumb.href="../arcade/"; crumb.textContent="← MINICHORD ARCADE";
   const more=$("moreLink").querySelector("a"); more.href="../arcade/"; more.textContent="MORE GAMES IN THE MINICHORD ARCADE →";
   const c=$("connect"); if(!c.disabled){ c.textContent="CONNECT MINICHORD"; $("status").textContent="PLUG IN A MINICHORD AND PRESS CONNECT."; }
+  // the settings: the button beside the connect button, clear of the marquee, and the dialog moved out
+  // of the answer area (hidden on these pages), where it couldn't show
+  const sb=$("settingsBtn"); sb.textContent="⚙ SETTINGS"; document.querySelector(".labbar .connect").appendChild(sb);
+  document.body.appendChild($("settingsDlg"));
   const others=ARCADE_GAMES.filter(g=>g!==settings.mode);
   const box=document.createElement("section"); box.className="moregames"; box.setAttribute("aria-label","More arcade games");
   box.innerHTML=`<h2>MORE IN THE ARCADE</h2><div class="row">${others.map(g=>`<a href="../${HS_SLUG[g]}/"><img src="../${HS_SLUG[g]}/card.png" alt="" loading="lazy" width="1200" height="630"><span>${LABELS[g].toUpperCase()}</span></a>`).join("")}</div>`;
