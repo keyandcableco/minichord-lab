@@ -410,6 +410,61 @@
 .field.arcade .fchord.democh{z-index:6}
 @media (max-width:560px){.demo .cell{font-size:.36rem}.demo .board{bottom:8px;right:6px;width:92%}}
 
+
+/* ---------- an arcade game on its own page: the cabinet, not the Practice Room ----------
+   A dark room with still stars, the game's name in a lit marquee, an arcade push-button to
+   connect, the game in its cabinet, and the other games along the bottom. */
+html.arcadepage{background:#07060C;
+  background-image:radial-gradient(1px 1px at 12% 18%,#9D98C9 50%,transparent 51%),radial-gradient(1px 1px at 72% 8%,#fff 50%,transparent 51%),
+    radial-gradient(1px 1px at 38% 62%,#4B4670 50%,transparent 51%),radial-gradient(1px 1px at 88% 44%,#9D98C9 50%,transparent 51%),
+    radial-gradient(1px 1px at 22% 84%,#fff 50%,transparent 51%),radial-gradient(1px 1px at 58% 32%,#4B4670 50%,transparent 51%);
+  background-size:230px 230px}
+html.arcadepage body{background:transparent;color:#F1E8D2}
+html.arcadepage main{max-width:1180px}
+html.arcadepage .labbar{background:#0E0A16;border:3px solid #000;box-shadow:0 0 0 2px #2F2342;border-bottom:3px solid #000;padding:10px 14px}
+html.arcadepage .labbar .crumb{font:400 .66rem "Press Start 2P",monospace;color:#9A93B5;text-decoration:none}
+html.arcadepage .labbar .crumb:hover{color:#FFD35A}
+html.arcadepage .labbar .crumb img{display:none}
+/* the connect button: a round arcade button, lit */
+html.arcadepage #connect{font:400 .6rem "Press Start 2P",monospace;color:#FFF4C2;background:radial-gradient(circle at 35% 30%,#FF6A5E,#B0201A 60%,#6E0E0A);border:3px solid #000;border-radius:999px;
+  padding:12px 18px;box-shadow:0 5px 0 #3A0806,0 0 18px rgba(255,75,62,.45);text-shadow:2px 2px 0 #000;letter-spacing:.04em}
+html.arcadepage #connect:active{transform:translateY(4px);box-shadow:0 1px 0 #3A0806}
+html.arcadepage #connect:disabled{background:radial-gradient(circle at 35% 30%,#7FE08A,#1E7A2C 60%,#0C3A14);box-shadow:0 5px 0 #0A2A10,0 0 14px rgba(127,224,138,.4)}
+html.arcadepage #input{background:#0E0A16;color:#9A93B5;border:2px solid #2F2342;font:400 .5rem "Press Start 2P",monospace}
+/* the marquee */
+html.arcadepage .titlerow{position:relative;justify-content:center;margin:26px auto 8px;max-width:760px;padding:26px 16px 22px;background:linear-gradient(180deg,#1A0E22,#0B0714);
+  border:5px solid #2A1C35;box-shadow:0 0 0 3px #000,0 0 40px rgba(255,90,160,.16),inset 0 0 30px rgba(0,0,0,.8)}
+html.arcadepage .titlerow::before,html.arcadepage .titlerow::after{content:"";position:absolute;inset:-3px;pointer-events:none;animation:chase .5s steps(2) infinite}
+html.arcadepage .titlerow::before{background:radial-gradient(circle,#FFD35A 0 3px,transparent 4px) 0 0/22px 22px repeat-x,radial-gradient(circle,#FFD35A 0 3px,transparent 4px) 0 100%/22px 22px repeat-x}
+html.arcadepage .titlerow::after{background:radial-gradient(circle,#FFD35A 0 3px,transparent 4px) 0 0/22px 22px repeat-y,radial-gradient(circle,#FFD35A 0 3px,transparent 4px) 100% 0/22px 22px repeat-y}
+@keyframes chase{50%{filter:brightness(.35) saturate(.6)}}
+html.arcadepage #pageTitle{margin:0;font:400 clamp(1.1rem,4.4vw,2.4rem)/1.3 "Press Start 2P",monospace;color:#FFE9A8;text-align:center;letter-spacing:.04em;
+  text-shadow:0 0 6px #FFD35A,0 0 16px #FF8A3D,0 0 32px #FF5AA0,4px 4px 0 #000}
+html.arcadepage #settingsBtn{position:absolute;right:10px;top:50%;transform:translateY(-50%);font:400 .5rem "Press Start 2P",monospace;background:#0E0A16;color:#9A93B5;border:2px solid #2F2342;padding:6px 8px}
+html.arcadepage .morelink,html.arcadepage .status{text-align:center;font:400 .52rem/2 "Press Start 2P",monospace;color:#9A93B5}
+html.arcadepage .morelink a{color:#FFD35A;text-decoration:none;border-bottom:2px solid rgba(255,211,90,.35)}
+/* the cabinet round the game */
+html.arcadepage .game{background:linear-gradient(180deg,#221733,#130D1E);border:4px solid #000;border-top:4px solid #000;border-radius:0;box-shadow:0 0 0 3px #2F2342,10px 10px 0 #000;padding:16px}
+html.arcadepage .game .field{border-radius:14px/10px;border:6px solid #050407}
+html.arcadepage .gamebar .chips,html.arcadepage .gamebar .what,html.arcadepage #prompt,html.arcadepage #keys,html.arcadepage .lastround,html.arcadepage .answers,html.arcadepage .mystrip,
+html.arcadepage .controls>*:not(#soundBtn){display:none!important}
+html.arcadepage .modpill{background:#0E0A16;color:#7FE9FF;border:2px solid #2F2342;font:400 .5rem/1.8 "Press Start 2P",monospace}
+html.arcadepage .feedback,html.arcadepage .needs{color:#D8D0E8;font:400 .55rem/2 "Press Start 2P",monospace;background:transparent;border-left-color:#FFD35A}
+html.arcadepage .controls{justify-content:center}
+html.arcadepage #soundBtn{font:400 .5rem "Press Start 2P",monospace;background:#0E0A16;color:#9A93B5;border:2px solid #2F2342}
+/* the rest of the arcade, along the bottom */
+.moregames{margin:34px 0 0}
+.moregames h2{font:400 .7rem "Press Start 2P",monospace;color:#7FE9FF;text-align:center;margin:0 0 16px;text-shadow:0 0 8px rgba(127,233,255,.5)}
+.moregames .row{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:14px}
+.moregames a{display:block;text-decoration:none;color:#F1E8D2;background:#130D1E;border:3px solid #000;box-shadow:0 0 0 2px #2F2342,5px 5px 0 #000;padding:8px;transition:transform .12s}
+.moregames a:hover,.moregames a:focus-visible{transform:translate(-2px,-2px);box-shadow:0 0 0 2px #FFD35A,7px 7px 0 #000;outline:none}
+.moregames img{display:block;width:100%;height:auto;aspect-ratio:1200/630;border:3px solid #050407;border-radius:8px/6px}
+.moregames span{display:block;margin-top:8px;font:400 .5rem "Press Start 2P",monospace;text-align:center;color:#FFD35A}
+html.arcadepage footer,html.arcadepage main>p.foot,html.arcadepage .labfoot{color:#9A93B5;border-color:#2F2342}
+html.arcadepage footer a,html.arcadepage .labfoot a{color:#FFD35A}
+html.arcadepage body>p:last-of-type{color:#9A93B5;font-family:"Press Start 2P",monospace;font-size:.5rem!important;line-height:2.2}
+@media (prefers-reduced-motion:reduce){html.arcadepage .titlerow::before,html.arcadepage .titlerow::after{animation:none}}
+
 /* ---------- ivory and ebony ---------- */
 .zone.gamesel{border:none;border-top:2px solid var(--ink);border-radius:0;background:transparent;padding:12px 0 4px;margin-top:6px}
 .zonehead{font:italic 600 1.35rem var(--hand);letter-spacing:0;text-transform:none;color:var(--felt);margin:0 0 2px}
@@ -5440,7 +5495,22 @@ if(solo){
   $("pageTitle").textContent=LABELS[settings.mode]; document.title=`${LABELS[settings.mode]} · Minichord Lab`;
   $("moreLink").hidden=false;
   $("gameMenu").open=false;
+  if(ARCADE_GAMES.includes(settings.mode)) arcadePage();
   nextQuestion();
+}
+// an arcade game's own page wears the arcade: back to the lobby, a marquee, a lit connect button,
+// the cabinet, and the other games along the bottom
+function arcadePage(){
+  document.documentElement.classList.add("arcadepage");
+  document.title=`${LABELS[settings.mode]} · Minichord Arcade`;
+  $("pageTitle").textContent=LABELS[settings.mode].toUpperCase();
+  const crumb=document.querySelector(".labbar .crumb"); crumb.href="../arcade/"; crumb.textContent="← MINICHORD ARCADE";
+  const more=$("moreLink").querySelector("a"); more.href="../arcade/"; more.textContent="MORE GAMES IN THE MINICHORD ARCADE →";
+  const c=$("connect"); if(!c.disabled){ c.textContent="CONNECT MINICHORD"; $("status").textContent="PLUG IN A MINICHORD AND PRESS CONNECT."; }
+  const others=ARCADE_GAMES.filter(g=>g!==settings.mode);
+  const box=document.createElement("section"); box.className="moregames"; box.setAttribute("aria-label","More arcade games");
+  box.innerHTML=`<h2>MORE IN THE ARCADE</h2><div class="row">${others.map(g=>`<a href="../${HS_SLUG[g]}/"><img src="../${HS_SLUG[g]}/card.png" alt="" loading="lazy" width="1200" height="630"><span>${LABELS[g].toUpperCase()}</span></a>`).join("")}</div>`;
+  document.querySelector("section.game").after(box);
 }
 </script>
 <!-- say-thanks -->
