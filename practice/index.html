@@ -322,6 +322,27 @@
 .fdkey.aimed{color:#FFD35A;text-shadow:0 0 10px rgba(255,211,90,.8)}
 .fdkey.aimed small{color:#FFE9A8}
 .fdkey.unused{opacity:.3}
+
+/* high scores: the entry, the board in the title loop, the line at game over */
+.overlay.hsentry{z-index:8;background:rgba(7,6,12,.92)}
+.hsentry .hsscore{font-size:1.4rem!important;color:#FFD35A!important}
+.hsletters{display:flex;gap:14px;margin:6px 0 4px}
+.hsletters span{display:flex;align-items:center;justify-content:center;width:1.6em;height:1.9em;font:400 2rem "Press Start 2P",monospace;color:#F1E8D2;border-bottom:4px solid #3D3656}
+.hsletters span.on{color:#FFD35A;border-bottom-color:#FFD35A;animation:blink .8s steps(2) infinite}
+.cab-scores{display:flex;flex-direction:column;align-items:center;gap:8px;width:100%}
+.overlay:not([data-stage="scores"]) .cab-scores{display:none!important}
+.overlay[data-stage="scores"] .cab-title,.overlay[data-stage="scores"] .cab-rules,.overlay[data-stage="scores"] .cab-options{display:none!important}
+.overlay[data-stage="scores"]{background:rgba(7,6,12,.7);cursor:pointer}
+.cab-scores .hswhere{font-size:.5rem!important;color:#8A83A8!important;min-height:.6rem}
+.hsboard{list-style:none;margin:0;padding:0;display:grid;gap:6px;min-width:min(420px,86%)}
+.hsboard li{display:grid;grid-template-columns:3.2em 3.6em 1fr 3em;gap:10px;align-items:baseline;font:400 .72rem "Press Start 2P",monospace;color:#F1E8D2;animation:hsin .4s ease-out both}
+.hsboard li:nth-child(n){animation-delay:calc(var(--i,0)*60ms)}
+.hsboard li span:nth-child(3){text-align:right}
+.hsboard li small{font-size:.5rem;color:#8A83A8}
+.hsboard li.top{color:#FFD35A;text-shadow:0 0 10px rgba(255,211,90,.6)}
+.hsboard li.me b{color:#7FE9FF}
+@keyframes hsin{from{opacity:0;transform:translateX(-20px)}}
+.overlay p.hsresult{color:#7FE9FF!important;font-size:.6rem!important}
 /* the demo's pixel minichord */
 .overlay button.howto{border-color:#FFD35A;color:#FFD35A}
 .demo{position:absolute;inset:0;z-index:5;display:flex;flex-direction:column;justify-content:flex-start;padding:10px 14px;pointer-events:none}
@@ -1609,6 +1630,7 @@ function blastBarCommand(){
   blast.hud.innerHTML=`<span>SCORE ${blast.score}</span><span class="lvl">LEVEL ${blast.level+1}${key}${toGo}</span><span class="lives">${"♥".repeat(Math.max(0,blast.lives))||"-"}</span>`;
 }
 function commandMenu(over){
+  if(over && hsOffer(()=>commandMenu(true))) return;
   const ov=document.createElement("div"); ov.className="overlay";
   const best=saved.best.command||0;
   if(over){
@@ -1637,6 +1659,7 @@ function commandMenu(over){
   if(!over && best){ const p=document.createElement("p"); p.textContent=`BEST ${best}`; ov.appendChild(p); }
   arcadeKeys(ov);
   if(!over) arcadeCredit(ov);
+  if(over) hsGameOverLine(ov);
   blast.field.appendChild(ov); blast.overlay=ov;
   if(!over){ cabinet(ov); return; }
   clearTimeout(blast.attract);
@@ -1970,6 +1993,7 @@ function snBar(){
   blast.hud.innerHTML=`<span>SCORE ${blast.score}</span><span class="lvl">LEVEL ${blast.level+1} · LOAD ${load}/${max}</span><span class="lives">${"♥".repeat(Math.max(0,blast.lives))||"-"}</span>`;
 }
 function snMenu(over){
+  if(over && hsOffer(()=>snMenu(true))) return;
   const ov=document.createElement("div"); ov.className="overlay";
   const best=saved.best.snake||0;
   if(over){
@@ -1999,6 +2023,7 @@ function snMenu(over){
   arcadeModNote(ov);
   arcadeKeys(ov);
   if(!over) arcadeCredit(ov);
+  if(over) hsGameOverLine(ov);
   blast.field.appendChild(ov); blast.overlay=ov;
   if(!over){ cabinet(ov); return; }
   clearTimeout(blast.attract);
@@ -2283,6 +2308,7 @@ function asBar(){
   blast.hud.innerHTML=`<span>SCORE ${blast.score}</span><span class="lvl">LEVEL ${blast.level+1}</span><span class="lives">${"♥".repeat(Math.max(0,blast.lives))||"-"}</span>`;
 }
 function asMenu(over){
+  if(over && hsOffer(()=>asMenu(true))) return;
   const ov=document.createElement("div"); ov.className="overlay";
   const best=saved.best.asteroids||0;
   if(over){
@@ -2310,6 +2336,7 @@ function asMenu(over){
   arcadeModNote(ov);
   arcadeKeys(ov);
   if(!over) arcadeCredit(ov);
+  if(over) hsGameOverLine(ov);
   blast.field.appendChild(ov); blast.overlay=ov;
   if(!over){ cabinet(ov); return; }
   clearTimeout(blast.attract);
@@ -2620,6 +2647,7 @@ function stBar(){
   blast.hud.innerHTML=`<span>SCORE ${blast.score}</span><span class="lvl">LEVEL ${blast.level+1} · ${ST_LEVELS[blast.level].n.toUpperCase()}</span><span>CLEARED ${blast.clears}</span>`;
 }
 function stMenu(over){
+  if(over && hsOffer(()=>stMenu(true))) return;
   const ov=document.createElement("div"); ov.className="overlay";
   const best=saved.best.stack||0;
   if(over){
@@ -2648,6 +2676,7 @@ function stMenu(over){
   arcadeModNote(ov);
   arcadeKeys(ov);
   if(!over) arcadeCredit(ov);
+  if(over) hsGameOverLine(ov);
   blast.field.appendChild(ov); blast.overlay=ov;
   if(!over){ cabinet(ov); return; }
   clearTimeout(blast.attract);
@@ -2966,14 +2995,16 @@ function cabinet(ov){
   rules.forEach(r=>inner.appendChild(r));
   if(credit) inner.appendChild(credit.cloneNode(true));
   roll.appendChild(inner);
+  const board=document.createElement("div"); board.className="cab-scores";
   const opts=document.createElement("div"); opts.className="cab-options";
   [...ov.children].forEach(c=>opts.appendChild(c));
   opts.querySelector("h3")?.classList.add("small");
   beginnerRow(opts);
   if(["breakout","fifths","stack"].includes(cabKind()) && knobsReady()) knobRow(opts);
-  ov.append(title, roll, opts);
+  ov.append(title, roll, board, opts);
+  hsFetch(hsSlug());                                        // fetched now, so it's ready when its turn comes
   ov.addEventListener("click", e=>{ if(ov.dataset.stage!=="options"){ e.stopPropagation(); cabWake(); } }, true);
-  inner.addEventListener("animationend", ()=>{ if(blast && blast.overlay===ov && ov.dataset.stage==="rules" && blast.phase==="menu"){ const d=DEMO_FOR[cabKind()]; if(d) d(); } });
+  inner.addEventListener("animationend", ()=>{ if(blast && blast.overlay===ov && ov.dataset.stage==="rules" && blast.phase==="menu") cabStage(ov,"scores"); });
   cabStage(ov, "title");
 }
 function cabStage(ov, stage){
@@ -2984,6 +3015,11 @@ function cabStage(ov, stage){
   if(stage==="rules"){ const inner=ov.querySelector(".cabscroll"); if(inner){ inner.style.animation="none"; void inner.offsetWidth;
     inner.style.animation=`cabroll ${Math.max(12, inner.children.length*2.4)}s linear forwards`; } }
   if(stage==="options") blast.cabT=setTimeout(()=>{ if(blast && blast.overlay===ov && ov.dataset.stage==="options" && blast.phase==="menu") cabStage(ov,"title"); }, 45000);
+  if(stage==="scores"){                                        // the board, then the demo
+    const el=ov.querySelector(".cab-scores"); el.innerHTML="<h3>HIGH SCORES</h3>";
+    hsBoard(hsSlug()).then(b=>{ if(ov.dataset.stage==="scores") hsRender(el, b, saved.hsInitials); });
+    blast.cabT=setTimeout(()=>{ if(blast && blast.overlay===ov && ov.dataset.stage==="scores" && blast.phase==="menu"){ const d=DEMO_FOR[cabKind()]; if(d) d(); } }, 9000);
+  }
 }
 // someone's here: show the options
 function cabWake(){
@@ -3169,6 +3205,7 @@ function boBar(){
   blast.hud.innerHTML=`<span>SCORE ${blast.score}</span><span class="lvl">LEVEL ${blast.level+1}</span><span class="lives">${"♥".repeat(Math.max(0,blast.lives))||"-"}</span>`;
 }
 function boMenu(over){
+  if(over && hsOffer(()=>boMenu(true))) return;
   const ov=document.createElement("div"); ov.className="overlay";
   const best=saved.best.breakout||0;
   if(over){
@@ -3197,6 +3234,7 @@ function boMenu(over){
   if(!over) arcadeModNote(ov);
   arcadeKeys(ov);
   if(!over) arcadeCredit(ov);
+  if(over) hsGameOverLine(ov);
   blast.field.appendChild(ov); blast.overlay=ov;
   if(!over){ cabinet(ov); return; }
 }
@@ -3358,6 +3396,7 @@ const knobHold={};
 mc.addEventListener("knob", e=>{
   if(!blast || !blast.field) return;
   const {knob, value}=e.detail;
+  if(blast.hsEntry){ if(knob===steerKnob()) blast.hsEntry.knob(value); return; }
   if(cabWaiting()){ if(knob===steerKnob()) cabWake(); return; }
   if(knob!==steerKnob()) return;
   const step=Math.round(value*127), h=knobHold[knob] || (knobHold[knob]={last:null, dir:0});
@@ -3499,6 +3538,7 @@ function fdBar(){
   blast.hud.innerHTML=`<span>SCORE ${blast.score}</span><span class="lvl">LEVEL ${blast.level+1} · ${L.n.toUpperCase()}</span><span class="lives">${"♥".repeat(Math.max(0,blast.lives))||"-"}</span>`;
 }
 function fdMenu(over){
+  if(over && hsOffer(()=>fdMenu(true))) return;
   const ov=document.createElement("div"); ov.className="overlay";
   const best=saved.best.fifths||0;
   if(over){
@@ -3525,6 +3565,7 @@ function fdMenu(over){
   if(!over) arcadeModNote(ov);
   arcadeKeys(ov);
   if(!over) arcadeCredit(ov);
+  if(over) hsGameOverLine(ov);
   blast.field.appendChild(ov); blast.overlay=ov;
   if(!over){ cabinet(ov); return; }
 }
@@ -3686,6 +3727,104 @@ function endFdDemo(token){
   cabRestart();
 }
 
+
+// ---------- high scores ----------
+// Every arcade game keeps a board of the ten best, shown in the title loop after the rules, and
+// entered arcade-style at game over: three initials picked with the arrow keys, the harp's d-pad or
+// the steering knob, confirmed with a chord or Enter. Scores count only when a minichord was
+// connected and played through the game. They go to the shared board (arcade-scores on the
+// flask-stack, reached through Tailscale Funnel) and to this browser's own board, which is also
+// what's shown if the shared one can't be reached.
+const SCORES_API="https://keyandcable-pi.tailaeddec.ts.net/";                 // the Funnel address of arcade-scores
+const scoresOnline=()=> !SCORES_API.includes("SCORES-HOST");
+const HS_SLUG={blaster:"invaders", command:"harp-command", snake:"chord-snake", asteroids:"chord-asteroids", stack:"chord-stack", breakout:"chord-breakout", fifths:"fifths-defender"};
+const HS_CHARS="ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+const hsCache={};                                        // the shared boards, as last fetched
+const hsSlug=()=> HS_SLUG[cabKind()];
+const hsLocal=slug=> (saved.hiscores && saved.hiscores[slug]) || [];
+function hsFetch(slug, force){
+  const c=hsCache[slug];
+  if(!scoresOnline()) return Promise.resolve(null);
+  if(c && !force && performance.now()-c.at<60000) return Promise.resolve(c.scores);
+  const ctl=new AbortController(); const t=setTimeout(()=>ctl.abort(),4000);
+  return fetch(`${SCORES_API}/api/scores/${slug}`,{signal:ctl.signal}).then(r=>r.ok?r.json():null).then(j=>{ clearTimeout(t); if(j){ hsCache[slug]={at:performance.now(), scores:j.scores}; return j.scores; } return null; }).catch(()=>{ clearTimeout(t); return null; });
+}
+// the board to show: the shared one if it answered, otherwise this browser's
+async function hsBoard(slug){ const g=await hsFetch(slug); return g ? {scores:g, shared:true} : {scores:hsLocal(slug), shared:false}; }
+// a score counts when a minichord was connected and played through the game
+function hsEligible(){ return !!(blast && canWrite() && (blast.midiIn||0)>=5 && blast.score>0); }
+const hsSeconds=()=> Math.round((performance.now()-(blast.startedAt||performance.now()))/1000);
+// at game over: offer the initials entry if the score makes the board; next() shows the game over screen
+function hsOffer(next){
+  if(!blast || blast.hsDone) return false;
+  blast.hsDone=true;
+  if(!hsEligible()){ blast.hsNote = canWrite() ? "" : "CONNECT A MINICHORD TO PUT SCORES ON THE BOARD"; return false; }
+  const slug=hsSlug(), score=blast.score;
+  hsBoard(slug).then(({scores})=>{
+    if(!blast || blast.phase!=="over") return;
+    const makes = scores.length<10 || score>scores[scores.length-1].score;
+    if(!makes){ next(); return; }
+    hsEntry(slug, score, next);
+  });
+  return true;
+}
+function hsEntry(slug, score, next){
+  const ov=document.createElement("div"); ov.className="overlay hsentry";
+  const letters=(saved.hsInitials||"AAA").split("");
+  ov.innerHTML=`<h3>NEW HIGH SCORE!</h3><p class="hsscore">${score.toLocaleString("en-US")}</p><p>ENTER YOUR INITIALS</p><div class="hsletters">${letters.map(()=>"<span></span>").join("")}</div>
+    <p class="padhint">▲▼, A KNOB OR THE HARP PICKS A LETTER · ◀▶ MOVES · A CHORD OR ENTER SETS IT</p>`;
+  blast.field.appendChild(ov);
+  const st={letters, pos:0, ov, done:false};
+  const draw=()=>{ [...ov.querySelectorAll(".hsletters span")].forEach((e,i)=>{ e.textContent=st.letters[i]; e.classList.toggle("on", i===st.pos); }); };
+  const step=d=>{ const i=HS_CHARS.indexOf(st.letters[st.pos]); st.letters[st.pos]=HS_CHARS[mod(i+d, HS_CHARS.length)]; sfx("press"); draw(); };
+  const move=d=>{ st.pos=Math.max(0,Math.min(2,st.pos+d)); draw(); };
+  const set=()=>{ sfx("key"); if(st.pos<2){ st.pos++; draw(); } else finish(); };
+  const finish=async()=>{
+    if(st.done) return; st.done=true; blast.hsEntry=null;
+    const initials=st.letters.join(""); saved.hsInitials=initials;
+    const entry={initials, score, level:blast.level+1, speed:+saved.speed||0, created:Date.now()/1000};
+    // this browser's board
+    const local=[...hsLocal(slug), entry].sort((a,b)=>b.score-a.score).slice(0,10);
+    (saved.hiscores||(saved.hiscores={}))[slug]=local; save();
+    // the shared board
+    let rank=local.indexOf(entry)+1, shared=false;
+    if(scoresOnline()){
+      ov.querySelector(".padhint").textContent="SENDING…";
+      try{
+        const r=await fetch(`${SCORES_API}/api/scores/${slug}`,{method:"POST", headers:{"Content-Type":"application/json"},
+          body:JSON.stringify({initials, score, level:blast.level+1, speed:+saved.speed||0, seconds:hsSeconds(), firmware:mc.params[7]??null})});
+        const j=await r.json().catch(()=>({}));
+        if(r.ok){ rank=j.rank; shared=true; hsCache[slug]={at:performance.now(), scores:j.scores}; } else blast.hsNote=(j.error||"").toUpperCase();
+      }catch(e){ blast.hsNote="THE SHARED BOARD COULDN'T BE REACHED: KEPT ON THIS COMPUTER"; }
+    }
+    blast.hsResult=`${initials} · #${rank} ON ${shared?"THE BOARD":"THIS COMPUTER'S BOARD"}`;
+    sfx("level"); ov.remove(); next();
+  };
+  blast.hsEntry={step, move, set, finish, back:()=>move(-1), knob:v=>{ st.letters[st.pos]=HS_CHARS[Math.min(HS_CHARS.length-1,Math.floor(v*HS_CHARS.length))]; draw(); }, type:ch=>{ st.letters[st.pos]=ch; set(); }};
+  draw(); sfx("bonus");
+}
+// the game over screen says what became of the score
+function hsGameOverLine(ov){
+  const t=blast.hsResult || blast.hsNote; if(!t) return;
+  const p=document.createElement("p"); p.className="hsresult"; p.textContent=t;
+  const h=ov.querySelector("h3"); h && h.nextSibling ? ov.insertBefore(p, h.nextSibling.nextSibling) : ov.appendChild(p);
+}
+document.addEventListener("keydown", e=>{
+  const h=blast && blast.hsEntry; if(!h || /INPUT|SELECT|TEXTAREA/.test(document.activeElement?.tagName||"")) return;
+  e.preventDefault(); e.stopImmediatePropagation();
+  if(e.code==="ArrowUp") h.step(1); else if(e.code==="ArrowDown") h.step(-1);
+  else if(e.code==="ArrowLeft" || e.code==="Backspace") h.move(-1); else if(e.code==="ArrowRight") h.move(1);
+  else if(e.code==="Enter" || e.code==="Space") h.set();
+  else if(/^Key[A-Z]$|^Digit[0-9]$/.test(e.code)) h.type(e.code.slice(-1));
+}, true);
+// the board, drawn for the title loop
+function hsRender(el, {scores, shared}, highlight){
+  const ord=n=>n+(["TH","ST","ND","RD"][(n%100>10&&n%100<14)?0:Math.min(n%10,4)%4]||"TH");
+  el.innerHTML=`<h3>HIGH SCORES</h3><p class="hswhere">${shared?"":"ON THIS COMPUTER"}</p>`+
+    (scores.length ? `<ol class="hsboard">${scores.map((r,i)=>`<li class="${i===0?"top":""}${highlight&&r.initials===highlight?" me":""}"><span>${ord(i+1)}</span><b>${r.initials}</b><span>${r.score.toLocaleString("en-US")}</span><small>L${r.level}</small></li>`).join("")}</ol>`
+      : `<p>NO SCORES YET. BE THE FIRST.</p>`)+`<p class="padhint">SCORES COUNT WHEN A MINICHORD IS PLAYED</p>`;
+}
+
 // ---------- Chord Invaders' own sounds ----------
 // Chiptune effects from square waves and noise, only in this game and only with sounds on:
 // a laser for each shot, a crunchy burst for each hit, a sparkle for a ★, a thud for a miss,
@@ -3757,6 +3896,7 @@ function startBlaster(){
 }
 // the cabinet's menu, and its game over: choose a level to start from
 function blastMenu(over){
+  if(over && hsOffer(()=>blastMenu(true))) return;
   const ov=document.createElement("div"); ov.className="overlay";
   const best=saved.best.blaster||0;
   if(over){
@@ -3794,6 +3934,7 @@ function blastMenu(over){
   arcadeModNote(ov);
   arcadeKeys(ov);
   if(!over) arcadeCredit(ov);
+  if(over) hsGameOverLine(ov);
   blast.field.appendChild(ov); blast.overlay=ov;
   if(!over){ cabinet(ov); return; }
   // attract mode: left on the title screen, the cabinet plays its demo, as arcade machines do
@@ -4142,6 +4283,9 @@ function fxPaintBackground(kind, W, H){
 }
 function fxDraw(now, dt){
   const fx=blast.fx; if(!fx) return; fx.resize();
+  // a game's clock and its count of what the minichord played start with its first frame of play
+  if(blast.phase==="play"){ if(!blast.startedAt){ blast.startedAt=now; blast.midiIn=0; blast.hsDone=false; blast.hsResult=null; blast.hsNote=null; } }
+  else if(blast.phase!=="over") blast.startedAt=null;
   const g=fx.g, W=fx.w, H=fx.h;
   fxBackground(g, W, H, now, dt);
   if(blast.kind==="fifths") fdDraw(g, now);
@@ -4658,6 +4802,8 @@ function later(fn){
 function answerChord(voices){
   clearTimeout(pendingWrong); pendingWrong=null;
   if(!q || solved) return;
+  if(blast && blast.hsEntry){ blast.hsEntry.set(); return; }                     // initials: a chord sets the letter
+  if(blast && blast.phase==="play") blast.midiIn=(blast.midiIn||0)+1;
   if(arcadeMenuChord(voices)) return;            // an arcade title screen, played from the buttons
   if(q.answer.type==="blaster") return blasterChord(voices);
   if(q.answer.type==="command") return;                  // the harp answers Harp Command, not the chords
@@ -4695,7 +4841,10 @@ function answerChord(voices){
   }
 }
 function answerNote(pc, pickedName){
+  if(blast && blast.hsEntry){ const c=kmControl(pc), h=blast.hsEntry;               // initials: the harp as a d-pad
+    if(c==="up") h.step(1); else if(c==="down") h.step(-1); else if(c==="left"||c==="B") h.move(-1); else if(c==="right") h.move(1); else h.set(); return; }
   if(cabWaiting()){ cabWake(); return; }
+  if(blast && blast.phase==="play") blast.midiIn=(blast.midiIn||0)+1;
   if(q && q.kind==="command") return commandNote(pc);
   if(q && q.kind==="snake") return snakeHarp(pc);
   if(q && q.kind==="asteroids") return asteroidsNote(pc);
