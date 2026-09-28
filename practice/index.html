@@ -366,6 +366,22 @@
 .field.arcade.crt .overlay{animation:crtflicker 4s steps(1) infinite}
 @keyframes crtflicker{0%,100%{opacity:1}47%{opacity:.97}48%{opacity:1}83%{opacity:.985}}
 @media (prefers-reduced-motion:reduce){.field.arcade.crt::after,.field.arcade.crt .overlay{animation:none}}
+
+/* the points screen, Pac-Man style: each line appears in turn, a dotted leader to its value */
+.cab-points{display:flex;flex-direction:column;align-items:center;gap:10px;width:100%}
+.overlay:not([data-stage="points"]) .cab-points{display:none!important}
+.overlay[data-stage="points"] .cab-title,.overlay[data-stage="points"] .cab-rules,.overlay[data-stage="points"] .cab-options,.overlay[data-stage="points"] .cab-scores{display:none!important}
+.overlay[data-stage="points"]{background:rgba(7,6,12,.7);cursor:pointer}
+.ptable{list-style:none;margin:0;padding:0;display:grid;gap:10px;min-width:min(460px,88%)}
+.ptable li{display:flex;align-items:baseline;gap:8px;font:400 .66rem "Press Start 2P",monospace;color:#F1E8D2;opacity:0;animation:ptin .01s steps(1) forwards}
+.ptable li i{flex:1;border-bottom:3px dotted #5A5470;transform:translateY(-3px)}
+.ptable li b{color:#FFD35A;font-weight:400}
+.ptable li.ptnote{justify-content:center;font-size:.5rem;color:#8A83A8}
+.ptable.mult li{flex-direction:column;align-items:center;gap:6px}
+.ptable.mult em{font-style:normal;font-size:.5rem;color:#7FE9FF;text-align:center;line-height:1.8}
+.cab-points .ptsub{color:#FFD35A!important;font-size:.62rem!important;opacity:0;animation:ptin .01s steps(1) forwards}
+@keyframes ptin{to{opacity:1}}
+.overlay p.multline{color:#7FE9FF!important;font-size:.58rem!important}
 /* the demo's pixel minichord */
 .overlay button.howto{border-color:#FFD35A;color:#FFD35A}
 .demo{position:absolute;inset:0;z-index:5;display:flex;flex-direction:column;justify-content:flex-start;padding:10px 14px;pointer-events:none}
@@ -1652,7 +1668,7 @@ function blastBarCommand(){
   if(!blast || blast.kind!=="command" || !blast.hud) return;
   const w=blast.wave, key = w && w.kind==="scale" ? ` · ${w.tonic} ${w.scale.toUpperCase()}` : "";
   const toGo = blast.phase==="play" ? ` · NEXT ${Math.max(0,hcHitsToLevel(blast.level)-(blast.levelHits||0))}` : "";
-  blast.hud.innerHTML=`<span>SCORE ${blast.score}</span><span class="lvl">LEVEL ${blast.level+1}${key}${toGo}</span><span class="lives">${"♥".repeat(Math.max(0,blast.lives))||"-"}</span>`;
+  blast.hud.innerHTML=`<span>SCORE ${blast.score}${multTag()}</span><span class="lvl">LEVEL ${blast.level+1}${key}${toGo}</span><span class="lives">${"♥".repeat(Math.max(0,blast.lives))||"-"}</span>`;
 }
 function commandMenu(over){
   if(over && hsOffer(()=>commandMenu(true))) return;
@@ -1791,7 +1807,7 @@ function commandNote(pc){
   heard(name,true);
   hit.done=true; hit.el.classList.remove("low");
   const c=blast.cannons[hit.string]; c.fired=performance.now();
-  const fr=blast.field, x=hit.el.offsetLeft, y=hit.el.offsetTop+hit.el.offsetHeight/2, pts=(hit.bonus?50:10)*(blast.level+1);
+  const fr=blast.field, x=hit.el.offsetLeft, y=hit.el.offsetTop+hit.el.offsetHeight/2, pts=mulPts((hit.bonus?50:10)*(blast.level+1));
   sfx("shoot");
   blast.fx.missiles.push({x0:c.x/PX, y0:(fr.clientHeight-30)/PX, x1:x/PX, y1:y/PX, t0:performance.now(), dur:160,
     hit:()=>{ sfx(hit.bonus?"bonus":"boom"); hit.el.classList.add("gone"); setTimeout(()=>hit.el.remove(),50); explode(x,y, hit.bonus?44:26, hit.bonus?["#7FE9FF","#FFFFFF","#B9F3FF","#FFD35A"]:undefined); popup(x,y-10,`+${pts}`, hit.bonus?"#7FE9FF":undefined); }});
@@ -2024,7 +2040,7 @@ function buildSnakeField(box){
 function snBar(){
   if(!blast || blast.kind!=="snake" || !blast.hud) return;
   const max=SN_MAX[blast.level]||6, load=blast.tail.length;
-  blast.hud.innerHTML=`<span>SCORE ${blast.score}</span><span class="lvl">LEVEL ${blast.level+1} · LOAD ${load}/${max}</span><span class="lives">${"♥".repeat(Math.max(0,blast.lives))||"-"}</span>`;
+  blast.hud.innerHTML=`<span>SCORE ${blast.score}${multTag()}</span><span class="lvl">LEVEL ${blast.level+1} · LOAD ${load}/${max}</span><span class="lives">${"♥".repeat(Math.max(0,blast.lives))||"-"}</span>`;
 }
 function snMenu(over){
   if(over && hsOffer(()=>snMenu(true))) return;
@@ -2142,7 +2158,7 @@ function snStep(){
     if(blast.tail.length>=(SN_MAX[blast.level]||6)){ blast.body.shift(); return snCrash("OVERLOADED"); }
     blast.tail.unshift({name:t.name, pc:t.pc});          // the newest note rides just behind the head
     sfx("press");
-    if(t.star){ const pts=50*(blast.level+1); blast.score+=pts; sfx("bonus"); snPopup(nx,ny,`+${pts}`,"#7FE9FF"); }
+    if(t.star){ const pts=mulPts(50*(blast.level+1)); blast.score+=pts; sfx("bonus"); snPopup(nx,ny,`+${pts}`,"#7FE9FF"); }
     if(!blast.demo) snFill();
     if(snReady().length) sfx("key");
   } else blast.body.pop();
@@ -2178,7 +2194,7 @@ function snakeChord(voices){
   // the notes left close up behind the head, and the snake shortens from its end
   blast.tail=blast.tail.filter(t=>!gone.has(t.name));
   blast.body=blast.body.slice(0, blast.tail.length+3);
-  const pts=hit.tones.length*15*(blast.level+1);
+  const pts=mulPts(hit.tones.length*15*(blast.level+1));
   blast.score+=pts; blast.cashes++; stats.streak=blast.cashes; scoreboard();
   sfx("boom"); const h=blast.body[0]; snPopup(h[0],h[1],`${hit.root}${hit.q} +${pts}`,"#FFD35A");
   if(blast.cashes%5===0){
@@ -2340,7 +2356,7 @@ function buildAsteroidsField(box){
 function asCentre(){ if(!blast || !blast.field) return; blast.cx=blast.field.clientWidth/2; blast.cy=blast.field.clientHeight/2+10; }
 function asBar(){
   if(!blast || blast.kind!=="asteroids" || !blast.hud) return;
-  blast.hud.innerHTML=`<span>SCORE ${blast.score}</span><span class="lvl">LEVEL ${blast.level+1}</span><span class="lives">${"♥".repeat(Math.max(0,blast.lives))||"-"}</span>`;
+  blast.hud.innerHTML=`<span>SCORE ${blast.score}${multTag()}</span><span class="lvl">LEVEL ${blast.level+1}</span><span class="lives">${"♥".repeat(Math.max(0,blast.lives))||"-"}</span>`;
 }
 function asMenu(over){
   if(over && hsOffer(()=>asMenu(true))) return;
@@ -2471,7 +2487,7 @@ function asteroidsChord(voices){
 function asCrack(hit){
   explode(hit.x, hit.y, hit.star?46:34, hit.star?["#7FE9FF","#FFFFFF","#FFD35A"]:["#C9C0A8","#FFD35A","#F1E8D2"]);
   sfx(hit.star?"bonus":"boom");
-  const pts=(hit.star?60:20)*(blast.level+1); blast.score+=pts; popup(hit.x, hit.y-30, `+${pts}`, hit.star?"#7FE9FF":undefined);
+  const pts=mulPts((hit.star?60:20)*(blast.level+1)); blast.score+=pts; popup(hit.x, hit.y-30, `+${pts}`, hit.star?"#7FE9FF":undefined);
   // its notes fly out in a ring, each spelled as the chord's own
   const group={id:hit.id, left:hit.tones.length, label:hit.label};
   hit.tones.forEach((t,i)=>{
@@ -2494,13 +2510,13 @@ function asteroidsNote(pc){
   heard(nm,true);
   r.dead=true;                                        // spoken for: no second shot at it
   asFire(r, ()=>{ r.deadAt=performance.now(); r.el.remove(); explode(r.x, r.y, 16);
-    const pts=10*(blast.level+1); blast.score+=pts; popup(r.x, r.y-14, `+${pts}`);
+    const pts=mulPts(10*(blast.level+1)); blast.score+=pts; popup(r.x, r.y-14, `+${pts}`);
     sfx("boom");
     if(--r.group.left===0) asCleared(r.group, r.x, r.y);
     asBar(); });
 }
 function asCleared(group, x, y){
-  const pts=25*(blast.level+1); blast.score+=pts; blast.clears++; stats.streak=blast.clears; scoreboard();
+  const pts=mulPts(25*(blast.level+1)); blast.score+=pts; blast.clears++; stats.streak=blast.clears; scoreboard();
   popup(x, y-34, `${group.label} CLEARED +${pts}`, "#FFD35A");
   if(blast.clears%6===0){
     const was=blast.level;
@@ -2680,7 +2696,7 @@ function stLayout(){
 }
 function stBar(){
   if(!blast || blast.kind!=="stack" || !blast.hud) return;
-  blast.hud.innerHTML=`<span>SCORE ${blast.score}</span><span class="lvl">LEVEL ${blast.level+1} · ${ST_LEVELS[blast.level].n.toUpperCase()}</span><span>CLEARED ${blast.clears}</span>`;
+  blast.hud.innerHTML=`<span>SCORE ${blast.score}${multTag()}</span><span class="lvl">LEVEL ${blast.level+1} · ${ST_LEVELS[blast.level].n.toUpperCase()}</span><span>CLEARED ${blast.clears}</span>`;
 }
 function stMenu(over){
   if(over && hsOffer(()=>stMenu(true))) return;
@@ -2841,7 +2857,7 @@ function stackChord(voices){
   // other notes in those rows stay, and everything above falls into the gaps
   rows.forEach(r=>{ r.pcs.forEach(x=>{ explode(blast.bx+(x+.5)*blast.cell, blast.by+(r.y+.5)*blast.cell, 8, ["#7FE9FF","#FFD35A","#FFFFFF"]); blast.grid[r.y][x]=null; }); });
   stGravity(); stRespell();
-  const pts=rows.reduce((a,r)=>a+r.tones.length*15,0)*(blast.level+1)*rows.length;
+  const pts=mulPts(rows.reduce((a,r)=>a+r.tones.length*15,0)*(blast.level+1)*rows.length);
   blast.score+=pts; blast.clears+=rows.length; stats.streak=blast.clears; scoreboard();
   sfx("boom"); popup(blast.bx+6*blast.cell, blast.by+rows[0].y*blast.cell, `${rows[0].name}${rows.length>1?` ×${rows.length}`:""} +${pts}`, "#FFD35A");
   if(blast.clears>=(blast.level+1)*6 && blast.level<ST_LEVELS.length-1){ blast.level++; blast.fallMs*=.9; sfx("level"); banner(`LEVEL ${blast.level+1}`, ST_LEVELS[blast.level].n.toUpperCase()); }
@@ -3032,17 +3048,19 @@ function cabinet(ov){
   rules.forEach(r=>inner.appendChild(r));
   if(credit) inner.appendChild(credit.cloneNode(true));
   roll.appendChild(inner);
+  const points=document.createElement("div"); points.className="cab-points";
   const board=document.createElement("div"); board.className="cab-scores";
   const opts=document.createElement("div"); opts.className="cab-options";
   [...ov.children].forEach(c=>opts.appendChild(c));
   opts.querySelector("h3")?.classList.add("small");
   beginnerRow(opts);
   crtRow(opts);
+  multLine(opts);
   if(["breakout","fifths","stack"].includes(cabKind()) && knobsReady()) knobRow(opts);
-  ov.append(title, roll, board, opts);
+  ov.append(title, roll, points, board, opts);
   hsFetch(hsSlug());                                        // fetched now, so it's ready when its turn comes
   ov.addEventListener("click", e=>{ if(ov.dataset.stage!=="options"){ e.stopPropagation(); cabWake(); } }, true);
-  inner.addEventListener("animationend", ()=>{ if(blast && blast.overlay===ov && ov.dataset.stage==="rules" && blast.phase==="menu") cabStage(ov,"scores"); });
+  inner.addEventListener("animationend", e=>{ if(e.target===inner && blast && blast.overlay===ov && ov.dataset.stage==="rules" && blast.phase==="menu") cabStage(ov,"points"); });
   cabStage(ov, "title");
 }
 function cabStage(ov, stage){
@@ -3053,6 +3071,10 @@ function cabStage(ov, stage){
   if(stage==="rules"){ const inner=ov.querySelector(".cabscroll"); if(inner){ inner.style.animation="none"; void inner.offsetWidth;
     inner.style.animation=`cabroll ${Math.max(12, inner.children.length*2.4)}s linear forwards`; } }
   if(stage==="options") blast.cabT=setTimeout(()=>{ if(blast && blast.overlay===ov && ov.dataset.stage==="options" && blast.phase==="menu") cabStage(ov,"title"); }, 45000);
+  if(stage==="points"){                                        // what things are worth, then the board
+    pointsRender(ov.querySelector(".cab-points"));
+    blast.cabT=setTimeout(()=>{ if(blast && blast.overlay===ov && ov.dataset.stage==="points" && blast.phase==="menu") cabStage(ov,"scores"); }, 9500);
+  }
   if(stage==="scores"){                                        // the board, then the demo
     const el=ov.querySelector(".cab-scores"); el.innerHTML="<h3>HIGH SCORES</h3>";
     hsBoard(hsSlug()).then(b=>{ if(ov.dataset.stage==="scores") hsRender(el, b, saved.hsInitials); });
@@ -3261,7 +3283,7 @@ function buildBreakoutField(box){
 }
 function boBar(){
   if(!blast || blast.kind!=="breakout" || !blast.hud) return;
-  blast.hud.innerHTML=`<span>SCORE ${blast.score}</span><span class="lvl">LEVEL ${blast.level+1}</span><span class="lives">${"♥".repeat(Math.max(0,blast.lives))||"-"}</span>`;
+  blast.hud.innerHTML=`<span>SCORE ${blast.score}${multTag()}</span><span class="lvl">LEVEL ${blast.level+1}</span><span class="lives">${"♥".repeat(Math.max(0,blast.lives))||"-"}</span>`;
 }
 function boMenu(over){
   if(over && hsOffer(()=>boMenu(true))) return;
@@ -3433,7 +3455,7 @@ function boBreak(k, quiet){
   k.alive=false; k.el.classList.add("gone"); setTimeout(()=>k.el.remove(),300);
   explode(k.x+k.w/2, k.y+k.h/2, 22, k.bonus?["#7FE9FF","#FFFFFF","#FFD35A"]:["#FFD35A","#FF8A3D","#F1E8D2"]);
   sfx(k.bonus?"bonus":"boom");
-  if(!quiet){ blast.rally++; const pts=(k.bonus?5:1)*spellChord(k.root,k.q).length*10*(blast.level+1)*Math.min(4,blast.rally);
+  if(!quiet){ blast.rally++; const pts=mulPts((k.bonus?5:1)*spellChord(k.root,k.q).length*10*(blast.level+1)*Math.min(4,blast.rally));
     blast.score+=pts; popup(k.x+k.w/2, k.y, `+${pts}${blast.rally>1?` ×${Math.min(4,blast.rally)}`:""}`, k.bonus?"#7FE9FF":undefined); boBar(); stats.streak=blast.rally; scoreboard(); }
   boHelp();
   if(!blast.bricks.some(x=>x.alive)){
@@ -3633,7 +3655,7 @@ function fdLabels(){
 function fdBar(){
   if(!blast || blast.kind!=="fifths" || !blast.hud) return;
   const L=FD_LEVELS[blast.level];
-  blast.hud.innerHTML=`<span>SCORE ${blast.score}</span><span class="lvl">LEVEL ${blast.level+1} · ${L.n.toUpperCase()}</span><span class="lives">${"♥".repeat(Math.max(0,blast.lives))||"-"}</span>`;
+  blast.hud.innerHTML=`<span>SCORE ${blast.score}${multTag()}</span><span class="lvl">LEVEL ${blast.level+1} · ${L.n.toUpperCase()}</span><span class="lives">${"♥".repeat(Math.max(0,blast.lives))||"-"}</span>`;
 }
 function fdMenu(over){
   if(over && hsOffer(()=>fdMenu(true))) return;
@@ -3725,7 +3747,7 @@ function fdShoot(quiet){
     if(!on || on.dead) return;
     on.dead=true; on.deadAt=performance.now(); explode(x1,y1,20, on.star?["#7FE9FF","#FFFFFF"]:["#FFD35A","#7FE9FF","#F1E8D2"]); sfx(on.star?"bonus":"boom");
     if(quiet) return;
-    const far=Math.round(on.r/blast.R*10), pts=((on.star?50:10)+far)*(blast.level+1);
+    const far=Math.round(on.r/blast.R*10), pts=mulPts(((on.star?50:10)+far)*(blast.level+1));
     blast.score+=pts; blast.kills++; stats.streak=blast.kills; scoreboard(); popup(x1,y1-14,`+${pts}`, on.star?"#7FE9FF":undefined);
     blast.levelKills=(blast.levelKills||0)+1;
     if(blast.levelKills>=12+3*blast.level && blast.phase==="play"){          // 12 to move up, three more at each level
@@ -3847,6 +3869,55 @@ function crtRow(opts){
 }
 new MutationObserver(()=>{ if(saved.crt) crtSync(); }).observe(document.getElementById("special")||document.body, {childList:true});
 
+
+// ---------- the score multiplier ----------
+// Harder settings score more: every point a game awards is multiplied by the speed's factor, and
+// in Harp Command by how many notes fall at once, in Chord Breakout by the paddle's width. Set when
+// a game begins, shown beside the score, on the options screen as it's chosen, and on its own screen
+// in the title loop, with what each thing in the game is worth, the way Pac-Man listed its ghosts.
+const MULT_SPEED=[1,1.25,1.5,1.75,2];                      // Relaxed … Wild
+const MULT_DENSITY=[.8,1,1.25,1.5];                        // Harp Command: few, some, many, swarm
+const MULT_PADDLE=[1.3,1,.8];                              // Chord Breakout: narrow, normal, wide
+function diffMult(kind=cabKind()){
+  let m=MULT_SPEED[+saved.speed||0]||1;
+  if(kind==="command") m*=MULT_DENSITY[saved.hcDensity??1]??1;
+  if(kind==="breakout") m*=MULT_PADDLE[saved.boPaddle??1]??1;
+  return Math.round(m*100)/100;
+}
+const mulPts=p=>Math.round(p*(blast.mult||1));
+const multTag=()=> blast && blast.mult && blast.mult!==1 ? ` ×${blast.mult}` : "";
+// what each game's things are worth at level 1 (all of it times the level)
+const POINTS_FOR={
+  blaster:[["CHORD","10"],["★ CHORD","50"],["KEY SET","25"]],
+  command:[["NOTE","10"],["★ NOTE","50"]],
+  snake:[["CHORD CASHED IN","15 A NOTE"],["★ NOTE","50"],["NOTE DROPPED","−5"]],
+  asteroids:[["CHORD ROCK CRACKED","20"],["★ ROCK","60"],["NOTE SHOT","10"],["CHORD CLEARED","25"]],
+  stack:[["ROW CLEARED","15 A NOTE"],["ROWS AT ONCE","× ROWS"]],
+  breakout:[["BRICK","10 A NOTE"],["★ BRICK","× 5"],["RALLY","UP TO × 4"]],
+  fifths:[["ENEMY","10"],["HIT FAR OUT","UP TO +10"],["★ ENEMY","50"]],
+};
+function multRows(kind){
+  const rows=[["SPEED", SPEEDS.map((x,i)=>`${x[0].toUpperCase()} ×${MULT_SPEED[i]}`)]];
+  if(kind==="command") rows.push(["NOTES AT ONCE", ["FEW","SOME","MANY","SWARM"].map((n,i)=>`${n} ×${MULT_DENSITY[i]}`)]);
+  if(kind==="breakout") rows.push(["PADDLE", ["NARROW","NORMAL","WIDE"].map((n,i)=>`${n} ×${MULT_PADDLE[i]}`)]);
+  return rows;
+}
+// the points screen in the title loop: the table filling in line by line, then the multipliers
+function pointsRender(el){
+  const k=cabKind(), pts=POINTS_FOR[k]||[];
+  let i=0; const d=()=>`style="animation-delay:${(i++)*.45}s"`;
+  el.innerHTML=`<h3>POINTS</h3><ul class="ptable">${pts.map(([a,b])=>`<li ${d()}><span>${a}</span><i></i><b>${b}</b></li>`).join("")}<li class="ptnote" ${d()}>ALL TIMES THE LEVEL</li></ul>
+    <p class="ptsub" ${d()}>HARDER PLAY SCORES MORE</p><ul class="ptable mult">${multRows(k).map(([n,list])=>`<li ${d()}><span>${n}</span><em>${list.join(" · ")}</em></li>`).join("")}</ul>`;
+}
+// the options screen: the multiplier for what's chosen, as it's chosen
+function multLine(opts){
+  const p=document.createElement("p"); p.className="multline";
+  const upd=()=>{ p.textContent=`SCORE ×${diffMult()} FOR THESE SETTINGS`; };
+  upd(); opts.addEventListener("click", ()=>setTimeout(upd));
+  const before=opts.querySelector("p.blink") || [...opts.querySelectorAll(".levels")].pop();
+  opts.insertBefore(p, before);
+}
+
 // ---------- game over, then back to the title loop ----------
 // Left alone, a game over screen goes back to the title, rules, board and demo after a while, as a
 // cabinet does. Not while initials are being entered, and not once the player has started again.
@@ -3922,7 +3993,7 @@ function hsEntry(slug, score, next){
       ov.querySelector(".padhint").textContent="SENDING…";
       try{
         const r=await fetch(`${SCORES_API}/api/scores/${slug}`,{method:"POST", headers:{"Content-Type":"application/json"},
-          body:JSON.stringify({initials, score, level:blast.level+1, speed:+saved.speed||0, seconds:hsSeconds(), firmware:mc.params[7]??null})});
+          body:JSON.stringify({initials, score, level:blast.level+1, speed:+saved.speed||0, seconds:hsSeconds(), firmware:mc.params[7]??null, mult:blast.mult||1})});
         const j=await r.json().catch(()=>({}));
         if(r.ok){ rank=j.rank; shared=true; hsCache[slug]={at:performance.now(), scores:j.scores}; } else blast.hsNote=(j.error||"").toUpperCase();
       }catch(e){ blast.hsNote="THE SHARED BOARD COULDN'T BE REACHED: KEPT ON THIS COMPUTER"; }
@@ -4239,7 +4310,7 @@ function stopBlaster(){ if(blast){ stopDemo(); clearTimeout(blast.attract); clea
 function blastBar(){
   if(!blast || !blast.hud) return;
   const key = blast.keyTarget ? ` · KEY ${blast.keyTarget.name}` : "";
-  blast.hud.innerHTML=`<span>SCORE ${blast.score}</span><span class="lvl">LEVEL ${blast.level+1}${key}</span><span class="lives">${"♥".repeat(Math.max(0,blast.lives))||"-"}</span>`;
+  blast.hud.innerHTML=`<span>SCORE ${blast.score}${multTag()}</span><span class="lvl">LEVEL ${blast.level+1}${key}</span><span class="lives">${"♥".repeat(Math.max(0,blast.lives))||"-"}</span>`;
 }
 // a big message across the middle of the field: a new level, a key to set, Barry Harris
 function banner(big, small){
@@ -4316,7 +4387,7 @@ function blastKey(){
   if(!blast || blast.phase!=="play" || !canWrite()) return;
   const k=blast.keyBar, t=blast.keyTarget;
   if(k && devFifths()===k.f){
-    const r=k.el.getBoundingClientRect(), fr=blast.field.getBoundingClientRect(), pts=25*(blast.level+1);
+    const r=k.el.getBoundingClientRect(), fr=blast.field.getBoundingClientRect(), pts=mulPts(25*(blast.level+1));
     explode(r.left-fr.left+r.width/2, r.top-fr.top+r.height/2, 40, ["#5FA8FF","#B9E0FF","#FFFFFF"]);
     k.el.remove(); blast.keyBar=null; blast.keyPaid=t.f;
     blast.score+=pts; sfx("key"); popup(r.left-fr.left+r.width/2, r.top-fr.top, `+${pts} KEY SET`, "#B9E0FF");
@@ -4325,7 +4396,7 @@ function blastKey(){
     blastBar(); return;
   }
   if(!k && t && blast.keyPaid!==t.f && devFifths()===t.f){
-    const pts=10*(blast.level+1); blast.keyPaid=t.f; blast.score+=pts; sfx("key");
+    const pts=mulPts(10*(blast.level+1)); blast.keyPaid=t.f; blast.score+=pts; sfx("key");
     banner(`KEY SET +${pts}`, `${t.name} MAJOR, A LITTLE LATE`); blastBar();
   }
 }
@@ -4419,7 +4490,7 @@ function fxDraw(now, dt){
   const fx=blast.fx; if(!fx) return; fx.resize();
   // a game's clock and its count of what the minichord played start with its first frame of play
   // (every time play begins, Play Again straight from game over included)
-  if(blast.phase==="play" && blast.lastPhase!=="play"){ blast.startedAt=now; blast.midiIn=0; blast.hsDone=false; blast.hsResult=null; blast.hsNote=null; blast.helped=!!saved.beginner; }
+  if(blast.phase==="play" && blast.lastPhase!=="play"){ blast.mult=diffMult(); blast.startedAt=now; blast.midiIn=0; blast.hsDone=false; blast.hsResult=null; blast.hsNote=null; blast.helped=!!saved.beginner; }
   blast.lastPhase=blast.phase;
   const g=fx.g, W=fx.w, H=fx.h;
   fxBackground(g, W, H, now, dt);
@@ -4521,7 +4592,7 @@ function blasterChord(voices){
   hit.done=true; hit.el.classList.remove("low");
   // a missile from the ship to the chord; the chord explodes when it arrives
   const fr=blast.field, x=hit.el.offsetLeft, y=(hit.y||0)+hit.el.offsetHeight/2;
-  const pts=(hit.bonus?50:10)*(blast.level+1);
+  const pts=mulPts((hit.bonus?50:10)*(blast.level+1));
   sfx("shoot");
   blast.fx.missiles.push({x0:fr.clientWidth/2/PX, y0:(fr.clientHeight-22)/PX, x1:x/PX, y1:y/PX, t0:performance.now(), dur:170,
     hit:()=>{ sfx(hit.bonus?"bonus":"boom"); hit.el.classList.add("gone"); setTimeout(()=>hit.el.remove(),50); explode(x,y, hit.bonus?44:26, hit.bonus?["#7FE9FF","#FFFFFF","#B9F3FF","#FFD35A"]:undefined); popup(x,y-10,`+${pts}`, hit.bonus?"#7FE9FF":undefined); }});
