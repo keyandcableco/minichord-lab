@@ -80,6 +80,7 @@ const ASMENU_G={key:"asteroids", title:"CHORD ASTEROIDS",
   begin:i=>beginAsteroids(i), demo:()=>asDemo(), modNote:"always"};
 function asMenu(over){ arcadeMenu(ASMENU_G, over); }
 function beginAsteroids(level){
+  newRun();
   piano.start(); stopDemo(); clearTimeout(blast.attract);
   if(blast.overlay){ blast.overlay.remove(); blast.overlay=null; }
   blast.rocks.forEach(r=>r.el.remove());
@@ -265,6 +266,6 @@ function endAsDemo(token){
   stopDemo(); blast.phase="menu"; blast.rocks.forEach(r=>{ if(!r.dead) asKill(r); }); blast.rocks=[]; blast.score=0;
   if(blast.overlay) blast.overlay.hidden=false;
   clearTimeout(blast.attract);
-  blast.attract=setTimeout(()=>{ if(blast && blast.kind==="asteroids" && blast.phase==="menu" && blast.overlay && !blast.overlay.hidden) asDemo(); }, 25000);
+  blast.attract=gameLater(()=>{ if(blast && blast.kind==="asteroids" && blast.phase==="menu" && blast.overlay && !blast.overlay.hidden) asDemo(); }, 25000);
   cabRestart();
 }

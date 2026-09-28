@@ -242,7 +242,7 @@ function blasterChord(voices){
     } else banner("FASTER!");
     if(lv.barry && !blast.barry) blast.pauseForBarry=true;
     sfx("level");
-    if(blast.level>=2) setTimeout(()=>{ if(blast && blast.phase==="play") spawnKeyBar(performance.now()); }, 2400);
+    if(blast.level>=2) gameLater(()=>{ if(blast && blast.phase==="play") spawnKeyBar(performance.now()); }, 2400);
   }
   blastBar();
 }

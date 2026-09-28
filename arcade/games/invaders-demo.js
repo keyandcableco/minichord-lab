@@ -35,7 +35,7 @@ const DEMO_SCENES=[
 function stopDemo(){ if(blast && blast.demo){ blast.demo.run=false; blast.demo.el.remove(); blast.demo=null; } if(blast && blast.field) blast.field.classList.remove("demoing"); }
 function runDemo(attract){
   if(!blast) return;
-  stopDemo(); clearTimeout(blast.attract);
+  newRun(); stopDemo(); clearTimeout(blast.attract);
   piano.start();
   if(blast.overlay) blast.overlay.hidden=true;
   blast.phase="demo";
@@ -120,11 +120,12 @@ function endDemo(token){
   if(blast.overlay){ blast.overlay.hidden=false; }
   // back on the title screen, the attract loop runs again after a while
   clearTimeout(blast.attract);
-  blast.attract=setTimeout(()=>{ if(blast && blast.phase==="menu" && blast.overlay && !blast.overlay.hidden) runDemo(true); }, 25000);
+  blast.attract=gameLater(()=>{ if(blast && blast.phase==="menu" && blast.overlay && !blast.overlay.hidden) runDemo(true); }, 25000);
   cabRestart();
 }
 
 function beginBlast(level){
+  newRun();
   piano.start();
   cancelAnimationFrame(blast.raf); blast.last=performance.now(); blast.raf=requestAnimationFrame(blastTick);   // one loop, running, whatever happened before
   if(blast.overlay){ blast.overlay.remove(); blast.overlay=null; }

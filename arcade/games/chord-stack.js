@@ -148,6 +148,7 @@ function stSpell(p){
 }
 const stRandPiece=()=>{ const L=ST_LEVELS[blast.level], shape=rnd(L.pieces); return {shape:[...shape], x:Math.floor(Math.random()*12), y:0, flat:Math.random()<.5}; };
 function beginStack(level){
+  newRun();
   piano.start(); stopDemo(); clearTimeout(blast.attract);
   if(blast.overlay){ blast.overlay.remove(); blast.overlay=null; }
   Object.assign(blast,{grid:[...Array(ST_ROWS)].map(()=>Array(12).fill(null)), score:0, level, startLevel:level, clears:0, phase:"play", over:false, riseIn:0,
@@ -202,7 +203,7 @@ function stLock(){
   sfx("press");
   const ready=stReadyRows();
   if(ready.some(r=>r.y===p.y)) sfx("key");
-  stSpawn(); stDraw(); stBar(); setTimeout(()=>{ if(blast && blast.kind==="stack") stDraw(); }, 950);
+  stSpawn(); stDraw(); stBar(); gameLater(()=>{ if(blast && blast.kind==="stack") stDraw(); }, 950);
 }
 function stMove(dx){ const p=blast.piece; if(!p) return; const nx=(p.x+dx+12)%12; if(stFits(p,nx,p.y)){ p.x=nx; stDraw(); } }
 // flip the shape: its intervals turned upside down, as a major third's room becomes a minor sixth's
@@ -330,6 +331,6 @@ function endStDemo(token){
   stopDemo(); blast.phase="menu"; blast.piece=null; blast.grid=[...Array(ST_ROWS)].map(()=>Array(12).fill(null)); stDraw();
   if(blast.overlay) blast.overlay.hidden=false;
   clearTimeout(blast.attract);
-  blast.attract=setTimeout(()=>{ if(blast && blast.kind==="stack" && blast.phase==="menu" && blast.overlay && !blast.overlay.hidden) stDemo(); }, 25000);
+  blast.attract=gameLater(()=>{ if(blast && blast.kind==="stack" && blast.phase==="menu" && blast.overlay && !blast.overlay.hidden) stDemo(); }, 25000);
   cabRestart();
 }

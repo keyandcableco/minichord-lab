@@ -174,6 +174,7 @@ const KFMENU_G={key:"fleet", title:"KEY FLEET",
   begin:i=>beginFleet(i), demo:()=>kfDemo(), modNote:"title"};
 function kfMenu(over){ arcadeMenu(KFMENU_G, over); }
 function beginFleet(level){
+  newRun();
   piano.start(); stopDemo(); clearTimeout(blast.attract); clearTimeout(blast.cabT);
   if(blast.overlay){ blast.overlay.remove(); blast.overlay=null; }
   Object.assign(blast,{score:0, lives:3, level, startLevel:level, waves:0, phase:"play", over:false, modFor:null});
@@ -238,7 +239,7 @@ function fleetShot(voices){
     const fire=()=>{ if(!blast || blast.kind!=="fleet" || blast.phase!=="play") return;   // whatever its own cell holds
       if(blast.islands && blast.islands.has(k)){ heard(name,false,"ROCKS: NO SHIP THERE"); return; }
       if(blast.shots.has(k)){ heard(name,false,"ALREADY FIRED THERE"); return; } heard(name,true); kfFire(col,row); };
-    heard(name,true,"…"); blast.pendingDom={root:id.root, name, fire, timer:setTimeout(()=>{ if(blast && blast.pendingDom){ blast.pendingDom=null; fire(); } }, KF_CADENCE_WAIT)};
+    heard(name,true,"…"); blast.pendingDom={root:id.root, name, fire, timer:gameLater(()=>{ if(blast && blast.pendingDom){ blast.pendingDom=null; fire(); } }, KF_CADENCE_WAIT)};
     return;
   }
   if(blast.islands && blast.islands.has(k)){ heard(name,false,"ROCKS: NO SHIP THERE"); return; }
@@ -300,14 +301,14 @@ function kfCleared(){
   const left=blast.torps, pts=mulPts(20*left*(blast.level+1)); blast.score+=pts; blast.waves++; stats.streak=blast.waves; scoreboard();
   banner("FLEET SUNK!", left ? `${left} TORPEDOES LEFT · +${pts}` : ""); sfx("level");
   blast.phase="pause";
-  setTimeout(()=>{ if(!blast || blast.kind!=="fleet") return;
+  gameLater(()=>{ if(!blast || blast.kind!=="fleet") return;
     if(blast.waves%2===0 && blast.level<KF_LEVELS.length-1){ blast.level++; banner(`LEVEL ${blast.level+1}`, KF_LEVELS[blast.level].n.toUpperCase()); }
     kfWave(); }, 2200);
 }
 function kfOut(){
   blast.phase="reveal"; kfDraw(); sfx("miss"); buzz(blast.field,true);
   blast.lives--; kfBar(); banner("OUT OF TORPEDOES", blast.lives>0 ? `${blast.lives} ${blast.lives===1?"LIFE":"LIVES"} LEFT` : "");
-  setTimeout(()=>{ if(!blast || blast.kind!=="fleet") return;
+  gameLater(()=>{ if(!blast || blast.kind!=="fleet") return;
     if(blast.lives<=0){ blast.phase="over"; blast.over=true; const best=Math.max(saved.best.fleet||0, blast.score); saved.best.fleet=best; save(); kfMenu(true); return; }
     kfWave(); }, 2600);
 }

@@ -33,6 +33,7 @@ function arcadeRow(parent, label, list, get, set){
 //   modNote   where the modifier note shows: "always", "title" (not at game over) or false
 function arcadeMenu(g, over){
   if(over && hsOffer(()=>arcadeMenu(g,true))) return;
+  if(!over) newRun();                                          // back at the title: nothing from before carries on
   const ov=document.createElement("div"); ov.className="overlay";
   const best=saved.best[g.key]||0;
   if(over){
@@ -63,6 +64,7 @@ function arcadeMenu(g, over){
 // a demo's stage: the DEMO banner with its title and caption, a skip button, the token that stops it,
 // and its clock (step throws once the demo has been stopped, which ends the script)
 function demoShell(end){
+  newRun();
   const el=document.createElement("div"); el.className="demo"; blast.field.appendChild(el); blast.field.classList.add("demoing");
   const token={run:true, el}; blast.demo=token;
   el.innerHTML=`<div class="demohead"><span class="demotag blink">DEMO</span><span class="demotitle"></span><button class="demoskip">SKIP ▶</button></div><p class="democap"></p>`;
@@ -73,6 +75,12 @@ function demoShell(end){
 }
 // a demo's chord, heard on the page's piano
 function demoPlay(notes){ if(settings.sounds && piano.ctx){ const go=()=>piano.play(notes,{when:.02,dur:1}); piano.ctx.state==="running"?go():piano.ctx.resume().then(go).catch(()=>{}); } }
+// Every stretch of a game, a play from level start to game over, a demo, a title screen, is a run
+// of its own. A timer set with gameLater belongs to the run that set it, and only fires if that run is
+// still going: a timer from a game that's over can't reach into the next one (Play Again pressed at
+// once, say, while the old game still had a wave or a radio call on its way).
+function newRun(){ if(blast) blast.gen=(blast.gen||0)+1; }
+function gameLater(fn, ms){ const b=blast, g=b && b.gen; return setTimeout(()=>{ if(b && blast===b && b.gen===g) fn(); }, ms||0); }
 // setting up for the minichord, once per game: its settings read regularly, and whatever it borrows
 function arcadeSetup(fn){ if(blast.setupDone) return; blast.setupDone=true; poll(true); if(fn) fn(); }
 
@@ -300,7 +308,7 @@ function gameOverSplash(score, then){
   const ov=document.createElement("div"); ov.className="overlay hssplash";
   ov.innerHTML=`<h3 class="over">GAME OVER</h3><p class="hsfinal">${score.toLocaleString("en-US")}</p><p>LEVEL ${blast.level+1}</p><p class="hsnext">…</p>`;
   blast.field.appendChild(ov); sfx("over");
-  setTimeout(()=>{ if(blast && blast.phase==="over"){ const n=ov.querySelector(".hsnext"); n.textContent="NEW HIGH SCORE!"; n.classList.add("blink"); sfx("bonus"); } }, 1800);
+  gameLater(()=>{ if(blast && blast.phase==="over"){ const n=ov.querySelector(".hsnext"); n.textContent="NEW HIGH SCORE!"; n.classList.add("blink"); sfx("bonus"); } }, 1800);
   setTimeout(()=>{ ov.remove(); if(blast && blast.phase==="over") then(); }, 3600);
 }
 function hsEntry(slug, score, next){

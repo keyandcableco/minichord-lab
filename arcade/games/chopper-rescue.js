@@ -155,6 +155,7 @@ const CHMENU_G={key:"chopper", title:"CHOPPER RESCUE",
   begin:i=>beginChopper(i), demo:()=>chDemo(), modNote:"title"};
 function chMenu(over){ arcadeMenu(CHMENU_G, over); }
 function beginChopper(level){
+  newRun();
   piano.start(); stopDemo(); clearTimeout(blast.attract); clearTimeout(blast.cabT);
   if(blast.overlay){ blast.overlay.remove(); blast.overlay=null; }
   Object.assign(blast,{score:0, lives:3, level, startLevel:level, rescues:0, phase:"play", over:false, call:null, leg:0, modFor:null, pos:{base:true}, found:null, busy:false, recentCalls:[], lastAnswer:null,
@@ -164,7 +165,7 @@ function beginChopper(level){
   cancelAnimationFrame(blast.raf); blast.last=performance.now(); blast.raf=requestAnimationFrame(chTick);
   banner(`LEVEL ${level+1}`, `${CH_LEVELS[level].n.toUpperCase()} · ${(SPEEDS[+saved.speed]||SPEEDS[0])[0].toUpperCase()}`);
   sfx("start"); chBar();
-  setTimeout(()=>{ if(blast && blast.kind==="chopper" && blast.phase==="play") chNewCall(); }, 1400);
+  gameLater(()=>{ if(blast && blast.kind==="chopper" && blast.phase==="play") chNewCall(); }, 1400);
 }
 // a new call on the radio: typed out with a crackle, the flare lit, the clock started
 function chNewCall(){
@@ -188,7 +189,7 @@ function chNewCall(){
   let i=0; const type=()=>{ if(!blast || blast.call===null || !t.isConnected) return; t.textContent=txt.slice(0,++i); if(i<txt.length) setTimeout(type, 28); };
   type(); sfx("key");
   blast.found=null; chDrawMap(); chHelp();
-  if(L.hint){ const call=blast.call; setTimeout(()=>{ if(blast && blast.call===call && blast.phase==="play"){   // training: the answer, half way through
+  if(L.hint){ const call=blast.call; gameLater(()=>{ if(blast && blast.call===call && blast.phase==="play"){   // training: the answer, half way through
     const l=call.legs[blast.leg]; const h=document.createElement("em"); h.className="chhint"; h.textContent=` … THAT'S ${l.root}${l.q}`; t.appendChild(h); } }, (blast.deadline-blast.callAt)*.5); }
 }
 function chHelp(){
@@ -212,7 +213,7 @@ function chMissed(){
   banner("TOO LATE", blast.lives>0 ? "THE FLARE BURNED OUT" : "");
   blast.call=null; blast.found=null; blast.emerg=[]; chDrawMap();
   if(blast.lives<=0){ blast.phase="over"; blast.over=true; const best=Math.max(saved.best.chopper||0, blast.score); saved.best.chopper=best; save(); chMenu(true); return; }
-  setTimeout(()=>{ if(blast && blast.kind==="chopper" && blast.phase==="play") chNewCall(); }, 1400);
+  gameLater(()=>{ if(blast && blast.kind==="chopper" && blast.phase==="play") chNewCall(); }, 1400);
 }
 // a chord from the buttons: fly there; if it's the called one, a rescue
 function chopperChord(voices){
@@ -231,30 +232,30 @@ function chopperChord(voices){
   const [x,y]=chXY(pad.col,pad.row);
   if(!right){                                                   // somewhere empty: a look round, and back to base
     blast.deadline-=1800;
-    setTimeout(()=>{ if(!blast || blast.kind!=="chopper") return; blast.found={...pad, empty:true}; chDrawMap(); sfx("miss"); buzz(blast.field,true);
-      setTimeout(()=>{ if(!blast || blast.kind!=="chopper") return; blast.found=null; blast.pos={base:true}; chDrawMap(); chPlace(false); blast.busy=false; }, 700); }, 600);
+    gameLater(()=>{ if(!blast || blast.kind!=="chopper") return; blast.found={...pad, empty:true}; chDrawMap(); sfx("miss"); buzz(blast.field,true);
+      gameLater(()=>{ if(!blast || blast.kind!=="chopper") return; blast.found=null; blast.pos={base:true}; chDrawMap(); chPlace(false); blast.busy=false; }, 700); }, 600);
     return;
   }
   if(blast.leg<blast.call.legs.length-1){                         // a waypoint on a route: on to the next
     blast.leg++; const pts=mulPts(15*(blast.level+1)); blast.score+=pts;
-    setTimeout(()=>{ if(!blast || blast.kind!=="chopper") return; popup(x,y-30,`WAYPOINT +${pts}`,"#7FE9FF"); sfx("key"); chHelp(); chBar(); blast.busy=false; }, 600);
+    gameLater(()=>{ if(!blast || blast.kind!=="chopper") return; popup(x,y-30,`WAYPOINT +${pts}`,"#7FE9FF"); sfx("key"); chHelp(); chBar(); blast.busy=false; }, 600);
     return;
   }
   const left=Math.max(0,(blast.deadline-performance.now())/(blast.deadline-blast.callAt));
   const pts=mulPts(Math.round((20+30*left)*(blast.level+1))*(blast.call.legs.length>1?2:1));
   const what=blast.call.what; blast.call=null;                    // the clock stops: they're found
-  setTimeout(()=>{ if(!blast || blast.kind!=="chopper") return;
+  gameLater(()=>{ if(!blast || blast.kind!=="chopper") return;
     blast.found={...pad}; chDrawMap(); sfx("bonus");               // there they are
-    setTimeout(()=>{ if(!blast || blast.kind!=="chopper") return;
+    gameLater(()=>{ if(!blast || blast.kind!=="chopper") return;
       blast.found={...pad, saved:true}; blast.emerg=[]; chDrawMap();   // aboard, and the other alarms were false
       blast.score+=pts; blast.rescues++; stats.streak=blast.rescues; scoreboard();
       popup(x,y-34,`${what} +${pts}`,"#FFD35A"); chBar(); helpChord(null);
       blast.pos={base:true}; chPlace(false);                      // home
-      setTimeout(()=>{ if(!blast || blast.kind!=="chopper") return; blast.found=null; chDrawMap(); blast.busy=false;
+      gameLater(()=>{ if(!blast || blast.kind!=="chopper") return; blast.found=null; chDrawMap(); blast.busy=false;
         const [bx,by]=chBase(); explode(bx,by-10,16,["#7FE08A","#FFD35A","#F1E8D2"]);
         if(blast.rescues%6===0 && blast.level<CH_LEVELS.length-1){ blast.level++; blast.timeFor*=.93; sfx("level"); banner(`LEVEL ${blast.level+1}`, CH_LEVELS[blast.level].n.toUpperCase()); }
         else if(blast.rescues%6===0){ blast.timeFor*=.93; banner("FASTER!"); }
-        setTimeout(()=>{ if(blast && blast.kind==="chopper" && blast.phase==="play") chNewCall(); }, 900);
+        gameLater(()=>{ if(blast && blast.kind==="chopper" && blast.phase==="play") chNewCall(); }, 900);
       }, 650);
     }, 700);
   }, 600);

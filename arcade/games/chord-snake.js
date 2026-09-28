@@ -99,6 +99,7 @@ function snReset(){
   blast.body=[[cx,cy],[cx-1,cy],[cx-2,cy]]; blast.tail=[]; blast.dir="right"; blast.queue=[];
 }
 function beginSnake(level){
+  newRun();
   piano.start(); stopDemo(); clearTimeout(blast.attract);
   if(blast.overlay){ blast.overlay.remove(); blast.overlay=null; }
   Object.assign(blast,{score:0, lives:3, level, startLevel:level, cashes:0, phase:"play", over:false, tiles:[], stepMs:260*speedMul()});
@@ -294,6 +295,6 @@ function endSnDemo(token){
   snDraw();
   if(blast.overlay) blast.overlay.hidden=false;
   clearTimeout(blast.attract);
-  blast.attract=setTimeout(()=>{ if(blast && blast.kind==="snake" && blast.phase==="menu" && blast.overlay && !blast.overlay.hidden) snDemo(); }, 25000);
+  blast.attract=gameLater(()=>{ if(blast && blast.kind==="snake" && blast.phase==="menu" && blast.overlay && !blast.overlay.hidden) snDemo(); }, 25000);
   cabRestart();
 }

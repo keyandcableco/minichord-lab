@@ -29,5 +29,13 @@ const t=require("./harness").load("key-fleet");
   mc._asked=0; const dump=[0xF0]; for(let k=0;k<256;k++){ const v=mc.params[k]||0; dump.push(v&127, v>>7); } dump.push(0xF7); dump[71]=0; dump[72]=0;
   mc._dump(dump); await sleep(100);
   check("the combo picking C (reported unasked) calls C major", a.ships[0].sunk, t.heard());
+  // a timer from a game that's gone never reaches the next one: sink a fleet (its next wave is two
+  // seconds off), press RESET, and the fresh title screen stays a title screen
+  await sleep(2600);
+  const b=sb.arcade; b.level=0; sb.kfWave(); b.torps=9; const sh=b.ships[0];
+  note(t.PC[sh.tonic]); await sleep(300);
+  t.d.getElementById("resetBtn").click(); await sleep(5600);
+  const fresh=sb.arcade;
+  check("RESET leaves no timer behind to start a wave", fresh!==b && fresh.phase==="menu" && t.overlay() && !t.overlay().hidden, `phase ${fresh.phase}`);
   t.done();
 })();

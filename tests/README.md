@@ -25,6 +25,7 @@ key presses, checking what should happen.
 | `key-fleet` | fleets never touch; hits cripple; keys are called by tonic, cadence and the key change combo |
 | `high-scores` | GAME OVER before the initials; input ignored at first; the board kept; beginner mode stays off it |
 | `lobby` | the arcade lobby's cabinets, best scores and ticker |
+| `timers` | a game's timers belong to its run, so none from an old game reaches the next |
 | `practice-room` | the Practice Room around the arcade: every one of its games opens and deals a round |
 
 The harness (`arcade/harness.js`) loads `practice/index.html`, where the games play, running its

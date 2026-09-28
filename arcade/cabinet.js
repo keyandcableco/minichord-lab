@@ -133,18 +133,18 @@ function cabStage(ov, stage){
   if(!blast) return;
   clearTimeout(blast.cabT); clearTimeout(blast.attract);
   ov.dataset.stage=stage;
-  if(stage==="title") blast.cabT=setTimeout(()=>{ if(blast && blast.overlay===ov && ov.dataset.stage==="title") cabStage(ov,"rules"); }, 3600);
+  if(stage==="title") blast.cabT=gameLater(()=>{ if(blast && blast.overlay===ov && ov.dataset.stage==="title") cabStage(ov,"rules"); }, 3600);
   if(stage==="rules"){ const inner=ov.querySelector(".cabscroll"); if(inner){ inner.style.animation="none"; void inner.offsetWidth;
     inner.style.animation=`cabroll ${Math.max(12, inner.children.length*2.4)}s linear forwards`; } }
-  if(stage==="options") blast.cabT=setTimeout(()=>{ if(blast && blast.overlay===ov && ov.dataset.stage==="options" && blast.phase==="menu") cabStage(ov,"title"); }, 45000);
+  if(stage==="options") blast.cabT=gameLater(()=>{ if(blast && blast.overlay===ov && ov.dataset.stage==="options" && blast.phase==="menu") cabStage(ov,"title"); }, 45000);
   if(stage==="points"){                                        // what things are worth, then the board
     pointsRender(ov.querySelector(".cab-points"));
-    blast.cabT=setTimeout(()=>{ if(blast && blast.overlay===ov && ov.dataset.stage==="points" && blast.phase==="menu") cabStage(ov,"scores"); }, 9500);
+    blast.cabT=gameLater(()=>{ if(blast && blast.overlay===ov && ov.dataset.stage==="points" && blast.phase==="menu") cabStage(ov,"scores"); }, 9500);
   }
   if(stage==="scores"){                                        // the board, then the demo
     const el=ov.querySelector(".cab-scores"); el.innerHTML="<h3>HIGH SCORES</h3>";
     hsBoard(hsSlug()).then(b=>{ if(ov.dataset.stage==="scores") hsRender(el, b, saved.hsInitials); });
-    blast.cabT=setTimeout(()=>{ if(blast && blast.overlay===ov && ov.dataset.stage==="scores" && blast.phase==="menu"){ const d=DEMO_FOR[cabKind()]; if(d) d(); } }, 9000);
+    blast.cabT=gameLater(()=>{ if(blast && blast.overlay===ov && ov.dataset.stage==="scores" && blast.phase==="menu"){ const d=DEMO_FOR[cabKind()]; if(d) d(); } }, 9000);
   }
 }
 // someone's here: show the options

@@ -109,6 +109,7 @@ function boServe(){
   blast.serveAt=performance.now()+1300;
 }
 function beginBreakout(level){
+  newRun();
   piano.start(); stopDemo(); clearTimeout(blast.attract); clearTimeout(blast.cabT);
   if(blast.overlay){ blast.overlay.remove(); blast.overlay=null; }
   Object.assign(blast,{score:0, lives:3, level, startLevel:level, phase:"play", over:false, rally:0, modFor:null});
@@ -185,7 +186,7 @@ function boStep(now, h){
     boKeepAngle(b);
     if(!k.cracked){ k.cracked=true; k.crackedAt=now; k.el.classList.add("cracked"); sfx("key"); boHelp(); }
     else sfx("press");
-    if(blast.phase==="demo" && blast.demoAuto) setTimeout(()=>{ if(blast && k.alive && k.cracked) boBreak(k, true); }, 650);
+    if(blast.phase==="demo" && blast.demoAuto) gameLater(()=>{ if(blast && k.alive && k.cracked) boBreak(k, true); }, 650);
     break;
   }
   if(b.y>H+R){ if(blast.phase==="demo"){ boServe(); return false; } boLost(); return false; }
@@ -217,7 +218,7 @@ function boBreak(k, quiet){
     const was=blast.level; for(let n=blast.level+1;n<BO_LEVELS.length;n++) if(boLevelOk(n)){ blast.level=n; break; }
     sfx("level"); banner(blast.level!==was ? `LEVEL ${blast.level+1}` : "WALL CLEAR!", blast.level!==was ? BO_LEVELS[blast.level].n.toUpperCase() : "FASTER");
     if(blast.level===was) blast.ball.speed*=1.08;
-    setTimeout(()=>{ if(blast && blast.kind==="breakout" && blast.phase==="play"){ boWall(); boServe(); boBar(); } }, 900);
+    gameLater(()=>{ if(blast && blast.kind==="breakout" && blast.phase==="play"){ boWall(); boServe(); boBar(); } }, 900);
   }
 }
 function boLost(){

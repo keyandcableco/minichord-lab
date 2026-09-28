@@ -137,6 +137,7 @@ const COMMANDMENU_G={key:"command", title:"HARP COMMAND",
   begin:i=>beginCommand(i), demo:()=>commandDemo(), modNote:false};
 function commandMenu(over){ arcadeMenu(COMMANDMENU_G, over); }
 function beginCommand(level){
+  newRun();
   piano.start(); stopDemo(); clearTimeout(blast.attract);
   cancelAnimationFrame(blast.raf); blast.last=performance.now(); blast.raf=requestAnimationFrame(commandTick);
   if(blast.overlay){ blast.overlay.remove(); blast.overlay=null; }
@@ -230,7 +231,7 @@ function commandNote(pc){
   if(!hit){
     heard(name,false); buzz(blast.field,true); sfx("freeze");
     blast.frozenUntil=performance.now()+FREEZE_MS(); blast.field.classList.add("frozen");
-    setTimeout(()=>{ if(blast && blast.field && performance.now()>=(blast.frozenUntil||0)) blast.field.classList.remove("frozen"); }, FREEZE_MS()+20);
+    gameLater(()=>{ if(blast && blast.field && performance.now()>=(blast.frozenUntil||0)) blast.field.classList.remove("frozen"); }, FREEZE_MS()+20);
     popup(blast.field.clientWidth/2, blast.field.clientHeight-70, "FROZEN", "#7FE9FF");
     return;
   }
@@ -251,7 +252,7 @@ function commandNote(pc){
     sfx("level");
     if(blast.level!==was) banner(`LEVEL ${blast.level+1}`, HC_LEVELS[blast.level].n.toUpperCase());
     // a new key for the scale levels once the field is clear of the old key's notes
-    setTimeout(()=>{ if(blast && blast.kind==="command" && blast.phase==="play"){ blast.items.forEach(i=>{ if(!i.done){ i.done=true; i.el.remove(); } }); hcNewWave(); } }, 2400);
+    gameLater(()=>{ if(blast && blast.kind==="command" && blast.phase==="play"){ blast.items.forEach(i=>{ if(!i.done){ i.done=true; i.el.remove(); } }); hcNewWave(); } }, 2400);
   }
   blastBarCommand();
 }
@@ -314,6 +315,6 @@ function endCommandDemo(token){
   stopDemo(); blast.phase="menu"; blast.wave={kind:"chrom"}; hcLabelsShow(false);
   if(blast.overlay) blast.overlay.hidden=false;
   clearTimeout(blast.attract);
-  blast.attract=setTimeout(()=>{ if(blast && blast.kind==="command" && blast.phase==="menu" && blast.overlay && !blast.overlay.hidden) commandDemo(); }, 25000);
+  blast.attract=gameLater(()=>{ if(blast && blast.kind==="command" && blast.phase==="menu" && blast.overlay && !blast.overlay.hidden) commandDemo(); }, 25000);
   cabRestart();
 }

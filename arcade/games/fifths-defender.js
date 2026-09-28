@@ -93,6 +93,7 @@ const FDMENU_G={key:"fifths", title:"FIFTHS DEFENDER",
   begin:i=>beginFifths(i), demo:()=>fdDemo(), modNote:"title"};
 function fdMenu(over){ arcadeMenu(FDMENU_G, over); }
 function beginFifths(level){
+  newRun();
   piano.start(); stopDemo(); clearTimeout(blast.attract); clearTimeout(blast.cabT);
   if(blast.overlay){ blast.overlay.remove(); blast.overlay=null; }
   Object.assign(blast,{foes:[], score:0, lives:3, level, startLevel:level, kills:0, levelKills:0, aimOffset:0, knobV:null, edgeAt:null, phase:"play", over:false, jamUntil:0, modFor:null,
