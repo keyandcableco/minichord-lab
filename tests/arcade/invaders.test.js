@@ -19,6 +19,16 @@ const t=require("./harness").load("invaders");
     mc.params[35]=KEYN[name]; mc.dispatchEvent(new t.w.Event("device")); await sleep(80);
     check("setting its key scores", sb.arcade.score>before, `${before} → ${sb.arcade.score}`);
   }
+  // what a chord is worth: major least, each type up the ladder more; the modifier and a slash half as much again
+  const pts=(q,root="C",bass=null)=>t.w.eval(`blastPoints(${JSON.stringify({q,root,bass,bonus:false})}).pts`);
+  mc.params[35]=0; mc.dispatchEvent(new t.w.Event("device")); await sleep(30);
+  const ladder=["","m","7","maj7","m7","°","+","6"].map(q=>pts(q));
+  check("each chord type is worth more than the one before", ladder.every((v,i)=>i===0 || v>ladder[i-1]), ladder.join(" < "));
+  check("a chord that needs the modifier is worth half as much again", pts("","F♯")===Math.round(pts("")*1.5) || pts("","F♯")>pts(""), `${pts("")} → ${pts("","F♯")}`);
+  check("so is a slash chord", pts("","C","E")>pts(""));
+  t.w.eval("window.__pr=document.createElement('div'); pointsRender(window.__pr)");
+  const rows=[...t.w.__pr.querySelectorAll(".ptable:not(.mult) li")].map(li=>li.textContent);
+  check("the points screen spells each chord", rows.some(r=>/MIN7.*1 ♭3 5 ♭7/.test(r)) && rows.some(r=>/DIM7.*𝄫7/.test(r)), rows.slice(0,3).join(" | "));
   const wrongBefore=sb.arcade.score; chord("C♯","+"); await sleep(200);
   check("a chord that isn't falling scores nothing", sb.arcade.score===wrongBefore);
   t.done();

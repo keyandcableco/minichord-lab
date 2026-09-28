@@ -233,10 +233,10 @@ function blasterChord(voices){
   hit.done=true; hit.el.classList.remove("low");
   // a missile from the ship to the chord; the chord explodes when it arrives
   const fr=blast.field, x=hit.el.offsetLeft, y=(hit.y||0)+hit.el.offsetHeight/2;
-  const pts=mulPts((hit.bonus?50:10)*(blast.level+1));
+  const {pts, tags}=blastPoints(hit);                           // by its chord type, the modifier and a slash
   sfx("shoot");
   blast.fx.missiles.push({x0:fr.clientWidth/2/PX, y0:(fr.clientHeight-22)/PX, x1:x/PX, y1:y/PX, t0:performance.now(), dur:170,
-    hit:()=>{ sfx(hit.bonus?"bonus":"boom"); hit.el.classList.add("gone"); setTimeout(()=>hit.el.remove(),50); explode(x,y, hit.bonus?44:26, hit.bonus?["#7FE9FF","#FFFFFF","#B9F3FF","#FFD35A"]:undefined); popup(x,y-10,`+${pts}`, hit.bonus?"#7FE9FF":undefined); }});
+    hit:()=>{ sfx(hit.bonus?"bonus":"boom"); hit.el.classList.add("gone"); setTimeout(()=>hit.el.remove(),50); explode(x,y, hit.bonus?44:26, hit.bonus?["#7FE9FF","#FFFFFF","#B9F3FF","#FFD35A"]:undefined); popup(x,y-10,`+${pts}${tags.length?" "+tags.join(" · "):""}`, hit.bonus?"#7FE9FF":tags.length?"#FFD35A":undefined); }});
   blast.hits++; blast.score+=pts; stats.streak=blast.hits; scoreboard();
   if(blast.hits%8===0){
     const was=blast.level; blast.level=nextLevel(blast.level);

@@ -24,6 +24,23 @@ const BLAST_LEVELS=[{q:["","m"],acc:false},{q:["","m","7"],acc:false},{q:["","m"
 const slashReady=()=>!canWrite() || (mc.params[7]??0)>=13;
 const levelOk=l=> !(BLAST_LEVELS[l].slash && !slashReady()) && !(BLAST_LEVELS[l].barry && (!canWrite() || settings.set==="barry"));
 function nextLevel(l){ for(let n=l+1;n<BLAST_LEVELS.length;n++) if(levelOk(n)) return n; return l; }
+// What each chord type is worth, the plain major least, each step up the ladder more, and Barry
+// Harris's sixths and diminished sevenths most; with each one's spelling, for the points screen.
+// A chord that needs the modifier (its root isn't a plain button in the minichord's key) is worth
+// half as much again, as is a slash chord; a ★ chord five times as much.
+const BLAST_TIERS=[
+  ["","MAJ","1 3 5",10], ["m","MIN","1 ♭3 5",15], ["7","7","1 3 5 ♭7",20], ["maj7","MAJ7","1 3 5 7",25],
+  ["m7","MIN7","1 ♭3 5 ♭7",30], ["°","DIM","1 ♭3 ♭5",35], ["+","AUG","1 3 ♯5",40],
+  ["6","6","1 3 5 6",50], ["m6","MIN6","1 ♭3 5 6",50], ["°7","DIM7","1 ♭3 ♭5 𝄫7",50],
+];
+const BLAST_WORTH=Object.fromEntries(BLAST_TIERS.map(t=>[t[0],t[3]]));
+function blastPoints(hit){
+  let p=BLAST_WORTH[hit.q] ?? 10; const tags=[];
+  const {li,acc}=parse(hit.root); if(acc!==keyAcc(li, devFifths())){ p*=1.5; tags.push("MODIFIER"); }
+  if(hit.bass){ p*=1.5; tags.push("SLASH"); }
+  if(hit.bonus) p*=5;
+  return {pts:mulPts(Math.round(p)*(blast.level+1)), tags};
+}
 const BARRY_SWAP={"":"6","m":"m6","°":"°7"};
 let blast=null;
 function genBlaster(){

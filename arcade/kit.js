@@ -121,7 +121,7 @@ const mulPts=p=>Math.round(p*(blast.mult||1));
 const multTag=()=> blast && blast.mult && blast.mult!==1 ? ` ×${blast.mult}` : "";
 // what each game's things are worth at level 1 (all of it times the level)
 const POINTS_FOR={
-  blaster:[["CHORD","10"],["★ CHORD","50"],["KEY SET","25"]],
+  blaster:()=>[...BLAST_TIERS.map(([,n,sp,v])=>[n,String(v),sp]), ["NEEDS THE MODIFIER","× 1.5"], ["SLASH CHORD","× 1.5"], ["★ CHORD","× 5"], ["KEY SET","25"]],
   command:[["NOTE","10"],["★ NOTE","50"]],
   snake:[["CHORD CASHED IN","15 A NOTE"],["★ NOTE","50"],["NOTE DROPPED","−5"]],
   asteroids:[["CHORD ROCK CRACKED","20"],["★ ROCK","60"],["NOTE SHOT","10"],["CHORD CLEARED","25"]],
@@ -139,10 +139,11 @@ function multRows(kind){
   return rows;
 }
 // the points screen in the title loop: the table filling in line by line, then the multipliers
+const pointsFor=k=>{ const p=POINTS_FOR[k]; return typeof p==="function" ? p() : (p||[]); };
 function pointsRender(el){
-  const k=cabKind(), pts=POINTS_FOR[k]||[];
-  let i=0; const d=()=>`style="animation-delay:${(i++)*.45}s"`;
-  el.innerHTML=`<h3>POINTS</h3><ul class="ptable">${pts.map(([a,b])=>`<li ${d()}><span>${a}</span><i></i><b>${b}</b></li>`).join("")}<li class="ptnote" ${d()}>ALL TIMES THE LEVEL</li></ul>
+  const k=cabKind(), pts=pointsFor(k), long=pts.length>6;
+  let i=0; const d=()=>`style="animation-delay:${(i++)*(long?.28:.45)}s"`;
+  el.innerHTML=`<h3>POINTS</h3><ul class="ptable${long?" long":""}">${pts.map(([a,b,sp])=>`<li ${d()}><span>${a}</span>${sp?`<em class="pspell">${sp}</em>`:""}<i></i><b>${b}</b></li>`).join("")}<li class="ptnote" ${d()}>ALL TIMES THE LEVEL</li></ul>
     <p class="ptsub" ${d()}>HARDER PLAY SCORES MORE</p><ul class="ptable mult">${multRows(k).map(([n,list])=>`<li ${d()}><span>${n}</span><em>${list.join(" · ")}</em></li>`).join("")}</ul>`;
 }
 // the options screen: the multiplier for what's chosen, as it's chosen

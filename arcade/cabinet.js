@@ -140,7 +140,7 @@ function cabStage(ov, stage){
   if(stage==="options") blast.cabT=gameLater(()=>{ if(blast && blast.overlay===ov && ov.dataset.stage==="options" && blast.phase==="menu") cabStage(ov,"title"); }, 45000);
   if(stage==="points"){                                        // what things are worth, then the board
     pointsRender(ov.querySelector(".cab-points"));
-    blast.cabT=gameLater(()=>{ if(blast && blast.overlay===ov && ov.dataset.stage==="points" && blast.phase==="menu") cabStage(ov,"scores"); }, 9500);
+    blast.cabT=gameLater(()=>{ if(blast && blast.overlay===ov && ov.dataset.stage==="points" && blast.phase==="menu") cabStage(ov,"scores"); }, pointsFor(cabKind()).length>6 ? 12500 : 9500);   // a longer table stays longer
   }
   if(stage==="scores"){                                        // the board, then the demo
     const el=ov.querySelector(".cab-scores"); el.innerHTML="<h3>HIGH SCORES</h3>";
