@@ -3219,7 +3219,7 @@ const BO_LEVELS=[
   {n:"Slash chords", qs:["","m"], roots:"natural", slash:true},
 ];
 const boLevelOk=i=> !BO_LEVELS[i].slash || slashReady();
-const knobsReady=()=>canWrite() && hasSetting(238) && (mc.params[7]??0)>=17;
+const knobsReady=()=>canWrite() && hasSetting(238) && (mc.params[7]??0)>=10;   // the setting, on firmware that has it
 function genBreakout(){
   return {kind:"breakout", prompt:"Chord Breakout", sub:"Turn a knob on the minichord to move the paddle (or use the mouse or arrow keys). The ball cracks the chord brick it hits: play that chord before the ball comes back to the paddle and the brick breaks, or it heals. Clear the wall to go on; let the ball past and it costs a life.",
     answer:{type:"breakout", get name(){ const b=boTarget(); return b ? b.sym : "a cracked brick's chord"; }},

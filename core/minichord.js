@@ -159,8 +159,9 @@ export class Minichord extends EventTarget {
   _off(ch,note){ if(this.notes.delete(ch+":"+note)) this._changed(true); }
   allOff(){ this.notes.clear(); this.chans.forEach(c=>c.bend=0); this._changed(true); }
   _cc(ch,cc,val){
-    // the knobs, when "knobs send MIDI" (address 238, firmware 17) is on: CC 20 chord, 21 harp, 22 modulation, on channel 16
-    if(ch===15 && cc>=20 && cc<=22){ const k=cc-20; this.knobs[k]=val/127; this.lastKnob=k; this.dispatchEvent(new CustomEvent("knob",{detail:{knob:k, value:val/127}})); return; }
+    // the knobs, when "knobs send MIDI" (address 238) is on: CC 20 chord, 21 harp, 22 modulation, on the chord channel
+    // (channel 16 on the first test builds); nothing else the minichord sends uses these numbers
+    if(cc>=20 && cc<=22){ const k=cc-20; this.knobs[k]=val/127; this.lastKnob=k; this.dispatchEvent(new CustomEvent("knob",{detail:{knob:k, value:val/127}})); return; }
     const c=this.chans[ch];
     if(cc===101) c.rpn[0]=val;
     else if(cc===100) c.rpn[1]=val;
