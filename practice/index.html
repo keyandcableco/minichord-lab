@@ -230,6 +230,7 @@
 .field.arcade.stack .stboard{position:absolute;z-index:2;border:2px solid rgba(241,232,210,.4);border-top:none;background:rgba(7,6,12,.55)}
 .stboard .stcell{position:absolute;box-sizing:border-box;display:flex;align-items:center;justify-content:center;font-family:"Minichord Lab Accidentals","Press Start 2P",monospace;color:#16132A;background:#F1E8D2;border:2px solid #07060C}
 .stboard .stcell.piece{background:#FFD35A}
+.stboard .stcell.stray{background:#B5AC96}
 .stboard .stcell.ghost{background:transparent;border:2px dashed rgba(255,211,90,.45)}
 .stboard .stcell.ready{background:#7FE9FF;box-shadow:0 0 10px rgba(127,233,255,.9);animation:snready .6s steps(2) infinite}
 .stboard .stcol{position:absolute;text-align:center;font:400 .45rem/1.5 "Minichord Lab Accidentals","Press Start 2P",monospace;color:#9A93B5}
@@ -267,10 +268,11 @@
 .cab-options{display:flex;flex-direction:column;align-items:center;gap:10px;width:100%}
 .cab-options h3.small{font-size:1.1rem}
 /* beginner mode: the minichord and the harp, behind the play */
-.helper{position:absolute;z-index:1;pointer-events:none;opacity:.88}
+.helper{position:absolute;z-index:1;pointer-events:none}
 .helper.hboard{right:10px;bottom:28px;width:min(420px,44%)}
 .helper.hboard.helper-snake,.helper.hboard.helper-stack{left:10px;right:auto;width:min(300px,30%)}
-.helper .board{position:relative;width:100%;aspect-ratio:1508/803;background:url("data:image/png;base64,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") center/100% 100% no-repeat;image-rendering:pixelated}
+.helper .board{position:relative;width:100%;aspect-ratio:1508/803}
+.helper .board::before{content:"";position:absolute;inset:0;background:url("data:image/png;base64,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") center/100% 100% no-repeat;image-rendering:pixelated;opacity:.38}   /* the case, faint */
 .helper .board>*,.helper .grid>*{position:absolute}
 .helper .grid{position:absolute;inset:0}
 .helper .mod,.helper .pre,.helper .cell{font:400 .42rem "Minichord Lab Accidentals","Press Start 2P",monospace;color:#F1E8D2;background:#2A2520;border:2px solid #8C8270;display:flex;align-items:center;justify-content:center;box-sizing:border-box}
@@ -387,6 +389,28 @@
 .cab-points .ptsub{color:#FFD35A!important;font-size:.62rem!important;opacity:0;animation:ptin .01s steps(1) forwards}
 @keyframes ptin{to{opacity:1}}
 .overlay p.multline{color:#7FE9FF!important;font-size:.58rem!important}
+/* the helper's buttons stand out from the faint case: raised, a little see-through until they light */
+.helper .cell,.helper .mod{opacity:.72;box-shadow:inset -2px -2px 0 rgba(0,0,0,.5),inset 2px 2px 0 rgba(255,255,255,.2),0 2px 0 #000}
+.helper .cell.lit,.helper .cell.slashlit,.helper .mod.lit{opacity:1}
+.helper .pre,.helper .led{opacity:.5}
+.helper .board .hbstrip,.helper .board .kmplate{opacity:.8}
+.helper.hharp{background:rgba(5,4,7,.5)}
+.helper.hharp .hstring{background:rgba(14,12,20,.6)}
+
+/* the arcade settings dialog */
+dialog.arcadedlg{background:#130D1E;color:#F1E8D2;border:4px solid #000;box-shadow:0 0 0 3px #2F2342,10px 10px 0 #000;border-radius:0;padding:22px 24px;max-width:min(720px,94vw);font:400 .56rem/1.9 "Press Start 2P",monospace}
+dialog.arcadedlg::backdrop{background:rgba(7,6,12,.78)}
+dialog.arcadedlg h2{margin:0 0 16px;font:400 .8rem "Press Start 2P",monospace;color:#FFD35A;text-align:center}
+.arows{display:grid;gap:12px}
+.arow{display:grid;grid-template-columns:11em 1fr;gap:12px;align-items:center}
+.alabel{color:#9A93B5}.alabel small{display:block;font-size:.8em;color:#6E6890}
+.achoices{display:flex;flex-wrap:wrap;gap:6px}
+.achoices button,.aend button{font:400 .5rem "Press Start 2P",monospace;background:#0E0A16;color:#F1E8D2;border:2px solid #2F2342;padding:7px 9px;cursor:pointer}
+.achoices button:hover{border-color:#FFD35A}
+.achoices button.on{background:#F1E8D2;color:#16132A;border-color:#F1E8D2}
+.amult{margin:16px 0 0;text-align:center;color:#7FE9FF}
+.aend{text-align:center;margin-top:12px}.aend button{padding:9px 18px;color:#FFD35A;border-color:#FFD35A}
+@media (max-width:560px){.arow{grid-template-columns:1fr}}
 /* the demo's pixel minichord */
 .overlay button.howto{border-color:#FFD35A;color:#FFD35A}
 .demo{position:absolute;inset:0;z-index:5;display:flex;flex-direction:column;justify-content:flex-start;padding:10px 14px;pointer-events:none}
@@ -463,7 +487,8 @@ html.arcadepage .game .field{border-radius:14px/10px;border:6px solid #050407}
 html.arcadepage .gamebar .chips,html.arcadepage .gamebar .what,html.arcadepage #prompt,html.arcadepage #keys,html.arcadepage .lastround,html.arcadepage .answers,html.arcadepage .mystrip,
 html.arcadepage .controls>*:not(#soundBtn){display:none!important}
 html.arcadepage .modpill{background:#0E0A16;color:#7FE9FF;border:2px solid #2F2342;font:400 .5rem/1.8 "Press Start 2P",monospace}
-html.arcadepage .feedback,html.arcadepage .needs{color:#D8D0E8;font:400 .55rem/2 "Press Start 2P",monospace;background:transparent;border-left-color:#FFD35A}
+html.arcadepage .needs{display:none!important}   /* the settings a game borrows are its own business here */
+html.arcadepage .feedback{color:#D8D0E8;font:400 .55rem/2 "Press Start 2P",monospace;background:transparent;border-left-color:#FFD35A}
 html.arcadepage .controls{justify-content:center}
 html.arcadepage #soundBtn{font:400 .5rem "Press Start 2P",monospace;background:#0E0A16;color:#9A93B5;border:2px solid #2F2342}
 /* the rest of the arcade, along the bottom */
@@ -2677,6 +2702,9 @@ const ST_LEVELS=[
   {n:"Chord shapes", pieces:[[0],[0,4],[0,3],[0,4,7],[0,3,7],[0,10],[0,11]], qs:["","m","°","+","7","maj7","m7","m7♭5","°7"]},
 ];
 const ST_ROWS=14;
+// The stack rises: every so many pieces a row of stray notes pushes up from the bottom, sooner at
+// higher levels and faster speeds, so a stack left unplayed climbs to the top. The HUD counts down.
+const stRiseEvery=()=> Math.max(4, Math.round((9-blast.level)*(1.3-(+saved.speed||0)*.12)));
 const ST_Q_SETS={"":[0,4,7],"m":[0,3,7],"°":[0,3,6],"+":[0,4,8],"7":[0,4,7,10],"maj7":[0,4,7,11],"m7":[0,3,7,10],"m7♭5":[0,3,6,10],"°7":[0,3,6,9]};
 const ST_NAMES=["C","C♯","D","E♭","E","F","F♯","G","A♭","A","B♭","B"];
 const ST_INTERVAL={1:"m2",2:"M2",3:"m3",4:"M3",5:"P4",6:"TT",7:"P5",8:"m6",9:"M6",10:"m7",11:"M7"};
@@ -2766,7 +2794,7 @@ function stLayout(){
 }
 function stBar(){
   if(!blast || blast.kind!=="stack" || !blast.hud) return;
-  blast.hud.innerHTML=`<span>SCORE ${blast.score}${multTag()}</span><span class="lvl">LEVEL ${blast.level+1} · ${ST_LEVELS[blast.level].n.toUpperCase()}</span><span>CLEARED ${blast.clears}</span>`;
+  blast.hud.innerHTML=`<span>SCORE ${blast.score}${multTag()}</span><span class="lvl">LEVEL ${blast.level+1} · ${ST_LEVELS[blast.level].n.toUpperCase()}</span><span>RISE IN ${Math.max(0,blast.riseIn||0)}</span>`;
 }
 function stMenu(over){
   if(over && hsOffer(()=>stMenu(true))) return;
@@ -2778,7 +2806,7 @@ function stMenu(over){
     again.onclick=()=>beginStack(blast.startLevel); ov.appendChild(again);
     sfx("over");
   } else {
-    ov.innerHTML=`<h3>CHORD STACK</h3><p>ONE COLUMN FOR EACH NOTE, C TO B. SLIDE A PIECE TO TRANSPOSE IT${knobsReady() ? ": TURN A KNOB ON THE MINICHORD AND IT SLIDES" : ""}.</p><p>NOTES FALL DOWN THEIR COLUMNS. WHEN A ROW HOLDS A CHORD, PLAY IT TO CLEAR IT.</p><p>A INVERTS · B DROPS · UP SWAPS SHARPS AND FLATS</p>`;
+    ov.innerHTML=`<h3>CHORD STACK</h3><p>ONE COLUMN FOR EACH NOTE, C TO B. SLIDE A PIECE TO TRANSPOSE IT${knobsReady() ? ": TURN A KNOB ON THE MINICHORD AND IT SLIDES" : ""}.</p><p>NOTES FALL DOWN THEIR COLUMNS. WHEN A ROW HOLDS A CHORD, PLAY IT TO CLEAR IT.</p><p>EVERY FEW PIECES A ROW OF STRAY NOTES RISES FROM BELOW. DON'T LET THE STACK REACH THE TOP.</p><p>A INVERTS · B DROPS · UP SWAPS SHARPS AND FLATS</p>`;
     const how=document.createElement("button"); how.className="howto"; how.textContent="▶ HOW TO PLAY"; how.onclick=()=>stDemo(); ov.appendChild(how);
   }
   const row=(label, list, get, set)=>{ const r=document.createElement("div"); r.className="optrow"; const l=document.createElement("span"); l.className="optlabel"; l.textContent=label;
@@ -2828,9 +2856,9 @@ const stRandPiece=()=>{ const L=ST_LEVELS[blast.level], shape=rnd(L.pieces); ret
 function beginStack(level){
   piano.start(); stopDemo(); clearTimeout(blast.attract);
   if(blast.overlay){ blast.overlay.remove(); blast.overlay=null; }
-  Object.assign(blast,{grid:[...Array(ST_ROWS)].map(()=>Array(12).fill(null)), score:0, level, startLevel:level, clears:0, phase:"play", over:false,
+  Object.assign(blast,{grid:[...Array(ST_ROWS)].map(()=>Array(12).fill(null)), score:0, level, startLevel:level, clears:0, phase:"play", over:false, riseIn:0,
     fallMs:760*speedMul()*Math.pow(.92,level)});
-  saved.stackStart=level; save();
+  saved.stackStart=level; save(); blast.riseIn=stRiseEvery();
   stats.streak=0; scoreboard(); stLayout();
   blast.next=stRandPiece(); stSpawn();
   cancelAnimationFrame(blast.raf); blast.last=performance.now(); blast.nextFall=performance.now()+900; blast.raf=requestAnimationFrame(stTick);
@@ -2867,6 +2895,15 @@ function stLock(){
   const p=blast.piece, names=stSpell(p); let over=false;
   stCols(p).forEach((x,i)=>{ const y=stRest(x); if(y>=0) blast.grid[y][x]={pc:x, name:names[i]}; else over=true; });
   if(over) return stOver();
+  // the rise: a row of two or three stray notes comes up from below, and everything moves up a row
+  if(blast.phase==="play" && --blast.riseIn<=0){
+    blast.riseIn=stRiseEvery();
+    if(blast.grid[0].some(Boolean)) return stOver();                       // no room left at the top
+    const row=Array(12).fill(null), n=2+Math.floor(Math.random()*2);
+    for(let k=0;k<n;k++){ const x=Math.floor(Math.random()*12); row[x]={pc:x, name:(Math.random()<.5?ST_SHARPS:ST_FLATS)[x], stray:true}; }
+    blast.grid.shift(); blast.grid.push(row); sfx("miss");
+    if(blast.piece){ blast.piece.y=Math.max(0,blast.piece.y-1); }
+  }
   stRespell();
   sfx("press");
   const ready=stReadyRows();
@@ -2945,7 +2982,7 @@ function stDraw(){
   const cellHtml=(x,y,cls,label)=>`<span class="stcell ${cls}" style="left:${x*c}px;top:${y*c}px;width:${c}px;height:${c}px;font-size:${Math.round(c*.36)}px">${label}</span>`;
   let h="";
   const now=performance.now();
-  blast.grid.forEach((row,y)=>row.forEach((cell,x)=>{ if(cell) h+=cellHtml(x,y, (ready.has(y+","+x)?"ready":"")+(cell.flash && now-cell.flash<900?" respelled":""), cell.name||ST_NAMES[x]); }));
+  blast.grid.forEach((row,y)=>row.forEach((cell,x)=>{ if(cell) h+=cellHtml(x,y, (ready.has(y+","+x)?"ready":"")+(cell.stray?" stray":"")+(cell.flash && now-cell.flash<900?" respelled":""), cell.name||ST_NAMES[x]); }));
   const p=blast.piece;
   if(p){
     // a ghost where it would land, then the piece itself
@@ -4004,6 +4041,50 @@ function multLine(opts){
   upd(); opts.addEventListener("click", ()=>setTimeout(upd));
   const before=opts.querySelector("p.blink") || [...opts.querySelectorAll(".levels")].pop();
   opts.insertBefore(p, before);
+}
+
+
+// ---------- an arcade game's own settings ----------
+// On an arcade game's page the settings button opens the arcade's settings, not the Practice Room's:
+// sounds, speed, beginner mode, the screen, the harp's layout and sound, the steering knob, the size
+// of the lettering, the game's own options, and the double tap on the modifier. Everything is saved
+// and shared with the title screens' options; the speed and the game's options apply from the next
+// game, with the score multiplier they give.
+function arcadeSettings(){
+  const k=settings.mode, dlg=document.createElement("dialog"); dlg.id="arcadeDlg"; dlg.className="arcadedlg";
+  const rows=[];
+  const choice=(label, list, get, set, note)=>rows.push({label, list, get, set, note});
+  choice("SOUNDS", ["ON","OFF"], ()=>settings.sounds?0:1, i=>{ settings.sounds=!i; save(); });
+  choice("SPEED", SPEEDS.map(x=>x[0].toUpperCase()), ()=>+saved.speed||0, i=>{ saved.speed=i; save(); }, "FROM THE NEXT GAME");
+  if(k==="command") choice("NOTES AT ONCE", ["FEW","SOME","MANY","SWARM"], ()=>saved.hcDensity??1, i=>{ saved.hcDensity=i; save(); }, "FROM THE NEXT GAME");
+  if(k==="breakout") choice("PADDLE", ["NARROW","NORMAL","WIDE"], ()=>saved.boPaddle??1, i=>{ saved.boPaddle=i; save(); }, "FROM THE NEXT GAME");
+  choice("BEGINNER", ["OFF","SHOW WHAT TO PRESS"], ()=>saved.beginner?1:0, i=>{ saved.beginner=!!i; save(); helperSync(true); }, "NO HIGH SCORES WITH IT ON");
+  choice("SCREEN", ["FLAT","CRT"], ()=>saved.crt?1:0, i=>{ saved.crt=!!i; save(); crtSync(); });
+  if(["blaster","asteroids","breakout","fifths","command"].includes(k))
+    choice("LETTERING", SIZES.map(x=>x[0]), ()=>saved.chordSize??1, i=>{ saved.chordSize=i; save(); applyChordSize(); });
+  if(["snake","stack","command","asteroids","fifths"].includes(k))
+    choice("HARP", ["STANDARD STRIP","KEYMASTER"], ()=>saved.harpLayout==="keymaster"?1:0, i=>{ saved.harpLayout=i?"keymaster":"strip"; save(); if(["snake","stack"].includes(k)) kmRestrip(); else helperSync(true); });
+  if(["snake","stack"].includes(k))
+    choice("HARP SOUND", ["NORMAL","QUIET","OFF"], ()=>saved.harpSound??1, i=>{ saved.harpSound=i; save(); if(blast && blast.setupDone) kmHarp(); });
+  if(["breakout","fifths","stack"].includes(k))
+    choice("STEER WITH", ["CHORD KNOB","HARP KNOB","MOD KNOB"], ()=>steerKnob(), i=>{ saved.steerKnob=i; save(); });
+  choice("DOUBLE TAP", ["FLIPS THE MODIFIER","AS MY PRESET HAS IT"], ()=>settings.modTap==="off"?1:0, i=>{ settings.modTap=i?"off":"on"; save(); if(!i) modTap(); });
+  dlg.innerHTML=`<h2>${LABELS[k].toUpperCase()} · SETTINGS</h2><div class="arows"></div><p class="amult"></p><div class="aend"><button type="button" class="aclose">DONE</button></div>`;
+  const box=dlg.querySelector(".arows"), mult=dlg.querySelector(".amult");
+  const upd=()=>{ mult.textContent=`SCORE ×${diffMult()} FOR THESE SETTINGS`; };
+  rows.forEach(r=>{
+    const row=document.createElement("div"); row.className="arow";
+    row.innerHTML=`<span class="alabel">${r.label}${r.note?`<small>${r.note}</small>`:""}</span><div class="achoices"></div>`;
+    const g=row.querySelector(".achoices");
+    const mark=()=>[...g.children].forEach((b,i)=>b.classList.toggle("on", i===r.get()));
+    r.list.forEach((t,i)=>{ const b=document.createElement("button"); b.type="button"; b.textContent=t; b.onclick=()=>{ r.set(i); mark(); upd(); }; g.appendChild(b); });
+    mark(); box.appendChild(row);
+  });
+  upd();
+  dlg.querySelector(".aclose").onclick=()=>dlg.close();
+  dlg.addEventListener("click", e=>{ if(e.target===dlg) dlg.close(); });   // a click outside closes it
+  document.body.appendChild(dlg);
+  return dlg;
 }
 
 // ---------- game over, then back to the title loop ----------
@@ -5556,7 +5637,8 @@ function arcadePage(){
   // the settings: the button beside the connect button, clear of the marquee, and the dialog moved out
   // of the answer area (hidden on these pages), where it couldn't show
   const sb=$("settingsBtn"); sb.textContent="⚙ SETTINGS"; document.querySelector(".labbar .connect").appendChild(sb);
-  document.body.appendChild($("settingsDlg"));
+  // the arcade's own settings, rebuilt each time it opens so it shows what the title screens changed
+  sb.onclick=()=>{ document.getElementById("arcadeDlg")?.remove(); arcadeSettings().showModal(); };
   const others=ARCADE_GAMES.filter(g=>g!==settings.mode);
   const box=document.createElement("section"); box.className="moregames"; box.setAttribute("aria-label","More arcade games");
   box.innerHTML=`<h2>MORE IN THE ARCADE</h2><div class="row">${others.map(g=>`<a href="../${HS_SLUG[g]}/"><img src="../${HS_SLUG[g]}/card.png" alt="" loading="lazy" width="1200" height="630"><span>${LABELS[g].toUpperCase()}</span></a>`).join("")}</div>`;
