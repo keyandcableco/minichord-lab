@@ -63,7 +63,7 @@ if(!LABELS[settings.mode]) settings.mode="spell";
 // A link can open one game directly, ?game=invaders (or any game's name, like ?game=reshape),
 // and ?solo shows that game on its own, without the menu, the settings or the answer area.
 const urlParams=new URLSearchParams(location.search);
-const GAME_SLUGS={invaders:"blaster", "chord-invaders":"blaster", "harp-command":"command", harpcommand:"command", "chord-snake":"snake", "chord-asteroids":"asteroids", asteroids:"asteroids", "chord-stack":"stack", "chord-breakout":"breakout", breakout:"breakout", "fifths-defender":"fifths", fifths:"fifths", "chopper-rescue":"chopper", chopper:"chopper", "key-fleet":"fleet", fleet:"fleet", sevenchords:"diatonic", layout:"hidden"};
+const GAME_SLUGS={invaders:"blaster", "chord-invaders":"blaster", "harp-command":"command", harpcommand:"command", "chord-snake":"snake", "chord-asteroids":"asteroids", asteroids:"asteroids", "chord-stack":"stack", "chord-breakout":"breakout", breakout:"breakout", "fifths-defender":"fifths", fifths:"fifths", "chopper-rescue":"chopper", chopper:"chopper", "key-fleet":"fleet", fleet:"fleet", "chord-sweeper":"sweeper", sweeper:"sweeper", sevenchords:"diatonic", layout:"hidden"};
 { const g=(urlParams.get("game")||"").toLowerCase(), k=GAME_SLUGS[g]||g; if(LABELS[k]) settings.mode=k; }
 const solo=urlParams.has("solo") && LABELS[settings.mode] && !!urlParams.get("game");
 if(!SETS[settings.set] || settings.set==="alt") settings.set="standard";
@@ -300,6 +300,7 @@ function nextQuestion(){
   if(q.kind==="fifths") startFifths();
   if(q.kind==="chopper") startChopper();
   if(q.kind==="fleet") startFleet();
+  if(q.kind==="sweeper") startSweeper();
   if(q.kind==="simon") setTimeout(simonPlay,700);
 }
 function feedback(text,kind="",small=""){ const f=$("feedback"); f.className="feedback "+kind; f.textContent=text; if(small){ const s=document.createElement("small"); s.textContent=small; f.appendChild(s); } }
@@ -409,6 +410,7 @@ function answerChord(voices){
   if(q.answer.type==="fifths") return fifthsChord(voices);
   if(q.answer.type==="chopper") return chopperChord(voices);
   if(q.answer.type==="fleet") return fleetChord(voices);
+  if(q.answer.type==="sweeper") return sweeperChord(voices);
   if(q.answer.type==="diatonic") return answerDiatonic(voices);
   if(q.answer.type==="reshape") return answerReshape(voices);
   if(q.answer.type==="alt") return answerAltChord(voices);
@@ -448,6 +450,7 @@ function answerNote(pc, pickedName){
   if(q && q.kind==="stack") return stackHarp(pc);
   if(q && q.kind==="fifths") return fifthsNote(pc);
   if(q && q.kind==="fleet") return fleetNote(pc);
+  if(q && q.kind==="sweeper") return sweeperNote(pc);
   if(!q || solved) return;
   if(q.answer.type==="note" && pc===q.answer.pc && pickedName && q.answer.name && pickedName!==q.answer.name)
     return correct(`Right note: ${q.answer.name}. Here it's spelled ${q.answer.name}, not ${pickedName}.`);
@@ -613,7 +616,7 @@ async function startTones(){
   if(!canWrite()){ tones.sim=make((tuneState.secret+tuneState.nudge)/10,.1,settings.tuneWave); tones.push(tones.sim); }   // no minichord: simulate it
 }
 function buildSpecial(){
-  const box=$("special"); box.innerHTML=""; box.hidden = !(q && ["tune","melody","smooth","simon","directions","pluckchord","buildscale","blaster","command","snake","asteroids","stack","breakout","fifths","chopper","fleet","diatonic","reshape","hidden","oddone","shades"].includes(q.kind)); if(box.hidden) return;
+  const box=$("special"); box.innerHTML=""; box.hidden = !(q && ["tune","melody","smooth","simon","directions","pluckchord","buildscale","blaster","command","snake","asteroids","stack","breakout","fifths","chopper","fleet","sweeper","diatonic","reshape","hidden","oddone","shades"].includes(q.kind)); if(box.hidden) return;
   if(q.kind==="command"){ buildCommandField(box); return; }
   if(q.kind==="snake"){ buildSnakeField(box); return; }
   if(q.kind==="asteroids"){ buildAsteroidsField(box); return; }
@@ -622,6 +625,7 @@ function buildSpecial(){
   if(q.kind==="fifths"){ buildFifthsField(box); return; }
   if(q.kind==="chopper"){ buildChopperField(box); return; }
   if(q.kind==="fleet"){ buildFleetField(box); return; }
+  if(q.kind==="sweeper"){ buildSweeperField(box); return; }
   if(q.kind==="blaster"){
     const field=document.createElement("div"); field.className="field arcade"; field.setAttribute("aria-label","Falling chords");
     const ground=document.createElement("div"); ground.className="ground"; field.appendChild(ground);
@@ -733,7 +737,7 @@ function setMode(m){
   $("nowPlaying").textContent = `Playing: ${LABELS[m]||m}`;
   settings.mode=m; save();
   document.querySelectorAll(".modes button[data-mode]").forEach(x=>x.setAttribute("aria-pressed",x.dataset.mode===m));
-  $("sprint").disabled = MYSTERY.has(m) || m==="blaster" || m==="command" || m==="snake" || m==="asteroids" || m==="stack" || m==="breakout" || m==="fifths" || m==="chopper" || m==="fleet";
+  $("sprint").disabled = MYSTERY.has(m) || m==="blaster" || m==="command" || m==="snake" || m==="asteroids" || m==="stack" || m==="breakout" || m==="fifths" || m==="chopper" || m==="fleet" || m==="sweeper";
   stats.streak=0; scoreboard(); nextQuestion();
   if(switching){
     const back=restoreExcept(new Set([...(q.needs||[]).map(n=>n.addr), ...(q.borrows||[]), ...roundBorrows, 31]));   // keep what the new game uses
@@ -743,7 +747,7 @@ function setMode(m){
   }
 }
 document.querySelectorAll(".modes button[data-mode]").forEach(b=>{ b.setAttribute("aria-pressed", b.dataset.mode===settings.mode); b.onclick=()=>setMode(b.dataset.mode); });
-$("sprint").disabled = MYSTERY.has(settings.mode) || settings.mode==="blaster" || settings.mode==="command" || settings.mode==="snake" || settings.mode==="asteroids" || settings.mode==="stack" || settings.mode==="breakout" || settings.mode==="fifths" || settings.mode==="chopper" || settings.mode==="fleet";
+$("sprint").disabled = MYSTERY.has(settings.mode) || settings.mode==="blaster" || settings.mode==="command" || settings.mode==="snake" || settings.mode==="asteroids" || settings.mode==="stack" || settings.mode==="breakout" || settings.mode==="fifths" || settings.mode==="chopper" || settings.mode==="fleet" || settings.mode==="sweeper";
 $("nowPlaying").textContent = `Playing: ${LABELS[settings.mode]||settings.mode}`;
 for(const [id,key] of [["gameMenu","menuOpen"]]){
   const d=$(id); if(saved[key]===false) d.open=false;
@@ -802,6 +806,7 @@ mc.addEventListener("device", ()=>{
   else if(blast && blast.kind==="fifths") fdDevice();
   else if(blast && blast.kind==="chopper") chDevice();
   else if(blast && blast.kind==="fleet") kfDevice();
+  else if(blast && blast.kind==="sweeper") swDevice();
   else if(blast){ blastSetup(); if(blast.phase!=="play") blastHomeKey(); blastKey(); }
   if(q && !solved && !rebuilding) applyNeeds();
   mine(); needs();

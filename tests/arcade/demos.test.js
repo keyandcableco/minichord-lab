@@ -1,7 +1,7 @@
 // Every game's demo starts from HOW TO PLAY, shows its captions as it plays, and SKIP brings the title
 // screen back.
 const {spawnSync}=require("child_process");
-const SLUGS=["invaders","harp-command","chord-snake","chord-asteroids","chord-stack","chord-breakout","fifths-defender","chopper-rescue","key-fleet"];
+const SLUGS=["invaders","harp-command","chord-snake","chord-asteroids","chord-stack","chord-breakout","fifths-defender","chopper-rescue","key-fleet","chord-sweeper"];
 if(process.argv[2]){
   const t=require("./harness").load(process.argv[2]);
   (async()=>{

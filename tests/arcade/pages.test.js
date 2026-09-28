@@ -1,6 +1,6 @@
 // Every arcade game opens on its own page in the arcade's dress, with its title loop running.
 const {spawnSync}=require("child_process");
-const SLUGS=["invaders","harp-command","chord-snake","chord-asteroids","chord-stack","chord-breakout","fifths-defender","chopper-rescue","key-fleet"];
+const SLUGS=["invaders","harp-command","chord-snake","chord-asteroids","chord-stack","chord-breakout","fifths-defender","chopper-rescue","key-fleet","chord-sweeper"];
 if(process.argv[2]){
   const {load}=require("./harness");
   const t=load(process.argv[2]);

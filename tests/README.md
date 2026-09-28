@@ -22,6 +22,7 @@ key presses, checking what should happen.
 | `chord-breakout` | the knob steers (only the chosen one, without wobble or the mouse); the ball bounces true; chords break bricks |
 | `fifths-defender` | the knob's centred, endless dial; the aimed key's chord fires, another doesn't |
 | `chopper-rescue` | the radio decodes right; decoys; no repeated calls; nothing on the map gives it away |
+| `chord-sweeper` | neighbours share two notes; the first sweep is safe; numbers, flags, mines and clearing a field |
 | `key-fleet` | fleets never touch; hits cripple; keys are called by tonic, cadence and the key change combo |
 | `high-scores` | GAME OVER before the initials; input ignored at first; the board kept; beginner mode stays off it |
 | `lobby` | the arcade lobby's cabinets, best scores and ticker |

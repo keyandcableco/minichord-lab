@@ -128,6 +128,7 @@ const POINTS_FOR={
   stack:[["ROW CLEARED","15 A NOTE"],["ROWS AT ONCE","× ROWS"]],
   breakout:[["BRICK","10 A NOTE"],["★ BRICK","× 5"],["RALLY","UP TO × 4"]],
   fifths:[["ENEMY","10"],["HIT FAR OUT","UP TO +10"],["★ ENEMY","50"]],
+  sweeper:[["CHORD SWEPT","10"],["FIELD CLEARED","100"],["QUICK CLEAR","UP TO +120"],["RIGHT FLAG","15"]],
   fleet:[["HIT","10"],["SHIP SUNK","50 A CHORD"],["SUNK BY DEDUCTION","+40 A CHORD UNHIT"],["NO MISSES","× 2"],["TORPEDO LEFT OVER","20"]],
   chopper:[["RESCUE","20"],["FAST RESCUE","UP TO +30"],["WAYPOINT","15"],["WHOLE ROUTE","× 2"],["WRONG PLACE","−2 SECONDS"]],
 };
@@ -271,7 +272,7 @@ function overTimeout(ov, toTitle){
 // what's shown if the shared one can't be reached.
 const SCORES_API=String(SCORES_HOST||"").replace(/\/+$/,"");   // the Funnel address of arcade-scores (core/scores.js), no trailing slash
 const scoresOnline=()=> !!SCORES_API && !SCORES_API.includes("SCORES-HOST");
-const HS_SLUG={blaster:"invaders", command:"harp-command", snake:"chord-snake", asteroids:"chord-asteroids", stack:"chord-stack", breakout:"chord-breakout", fifths:"fifths-defender", chopper:"chopper-rescue", fleet:"key-fleet"};
+const HS_SLUG={blaster:"invaders", command:"harp-command", snake:"chord-snake", asteroids:"chord-asteroids", stack:"chord-stack", breakout:"chord-breakout", fifths:"fifths-defender", chopper:"chopper-rescue", fleet:"key-fleet", sweeper:"chord-sweeper"};
 const HS_CHARS="ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 const hsCache={};                                        // the shared boards, as last fetched
 const hsSlug=()=> HS_SLUG[cabKind()];
