@@ -467,6 +467,28 @@ html.arcadepage .gamebar{align-items:flex-end}
 .chheli svg{width:100%;height:100%}
 .chheli .rotor{animation:rotor .12s steps(2) infinite;transform-origin:16px 1.5px}
 @keyframes rotor{50%{transform:scaleX(.25)}}
+/* Key Fleet: the sea chart, the shots, the sunk ships, the side panel */
+.kfsea{position:absolute;inset:0;z-index:2;pointer-events:none}
+.kfcell{position:absolute;box-sizing:border-box;border:1px solid rgba(127,233,255,.18);display:flex;align-items:center;justify-content:center}
+.kfcell small{position:absolute;left:5px;top:4px;font:400 .45rem "Minichord Lab Accidentals","Press Start 2P",monospace;color:rgba(241,232,210,.45)}
+.kfcell.hit{background:rgba(255,75,62,.18)}
+.kfcell.hit b{font:400 1.5rem "Press Start 2P",monospace;color:#FF8A3D;text-shadow:0 0 10px #FF4B3E;animation:blink .6s steps(2) infinite;font-weight:400}
+.kfcell.miss i{font:400 1.6rem "Press Start 2P",monospace;color:#7FE9FF;font-style:normal}
+.kfcol{position:absolute;transform:translate(-50%,-50%);font:400 .6rem "Press Start 2P",monospace;color:#9A93B5}
+.kfrow{position:absolute;transform:translate(-100%,-50%);font:400 .45rem "Press Start 2P",monospace;color:#9A93B5}
+.kfship{position:absolute;box-sizing:border-box;background:#3A3D48;border:3px solid #16181E;border-radius:40% 40% 10% 10%/60% 60% 20% 20%;opacity:.85}
+.kfship.afloat{background:#5A6070;opacity:.7;border-style:dashed}
+.kfname{position:absolute;transform:translate(-50%,0);white-space:nowrap;font:400 .5rem "Press Start 2P",monospace;color:#FFD35A;text-shadow:2px 2px 0 #000;z-index:3}
+.kfside{position:absolute;z-index:3;font:400 .5rem/1.9 "Press Start 2P",monospace;color:#F1E8D2}
+.kftorps span{color:#9A93B5}
+.kftorps div{display:flex;flex-wrap:wrap;gap:4px;margin:6px 0 10px}
+.kftorps i{display:block;width:8px;height:18px;background:linear-gradient(#F1E8D2,#9A93B5);border-radius:4px 4px 1px 1px}
+.kfside .kfcould{color:#7FE9FF;margin-top:14px}
+.kfside ul{list-style:none;margin:4px 0 0;padding:0}
+.kfside li{color:#FFD35A}
+.kfside .kfcall{color:#FF8A3D;margin-top:12px}
+.kfside .kfhow{color:#9A93B5;margin-top:14px;font-size:.92em}
+
 /* the demo's pixel minichord */
 .overlay button.howto{border-color:#FFD35A;color:#FFD35A}
 .demo{position:absolute;inset:0;z-index:5;display:flex;flex-direction:column;justify-content:flex-start;padding:10px 14px;pointer-events:none}
@@ -617,7 +639,8 @@ details.fold[open] .nowplaying{display:none}
     <button data-mode="breakout">Chord Breakout</button>
     <button data-mode="fifths">Fifths Defender</button>
     <button data-mode="chopper">Chopper Rescue</button>
-    <span class="arcadelinks"><a href="../arcade/">The arcade lobby</a> · or on their own pages: <a href="../invaders/">Chord Invaders</a> · <a href="../harp-command/">Harp Command</a> · <a href="../chord-snake/">Chord Snake</a> · <a href="../chord-asteroids/">Chord Asteroids</a> · <a href="../chord-stack/">Chord Stack</a> · <a href="../chord-breakout/">Chord Breakout</a> · <a href="../fifths-defender/">Fifths Defender</a> · <a href="../chopper-rescue/">Chopper Rescue</a></span>
+    <button data-mode="fleet">Key Fleet</button>
+    <span class="arcadelinks"><a href="../arcade/">The arcade lobby</a> · or on their own pages: <a href="../invaders/">Chord Invaders</a> · <a href="../harp-command/">Harp Command</a> · <a href="../chord-snake/">Chord Snake</a> · <a href="../chord-asteroids/">Chord Asteroids</a> · <a href="../chord-stack/">Chord Stack</a> · <a href="../chord-breakout/">Chord Breakout</a> · <a href="../fifths-defender/">Fifths Defender</a> · <a href="../chopper-rescue/">Chopper Rescue</a> · <a href="../key-fleet/">Key Fleet</a></span>
   </div>
   <div class="modes" role="group" aria-label="Read and play">
     <span class="grp">Read and play</span>
@@ -3109,7 +3132,7 @@ function endStDemo(token){
 // buttons' columns, F C G D A E B from the left, count 1 to 7: a column's major button starts that
 // level, its minor button sets that speed, and its 7 button switches to that arcade game. The key
 // signature's sharps and flats don't matter; the column is read from the chord's letter.
-const ARCADE_GAMES=["blaster","command","snake","asteroids","stack","breakout","fifths","chopper"];
+const ARCADE_GAMES=["blaster","command","snake","asteroids","stack","breakout","fifths","chopper","fleet"];
 const COLUMN_LETTERS="FCGDAEB";
 function arcadeMenuChord(voices){
   if(cabWaiting()){ cabWake(); return true; }
@@ -3163,6 +3186,7 @@ function arcadeRelayout(){
   else if(k==="breakout") boLayout();
   else if(k==="fifths") fdLayout();
   else if(k==="chopper"){ chLayout(); chDrawMap(); chPlace(true); }
+  else if(k==="fleet"){ kfLayout(); kfDraw(); }
   else if(k==="command"){ hcLayout(); hcLabels(); }
 }
 for(const ev of ["fullscreenchange","webkitfullscreenchange"]) document.addEventListener(ev, ()=>setTimeout(arcadeRelayout,60));
@@ -3198,8 +3222,8 @@ function arcadeModNote(ov){
 // roll up the screen like credits; then the demo; then round again, until someone plays a chord,
 // plucks the harp, presses a key or clicks. That brings up the options (speed, levels and the rest),
 // which go back to the title if they're left alone. Game over goes straight to its options.
-const DEMO_FOR={blaster:()=>runDemo(true), command:()=>commandDemo(), snake:()=>snDemo(), asteroids:()=>asDemo(), stack:()=>stDemo(), breakout:()=>boDemo(), fifths:()=>fdDemo(), chopper:()=>chDemo()};
-const TITLE_FOR={blaster:"CHORD INVADERS", command:"HARP COMMAND", snake:"CHORD SNAKE", asteroids:"CHORD ASTEROIDS", stack:"CHORD STACK", breakout:"CHORD BREAKOUT", fifths:"FIFTHS DEFENDER", chopper:"CHOPPER RESCUE"};
+const DEMO_FOR={blaster:()=>runDemo(true), command:()=>commandDemo(), snake:()=>snDemo(), asteroids:()=>asDemo(), stack:()=>stDemo(), breakout:()=>boDemo(), fifths:()=>fdDemo(), chopper:()=>chDemo(), fleet:()=>kfDemo()};
+const TITLE_FOR={blaster:"CHORD INVADERS", command:"HARP COMMAND", snake:"CHORD SNAKE", asteroids:"CHORD ASTEROIDS", stack:"CHORD STACK", breakout:"CHORD BREAKOUT", fifths:"FIFTHS DEFENDER", chopper:"CHOPPER RESCUE", fleet:"KEY FLEET"};
 const cabKind=()=> blast && (blast.kind||"blaster");
 function cabinet(ov){
   const kids=[...ov.children];
@@ -4078,6 +4102,7 @@ const POINTS_FOR={
   stack:[["ROW CLEARED","15 A NOTE"],["ROWS AT ONCE","× ROWS"]],
   breakout:[["BRICK","10 A NOTE"],["★ BRICK","× 5"],["RALLY","UP TO × 4"]],
   fifths:[["ENEMY","10"],["HIT FAR OUT","UP TO +10"],["★ ENEMY","50"]],
+  fleet:[["HIT","10"],["SHIP SUNK","50 A CHORD"],["SUNK BY DEDUCTION","+40 A CHORD UNHIT"],["NO MISSES","× 2"],["TORPEDO LEFT OVER","20"]],
   chopper:[["RESCUE","20"],["FAST RESCUE","UP TO +30"],["WAYPOINT","15"],["WHOLE ROUTE","× 2"],["WRONG PLACE","−2 SECONDS"]],
 };
 function multRows(kind){
@@ -4220,7 +4245,7 @@ function overTimeout(ov, toTitle){
 // what's shown if the shared one can't be reached.
 const SCORES_API=String(SCORES_HOST||"").replace(/\/+$/,"");   // the Funnel address of arcade-scores (core/scores.js), no trailing slash
 const scoresOnline=()=> !!SCORES_API && !SCORES_API.includes("SCORES-HOST");
-const HS_SLUG={blaster:"invaders", command:"harp-command", snake:"chord-snake", asteroids:"chord-asteroids", stack:"chord-stack", breakout:"chord-breakout", fifths:"fifths-defender", chopper:"chopper-rescue"};
+const HS_SLUG={blaster:"invaders", command:"harp-command", snake:"chord-snake", asteroids:"chord-asteroids", stack:"chord-stack", breakout:"chord-breakout", fifths:"fifths-defender", chopper:"chopper-rescue", fleet:"key-fleet"};
 const HS_CHARS="ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 const hsCache={};                                        // the shared boards, as last fetched
 const hsSlug=()=> HS_SLUG[cabKind()];
@@ -4637,6 +4662,346 @@ function chDemo(){
 function endChDemo(token){
   if(!blast || blast.demo!==token) return;
   stopDemo(); blast.phase="menu"; blast.call=null; blast.found=null; blast.emerg=[]; blast.pos={base:true}; chPlace(true); blast.radioEl.querySelector(".chtext").textContent="RADIO QUIET"; chDrawMap();
+  if(blast.overlay) blast.overlay.hidden=false;
+  cabRestart();
+}
+
+// ---------- Key Fleet ----------
+// Battleship on the chord buttons. The buttons' columns run in fifths, so a key's chords sit side by
+// side: any three neighbours in the major row are a key's IV, I and V (F C G is C major), and three
+// neighbours in the minor row a minor key's iv, i and v (Dm Am Em is A minor). The enemy's fleet is
+// hidden as keys on that chart; the player fires by playing chords. A hit shows which keys it could
+// belong to, a ship sinks when all its chords are hit, and its key is named. Later fleets add whole
+// keys (the three majors and the three minors three columns along, a six-chord ship across two
+// rows) and dominant pairs in the 7 row (G7 and D7: V and V of V in C). Torpedoes are limited: run
+// out with ships afloat and it costs a life.
+// Hitting a ship's chords only cripples it: it sinks when the player names its key. At the first
+// levels, by plucking its tonic on the harp; at every level, by playing its cadence, V7 then I (G7
+// then C calls C major, E7 then Am calls A minor); and on the test firmware, by setting its key
+// signature with the key change combo. A key can be called before all its chords are hit, for a
+// bonus: sunk by deduction. A wrong call costs a torpedo.
+const KF_COLS="FCGDAEB", KF_ROWS=["","m","7"];
+// "key" is a major or a minor key, "any" a major, a minor or a dominant pair, whichever fits
+const KF_LEVELS=[
+  {n:"Major keys", fleet:["major"], torps:7, hints:true, harp:true},
+  {n:"Major and minor", fleet:["major","minor"], torps:11, hints:true, harp:true},
+  {n:"Three keys", fleet:["major","minor","key"], torps:12},
+  {n:"Whole keys", fleet:["whole","any"], torps:12},
+  {n:"Dominant pairs", fleet:["whole","dominant","key"], torps:14},
+];
+// every place a ship of a kind can lie: its cells, and the key it is
+function kfShapes(kind){
+  const out=[];
+  if(kind==="major") for(let c=0;c<=4;c++) out.push({kind, cells:[[c,0],[c+1,0],[c+2,0]], name:`${KF_COLS[c+1]} MAJOR`, detail:"IV · I · V", tonic:KF_COLS[c+1], minor:false});
+  if(kind==="minor") for(let c=0;c<=4;c++) out.push({kind, cells:[[c,1],[c+1,1],[c+2,1]], name:`${KF_COLS[c+1]} MINOR`, detail:"iv · i · v", tonic:KF_COLS[c+1], minor:true});
+  if(kind==="whole") for(let c=0;c<=1;c++) out.push({kind, cells:[[c,0],[c+1,0],[c+2,0],[c+3,1],[c+4,1],[c+5,1]], name:`ALL OF ${KF_COLS[c+1]} MAJOR`, detail:"IV I V · ii vi iii", tonic:KF_COLS[c+1], minor:false});
+  if(kind==="dominant") for(let c=1;c<=5;c++) out.push({kind, cells:[[c,2],[c+1,2]], name:`${KF_COLS[c+1]}7 → ${KF_COLS[c]}7 IN ${KF_COLS[c-1]}`, detail:"V OF V · V", tonic:KF_COLS[c-1], minor:false});
+  return out;
+}
+const kfKey=(c,r)=>c+","+r;
+// Ships in the same row never touch end to end: three hits in a row are always one ship, so G D A
+// hit together is one key, never the end of one key and the start of another.
+function kfFleet(L){
+  for(let tries=0;tries<300;tries++){
+    const used=new Set(), ships=[];
+    let ok=true;
+    for(const want of L.fleet){
+      const kind = want==="key" ? rnd(["major","minor"]) : want==="any" ? rnd(["major","minor","dominant"]) : want;
+      const clear=([c,r])=>!used.has(kfKey(c,r)) && (tries>250 || (!used.has(kfKey(c-1,r)) && !used.has(kfKey(c+1,r))));
+      const opts=kfShapes(kind).filter(sh=>sh.cells.every(clear));
+      if(!opts.length){ ok=false; break; }
+      const sh=rnd(opts); sh.cells.forEach(([c,r])=>used.add(kfKey(c,r))); ships.push({...sh, hits:new Set(), sunk:false, misses:0});
+    }
+    if(ok) return ships;
+  }
+  return [];
+}
+function genFleet(){
+  return {kind:"fleet", prompt:"Key Fleet", sub:"Battleship on the chord buttons. The enemy's ships are keys hidden on the chart: three chords side by side in a row, a key's IV, I and V. Fire by playing chords, work out the keys from the hits, and sink the fleet before your torpedoes run out.",
+    answer:{type:"fleet", name:"a chord where a ship might be"}, hint:"Three neighbours in the major row are a key's IV, I and V.", context:0};
+}
+function startFleet(){
+  blast={kind:"fleet", score:0, lives:3, level:0, waves:0, over:true, phase:"menu", raf:0, field:null, hud:null, fx:null, noShip:true,
+    last:performance.now(), ships:[], shots:new Map(), torps:0};
+  kfDevice();
+  stats.streak=0; scoreboard(); buildSpecial();
+  kfMenu();
+  blast.raf=requestAnimationFrame(kfTick);
+}
+function kfDevice(){
+  if(!blast || blast.kind!=="fleet" || !canWrite()) return;
+  if(!blast.setupDone){ blast.setupDone=true; poll(true); asHarp(); if(hasSetting(30)) ensure(30,0); if(hasSetting(35)) borrow(35, keyIndexOf(0)); }   // the chart is the plain buttons in C
+  // a key signature set with the key change combo calls that key (major, or its relative minor)
+  if(hasSetting(35) && mc.params[35]!==keyIndexOf(0) && mc.params[35]!=null){
+    const f=KEY_FIFTHS[mc.params[35]] ?? 0, maj=mod(7*f,12), min=mod(maj+9,12);
+    borrow(35, keyIndexOf(0));                                                   // back to the plain buttons
+    if(blast.phase==="play") kfCall(s=>(!s.minor && pcOfName(s.tonic)===maj) || (s.minor && pcOfName(s.tonic)===min), `THE KEY OF ${KEY_NAMES_BY_FIFTHS(f)}`);
+  }
+}
+const KEY_NAMES_BY_FIFTHS=f=>["G♭","D♭","A♭","E♭","B♭","F","C","G","D","A","E","B","F♯","C♯"][f+6]||"C";
+function buildFleetField(box){
+  const field=document.createElement("div"); field.className="field arcade fleet"; field.setAttribute("aria-label","The chart of the sea");
+  const hud=document.createElement("div"); hud.className="hud"; field.appendChild(hud); fullButton(field);
+  const hd=document.createElement("div"); hd.className="heard"; field.appendChild(hd);
+  const sea=document.createElement("div"); sea.className="kfsea"; field.appendChild(sea);
+  const side=document.createElement("div"); side.className="kfside"; field.appendChild(side);
+  box.append(field);
+  if(blast && blast.kind==="fleet"){
+    blast.field=field; blast.hud=hud; blast.heard=hd; blast.seaEl=sea; blast.sideEl=side; blast.fx=fxInit(field);
+    setTimeout(()=>{ kfLayout(); kfDraw(); });
+    if(blast.overlay) field.appendChild(blast.overlay);
+  }
+  kfBar();
+}
+function kfLayout(){
+  const f=blast.field, W=f.clientWidth, H=f.clientHeight;
+  const left=70, right=W-Math.max(230, W*.26), top=90, bottom=H-50;
+  blast.cw=(right-left)/7; blast.rh=Math.min(110,(bottom-top)/3); blast.sx=left; blast.sy=top+((bottom-top)-3*blast.rh)/2;
+  blast.sideEl.style.cssText=`left:${right+18}px;top:${top}px;width:${W-right-30}px`;
+}
+const kfXY=(c,r)=>[blast.sx+(c+.5)*blast.cw, blast.sy+(r+.5)*blast.rh];
+function kfDraw(){
+  if(!blast || !blast.seaEl) return;
+  const cw=blast.cw, rh=blast.rh; let h="";
+  KF_COLS.split("").forEach((l,c)=>{ h+=`<span class="kfcol" style="left:${blast.sx+(c+.5)*cw}px;top:${blast.sy-18}px">${l}</span>`; });
+  ["MAJ","MIN","7"].forEach((t,r)=>{ h+=`<span class="kfrow" style="left:${blast.sx-10}px;top:${blast.sy+(r+.5)*rh}px">${t}</span>`; });
+  for(let r=0;r<3;r++) for(let c=0;c<7;c++){
+    const shot=blast.shots.get(kfKey(c,r)), x=blast.sx+c*cw, y=blast.sy+r*rh;
+    h+=`<span class="kfcell${shot?" "+shot:""}" style="left:${x}px;top:${y}px;width:${cw}px;height:${rh}px"><small>${KF_COLS[c]}${KF_ROWS[r]}</small>${shot==="hit"?"<b>✹</b>":shot==="miss"?"<i>·</i>":""}</span>`;
+  }
+  // sunk ships show themselves, named for their key
+  for(const s of blast.ships){ if(!s.sunk && blast.phase!=="reveal") continue;
+    const rows=[...new Set(s.cells.map(c=>c[1]))];
+    rows.forEach(row=>{ const cs=s.cells.filter(c=>c[1]===row).map(c=>c[0]), c0=Math.min(...cs), c1=Math.max(...cs);
+      h+=`<span class="kfship${s.sunk?"":" afloat"}" style="left:${blast.sx+c0*cw+6}px;top:${blast.sy+row*rh+rh*.3}px;width:${(c1-c0+1)*cw-12}px;height:${rh*.4}px"></span>`; });
+    const [c,r]=s.cells[Math.floor(s.cells.length/2)], [x,y]=kfXY(c,r);
+    if(s.sunk) h+=`<span class="kfname" style="left:${x}px;top:${y+rh*.34}px">${s.name}</span>`;
+  }
+  blast.seaEl.innerHTML=h;
+  kfSide();
+}
+// the side panel: torpedoes, and what the last hit could mean
+function kfSide(){
+  if(!blast.sideEl) return;
+  const L=KF_LEVELS[blast.level||0], afloat=blast.ships.filter(s=>!s.sunk).length;
+  let h=`<div class="kftorps"><span>TORPEDOES</span><div>${"<i></i>".repeat(Math.max(0,blast.torps))}</div></div><p>SHIPS AFLOAT: ${afloat}</p>`;
+  if((L.hints || saved.beginner) && blast.lastHit && blast.phase==="play"){   // at the first levels, or with beginner mode on at any
+    const [hc,hr]=blast.lastHit, misses=[...blast.shots].filter(([k,v])=>v==="miss").map(([k])=>k);
+    const could=[...new Set(L.fleet.flatMap(k=>k==="key"?["major","minor"]:k==="any"?["major","minor","dominant"]:[k]))].flatMap(kfShapes).filter(sh=>sh.cells.some(([c,r])=>c===hc&&r===hr) && sh.cells.every(([c,r])=>!misses.includes(kfKey(c,r))));
+    if(could.length) h+=`<p class="kfcould">HIT ON ${KF_COLS[hc]}${KF_ROWS[hr]}. IT COULD BE PART OF:</p><ul>${[...new Set(could.map(s=>s.cells.map(([c,r])=>KF_COLS[c]+KF_ROWS[r]).join(" ")))].slice(0,5).map(n=>`<li>${n}</li>`).join("")}</ul>`;
+  }
+  const crippled=blast.ships.filter(s=>s.crippled && !s.sunk).length;
+  if(crippled && blast.phase==="play") h+=`<p class="kfcall blink">${crippled>1?crippled+" SHIPS":"A SHIP"} CRIPPLED: CALL ${crippled>1?"THEIR KEYS":"ITS KEY"}!</p>`;
+  h+=`<p class="kfhow">SINK A SHIP BY CALLING ITS KEY:${kfHarpOk()?"<br>· PLUCK ITS TONIC ON THE HARP":""}<br>· PLAY ITS V7 THEN I${canWrite()?"<br>· OR SET ITS KEY SIGNATURE":""}<br>A WRONG CALL COSTS A TORPEDO.</p>`;
+  blast.sideEl.innerHTML=h;
+}
+const kfHarpOk=()=> !!(KF_LEVELS[blast.level||0].harp || saved.beginner);
+function kfBar(){
+  if(!blast || blast.kind!=="fleet" || !blast.hud) return;
+  blast.hud.innerHTML=`<span>SCORE ${blast.score}${multTag()}</span><span class="lvl">LEVEL ${blast.level+1} · ${KF_LEVELS[blast.level].n.toUpperCase()}</span><span class="lives">${"♥".repeat(Math.max(0,blast.lives))||"-"}</span>`;
+}
+function kfMenu(over){
+  if(over && hsOffer(()=>kfMenu(true))) return;
+  const ov=document.createElement("div"); ov.className="overlay";
+  const best=saved.best.fleet||0;
+  if(over){
+    ov.innerHTML=`<h3 class="over">GAME OVER</h3><p>SCORE ${blast.score} · FLEETS SUNK ${blast.waves} · BEST ${best}</p>`;
+    const again=document.createElement("button"); again.className="go"; again.innerHTML=`PLAY AGAIN<small>from level ${blast.startLevel+1}</small>`;
+    again.onclick=()=>beginFleet(blast.startLevel); ov.appendChild(again);
+    sfx("over");
+  } else {
+    ov.innerHTML=`<h3>KEY FLEET</h3><p>THE ENEMY'S SHIPS ARE KEYS, HIDDEN ON THE CHORD CHART. THREE CHORDS SIDE BY SIDE IN A ROW ARE A KEY'S IV, I AND V: F C G IS C MAJOR.</p><p>FIRE BY PLAYING CHORDS. HITS CRIPPLE A SHIP; TO SINK IT, CALL ITS KEY: PLUCK ITS TONIC ON THE HARP, OR PLAY ITS V7 THEN I.</p><p>CALL A KEY BEFORE ALL ITS CHORDS ARE HIT FOR A BONUS. A WRONG CALL COSTS A TORPEDO.</p>`;
+    const how=document.createElement("button"); how.className="howto"; how.textContent="▶ HOW TO PLAY"; how.onclick=()=>kfDemo(); ov.appendChild(how);
+  }
+  const lp=document.createElement("p"); lp.className = over ? "" : "blink"; lp.textContent = over ? "OR START FROM" : "CHOOSE A LEVEL"; ov.appendChild(lp);
+  const lv=document.createElement("div"); lv.className="levels";
+  KF_LEVELS.forEach((L,i)=>{ const b=document.createElement("button"); b.innerHTML=`${i+1}<small>${L.n}</small>`; b.onclick=()=>beginFleet(i); lv.appendChild(b); });
+  ov.appendChild(lv);
+  if(!over && best){ const p=document.createElement("p"); p.textContent=`BEST ${best}`; ov.appendChild(p); }
+  if(!over) arcadeModNote(ov);
+  arcadeKeys(ov);
+  if(!over) arcadeCredit(ov);
+  if(over) hsGameOverLine(ov);
+  blast.field.appendChild(ov); blast.overlay=ov;
+  if(over) overTimeout(ov, ()=>kfMenu());
+  if(!over){ cabinet(ov); return; }
+}
+function beginFleet(level){
+  piano.start(); stopDemo(); clearTimeout(blast.attract); clearTimeout(blast.cabT);
+  if(blast.overlay){ blast.overlay.remove(); blast.overlay=null; }
+  Object.assign(blast,{score:0, lives:3, level, startLevel:level, waves:0, phase:"play", over:false, modFor:null});
+  saved.fleetStart=level; save();
+  stats.streak=0; scoreboard(); kfLayout();
+  cancelAnimationFrame(blast.raf); blast.last=performance.now(); blast.raf=requestAnimationFrame(kfTick);
+  kfWave();
+  banner(`LEVEL ${level+1}`, KF_LEVELS[level].n.toUpperCase());
+  sfx("start");
+}
+// a new fleet: the ships hidden, the sea clear, the torpedoes loaded
+function kfWave(){
+  const L=KF_LEVELS[blast.level];
+  blast.ships=kfFleet(L); blast.shots=new Map(); blast.lastHit=null; blast.busy=false; blast.phase="play"; clearTimeout(blast.pendingDom?.timer); blast.pendingDom=null;
+  blast.torps=Math.max(5, Math.round(L.torps*(1.15-(+saved.speed||0)*.07)));   // faster speeds, fewer torpedoes
+  kfBar(); kfDraw();
+}
+function kfTick(now){
+  if(!blast || blast.kind!=="fleet") return;
+  const dt=Math.min(.05,(now-blast.last)/1000); blast.last=now;
+  if(blast.fx) fxDraw(now, dt);
+  blast.raf=requestAnimationFrame(kfTick);
+}
+// a note from the harp: the tonic of the key being called
+function fleetNote(pc){
+  if(!blast || blast.kind!=="fleet") return;
+  if(blast.phase==="demo" && blast.demo){ endKfDemo(blast.demo); return; }
+  if(blast.phase!=="play" || blast.busy) return;
+  if(!kfHarpOk()){ heard(SHARP_NAMES[pc],false,"CALL IT WITH V7 THEN I"); return; }
+  kfCall(s=>pcOfName(s.tonic)===pc, SHARP_NAMES[pc]);
+}
+// a chord from the buttons: a torpedo at its place on the chart, or, a 7 chord followed by its I,
+// a cadence calling that key. A 7 chord waits a moment to see whether its I follows before it fires.
+const KF_CADENCE_WAIT=1400;
+function fleetChord(voices){
+  if(!blast || blast.kind!=="fleet") return;
+  const pend=blast.pendingDom;
+  if(pend && blast.phase==="play"){
+    const pitches=voices.map(v=>v.pitch), id=chordId(pitches);
+    if(id && ["","m"].includes(id.quality) && mod(id.root-pend.root,12)===5){   // down a fifth: V7 → I
+      clearTimeout(pend.timer); blast.pendingDom=null;
+      const f=devFifths(), tonic=spell(id.root,f), minor=id.quality==="m";
+      kfCall(s=>pcOfName(s.tonic)===id.root && s.minor===minor, `${pend.name} → ${chordName(pitches,f)}`);
+      return;
+    }
+    clearTimeout(pend.timer); blast.pendingDom=null; pend.fire();                  // not its I: the 7 chord fires after all
+  }
+  fleetShot(voices);
+}
+function fleetShot(voices){
+  if(!blast || blast.kind!=="fleet") return;
+  if(blast.phase==="demo" && blast.demo){ endKfDemo(blast.demo); return; }
+  if(blast.phase!=="play" || blast.busy) return;
+  const pitches=voices.map(v=>v.pitch), id=chordId(pitches); if(!id) return;
+  const f=devFifths(), root=spell(id.root, f), name=chordName(pitches, f), {li,acc}=parse(root);
+  const row = ["","6"].includes(id.quality) ? 0 : ["m","m6"].includes(id.quality) ? 1 : id.quality==="7" ? 2 : -1;
+  const col=KF_COLS.indexOf(root[0]);
+  if(row<0){ heard(name,false,"NOT ON THE CHART"); return; }
+  if(acc!==keyAcc(li,f)){ heard(name,false,"OFF THE CHART"); return; }      // the chart is the plain buttons
+  const k=kfKey(col,row);
+  if(row===2){                                                                   // a 7 chord: maybe the start of a cadence
+    const fire=()=>{ if(!blast || blast.kind!=="fleet" || blast.phase!=="play") return;
+      if(blast.shots.has(k)){ heard(name,false,"ALREADY FIRED THERE"); return; } heard(name,true); kfFire(col,row); };
+    heard(name,true,"…"); blast.pendingDom={root:id.root, name, fire, timer:setTimeout(()=>{ if(blast && blast.pendingDom){ blast.pendingDom=null; fire(); } }, KF_CADENCE_WAIT)};
+    return;
+  }
+  if(blast.shots.has(k)){ heard(name,false,"ALREADY FIRED THERE"); return; }
+  heard(name,true); kfFire(col,row);
+}
+function kfFire(col,row, quiet){
+  blast.busy=true; blast.torps--; kfSide();
+  const [x,y]=kfXY(col,row), P=PX;
+  sfx("shoot");
+  blast.fx.missiles.push({x0:x/P, y0:(blast.field.clientHeight-20)/P, x1:x/P, y1:y/P, t0:performance.now(), dur:320, hit:()=>kfLand(col,row,quiet)});
+}
+function kfLand(col,row,quiet){
+  if(!blast || blast.kind!=="fleet") return;
+  const k=kfKey(col,row), ship=blast.ships.find(s=>s.cells.some(([c,r])=>c===col&&r===row)), [x,y]=kfXY(col,row);
+  if(ship){
+    blast.shots.set(k,"hit"); ship.hits.add(k); blast.lastHit=[col,row];
+    explode(x,y,26,["#FF4B3E","#FF8A3D","#FFD35A"]); sfx("boom");
+    if(!quiet){ const pts=mulPts(10*(blast.level+1)); blast.score+=pts; popup(x,y-20,`HIT +${pts}`); }
+    if(ship.hits.size===ship.cells.length && !ship.crippled){
+      ship.crippled=true; blast.lastHit=null; sfx("key");
+      if(!quiet) banner("CRIPPLED!", "NOW CALL ITS KEY");
+    }
+  } else {
+    blast.shots.set(k,"miss"); explode(x,y,12,["#7FE9FF","#F1E8D2"]); sfx("miss");
+    blast.ships.filter(s=>!s.sunk && s.hits.size).forEach(s=>s.misses++);          // missing near a known ship spoils a perfect sink
+  }
+  blast.busy=false; kfBar(); kfDraw();
+  if(blast.phase!=="play") return;
+  if(blast.ships.every(s=>s.sunk)) return kfCleared();
+  if(blast.torps<=0 && blast.ships.some(s=>!s.sunk && !s.crippled)) return kfOut();   // crippled ones can still be called
+}
+// Calling a key: the ship of that key sinks, whether or not all its chords were hit. How the call
+// was made (the harp's tonic, a cadence, the key signature) decides what counts as a match.
+function kfCall(match, what, quiet){
+  if(!blast || blast.kind!=="fleet" || (blast.phase!=="play" && !quiet)) return false;
+  const ship=blast.ships.filter(s=>!s.sunk && match(s)).sort((a,b)=>b.hits.size-a.hits.size)[0];
+  if(!ship){
+    if(quiet) return false;
+    blast.torps--; heard(what,false,"NO SHIP IN THAT KEY"); sfx("miss"); buzz(blast.field,true); kfBar(); kfDraw();
+    if(blast.torps<=0 && !blast.ships.every(s=>s.sunk)) kfOut();
+    return false;
+  }
+  const unhit=ship.cells.length-ship.hits.size, clean=ship.misses===0;
+  ship.sunk=true; ship.cells.forEach(([c,r])=>{ blast.shots.set(kfKey(c,r),"hit"); ship.hits.add(kfKey(c,r)); });
+  const [c,r]=ship.cells[Math.floor(ship.cells.length/2)], [x,y]=kfXY(c,r);
+  explode(x,y,34,["#FF4B3E","#FFD35A","#F1E8D2"]); sfx("bonus"); banner(ship.name, ship.detail);
+  if(!quiet){
+    const pts=mulPts((50*ship.cells.length*(clean?2:1) + 40*unhit)*(blast.level+1)); blast.score+=pts;
+    heard(what,true);
+    setTimeout(()=>popup(x,y-44,`${unhit?"SUNK BY DEDUCTION":"SUNK"}${clean?" · PERFECT":""} +${pts}`,"#FFD35A"), 250);
+  }
+  blast.lastHit=null; kfBar(); kfDraw();
+  if(blast.phase==="play" && blast.ships.every(s=>s.sunk)) kfCleared();
+  return true;
+}
+const kfNameOf=(tonic,minor)=>`${tonic} ${minor?"MINOR":"MAJOR"}`;
+function kfCleared(){
+  const left=blast.torps, pts=mulPts(20*left*(blast.level+1)); blast.score+=pts; blast.waves++; stats.streak=blast.waves; scoreboard();
+  banner("FLEET SUNK!", left ? `${left} TORPEDOES LEFT · +${pts}` : ""); sfx("level");
+  blast.phase="pause";
+  setTimeout(()=>{ if(!blast || blast.kind!=="fleet") return;
+    if(blast.waves%2===0 && blast.level<KF_LEVELS.length-1){ blast.level++; banner(`LEVEL ${blast.level+1}`, KF_LEVELS[blast.level].n.toUpperCase()); }
+    kfWave(); }, 2200);
+}
+function kfOut(){
+  blast.phase="reveal"; kfDraw(); sfx("miss"); buzz(blast.field,true);
+  blast.lives--; kfBar(); banner("OUT OF TORPEDOES", blast.lives>0 ? `${blast.lives} ${blast.lives===1?"LIFE":"LIVES"} LEFT` : "");
+  setTimeout(()=>{ if(!blast || blast.kind!=="fleet") return;
+    if(blast.lives<=0){ blast.phase="over"; blast.over=true; const best=Math.max(saved.best.fleet||0, blast.score); saved.best.fleet=best; save(); kfMenu(true); return; }
+    kfWave(); }, 2600);
+}
+
+// ---------- Key Fleet's demo ----------
+function kfDemo(){
+  if(!blast || blast.kind!=="fleet") return;
+  stopDemo(); clearTimeout(blast.attract); piano.start();
+  if(blast.overlay) blast.overlay.hidden=true;
+  blast.phase="demo"; blast.level=0; kfLayout();
+  blast.ships=[{kind:"major", cells:[[0,0],[1,0],[2,0]], name:"C MAJOR", detail:"IV · I · V", hits:new Set(), sunk:false, misses:0},
+               {kind:"major", cells:[[4,0],[5,0],[6,0]], name:"E MAJOR", detail:"IV · I · V", hits:new Set(), sunk:false, misses:0}];
+  blast.shots=new Map(); blast.torps=9; blast.lastHit=null; kfDraw();
+  const el=document.createElement("div"); el.className="demo"; blast.field.appendChild(el); blast.field.classList.add("demoing");
+  const token={run:true, el}; blast.demo=token;
+  el.innerHTML=`<div class="demohead"><span class="demotag blink">DEMO</span><span class="demotitle"></span><button class="demoskip">SKIP ▶</button></div><p class="democap"></p>`;
+  el.querySelector(".demoskip").onclick=()=>endKfDemo(token);
+  const say=(t,c)=>{ el.querySelector(".demotitle").textContent=t||""; el.querySelector(".democap").textContent=c; };
+  const play=notes=>{ if(settings.sounds && piano.ctx){ const go=()=>piano.play(notes,{when:.02,dur:1}); piano.ctx.state==="running"?go():piano.ctx.resume().then(go).catch(()=>{}); } };
+  const CH={F:[53,57,60],C:[48,52,55],G:[55,59,62],D:[50,54,57],A:[57,61,64],E:[52,56,59],B:[59,63,66]};
+  sfx("attract");
+  (async()=>{
+    const sleep=ms=>new Promise(r=>setTimeout(r,ms)), step=async ms=>{ await sleep(ms); if(!token.run) throw 0; };
+    const fire=async (l)=>{ play(CH[l]); kfFire(KF_COLS.indexOf(l),0,true); await step(900); };
+    try{
+      say("KEY FLEET","THE CHART IS THE CHORD BUTTONS. THEIR COLUMNS RUN IN FIFTHS, SO A KEY'S CHORDS SIT SIDE BY SIDE."); await step(4400);
+      say("FIRE","PLAY A CHORD TO FIRE AT IT. G!"); await step(1400); await fire("G");
+      blast.phase="play"; blast.lastHit=[2,0]; kfSide(); blast.phase="demo"; kfSideDemo();
+      say("A HIT","G IS IN C MAJOR (F C G), G MAJOR (C G D) OR D MAJOR (G D A)."); await step(4200);
+      say("","TRY D. A MISS, SO IT'S NOT G OR D MAJOR: IT'S C MAJOR."); await fire("D"); await step(2400);
+      say("CALL IT","NO NEED TO HIT F AND C: CALL THE KEY. PLUCK C, ITS TONIC, ON THE HARP."); await step(2600); play([60]); kfCall(s=>s.tonic==="C",null,true); await step(2800);
+      say("OR A CADENCE","ANOTHER WAY TO CALL A KEY: ITS V7 THEN I. B7 THEN E CALLS E MAJOR."); await step(2600);
+      play([59,63,66,69]); await step(800); play([52,56,59]); kfCall(s=>s.tonic==="E",null,true); await step(2800);
+      say("READY?","SINK THE FLEET BEFORE THE TORPEDOES RUN OUT."); sfx("level"); await step(2600);
+      endKfDemo(token);
+    }catch(e){ /* skipped */ }
+  })();
+}
+// the demo shows the "could be" list too
+function kfSideDemo(){ const ph=blast.phase; blast.phase="play"; kfSide(); blast.phase=ph; }
+function endKfDemo(token){
+  if(!blast || blast.demo!==token) return;
+  stopDemo(); blast.phase="menu"; blast.ships=[]; blast.shots=new Map(); blast.lastHit=null; kfDraw();
   if(blast.overlay) blast.overlay.hidden=false;
   cabRestart();
 }
@@ -5086,6 +5451,11 @@ function fxPaintBackground(kind, W, H){
   } else if(kind==="snake"){
     g.fillStyle="#08100C"; g.fillRect(0,0,W,H);
     g.fillStyle="#1B3325"; for(let y=1;y<H;y+=4) for(let x=1;x<W;x+=4) g.fillRect(x,y,1,1);
+  } else if(kind==="fleet"){
+    // the sea at night: deep blue in bands, glints of light on the swell
+    const blues=["#06121F","#081628","#0A1A30","#071424"];
+    for(let y=0;y<H;y+=4){ g.fillStyle=blues[Math.floor(y/4)%blues.length]; g.fillRect(0,y,W,4); }
+    for(let i=0;i<W*H/120;i++){ g.fillStyle=rand()<.3?"#2A5A7A":"#12304A"; const x=Math.floor(rand()*W), y=Math.floor(rand()*H); g.fillRect(x,y,2+Math.floor(rand()*3),1); }
   } else if(kind==="chopper"){
     // the ground from the air: fields in patches, a river winding across, a few trees
     const greens=["#0F2A18","#12301C","#0C2414","#15361F"];
@@ -5231,11 +5601,11 @@ function blasterChord(voices){
   }
   blastBar();
 }
-const GENS={spell:genSpell, command:genCommand, snake:genSnake, asteroids:genAsteroids, stack:genStack, breakout:genBreakout, fifths:genFifths, chopper:genChopper, hidden:genHidden, oddone:genOddOne, shades:genShades, reshape:genReshape, blaster:genBlaster, diatonic:genDiatonic, numeral:genNumeral, staff:genStaff, slash:genSlash, key:genKey, harp:genHarp, missing:genMissing,
+const GENS={spell:genSpell, command:genCommand, snake:genSnake, asteroids:genAsteroids, stack:genStack, breakout:genBreakout, fifths:genFifths, chopper:genChopper, fleet:genFleet, hidden:genHidden, oddone:genOddOne, shades:genShades, reshape:genReshape, blaster:genBlaster, diatonic:genDiatonic, numeral:genNumeral, staff:genStaff, slash:genSlash, key:genKey, harp:genHarp, missing:genMissing,
   melody:()=>genMelody(false), solfa:()=>genMelody(true), chordscale:genChordScale, smooth:genSmooth, whichvoice:genWhichVoice, simon:genSimon, directions:genDirections, pluckchord:genPluckChord, buildscale:genBuildScale,
   scale:genScale, transpose:genTranspose, temper:genTemper, tune:genTune};
 const MYSTERY=new Set(["scale","transpose","temper","tune"]);
-const LABELS={spell:"Spell it", hidden:"Hidden layout", oddone:"Odd one out", shades:"Shades of the third", reshape:"Reshape", blaster:"Chord Invaders", command:"Harp Command", snake:"Chord Snake", asteroids:"Chord Asteroids", stack:"Chord Stack", breakout:"Chord Breakout", fifths:"Fifths Defender", chopper:"Chopper Rescue", diatonic:"Seven chords", numeral:"Numerals", staff:"On the staff", slash:"Slash chords", key:"Key detective", harp:"Harp hunt", missing:"Missing note", mix:"Mix",
+const LABELS={spell:"Spell it", hidden:"Hidden layout", oddone:"Odd one out", shades:"Shades of the third", reshape:"Reshape", blaster:"Chord Invaders", command:"Harp Command", snake:"Chord Snake", asteroids:"Chord Asteroids", stack:"Chord Stack", breakout:"Chord Breakout", fifths:"Fifths Defender", chopper:"Chopper Rescue", fleet:"Key Fleet", diatonic:"Seven chords", numeral:"Numerals", staff:"On the staff", slash:"Slash chords", key:"Key detective", harp:"Harp hunt", missing:"Missing note", mix:"Mix",
   melody:"Play by number", solfa:"Play by solfège", chordscale:"Chord scales", smooth:"Smooth moves", whichvoice:"Which voice moved?", simon:"Simon says", directions:"Follow the directions", pluckchord:"Pluck the chord", buildscale:"Build the scale",
   scale:"Scale detective", transpose:"Transpose detective", temper:"Temperament taster", tune:"Tune up"};
 
@@ -5297,7 +5667,7 @@ if(!LABELS[settings.mode]) settings.mode="spell";
 // A link can open one game directly, ?game=invaders (or any game's name, like ?game=reshape),
 // and ?solo shows that game on its own, without the menu, the settings or the answer area.
 const urlParams=new URLSearchParams(location.search);
-const GAME_SLUGS={invaders:"blaster", "chord-invaders":"blaster", "harp-command":"command", harpcommand:"command", "chord-snake":"snake", "chord-asteroids":"asteroids", asteroids:"asteroids", "chord-stack":"stack", "chord-breakout":"breakout", breakout:"breakout", "fifths-defender":"fifths", fifths:"fifths", "chopper-rescue":"chopper", chopper:"chopper", sevenchords:"diatonic", layout:"hidden"};
+const GAME_SLUGS={invaders:"blaster", "chord-invaders":"blaster", "harp-command":"command", harpcommand:"command", "chord-snake":"snake", "chord-asteroids":"asteroids", asteroids:"asteroids", "chord-stack":"stack", "chord-breakout":"breakout", breakout:"breakout", "fifths-defender":"fifths", fifths:"fifths", "chopper-rescue":"chopper", chopper:"chopper", "key-fleet":"fleet", fleet:"fleet", sevenchords:"diatonic", layout:"hidden"};
 { const g=(urlParams.get("game")||"").toLowerCase(), k=GAME_SLUGS[g]||g; if(LABELS[k]) settings.mode=k; }
 const solo=urlParams.has("solo") && LABELS[settings.mode] && !!urlParams.get("game");
 if(!SETS[settings.set] || settings.set==="alt") settings.set="standard";
@@ -5533,6 +5903,7 @@ function nextQuestion(){
   if(q.kind==="breakout") startBreakout();
   if(q.kind==="fifths") startFifths();
   if(q.kind==="chopper") startChopper();
+  if(q.kind==="fleet") startFleet();
   if(q.kind==="simon") setTimeout(simonPlay,700);
 }
 function feedback(text,kind="",small=""){ const f=$("feedback"); f.className="feedback "+kind; f.textContent=text; if(small){ const s=document.createElement("small"); s.textContent=small; f.appendChild(s); } }
@@ -5641,6 +6012,7 @@ function answerChord(voices){
   if(q.answer.type==="breakout") return breakoutChord(voices);
   if(q.answer.type==="fifths") return fifthsChord(voices);
   if(q.answer.type==="chopper") return chopperChord(voices);
+  if(q.answer.type==="fleet") return fleetChord(voices);
   if(q.answer.type==="diatonic") return answerDiatonic(voices);
   if(q.answer.type==="reshape") return answerReshape(voices);
   if(q.answer.type==="alt") return answerAltChord(voices);
@@ -5679,6 +6051,7 @@ function answerNote(pc, pickedName){
   if(q && q.kind==="asteroids") return asteroidsNote(pc);
   if(q && q.kind==="stack") return stackHarp(pc);
   if(q && q.kind==="fifths") return fifthsNote(pc);
+  if(q && q.kind==="fleet") return fleetNote(pc);
   if(!q || solved) return;
   if(q.answer.type==="note" && pc===q.answer.pc && pickedName && q.answer.name && pickedName!==q.answer.name)
     return correct(`Right note: ${q.answer.name}. Here it's spelled ${q.answer.name}, not ${pickedName}.`);
@@ -5844,7 +6217,7 @@ async function startTones(){
   if(!canWrite()){ tones.sim=make((tuneState.secret+tuneState.nudge)/10,.1,settings.tuneWave); tones.push(tones.sim); }   // no minichord: simulate it
 }
 function buildSpecial(){
-  const box=$("special"); box.innerHTML=""; box.hidden = !(q && ["tune","melody","smooth","simon","directions","pluckchord","buildscale","blaster","command","snake","asteroids","stack","breakout","fifths","chopper","diatonic","reshape","hidden","oddone","shades"].includes(q.kind)); if(box.hidden) return;
+  const box=$("special"); box.innerHTML=""; box.hidden = !(q && ["tune","melody","smooth","simon","directions","pluckchord","buildscale","blaster","command","snake","asteroids","stack","breakout","fifths","chopper","fleet","diatonic","reshape","hidden","oddone","shades"].includes(q.kind)); if(box.hidden) return;
   if(q.kind==="command"){ buildCommandField(box); return; }
   if(q.kind==="snake"){ buildSnakeField(box); return; }
   if(q.kind==="asteroids"){ buildAsteroidsField(box); return; }
@@ -5852,6 +6225,7 @@ function buildSpecial(){
   if(q.kind==="breakout"){ buildBreakoutField(box); return; }
   if(q.kind==="fifths"){ buildFifthsField(box); return; }
   if(q.kind==="chopper"){ buildChopperField(box); return; }
+  if(q.kind==="fleet"){ buildFleetField(box); return; }
   if(q.kind==="blaster"){
     const field=document.createElement("div"); field.className="field arcade"; field.setAttribute("aria-label","Falling chords");
     const ground=document.createElement("div"); ground.className="ground"; field.appendChild(ground);
@@ -5963,7 +6337,7 @@ function setMode(m){
   $("nowPlaying").textContent = `Playing: ${LABELS[m]||m}`;
   settings.mode=m; save();
   document.querySelectorAll(".modes button[data-mode]").forEach(x=>x.setAttribute("aria-pressed",x.dataset.mode===m));
-  $("sprint").disabled = MYSTERY.has(m) || m==="blaster" || m==="command" || m==="snake" || m==="asteroids" || m==="stack" || m==="breakout" || m==="fifths" || m==="chopper";
+  $("sprint").disabled = MYSTERY.has(m) || m==="blaster" || m==="command" || m==="snake" || m==="asteroids" || m==="stack" || m==="breakout" || m==="fifths" || m==="chopper" || m==="fleet";
   stats.streak=0; scoreboard(); nextQuestion();
   if(switching){
     const back=restoreExcept(new Set([...(q.needs||[]).map(n=>n.addr), ...(q.borrows||[]), ...roundBorrows, 31]));   // keep what the new game uses
@@ -5973,7 +6347,7 @@ function setMode(m){
   }
 }
 document.querySelectorAll(".modes button[data-mode]").forEach(b=>{ b.setAttribute("aria-pressed", b.dataset.mode===settings.mode); b.onclick=()=>setMode(b.dataset.mode); });
-$("sprint").disabled = MYSTERY.has(settings.mode) || settings.mode==="blaster" || settings.mode==="command" || settings.mode==="snake" || settings.mode==="asteroids" || settings.mode==="stack" || settings.mode==="breakout" || settings.mode==="fifths" || settings.mode==="chopper";
+$("sprint").disabled = MYSTERY.has(settings.mode) || settings.mode==="blaster" || settings.mode==="command" || settings.mode==="snake" || settings.mode==="asteroids" || settings.mode==="stack" || settings.mode==="breakout" || settings.mode==="fifths" || settings.mode==="chopper" || settings.mode==="fleet";
 $("nowPlaying").textContent = `Playing: ${LABELS[settings.mode]||settings.mode}`;
 for(const [id,key] of [["gameMenu","menuOpen"]]){
   const d=$(id); if(saved[key]===false) d.open=false;
@@ -6031,6 +6405,7 @@ mc.addEventListener("device", ()=>{
   else if(blast && blast.kind==="breakout") boDevice();
   else if(blast && blast.kind==="fifths") fdDevice();
   else if(blast && blast.kind==="chopper") chDevice();
+  else if(blast && blast.kind==="fleet") kfDevice();
   else if(blast){ blastSetup(); if(blast.phase!=="play") blastHomeKey(); blastKey(); }
   if(q && !solved && !rebuilding) applyNeeds();
   mine(); needs();
@@ -6051,7 +6426,7 @@ mc.addEventListener("ports", ()=>{
 });
 $("input").onchange=e=>mc.selectInput(e.target.value);
 $("connect").onclick=async e=>{ e.target.disabled=true; piano.start(); if(await mc.connect()) e.target.textContent="Connected"; else e.target.disabled=false; };
-window.__sb={get q(){ return q; }, get arcade(){ return blast; }, get snakeReady(){ return snReady(); }, get stackReady(){ return stReadyRows(); }, stackDraw:()=>stDraw(), kmControl:pc=>kmControl(pc), next:nextQuestion,
+window.__sb={get q(){ return q; }, get arcade(){ return blast; }, get snakeReady(){ return snReady(); }, get stackReady(){ return stReadyRows(); }, stackDraw:()=>stDraw(), kfWave:()=>kfWave(), kmControl:pc=>kmControl(pc), next:nextQuestion,
   draw:(r,qq)=>{ const t=spellChord(r,qq); if(!t) return null; FORM_STEPS=FORM[qq].map(f=>f[0]); $("staff").removeAttribute("hidden"); drawStaff(t); return t; },
   get smooth(){ return smooth; }, get simon(){ return simon; }, get dirs(){ return dirs; }, pcOf:pcOfName, answerChord, answerNote, answerKey, answerChoice, borrowed, restoreAll, pressRoot, get tune(){ return tuneState; }};
 $("prompt").textContent="Press Start";

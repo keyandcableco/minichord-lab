@@ -4,17 +4,17 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Minichord Arcade</title>
-<meta name="description" content="Eight arcade games played on the minichord itself: shoot down chords, command the harp, steer a snake, crack chord asteroids, stack intervals, break out, defend the circle of fifths and fly rescue missions. Free, in the browser, from Minichord Lab.">
+<meta name="description" content="Nine arcade games played on the minichord itself: shoot down chords, command the harp, steer a snake, crack chord asteroids, stack intervals, break out, defend the circle of fifths, fly rescue missions and hunt a fleet of keys. Free, in the browser, from Minichord Lab.">
 <!-- the card a link to this page unfurls into -->
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Minichord Lab">
 <meta property="og:title" content="Minichord Arcade">
-<meta property="og:description" content="Eight arcade games played on the minichord itself. Free, in the browser.">
+<meta property="og:description" content="Nine arcade games played on the minichord itself. Free, in the browser.">
 <meta property="og:url" content="https://chordlab.keyandcable.com/arcade/">
 <meta property="og:image" content="https://chordlab.keyandcable.com/arcade/card.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="MINICHORD ARCADE in a neon marquee above eight arcade screens">
+<meta property="og:image:alt" content="MINICHORD ARCADE in a neon marquee above nine arcade screens">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="https://chordlab.keyandcable.com/arcade/card.png">
 <link rel="icon" href="../core/logo.svg" type="image/svg+xml">
@@ -104,7 +104,7 @@ footer a{color:var(--gold);text-decoration:none;border-bottom:2px solid rgba(255
   <header class="marquee">
     <div class="bulbs" aria-hidden="true"></div><div class="bulbs side" aria-hidden="true"></div>
     <h1><small>KEY &amp; CABLE PRESENTS</small>MINICHORD<br>ARCADE</h1>
-    <p>EIGHT GAMES, PLAYED ON THE MINICHORD ITSELF</p>
+    <p>NINE GAMES, PLAYED ON THE MINICHORD ITSELF</p>
     <div class="insert" aria-hidden="true">
       <svg viewBox="0 0 17 10" shape-rendering="crispEdges"><path fill="#FFD35A" d="M0 3h9v4H0zM9 2h2v6H9zM11 3h4v1h-4zM11 6h4v1h-4zM15 3h1v1h-1zM15 6h1v1h-1z"/></svg>
       INSERT MINICHORD
@@ -145,6 +145,7 @@ const GAMES=[
   {slug:"chord-breakout", path:"chord-breakout", name:"CHORD BREAKOUT", plays:["KNOB","CHORDS"], pitch:"Arkanoid with chords: steer with a knob, crack a brick, and play its chord before the ball comes back."},
   {slug:"fifths-defender", path:"fifths-defender", name:"FIFTHS DEFENDER", plays:["KNOB","CHORDS","HARP"], pitch:"Tempest on the circle of fifths: turn a knob to aim down a key and play its chord to fire."},
   {slug:"chopper-rescue", path:"chopper-rescue", name:"CHOPPER RESCUE", plays:["CHORDS"], pitch:"Decode the radio: \"survivors at vi in G\" is Em. Play the chord to fly there before the flare burns out."},
+  {slug:"key-fleet", path:"key-fleet", name:"KEY FLEET", plays:["CHORDS"], pitch:"Battleship on the chord buttons: the ships are keys, three chords side by side. Fire chords and deduce the keys."},
 ];
 
 const grid=document.getElementById("games");
