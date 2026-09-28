@@ -284,7 +284,7 @@
 .helper.hharp .hstring{display:flex;align-items:center;justify-content:center;font:400 .45rem "Minichord Lab Accidentals","Press Start 2P",monospace;color:#9A93B5;border:1px solid #2E2A40;background:#0E0C14}
 .helper.hharp .hstring.lit{background:#FFD35A;color:#16132A;border-color:#FFF4C2;box-shadow:0 0 10px rgba(255,211,90,.9)}
 .helper.hharp small{position:absolute;bottom:-18px;left:0;right:0;text-align:center;font:400 .4rem "Press Start 2P",monospace;color:#9A93B5}
-.field.demoing .helper.hboard.helper-blaster,.field.demoing .helper.hboard.helper-snake,.field.demoing .helper.hboard.helper-stack{display:none}
+.field.demoing .helper.hboard.helper-blaster{display:none}
 
 /* the keymaster's plate: black, leaning, twelve white notes */
 .kmplate{aspect-ratio:266/602}
@@ -343,6 +343,12 @@
 .hsboard li.me b{color:#7FE9FF}
 @keyframes hsin{from{opacity:0;transform:translateX(-20px)}}
 .overlay p.hsresult{color:#7FE9FF!important;font-size:.6rem!important}
+
+/* the controller on the minichord's own harp: glyphs on the strip or the plate, flashing when touched */
+.helper .board .hbpad span{font-size:.36rem;color:#CFC3A6}
+.helper .board .hbpad span.km-A,.helper .board .hbpad span.km-B,.helper .board .kmplate .kdot.km-A,.helper .board .kmplate .kdot.km-B{color:#FFD35A}
+.helper .board .hbpad span.hit,.helper .board .kmplate .kdot.hit{animation:kmhit .25s ease-out}
+.helper .board .hbpad span.demo-on,.helper .board .kmplate .kdot.demo-on{background:#FFD35A;color:#16132A;box-shadow:0 0 10px rgba(255,211,90,.95)}
 /* the demo's pixel minichord */
 .overlay button.howto{border-color:#FFD35A;color:#FFD35A}
 .demo{position:absolute;inset:0;z-index:5;display:flex;flex-direction:column;justify-content:flex-start;padding:10px 14px;pointer-events:none}
@@ -362,6 +368,8 @@
 .demo .pre{font-size:.45rem;border-radius:0}
 .demo .led{border-radius:50%;background:#FF4B3E;box-shadow:0 0 6px #FF4B3E}
 .demo .led.blinking{animation:blink .3s steps(2) infinite}
+.demo .rowtag.undermod{transform:translate(-50%,0);text-align:center;line-height:1.5}   /* under the modifier */
+.demo .rowtag{font-size:.42rem!important}
 .demo .rowtag{font:400 .38rem "Minichord Lab Accidentals","Press Start 2P",monospace;color:#CFC3A6;white-space:nowrap;text-align:right;transform:translate(-100%,-50%)}
 .demo .lit{background:#FFD35A!important;color:#16132A!important;border-color:#FFF4C2!important;box-shadow:0 0 10px rgba(255,211,90,.8)}
 .demo .slashlit{background:#7FE9FF!important;color:#16132A!important;border-color:#E0FBFF!important;box-shadow:0 0 10px rgba(127,233,255,.8)}
@@ -1899,6 +1907,14 @@ function kmStrip(field){
   }
   field.appendChild(el); return el;
 }
+// the harp layout changed: draw the controller beside the field again, and the minichord's with it
+function kmRestrip(){
+  if(!blast || !blast.field) return;
+  (blast.stripOrig||blast.strip)?.remove(); blast.stripOrig=null;
+  blast.strip=kmStrip(blast.field);
+  if(blast.kind==="snake"){ snLayout(); snDraw(); }
+  helperSync(true);
+}
 function kmFlash(strip, pc){ if(!strip) return; const c=strip.querySelector(`[data-pc="${mod(pc,12)}"]`); if(!c) return; c.classList.remove("hit"); void c.offsetWidth; c.classList.add("hit"); }
 // set the harp up as a controller: chromatic, first rank, untransposed, and as loud as the player chose
 // A preset's harp shuffling (address 40) swaps strings round, so the section you touch plays another
@@ -2012,7 +2028,7 @@ function snMenu(over){
     r.append(l,g); ov.appendChild(r); };
   row("SPEED", SPEEDS.map(x=>x[0].toUpperCase()), ()=>+saved.speed||0, i=>{ saved.speed=i; save(); });
   row("HARP", ["STANDARD STRIP","KEYMASTER GRID"], ()=>saved.harpLayout==="keymaster"?1:0, i=>{ saved.harpLayout = i ? "keymaster" : "strip"; save();
-    if(blast && blast.strip){ blast.strip.remove(); blast.strip=kmStrip(blast.field); snLayout(); snDraw(); } });
+    kmRestrip(); });
   row("HARP SOUND", ["NORMAL","QUIET","OFF"], ()=>saved.harpSound??1, i=>{ saved.harpSound=i; save(); if(blast && blast.setupDone) kmHarp(); });
   const lp=document.createElement("p"); lp.className = over ? "" : "blink"; lp.textContent = over ? "OR START FROM" : "CHOOSE A LEVEL"; ov.appendChild(lp);
   const lv=document.createElement("div"); lv.className="levels";
@@ -2666,7 +2682,7 @@ function stMenu(over){
     r.append(l,g); ov.appendChild(r); };
   row("SPEED", SPEEDS.map(x=>x[0].toUpperCase()), ()=>+saved.speed||0, i=>{ saved.speed=i; save(); });
   row("HARP", ["STANDARD STRIP","KEYMASTER GRID"], ()=>saved.harpLayout==="keymaster"?1:0, i=>{ saved.harpLayout = i ? "keymaster" : "strip"; save();
-    if(blast && blast.strip){ blast.strip.remove(); blast.strip=kmStrip(blast.field); } });
+    kmRestrip(); });
   row("HARP SOUND", ["NORMAL","QUIET","OFF"], ()=>saved.harpSound??1, i=>{ saved.harpSound=i; save(); if(blast && blast.setupDone) kmHarp(); });
   const lp=document.createElement("p"); lp.className = over ? "" : "blink"; lp.textContent = over ? "OR START FROM" : "CHOOSE A LEVEL"; ov.appendChild(lp);
   const lv=document.createElement("div"); lv.className="levels";
@@ -3064,9 +3080,15 @@ function beginnerRow(opts){
 function helperSync(rebuild){
   if(!blast || !blast.field) return;
   const k=cabKind(), want=!!saved.beginner;
-  if(rebuild || !want){ blast.helpBoard?.el.remove(); blast.helpHarp?.el.remove(); blast.helpBoard=null; blast.helpHarp=null; blast.helpKey=null; }
+  if(rebuild || !want){
+    if(blast.stripOrig){ blast.stripOrig.style.display=""; blast.strip=blast.stripOrig; blast.stripOrig=null; }   // the controller beside the field comes back
+    blast.helpBoard?.el.remove(); blast.helpHarp?.el.remove(); blast.helpBoard=null; blast.helpHarp=null; blast.helpKey=null;
+  }
   if(!want) return;
   if(helpUsesChords(k) && !blast.helpBoard){ blast.helpBoard=helperBoard(k); blast.field.appendChild(blast.helpBoard.el); }
+  if(blast.helpBoard && blast.helpBoard.pad && blast.strip && blast.strip!==blast.helpBoard.pad){   // the minichord's harp is the controller now
+    blast.stripOrig=blast.strip; blast.stripOrig.style.display="none"; blast.strip=blast.helpBoard.pad;
+  }
   if(blast.helpBoard && blast.helpBoard.strings){                         // a harp on the minichord itself: no separate one
     if(!blast.helpHarp) blast.helpHarp={el:{remove(){}}, cells:blast.helpBoard.strings, names:blast.helpBoard.names};
   } else if(helpUsesHarp(k) && !blast.helpHarp){ blast.helpHarp=helperHarp(k); blast.field.appendChild(blast.helpHarp.el); }
@@ -3083,6 +3105,21 @@ function helperBoard(k){
   // Chord Asteroids plays both halves of the instrument, so its minichord carries its own harp,
   // lit on the case itself: the strip in the harp's slot, or the keymaster plate where it mounts
   let strings=null, names=null;
+  // Chord Snake and Chord Stack steer on the harp: their minichord's harp is the controller itself,
+  // each note marked with what it does and flashing as it's touched, in place of the one beside the field
+  let pad=null;
+  if(k==="snake" || k==="stack"){
+    const board=el.querySelector(".board"), L=kmLayout();
+    if(L.cols===3){
+      const cover=document.createElement("div"); cover.className="hbcover"; place(cover, MC_HARP.slot); board.appendChild(cover);
+      pad=document.createElement("div"); place(pad, MC_HARP.plate); board.appendChild(pad);
+      kmPlate(pad, sI=>KM_GLYPH[L.byString[sI]]).forEach((d,sI)=>{ const z=L.byString[sI]; d.classList.add("km",`km-${z}`); d.dataset.zone=z; });
+      pad.classList.add("onboard");
+    } else {
+      pad=document.createElement("div"); pad.className="hbstrip hbpad"; place(pad, MC_HARP.strip); board.appendChild(pad);
+      L.drawOrder.forEach(pc=>{ const z=L.byString[pc], c=document.createElement("span"); c.className=`km km-${z}`; c.dataset.zone=z; c.dataset.pc=pc; c.textContent=KM_GLYPH[z]; pad.appendChild(c); });
+    }
+  }
   if(k==="asteroids" || k==="fifths"){
     const board=el.querySelector(".board"), nameOf=i=>SHARP_NAMES[i];
     if(saved.harpLayout==="keymaster"){
@@ -3095,7 +3132,7 @@ function helperBoard(k){
     }
     names=()=>{};
   }
-  return {el, cells, mod:el.querySelector(".mod"), labels, strings, names};
+  return {el, cells, mod:el.querySelector(".mod"), labels, strings, names, pad};
 }
 // where the harp sits on the case, as percentages of its outline: the strip in its slot; and the
 // keymaster plate, centred over the slot, clear of the light on its left and the pots on its right,
@@ -3998,14 +4035,17 @@ function runDemo(attract){
   const cells=[];
   // each part placed where it sits on the case, from the minichord's outline, as percentages of it
   const place=(el,[x,y,w,h])=>{ el.style.left=x+"%"; el.style.top=y+"%"; el.style.width=w+"%"; el.style.height=h+"%"; };
-  place(el.querySelector(".mod"), MC_PARTS.mod);
+  const MOD_UP=[MC_PARTS.mod[0], MC_PARTS.mod[1]-2.6, MC_PARTS.mod[2], MC_PARTS.mod[3]];   // a touch higher, for balance
+  place(el.querySelector(".mod"), MOD_UP);
   el.querySelectorAll(".pre").forEach((p,i)=>place(p, MC_PARTS.presets[i]));
   place(el.querySelector(".led"), MC_PARTS.led);
   DEMO_ROWS.forEach(([tag],r)=>{ const t=document.createElement("span"); t.className="rowtag"; t.textContent=tag;
-    const first=MC_PARTS.buttons[r*7], leftmost = r===0 ? MC_PARTS.mod[0] : first[0];   // the top row's tag goes left of the modifier
-    t.style.left=(leftmost-.8)+"%"; t.style.top=(first[1]+first[3]/2)+"%"; grid.appendChild(t);
+    const first=MC_PARTS.buttons[r*7];
+    if(r===0){ t.classList.add("undermod"); t.style.left=(MOD_UP[0]+MOD_UP[2]/2)+"%"; t.style.top=(MOD_UP[1]+MOD_UP[3]+1.4)+"%"; }   // the top row's tag sits under the modifier
+    else { t.style.left=(first[0]-.8)+"%"; t.style.top=(first[1]+first[3]/2)+"%"; }
+    grid.appendChild(t);
     DEMO_COLS.forEach((c,ci)=>{ const b=document.createElement("div"); b.className="cell"; place(b, MC_PARTS.buttons[r*7+ci]); (cells[ci]||=[])[r]=b; grid.appendChild(b); }); });
-  const label=keyMode=>{ DEMO_ROWS.forEach(([tag,suf],r)=>{ grid.children[r*8].textContent = keyMode ? ["♯ KEYS","♮ KEYS","♭ KEYS"][r] : tag;
+  const label=keyMode=>{ DEMO_ROWS.forEach(([tag,suf],r)=>{ grid.children[r*8].innerHTML = keyMode ? ["♯<br>KEYS","♮ KEYS","♭ KEYS"][r] : tag;   // under the modifier, KEYS beneath its ♯
     DEMO_COLS.forEach((c,ci)=>cells[ci][r].textContent = keyMode ? c+["♯","","♭"][r] : c+suf); }); };
   label(false);
   const $d=s=>el.querySelector(s), sleep=ms=>new Promise(r=>setTimeout(r,ms));
