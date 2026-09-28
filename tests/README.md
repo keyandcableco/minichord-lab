@@ -1,0 +1,29 @@
+# Tests
+
+Headless tests for Minichord Lab's arcade games. Each loads a game's page into
+[jsdom](https://github.com/jsdom/jsdom) with a stand-in minichord (it remembers the settings a game
+writes and answers requests for its settings), then plays it: chords, harp notes, knob turns and
+key presses, checking what should happen.
+
+    cd tests
+    npm install        # once: jsdom
+    npm test           # every test, about four minutes
+    npm test -- fleet  # only the tests whose names contain "fleet"
+
+| Test | What it checks |
+|---|---|
+| `pages` | every game opens on its own page in the arcade's dress, its title loop running |
+| `invaders` | falling chords are shot by playing them; setting the key a key bar asks for scores |
+| `harp-command` | falling notes are shot by their strings; a wrong string freezes; settings given back |
+| `chord-snake` | the snake eats notes and cashes chords in; the harp steers |
+| `chord-asteroids` | rocks crack by their chords and notes are shot on the harp |
+| `chord-stack` | pieces slide by keys, harp and knob; a chord clears its row; the stack rises |
+| `chord-breakout` | the knob steers (only the chosen one, without wobble or the mouse); the ball bounces true; chords break bricks |
+| `fifths-defender` | the knob's centred, endless dial; the aimed key's chord fires, another doesn't |
+| `chopper-rescue` | the radio decodes right; decoys; no repeated calls; nothing on the map gives it away |
+| `key-fleet` | fleets never touch; hits cripple; keys are called by tonic, cadence and the key change combo |
+| `high-scores` | GAME OVER before the initials; input ignored at first; the board kept; beginner mode stays off it |
+| `lobby` | the arcade lobby's cabinets, best scores and ticker |
+
+The harness (`arcade/harness.js`) loads `practice/index.html`, where the games live, and uses the
+page's test hooks (`window.__sb`).

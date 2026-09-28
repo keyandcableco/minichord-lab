@@ -4924,13 +4924,14 @@ function fleetShot(voices){
   if(row<0){ heard(name,false,"NOT ON THE CHART"); return; }
   if(acc!==keyAcc(li,f)){ heard(name,false,"OFF THE CHART"); return; }      // the chart is the plain buttons
   const k=kfKey(col,row);
-  if(blast.islands && blast.islands.has(k)){ heard(name,false,"ROCKS: NO SHIP THERE"); return; }
-  if(row===2){                                                                   // a 7 chord: maybe the start of a cadence
-    const fire=()=>{ if(!blast || blast.kind!=="fleet" || blast.phase!=="play") return;
+  if(row===2){                                                                   // a 7 chord: maybe the start of a cadence,
+    const fire=()=>{ if(!blast || blast.kind!=="fleet" || blast.phase!=="play") return;   // whatever its own cell holds
+      if(blast.islands && blast.islands.has(k)){ heard(name,false,"ROCKS: NO SHIP THERE"); return; }
       if(blast.shots.has(k)){ heard(name,false,"ALREADY FIRED THERE"); return; } heard(name,true); kfFire(col,row); };
     heard(name,true,"…"); blast.pendingDom={root:id.root, name, fire, timer:setTimeout(()=>{ if(blast && blast.pendingDom){ blast.pendingDom=null; fire(); } }, KF_CADENCE_WAIT)};
     return;
   }
+  if(blast.islands && blast.islands.has(k)){ heard(name,false,"ROCKS: NO SHIP THERE"); return; }
   if(blast.shots.has(k)){ heard(name,false,"ALREADY FIRED THERE"); return; }
   heard(name,true); kfFire(col,row);
 }

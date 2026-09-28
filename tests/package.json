@@ -1,0 +1,11 @@
+{
+  "name": "minichord-lab-tests",
+  "private": true,
+  "description": "Headless tests for Minichord Lab's arcade games",
+  "scripts": {
+    "test": "node arcade/run.js"
+  },
+  "devDependencies": {
+    "jsdom": "^24.1.0"
+  }
+}
