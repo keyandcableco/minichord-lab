@@ -1,17 +1,19 @@
 // The harness for the arcade's headless tests. It loads the Practice Room page (practice/index.html,
-// where the games live) into jsdom, as a game's own page would open it (?game=<slug>&solo), with the
-// core modules inlined, a stand-in for the browser's audio, and a stand-in minichord that answers
-// setting writes and dump requests. Each test file drives one game through it and reports checks.
+// where the games play) into jsdom, as a game's own page would open it (?game=<slug>&solo): its
+// scripts one by one in the page's order, sharing one scope as they do in a browser, with the core
+// modules put on window as practice/boot.js does, a stand-in for the browser's audio, and a stand-in
+// minichord that answers setting writes and dump requests. Each test drives one game and reports.
 const fs=require("fs"), path=require("path");
 const {JSDOM}=require("jsdom");
 const ROOT=path.resolve(__dirname,"../..");
 
 function load(slug, {storage}={}){
   const html=fs.readFileSync(path.join(ROOT,"practice/index.html"),"utf8");
-  const page=html.slice(html.indexOf('<script type="module">')+22, html.lastIndexOf("</script>")).replace(/^import .*$/mg,"");
-  const body=html.slice(html.indexOf("<body>")+6, html.indexOf('<script type="module">'));
+  const first=html.indexOf('<script type="module"'), body=html.slice(html.indexOf("<body>")+6, first);
+  // the page's own scripts, in its order (boot.js, a module, is stood in for below)
+  const scripts=[...html.slice(first).matchAll(/<script defer src="([^"]+)"><\/script>/g)].map(m=>path.resolve(ROOT,"practice",m[1]));
   const dom=new JSDOM(`<!doctype html><html><body>${body}</body></html>`,
-    {runScripts:"outside-only", pretendToBeVisual:true, url:`http://localhost/practice/?game=${slug}&solo`});
+    {runScripts:"dangerously", pretendToBeVisual:true, url: slug ? `http://localhost/practice/?game=${slug}&solo` : `http://localhost/practice/`});
   const w=dom.window;
   if(storage) w.localStorage.setItem("lab-spellbound", JSON.stringify(storage));
   w.SCORES_HOST="";                                   // no shared board: the local one
@@ -40,7 +42,12 @@ function load(slug, {storage}={}){
   // the field has a size (jsdom lays nothing out)
   Object.defineProperty(w.HTMLElement.prototype,"clientWidth",{get(){ return this.classList && this.classList.contains("field") ? 900 : 0; }});
   Object.defineProperty(w.HTMLElement.prototype,"clientHeight",{get(){ return this.classList && this.classList.contains("field") ? 420 : 0; }});
-  w.eval(["theory.js","temperaments.js","sound.js","minichord.js"].map(wrap).join("\n")+"\n(function(){"+page+"\n})();");
+  // boot.js: the core modules, on window
+  w.eval(["theory.js","temperaments.js","sound.js","minichord.js"].map(wrap).join("\n"));
+  // then the page's scripts, each as a <script> of its own, as the browser runs them
+  const errors=[]; w.addEventListener("error", e=>errors.push(e.message));
+  for(const f of scripts){ const el=w.document.createElement("script"); el.textContent=fs.readFileSync(f,"utf8"); w.document.body.appendChild(el);
+    if(errors.length) throw new Error(`${path.relative(ROOT,f)}: ${errors[0]}`); }
 
   const d=w.document, mc=w.mc, sb=w.__sb;
   const sleep=ms=>new Promise(r=>setTimeout(r,ms));

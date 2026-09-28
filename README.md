@@ -54,3 +54,19 @@ python3 -m http.server 8000
 ```
 
 then visit http://localhost:8000/.
+
+## How the code is laid out
+
+The Practice Room and the arcade games play on one page, `practice/index.html` (each game's own page
+opens it with `?game=<name>&solo`). Its code is plain scripts, loaded in order and sharing one scope:
+
+- `practice/boot.js` brings in the Lab's core modules (`core/`) and hands them to the scripts
+- `practice/games.js`: the Practice Room's own games
+- `arcade/`: the arcade. One file per game in `arcade/games/`; `controller.js` (the harp as a d-pad),
+  `cabinet.js` (title loop, beginner mode, full screen), `kit.js` (menus, demos, settings, high scores),
+  `sounds.js` and `screen.js` (the pixel canvas every game draws on)
+- `practice/room.js`: the Practice Room itself (rounds, answers, settings, connecting), which runs last
+  and starts whatever the page opened on
+
+Order matters: a script can use what an earlier one declared as soon as it runs, and what a later one
+declared only from inside a function. `tests/` checks it all, headless: `cd tests && npm install && npm test`.

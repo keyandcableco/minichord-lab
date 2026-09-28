@@ -25,6 +25,7 @@ key presses, checking what should happen.
 | `key-fleet` | fleets never touch; hits cripple; keys are called by tonic, cadence and the key change combo |
 | `high-scores` | GAME OVER before the initials; input ignored at first; the board kept; beginner mode stays off it |
 | `lobby` | the arcade lobby's cabinets, best scores and ticker |
+| `practice-room` | the Practice Room around the arcade: every one of its games opens and deals a round |
 
-The harness (`arcade/harness.js`) loads `practice/index.html`, where the games live, and uses the
-page's test hooks (`window.__sb`).
+The harness (`arcade/harness.js`) loads `practice/index.html`, where the games play, running its
+scripts one by one in the page's order as a browser does, and uses the page's test hooks (`window.__sb`).
