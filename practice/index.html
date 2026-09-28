@@ -430,6 +430,43 @@ html.arcadepage .gamebar{align-items:flex-end}
   justify-items:start;text-shadow:0 0 8px rgba(241,232,210,.35)}   /* bigger, and in the middle of the screen */
 .boot .bootlines div{white-space:pre}   /* the dot leaders line up */
 .boot .bootlines b{color:#7FE08A;font-weight:400}
+
+/* Chopper Rescue: the radio, the chopper */
+.chem{position:absolute;transform:translate(-50%,-70%);width:40px;height:40px;z-index:2;filter:drop-shadow(2px 3px 0 rgba(0,0,0,.5))}
+.chem svg{width:100%;height:100%;display:block}
+.chem svg .f1{animation:emf1 .5s steps(1) infinite}.chem svg .f2{animation:emf2 .5s steps(1) infinite}
+.chem.fire svg .f1,.chem.fire svg .f2{animation-duration:.25s}
+.chem.yeti svg .f1,.chem.yeti svg .f2{animation-duration:.35s}
+.chem.boat svg .f1,.chem.boat svg .f2{animation-duration:.8s}
+@keyframes emf1{0%{visibility:visible}50%{visibility:hidden}}
+@keyframes emf2{0%{visibility:hidden}50%{visibility:visible}}
+.chem.bear{animation:bearwalk 3s ease-in-out infinite alternate}
+@keyframes bearwalk{from{margin-left:-10px}to{margin-left:10px}}
+.chem.yeti{animation:yetihop .35s steps(2) infinite}
+@keyframes yetihop{50%{margin-top:-4px}}
+@media (prefers-reduced-motion:reduce){.chem,.chem svg .f1,.chem svg .f2{animation:none}.chem svg .f2{visibility:hidden}}
+
+/* the base, the survivors, the empty places */
+.chbase{position:absolute;transform:translate(-50%,-50%);width:54px;height:54px;border-radius:50%;border:4px solid #F1E8D2;background:rgba(7,6,12,.55);display:flex;align-items:center;justify-content:center;font:400 1rem "Press Start 2P",monospace;color:#F1E8D2;z-index:2}
+.chsurv{position:absolute;transform:translate(-50%,-80%);width:64px;z-index:2;animation:wave .4s steps(2) infinite}
+.chsurv svg{width:100%;height:auto;display:block}
+.chsurv.saved{opacity:0;transition:opacity .5s}
+@keyframes wave{50%{transform:translate(-50%,-86%)}}
+.chnobody{position:absolute;transform:translate(-50%,-70%);font:400 1.4rem "Press Start 2P",monospace;color:#FF7A6E;text-shadow:3px 3px 0 #000;z-index:2}
+.chradio .chhint{font-style:normal;color:#CFC3A6}
+
+.chradio{position:absolute;left:12px;right:12px;top:40px;z-index:4;display:flex;align-items:center;gap:12px;padding:10px 12px;background:rgba(7,6,12,.82);border:3px solid #000;box-shadow:0 0 0 2px #2F2342;
+  font:400 .72rem "Minichord Lab Accidentals","Press Start 2P",monospace;color:#7FE08A;text-shadow:0 0 6px rgba(127,224,138,.5)}
+.chradio .chant{font-size:1rem}
+.chradio .chtext{flex:1;min-height:1em;letter-spacing:.03em}
+.chfuel{width:120px;height:12px;border:2px solid #3A2D4E;background:#0E0A16}
+.chfuel i{display:block;height:100%;background:#FFD35A;transform-origin:left;transform:scaleX(0)}
+.chfuel i.low{background:#FF4B3E;animation:blink .4s steps(2) infinite}
+.chmap{position:absolute;inset:0;z-index:2;pointer-events:none}
+.chheli{position:absolute;left:0;top:0;z-index:3;width:48px;height:30px;will-change:transform;filter:drop-shadow(4px 6px 0 rgba(0,0,0,.45))}
+.chheli svg{width:100%;height:100%}
+.chheli .rotor{animation:rotor .12s steps(2) infinite;transform-origin:16px 1.5px}
+@keyframes rotor{50%{transform:scaleX(.25)}}
 /* the demo's pixel minichord */
 .overlay button.howto{border-color:#FFD35A;color:#FFD35A}
 .demo{position:absolute;inset:0;z-index:5;display:flex;flex-direction:column;justify-content:flex-start;padding:10px 14px;pointer-events:none}
@@ -579,7 +616,8 @@ details.fold[open] .nowplaying{display:none}
     <button data-mode="stack">Chord Stack</button>
     <button data-mode="breakout">Chord Breakout</button>
     <button data-mode="fifths">Fifths Defender</button>
-    <span class="arcadelinks"><a href="../arcade/">The arcade lobby</a> · or on their own pages: <a href="../invaders/">Chord Invaders</a> · <a href="../harp-command/">Harp Command</a> · <a href="../chord-snake/">Chord Snake</a> · <a href="../chord-asteroids/">Chord Asteroids</a> · <a href="../chord-stack/">Chord Stack</a> · <a href="../chord-breakout/">Chord Breakout</a> · <a href="../fifths-defender/">Fifths Defender</a></span>
+    <button data-mode="chopper">Chopper Rescue</button>
+    <span class="arcadelinks"><a href="../arcade/">The arcade lobby</a> · or on their own pages: <a href="../invaders/">Chord Invaders</a> · <a href="../harp-command/">Harp Command</a> · <a href="../chord-snake/">Chord Snake</a> · <a href="../chord-asteroids/">Chord Asteroids</a> · <a href="../chord-stack/">Chord Stack</a> · <a href="../chord-breakout/">Chord Breakout</a> · <a href="../fifths-defender/">Fifths Defender</a> · <a href="../chopper-rescue/">Chopper Rescue</a></span>
   </div>
   <div class="modes" role="group" aria-label="Read and play">
     <span class="grp">Read and play</span>
@@ -3071,7 +3109,7 @@ function endStDemo(token){
 // buttons' columns, F C G D A E B from the left, count 1 to 7: a column's major button starts that
 // level, its minor button sets that speed, and its 7 button switches to that arcade game. The key
 // signature's sharps and flats don't matter; the column is read from the chord's letter.
-const ARCADE_GAMES=["blaster","command","snake","asteroids","stack","breakout","fifths"];
+const ARCADE_GAMES=["blaster","command","snake","asteroids","stack","breakout","fifths","chopper"];
 const COLUMN_LETTERS="FCGDAEB";
 function arcadeMenuChord(voices){
   if(cabWaiting()){ cabWake(); return true; }
@@ -3124,6 +3162,7 @@ function arcadeRelayout(){
   else if(k==="asteroids") asCentre();
   else if(k==="breakout") boLayout();
   else if(k==="fifths") fdLayout();
+  else if(k==="chopper"){ chLayout(); chDrawMap(); chPlace(true); }
   else if(k==="command"){ hcLayout(); hcLabels(); }
 }
 for(const ev of ["fullscreenchange","webkitfullscreenchange"]) document.addEventListener(ev, ()=>setTimeout(arcadeRelayout,60));
@@ -3159,8 +3198,8 @@ function arcadeModNote(ov){
 // roll up the screen like credits; then the demo; then round again, until someone plays a chord,
 // plucks the harp, presses a key or clicks. That brings up the options (speed, levels and the rest),
 // which go back to the title if they're left alone. Game over goes straight to its options.
-const DEMO_FOR={blaster:()=>runDemo(true), command:()=>commandDemo(), snake:()=>snDemo(), asteroids:()=>asDemo(), stack:()=>stDemo(), breakout:()=>boDemo(), fifths:()=>fdDemo()};
-const TITLE_FOR={blaster:"CHORD INVADERS", command:"HARP COMMAND", snake:"CHORD SNAKE", asteroids:"CHORD ASTEROIDS", stack:"CHORD STACK", breakout:"CHORD BREAKOUT", fifths:"FIFTHS DEFENDER"};
+const DEMO_FOR={blaster:()=>runDemo(true), command:()=>commandDemo(), snake:()=>snDemo(), asteroids:()=>asDemo(), stack:()=>stDemo(), breakout:()=>boDemo(), fifths:()=>fdDemo(), chopper:()=>chDemo()};
+const TITLE_FOR={blaster:"CHORD INVADERS", command:"HARP COMMAND", snake:"CHORD SNAKE", asteroids:"CHORD ASTEROIDS", stack:"CHORD STACK", breakout:"CHORD BREAKOUT", fifths:"FIFTHS DEFENDER", chopper:"CHOPPER RESCUE"};
 const cabKind=()=> blast && (blast.kind||"blaster");
 function cabinet(ov){
   const kids=[...ov.children];
@@ -3225,7 +3264,7 @@ document.addEventListener("keydown", e=>{
 // buttons (and the modifier, and a slash's bass) for the chord that matters now, and in the harp
 // games the string for the note that matters now, drawn as the standard strip or the keymaster's
 // four rows of three. It sits behind the play, a little see-through, so nothing falling is hidden.
-const helpUsesChords=k=>["blaster","snake","asteroids","stack","breakout","fifths"].includes(k);
+const helpUsesChords=k=>["blaster","snake","asteroids","stack","breakout","fifths","chopper"].includes(k);
 const helpUsesHarp=k=>["command","asteroids","fifths"].includes(k);
 function beginnerRow(opts){
   const r=document.createElement("div"); r.className="optrow"; const l=document.createElement("span"); l.className="optlabel"; l.textContent="BEGINNER";
@@ -4039,6 +4078,7 @@ const POINTS_FOR={
   stack:[["ROW CLEARED","15 A NOTE"],["ROWS AT ONCE","× ROWS"]],
   breakout:[["BRICK","10 A NOTE"],["★ BRICK","× 5"],["RALLY","UP TO × 4"]],
   fifths:[["ENEMY","10"],["HIT FAR OUT","UP TO +10"],["★ ENEMY","50"]],
+  chopper:[["RESCUE","20"],["FAST RESCUE","UP TO +30"],["WAYPOINT","15"],["WHOLE ROUTE","× 2"],["WRONG PLACE","−2 SECONDS"]],
 };
 function multRows(kind){
   const rows=[["SPEED", SPEEDS.map((x,i)=>`${x[0].toUpperCase()} ×${MULT_SPEED[i]}`)]];
@@ -4180,7 +4220,7 @@ function overTimeout(ov, toTitle){
 // what's shown if the shared one can't be reached.
 const SCORES_API=String(SCORES_HOST||"").replace(/\/+$/,"");   // the Funnel address of arcade-scores (core/scores.js), no trailing slash
 const scoresOnline=()=> !!SCORES_API && !SCORES_API.includes("SCORES-HOST");
-const HS_SLUG={blaster:"invaders", command:"harp-command", snake:"chord-snake", asteroids:"chord-asteroids", stack:"chord-stack", breakout:"chord-breakout", fifths:"fifths-defender"};
+const HS_SLUG={blaster:"invaders", command:"harp-command", snake:"chord-snake", asteroids:"chord-asteroids", stack:"chord-stack", breakout:"chord-breakout", fifths:"fifths-defender", chopper:"chopper-rescue"};
 const HS_CHARS="ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 const hsCache={};                                        // the shared boards, as last fetched
 const hsSlug=()=> HS_SLUG[cabKind()];
@@ -4280,6 +4320,325 @@ function hsRender(el, {scores, shared}, highlight){
   el.innerHTML=`<h3>HIGH SCORES</h3><p class="hswhere">${shared?"":"ON THIS COMPUTER"}</p>`+
     (scores.length ? `<ol class="hsboard">${scores.map((r,i)=>`<li class="${i===0?"top":""}${highlight&&r.initials===highlight?" me":""}"><span>${ord(i+1)}</span><b>${r.initials}</b><span>${r.score.toLocaleString("en-US")}</span><small>L${r.level}</small></li>`).join("")}</ol>`
       : `<p>NO SCORES YET. BE THE FIRST.</p>`)+`<p class="padhint">SCORES COUNT WHEN A MINICHORD IS PLAYED</p>`;
+}
+
+
+// ---------- Chopper Rescue ----------
+// A rescue flight that runs on decoding the radio. The radio calls coordinates in theory,
+// "SURVIVORS AT vi IN G", and the player decodes them into a chord and plays it: the chopper lifts
+// off the base, flies to where that chord lies, and if the call was decoded right, finds the
+// survivors there, picks them up and brings them home. Nothing on the map gives the answer away.
+// Every chord is a place on the ground, the same place every time (its column in fifths across,
+// its row up the map), so a regular comes to know that E minor is out past the river, but the
+// places aren't marked. A wrong chord flies somewhere empty ("NOBODY HERE") and back, burning time;
+// a flare that burns out costs a life. Later calls use sevenths, secondary dominants, borrowed
+// chords, and whole routes read as progressions. At the first levels the radio, after a while,
+// says the chord outright, as training.
+const CH_COLS="FCGDAEB", CH_ROWS=[["","MAJ"],["m","MIN"],["7","7"]];
+const CH_DEG=[[0,""],[2,"m"],[4,"m"],[5,""],[7,""],[9,"m"]];            // I ii iii IV V vi in a major key
+const CH_NUM=["I","ii","iii","IV","V","vi"];
+const CH_KEYS_NEAR=["C","G","F","D"], CH_KEYS_ALL=["C","G","D","A","E","F","B♭","E♭","A♭"];
+const CH_LEVELS=[
+  {n:"Flight school", keys:["C"], hint:true},
+  {n:"Nearby keys", keys:CH_KEYS_NEAR, hint:true},
+  {n:"Every key", keys:CH_KEYS_ALL},
+  {n:"Sevenths and V of V", keys:CH_KEYS_NEAR, sevenths:true},
+  {n:"Borrowed chords and routes", keys:CH_KEYS_NEAR, sevenths:true, borrowed:true, routes:true},
+];
+// a scale degree of a key, spelled: the root name
+const chRoot=(key, semis)=>{ const letters={0:0,2:1,4:2,5:3,7:4,9:5,10:6,11:6,3:2,8:5}; return above(key, letters[semis]??0, semis) || key; };
+// one call: what the radio says, and the chord (or chords, for a route) that answers it
+function chCall(L){
+  const key=rnd(L.keys), kind=Math.random();
+  if(L.routes && kind<.22){   // a route: ii–V–I, or I–vi–IV–V's first three
+    const route = Math.random()<.5 ? [[2,"m","ii"],[7,"","V"],[0,"","I"]] : [[0,"","I"],[9,"m","vi"],[5,"","IV"]];
+    return {text:`ROUTE ${route.map(r=>r[2]).join("–")} IN ${key}`, legs:route.map(([st,q])=>({root:chRoot(key,st), q})), what:"WAYPOINTS"};
+  }
+  if(L.borrowed && kind<.4){
+    const b=rnd([[10,"","♭VII"],[8,"","♭VI"],[5,"m","iv"]]);
+    return {text:`FUEL AT ${b[2]} IN ${key}`, legs:[{root:chRoot(key,b[0]), q:b[1]}], what:"FUEL"};
+  }
+  if(L.sevenths && kind<.6){
+    if(Math.random()<.5) return {text:`MEDIC AT V7 IN ${key}`, legs:[{root:chRoot(key,7), q:"7"}], what:"MEDIC"};
+    return {text:`SUPPLIES AT V OF V IN ${key}`, legs:[{root:chRoot(key,2), q:"7"}], what:"SUPPLIES"};
+  }
+  const i=Math.floor(Math.random()*CH_DEG.length), [st,q]=CH_DEG[i];
+  return {text:`SURVIVORS AT ${CH_NUM[i]} IN ${key}`, legs:[{root:chRoot(key,st), q}], what:"SURVIVORS"};
+}
+// where a chord lands: its root letter's column, its quality's row
+function chPad(root, q){ const col=CH_COLS.indexOf(root[0]); const row = q==="7" ? 2 : /^m/.test(q)&&q!=="maj7" ? 1 : 0; return {col, row}; }
+function genChopper(){
+  return {kind:"chopper", prompt:"Chopper Rescue", sub:"The chord buttons are your cockpit and the map below: seven columns in fifths, three rows. The radio calls coordinates in theory; fly there by playing that chord before the flare burns out.",
+    answer:{type:"chopper", get name(){ const l=blast && blast.kind==="chopper" && blast.call ? blast.call.legs[blast.leg] : null; return l ? l.root+l.q : "the called chord"; }},
+    get hint(){ const l=blast && blast.kind==="chopper" && blast.call ? blast.call.legs[blast.leg] : null; return l ? `${blast.call.text}: that's ${l.root}${l.q}.` : "Wait for the radio."; },
+    context:0};
+}
+const chLevelOk=()=>true;
+function startChopper(){
+  blast={kind:"chopper", score:0, lives:3, level:0, rescues:0, over:true, phase:"menu", raf:0, field:null, hud:null, fx:null, noShip:true,
+    last:performance.now(), call:null, leg:0, pos:{base:true}, found:null};
+  chDevice();
+  stats.streak=0; scoreboard(); buildSpecial();
+  chMenu();
+  blast.raf=requestAnimationFrame(chTick);
+}
+function chDevice(){
+  if(!blast || blast.kind!=="chopper" || !canWrite()) return;
+  if(!blast.setupDone){ blast.setupDone=true; poll(true); if(hasSetting(30)) ensure(30,0); }
+}
+function buildChopperField(box){
+  const field=document.createElement("div"); field.className="field arcade chopper"; field.setAttribute("aria-label","The landing zones");
+  const hud=document.createElement("div"); hud.className="hud"; field.appendChild(hud); fullButton(field);
+  const hd=document.createElement("div"); hd.className="heard"; field.appendChild(hd);
+  const radio=document.createElement("div"); radio.className="chradio"; radio.innerHTML=`<span class="chant">📻</span><span class="chtext">RADIO QUIET</span><span class="chfuel"><i></i></span>`; field.appendChild(radio);
+  const map=document.createElement("div"); map.className="chmap"; field.appendChild(map);
+  const heli=document.createElement("div"); heli.className="chheli"; heli.innerHTML=CH_HELI; field.appendChild(heli);
+  box.append(field);
+  if(blast && blast.kind==="chopper"){
+    blast.field=field; blast.hud=hud; blast.heard=hd; blast.radioEl=radio; blast.mapEl=map; blast.heliEl=heli; blast.fx=fxInit(field);
+    setTimeout(()=>{ chLayout(); chDrawMap(); chPlace(true); });
+    if(blast.overlay) field.appendChild(blast.overlay);
+  }
+  chBar(); setTimeout(helperSync);
+}
+// the chopper: a pixel helicopter with a spinning rotor
+const CH_HELI=`<svg viewBox="0 0 32 20" shape-rendering="crispEdges" aria-hidden="true">
+  <rect class="rotor" x="2" y="1" width="28" height="1" fill="#F1E8D2"/><rect x="15" y="2" width="2" height="3" fill="#9A93B5"/>
+  <rect x="8" y="5" width="14" height="8" fill="#FFD35A"/><rect x="6" y="7" width="2" height="5" fill="#FFD35A"/><rect x="10" y="6" width="5" height="4" fill="#7FE9FF"/>
+  <rect x="22" y="7" width="8" height="2" fill="#E9A23B"/><rect x="29" y="5" width="2" height="5" fill="#F1E8D2"/>
+  <rect x="9" y="13" width="1" height="3" fill="#9A93B5"/><rect x="19" y="13" width="1" height="3" fill="#9A93B5"/><rect x="6" y="16" width="17" height="1" fill="#F1E8D2"/></svg>`;
+function chLayout(){
+  const f=blast.field, W=f.clientWidth, H=f.clientHeight;
+  const top=110, left=Math.max(120, W*.16), right=W-Math.max(30, W*.04), bottom=H-60;
+  blast.cw=(right-left)/7; blast.rh=(bottom-top)/3; blast.mx=left; blast.my=top; blast.fh=H;
+}
+const chXY=(col,row)=>[blast.mx+(col+.5)*blast.cw, blast.my+(row+.5)*blast.rh];
+// Emergencies on the ground. Each call is an emergency (a fire, a bear, a yeti, a boat going down,
+// hikers stranded), and it shows on the map where it is, but never alone: the same kind of trouble
+// breaks out in one or two other places too, so the map shows that something's wrong, and only the
+// radio's coordinates say which one to fly to.
+const CH_EMERG=[
+  {k:"fire", say:"FIRE AT"}, {k:"bear", say:"BEAR SIGHTED AT"}, {k:"yeti", say:"YETI ATTACK AT"},
+  {k:"boat", say:"BOAT SINKING AT"}, {k:"hikers", say:"HIKERS STRANDED AT"},
+];
+// the little animated sprites: two frames each, swapped by CSS
+const CH_SPRITES={
+  fire:`<svg viewBox="0 0 16 16" shape-rendering="crispEdges" aria-hidden="true"><g class="f1"><path fill="#FF4B3E" d="M4 8h8v6H4zM5 5h2v3H5zM9 3h2v5H9zM7 6h2v2H7z"/><path fill="#FFD35A" d="M6 10h4v4H6zM7 8h2v2H7z"/></g><g class="f2"><path fill="#FF4B3E" d="M4 8h8v6H4zM6 4h2v4H6zM10 5h2v3h-2zM8 6h2v2H8z"/><path fill="#FFD35A" d="M6 10h4v4H6zM8 8h2v2H8z"/></g><path fill="#5A3418" d="M3 14h10v2H3z"/></svg>`,
+  bear:`<svg viewBox="0 0 16 16" shape-rendering="crispEdges" aria-hidden="true"><path fill="#6B4226" d="M3 6h9v5H3zM11 4h3v4h-3zM11 3h1v1h-1zM13 3h1v1h-1z"/><path fill="#000" d="M13 5h1v1h-1z"/><g class="f1"><path fill="#6B4226" d="M3 11h2v3H3zM10 11h2v3h-2z"/></g><g class="f2"><path fill="#6B4226" d="M4 11h2v3H4zM9 11h2v3H9z"/></g></svg>`,
+  yeti:`<svg viewBox="0 0 16 16" shape-rendering="crispEdges" aria-hidden="true"><path fill="#F1E8D2" d="M5 2h6v12H5zM6 1h4v1H6z"/><path fill="#7FE9FF" d="M6 4h1v1H6zM9 4h1v1H9z"/><path fill="#16132A" d="M7 6h2v1H7z"/><g class="f1"><path fill="#F1E8D2" d="M2 3h3v2H2zM11 3h3v2h-3z"/></g><g class="f2"><path fill="#F1E8D2" d="M2 7h3v2H2zM11 7h3v2h-3z"/></g><path fill="#F1E8D2" d="M5 14h2v2H5zM9 14h2v2H9z"/></svg>`,
+  boat:`<svg viewBox="0 0 16 16" shape-rendering="crispEdges" aria-hidden="true"><g class="f1"><path fill="#E9A23B" d="M3 8h10l-2 3H5z"/><path fill="#F1E8D2" d="M7 3h1v5H7zM8 4h3v3H8z"/></g><g class="f2"><path fill="#E9A23B" d="M3 9h10l-2 3H5z"/><path fill="#F1E8D2" d="M7 4h1v5H7zM8 5h3v3H8z"/></g><path fill="#123A55" d="M1 12h14v3H1z"/><path fill="#7FE9FF" d="M2 12h2v1H2zM9 12h3v1H9z"/></svg>`,
+  hikers:`<svg viewBox="0 0 16 16" shape-rendering="crispEdges" aria-hidden="true"><path fill="#9A93B5" d="M0 13h16v3H0zM3 10h10v3H3z"/><path fill="#F1E8D2" d="M5 4h2v2H5zM4 6h4v3H4zM9 5h2v2H9zM9 7h2v2H9z"/><g class="f1"><path fill="#F1E8D2" d="M3 3h1v3H3z"/></g><g class="f2"><path fill="#F1E8D2" d="M2 5h2v1H2z"/></g><path fill="#FF5AA0" d="M12 2h2v2h-2zM12 4h1v6h-1z"/></svg>`,
+};
+// where trouble breaks out this call: the real place, and one or two others that aren't it
+function chEmergencies(kind, answer){
+  const taken=new Set([answer.col+","+answer.row]), out=[{...answer, k:kind, real:true}];
+  const decoys = (blast.level||0)===0 ? 1 : 2;
+  for(let tries=0; out.length<1+decoys && tries<60; tries++){
+    const col=Math.floor(Math.random()*7), row=Math.floor(Math.random()*3), key=col+","+row;
+    if(taken.has(key)) continue; taken.add(key); out.push({col,row,k:kind});
+  }
+  return out.sort(()=>Math.random()-.5);
+}
+
+// the ground shows only the base, the emergencies, and what the chopper has found: survivors waving, or nobody
+function chDrawMap(){
+  if(!blast || !blast.mapEl) return;
+  const [bx,by]=chBase(); let h=`<span class="chbase" style="left:${bx}px;top:${by}px">H</span>`;
+  const f=blast.found;
+  for(const e of (blast.emerg||[])){ if(f && !f.empty && e.real) continue;
+    const [x,y]=chXY(e.col,e.row); h+=`<span class="chem ${e.k}" style="left:${x}px;top:${y}px">${CH_SPRITES[e.k]}</span>`; }
+  if(f){ const [x,y]=chXY(f.col,f.row);
+    h += f.empty ? `<span class="chnobody" style="left:${x}px;top:${y}px">?</span>`
+      : `<span class="chsurv${f.saved?" saved":""}" style="left:${x}px;top:${y}px">${CH_PEOPLE}</span>`; }
+  blast.mapEl.innerHTML=h;
+}
+const CH_PEOPLE=`<svg viewBox="0 0 22 12" shape-rendering="crispEdges" aria-hidden="true"><g fill="#F1E8D2"><rect x="1" y="0" width="3" height="3"/><rect x="0" y="4" width="5" height="4"/><rect x="1" y="8" width="1" height="4"/><rect x="3" y="8" width="1" height="4"/>
+  <rect x="9" y="0" width="3" height="3"/><rect x="8" y="4" width="5" height="4"/><rect x="9" y="8" width="1" height="4"/><rect x="11" y="8" width="1" height="4"/><rect x="13" y="1" width="1" height="4"/></g>
+  <g fill="#FF5AA0"><rect x="17" y="2" width="3" height="3"/><rect x="18" y="5" width="1" height="7"/></g></svg>`;
+const chBase=()=>[Math.max(46, blast.mx*.55), (blast.fh || 420)-44];   // bottom left, where the chopper lives
+function chPlace(instant){
+  const [x,y]=blast.pos.base ? chBase() : chXY(blast.pos.col, blast.pos.row), el=blast.heliEl; if(!el) return;
+  el.style.transition = instant ? "none" : "transform .55s cubic-bezier(.4,.1,.3,1)";
+  el.style.transform=`translate(${x-24}px,${y-34}px)`;
+}
+function chBar(){
+  if(!blast || blast.kind!=="chopper" || !blast.hud) return;
+  blast.hud.innerHTML=`<span>SCORE ${blast.score}${multTag()}</span><span class="lvl">LEVEL ${blast.level+1} · RESCUES ${blast.rescues}</span><span class="lives">${"♥".repeat(Math.max(0,blast.lives))||"-"}</span>`;
+}
+function chMenu(over){
+  if(over && hsOffer(()=>chMenu(true))) return;
+  const ov=document.createElement("div"); ov.className="overlay";
+  const best=saved.best.chopper||0;
+  if(over){
+    ov.innerHTML=`<h3 class="over">GAME OVER</h3><p>SCORE ${blast.score} · RESCUES ${blast.rescues} · BEST ${best}</p>`;
+    const again=document.createElement("button"); again.className="go"; again.innerHTML=`PLAY AGAIN<small>from level ${blast.startLevel+1}</small>`;
+    again.onclick=()=>beginChopper(blast.startLevel); ov.appendChild(again);
+    sfx("over");
+  } else {
+    ov.innerHTML=`<h3>CHOPPER RESCUE</h3><p>THE RADIO CALLS COORDINATES IN THEORY. DECODE THEM: "SURVIVORS AT vi IN G" IS Em.</p><p>TROUBLE BREAKS OUT IN MORE THAN ONE PLACE, AND ONLY THE RADIO SAYS WHICH. PLAY THE CHORD AND THE CHOPPER FLIES THERE.</p><p>A WRONG CHORD FLIES SOMEWHERE EMPTY AND BURNS TIME. DON'T LET THE FLARE BURN OUT.</p>`;
+    const how=document.createElement("button"); how.className="howto"; how.textContent="▶ HOW TO PLAY"; how.onclick=()=>chDemo(); ov.appendChild(how);
+  }
+  const row=(label, list, get, set)=>{ const r=document.createElement("div"); r.className="optrow"; const l=document.createElement("span"); l.className="optlabel"; l.textContent=label;
+    const g=document.createElement("div"); g.className="levels";
+    const mark=b=>{ [...g.children].forEach(x=>{ x.style.background=""; x.style.color=""; }); b.style.background="#F1E8D2"; b.style.color="#16132A"; };
+    list.forEach((n,i)=>{ const b=document.createElement("button"); b.textContent=n; if(get()===i) mark(b); b.onclick=()=>{ set(i); mark(b); }; g.appendChild(b); });
+    r.append(l,g); ov.appendChild(r); };
+  row("SPEED", SPEEDS.map(x=>x[0].toUpperCase()), ()=>+saved.speed||0, i=>{ saved.speed=i; save(); });
+  const lp=document.createElement("p"); lp.className = over ? "" : "blink"; lp.textContent = over ? "OR START FROM" : "CHOOSE A LEVEL"; ov.appendChild(lp);
+  const lv=document.createElement("div"); lv.className="levels";
+  CH_LEVELS.forEach((L,i)=>{ const b=document.createElement("button"); b.innerHTML=`${i+1}<small>${L.n}</small>`; b.onclick=()=>beginChopper(i); lv.appendChild(b); });
+  ov.appendChild(lv);
+  if(!over && best){ const p=document.createElement("p"); p.textContent=`BEST ${best}`; ov.appendChild(p); }
+  if(!over) arcadeModNote(ov);
+  arcadeKeys(ov);
+  if(!over) arcadeCredit(ov);
+  if(over) hsGameOverLine(ov);
+  blast.field.appendChild(ov); blast.overlay=ov;
+  if(over) overTimeout(ov, ()=>chMenu());
+  if(!over){ cabinet(ov); return; }
+}
+function beginChopper(level){
+  piano.start(); stopDemo(); clearTimeout(blast.attract); clearTimeout(blast.cabT);
+  if(blast.overlay){ blast.overlay.remove(); blast.overlay=null; }
+  Object.assign(blast,{score:0, lives:3, level, startLevel:level, rescues:0, phase:"play", over:false, call:null, leg:0, modFor:null, pos:{base:true}, found:null, busy:false, recentCalls:[], lastAnswer:null,
+    timeFor:11000*speedMul()*Math.pow(.93,level)});
+  saved.chopperStart=level; save();
+  stats.streak=0; scoreboard(); chLayout(); chPlace(true);
+  cancelAnimationFrame(blast.raf); blast.last=performance.now(); blast.raf=requestAnimationFrame(chTick);
+  banner(`LEVEL ${level+1}`, `${CH_LEVELS[level].n.toUpperCase()} · ${(SPEEDS[+saved.speed]||SPEEDS[0])[0].toUpperCase()}`);
+  sfx("start"); chBar();
+  setTimeout(()=>{ if(blast && blast.kind==="chopper" && blast.phase==="play") chNewCall(); }, 1400);
+}
+// a new call on the radio: typed out with a crackle, the flare lit, the clock started
+function chNewCall(){
+  const L=CH_LEVELS[blast.level];
+  // no repeats: not the same call as any of the last few, and never the same chord as the last answer
+  const recent=blast.recentCalls||(blast.recentCalls=[]), lastAnswer=blast.lastAnswer;
+  let call=chCall(L);
+  for(let k=0;k<40;k++){
+    const first=call.legs[0].root+call.legs[0].q;
+    if(!recent.includes(call.text) && first!==lastAnswer) break;
+    call=chCall(L);
+  }
+  recent.push(call.text); if(recent.length>4) recent.shift();
+  blast.lastAnswer=call.legs[call.legs.length-1].root+call.legs[call.legs.length-1].q;
+  const em=rnd(CH_EMERG);
+  if(call.legs.length===1) call.text=call.text.replace(/^[A-Z ]+ AT /, em.say+" ");   // "FIRE AT vi IN G"
+  call.what=em.k.toUpperCase();
+  const last=call.legs[call.legs.length-1]; blast.emerg=chEmergencies(em.k, chPad(last.root,last.q));
+  blast.call=call; blast.leg=0; blast.callAt=performance.now(); blast.deadline=blast.callAt+blast.timeFor*(blast.call.legs.length>1?1.8:1);
+  const t=blast.radioEl.querySelector(".chtext"), txt=blast.call.text; t.textContent="";
+  let i=0; const type=()=>{ if(!blast || blast.call===null || !t.isConnected) return; t.textContent=txt.slice(0,++i); if(i<txt.length) setTimeout(type, 28); };
+  type(); sfx("key");
+  blast.found=null; chDrawMap(); chHelp();
+  if(L.hint){ const call=blast.call; setTimeout(()=>{ if(blast && blast.call===call && blast.phase==="play"){   // training: the answer, half way through
+    const l=call.legs[blast.leg]; const h=document.createElement("em"); h.className="chhint"; h.textContent=` … THAT'S ${l.root}${l.q}`; t.appendChild(h); } }, (blast.deadline-blast.callAt)*.5); }
+}
+function chHelp(){
+  const l=blast.call && blast.call.legs[blast.leg];
+  if(l){ arcadeMod(l.root); helpChord(l.root, l.q); } else helpChord(null);
+}
+function chTick(now){
+  if(!blast || blast.kind!=="chopper") return;
+  const dt=Math.min(.05,(now-blast.last)/1000); blast.last=now;
+  if(blast.fx) fxDraw(now, dt);
+  if(blast.phase==="play" && blast.call){
+    const left=Math.max(0,(blast.deadline-now)/(blast.deadline-blast.callAt));
+    const bar=blast.radioEl.querySelector(".chfuel i"); bar.style.transform=`scaleX(${left})`; bar.classList.toggle("low", left<.3);
+    if(now>=blast.deadline) chMissed();
+  }
+  blast.raf=requestAnimationFrame(chTick);
+}
+function chMissed(){
+  sfx("miss"); buzz(blast.field,true); blast.lives--; chBar();
+  banner("TOO LATE", blast.lives>0 ? "THE FLARE BURNED OUT" : "");
+  blast.call=null; blast.found=null; blast.emerg=[]; chDrawMap();
+  if(blast.lives<=0){ blast.phase="over"; blast.over=true; const best=Math.max(saved.best.chopper||0, blast.score); saved.best.chopper=best; save(); chMenu(true); return; }
+  setTimeout(()=>{ if(blast && blast.kind==="chopper" && blast.phase==="play") chNewCall(); }, 1400);
+}
+// a chord from the buttons: fly there; if it's the called one, a rescue
+function chopperChord(voices){
+  if(!blast || blast.kind!=="chopper") return;
+  if(blast.phase==="demo" && blast.demo){ endChDemo(blast.demo); return; }
+  if(blast.phase!=="play" || blast.busy) return;
+  const pitches=voices.map(v=>v.pitch), id=chordId(pitches); if(!id) return;
+  const root=spell(id.root, devFifths()), name=chordName(pitches, devFifths()), pad=chPad(root, id.quality==="6"?"":id.quality==="m6"?"m":id.quality);
+  const l=blast.call && blast.call.legs[blast.leg];
+  if(!l){ heard(name,false,"NO CALL YET"); return; }
+  if(pad.col<0) return;
+  const right=isChord(pitches, pcOfName(l.root), l.q);
+  const decoy=!right && (blast.emerg||[]).some(e=>!e.real && e.col===pad.col && e.row===pad.row);
+  heard(name, right, right ? "" : decoy ? "NOT THIS ONE" : "NOBODY THERE");
+  blast.busy=true; blast.pos=pad; blast.found=null; chDrawMap(); chPlace(false); sfx("shoot");
+  const [x,y]=chXY(pad.col,pad.row);
+  if(!right){                                                   // somewhere empty: a look round, and back to base
+    blast.deadline-=1800;
+    setTimeout(()=>{ if(!blast || blast.kind!=="chopper") return; blast.found={...pad, empty:true}; chDrawMap(); sfx("miss"); buzz(blast.field,true);
+      setTimeout(()=>{ if(!blast || blast.kind!=="chopper") return; blast.found=null; blast.pos={base:true}; chDrawMap(); chPlace(false); blast.busy=false; }, 700); }, 600);
+    return;
+  }
+  if(blast.leg<blast.call.legs.length-1){                         // a waypoint on a route: on to the next
+    blast.leg++; const pts=mulPts(15*(blast.level+1)); blast.score+=pts;
+    setTimeout(()=>{ if(!blast || blast.kind!=="chopper") return; popup(x,y-30,`WAYPOINT +${pts}`,"#7FE9FF"); sfx("key"); chHelp(); chBar(); blast.busy=false; }, 600);
+    return;
+  }
+  const left=Math.max(0,(blast.deadline-performance.now())/(blast.deadline-blast.callAt));
+  const pts=mulPts(Math.round((20+30*left)*(blast.level+1))*(blast.call.legs.length>1?2:1));
+  const what=blast.call.what; blast.call=null;                    // the clock stops: they're found
+  setTimeout(()=>{ if(!blast || blast.kind!=="chopper") return;
+    blast.found={...pad}; chDrawMap(); sfx("bonus");               // there they are
+    setTimeout(()=>{ if(!blast || blast.kind!=="chopper") return;
+      blast.found={...pad, saved:true}; blast.emerg=[]; chDrawMap();   // aboard, and the other alarms were false
+      blast.score+=pts; blast.rescues++; stats.streak=blast.rescues; scoreboard();
+      popup(x,y-34,`${what} +${pts}`,"#FFD35A"); chBar(); helpChord(null);
+      blast.pos={base:true}; chPlace(false);                      // home
+      setTimeout(()=>{ if(!blast || blast.kind!=="chopper") return; blast.found=null; chDrawMap(); blast.busy=false;
+        const [bx,by]=chBase(); explode(bx,by-10,16,["#7FE08A","#FFD35A","#F1E8D2"]);
+        if(blast.rescues%6===0 && blast.level<CH_LEVELS.length-1){ blast.level++; blast.timeFor*=.93; sfx("level"); banner(`LEVEL ${blast.level+1}`, CH_LEVELS[blast.level].n.toUpperCase()); }
+        else if(blast.rescues%6===0){ blast.timeFor*=.93; banner("FASTER!"); }
+        setTimeout(()=>{ if(blast && blast.kind==="chopper" && blast.phase==="play") chNewCall(); }, 900);
+      }, 650);
+    }, 700);
+  }, 600);
+}
+
+// ---------- Chopper Rescue's demo ----------
+function chDemo(){
+  if(!blast || blast.kind!=="chopper") return;
+  stopDemo(); clearTimeout(blast.attract); piano.start();
+  if(blast.overlay) blast.overlay.hidden=true;
+  blast.phase="demo"; blast.level=0; chLayout(); blast.pos={base:true}; blast.found=null; chPlace(true); chDrawMap();
+  const el=document.createElement("div"); el.className="demo"; blast.field.appendChild(el); blast.field.classList.add("demoing");
+  const token={run:true, el}; blast.demo=token;
+  el.innerHTML=`<div class="demohead"><span class="demotag blink">DEMO</span><span class="demotitle"></span><button class="demoskip">SKIP ▶</button></div><p class="democap"></p>`;
+  el.querySelector(".demoskip").onclick=()=>endChDemo(token);
+  const say=(t,c)=>{ el.querySelector(".demotitle").textContent=t||""; el.querySelector(".democap").textContent=c; };
+  const play=notes=>{ if(settings.sounds && piano.ctx){ const go=()=>piano.play(notes,{when:.02,dur:1}); piano.ctx.state==="running"?go():piano.ctx.resume().then(go).catch(()=>{}); } };
+  const radio=txt=>{ blast.radioEl.querySelector(".chtext").textContent=txt; sfx("key"); };
+  sfx("attract");
+  (async()=>{
+    const sleep=ms=>new Promise(r=>setTimeout(r,ms)), step=async ms=>{ await sleep(ms); if(!token.run) throw 0; };
+    const trouble=(k,col,row)=>{ blast.emerg=chEmergencies(k,{col,row}); chDrawMap(); };
+    const fly=async(col,row,notes)=>{ play(notes); blast.pos={col,row}; chPlace(false); sfx("shoot"); await step(700); blast.emerg=[];
+      blast.found={col,row}; chDrawMap(); sfx("bonus"); await step(800); blast.found={col,row,saved:true}; chDrawMap();
+      blast.pos={base:true}; chPlace(false); await step(700); blast.found=null; chDrawMap(); };
+    try{
+      say("CHOPPER RESCUE","THE RADIO CALLS COORDINATES IN THEORY. DECODE THEM INTO A CHORD."); await step(3800);
+      radio("FIRE AT V IN C"); trouble("fire",2,0); say("DECODE","FIRES IN THREE PLACES, BUT THE RADIO SAYS WHICH: V IN C IS G."); await step(3800);
+      await fly(2,0,[55,59,62,67]); await step(1600);
+      radio("YETI ATTACK AT vi IN G"); trouble("yeti",5,1); say("","vi IN G IS E MINOR."); await step(2800); await fly(5,1,[52,55,59,64]); await step(1600);
+      radio("BEAR SIGHTED AT V OF V IN C"); trouble("bear",3,2); say("LATER","SEVENTHS, SECONDARY DOMINANTS, BORROWED CHORDS AND WHOLE ROUTES. V OF V IN C IS D7."); await step(3600);
+      await fly(3,2,[50,54,57,60]); await step(1600);
+      say("READY?","A WRONG CHORD FLIES SOMEWHERE EMPTY. BEAT THE FLARE."); sfx("level"); await step(2600);
+      endChDemo(token);
+    }catch(e){ /* skipped */ }
+  })();
+}
+function endChDemo(token){
+  if(!blast || blast.demo!==token) return;
+  stopDemo(); blast.phase="menu"; blast.call=null; blast.found=null; blast.emerg=[]; blast.pos={base:true}; chPlace(true); blast.radioEl.querySelector(".chtext").textContent="RADIO QUIET"; chDrawMap();
+  if(blast.overlay) blast.overlay.hidden=false;
+  cabRestart();
 }
 
 // ---------- Chord Invaders' own sounds ----------
@@ -4727,6 +5086,12 @@ function fxPaintBackground(kind, W, H){
   } else if(kind==="snake"){
     g.fillStyle="#08100C"; g.fillRect(0,0,W,H);
     g.fillStyle="#1B3325"; for(let y=1;y<H;y+=4) for(let x=1;x<W;x+=4) g.fillRect(x,y,1,1);
+  } else if(kind==="chopper"){
+    // the ground from the air: fields in patches, a river winding across, a few trees
+    const greens=["#0F2A18","#12301C","#0C2414","#15361F"];
+    for(let y=0;y<H;y+=8) for(let x=0;x<W;x+=8){ g.fillStyle=greens[Math.floor(rand()*greens.length)]; g.fillRect(x,y,8,8); }
+    g.fillStyle="#123A55"; for(let x=0;x<W;x++){ const y=Math.floor(H*.55+Math.sin(x/17)*H*.12+Math.sin(x/5)*2); g.fillRect(x,y,1,5); }
+    for(let i=0;i<W*H/260;i++){ g.fillStyle=rand()<.5?"#1E4A26":"#0A1E10"; g.fillRect(Math.floor(rand()*W),Math.floor(rand()*H),2,2); }
   } else if(kind==="fifths"){
     g.fillStyle="#040308"; g.fillRect(0,0,W,H);
     for(let i=0;i<W*H/300;i++){ g.fillStyle=rand()<.3?"#4B4670":"#221F3A"; g.fillRect(Math.floor(rand()*W),Math.floor(rand()*H),1,1); }
@@ -4866,11 +5231,11 @@ function blasterChord(voices){
   }
   blastBar();
 }
-const GENS={spell:genSpell, command:genCommand, snake:genSnake, asteroids:genAsteroids, stack:genStack, breakout:genBreakout, fifths:genFifths, hidden:genHidden, oddone:genOddOne, shades:genShades, reshape:genReshape, blaster:genBlaster, diatonic:genDiatonic, numeral:genNumeral, staff:genStaff, slash:genSlash, key:genKey, harp:genHarp, missing:genMissing,
+const GENS={spell:genSpell, command:genCommand, snake:genSnake, asteroids:genAsteroids, stack:genStack, breakout:genBreakout, fifths:genFifths, chopper:genChopper, hidden:genHidden, oddone:genOddOne, shades:genShades, reshape:genReshape, blaster:genBlaster, diatonic:genDiatonic, numeral:genNumeral, staff:genStaff, slash:genSlash, key:genKey, harp:genHarp, missing:genMissing,
   melody:()=>genMelody(false), solfa:()=>genMelody(true), chordscale:genChordScale, smooth:genSmooth, whichvoice:genWhichVoice, simon:genSimon, directions:genDirections, pluckchord:genPluckChord, buildscale:genBuildScale,
   scale:genScale, transpose:genTranspose, temper:genTemper, tune:genTune};
 const MYSTERY=new Set(["scale","transpose","temper","tune"]);
-const LABELS={spell:"Spell it", hidden:"Hidden layout", oddone:"Odd one out", shades:"Shades of the third", reshape:"Reshape", blaster:"Chord Invaders", command:"Harp Command", snake:"Chord Snake", asteroids:"Chord Asteroids", stack:"Chord Stack", breakout:"Chord Breakout", fifths:"Fifths Defender", diatonic:"Seven chords", numeral:"Numerals", staff:"On the staff", slash:"Slash chords", key:"Key detective", harp:"Harp hunt", missing:"Missing note", mix:"Mix",
+const LABELS={spell:"Spell it", hidden:"Hidden layout", oddone:"Odd one out", shades:"Shades of the third", reshape:"Reshape", blaster:"Chord Invaders", command:"Harp Command", snake:"Chord Snake", asteroids:"Chord Asteroids", stack:"Chord Stack", breakout:"Chord Breakout", fifths:"Fifths Defender", chopper:"Chopper Rescue", diatonic:"Seven chords", numeral:"Numerals", staff:"On the staff", slash:"Slash chords", key:"Key detective", harp:"Harp hunt", missing:"Missing note", mix:"Mix",
   melody:"Play by number", solfa:"Play by solfège", chordscale:"Chord scales", smooth:"Smooth moves", whichvoice:"Which voice moved?", simon:"Simon says", directions:"Follow the directions", pluckchord:"Pluck the chord", buildscale:"Build the scale",
   scale:"Scale detective", transpose:"Transpose detective", temper:"Temperament taster", tune:"Tune up"};
 
@@ -4932,7 +5297,7 @@ if(!LABELS[settings.mode]) settings.mode="spell";
 // A link can open one game directly, ?game=invaders (or any game's name, like ?game=reshape),
 // and ?solo shows that game on its own, without the menu, the settings or the answer area.
 const urlParams=new URLSearchParams(location.search);
-const GAME_SLUGS={invaders:"blaster", "chord-invaders":"blaster", "harp-command":"command", harpcommand:"command", "chord-snake":"snake", "chord-asteroids":"asteroids", asteroids:"asteroids", "chord-stack":"stack", "chord-breakout":"breakout", breakout:"breakout", "fifths-defender":"fifths", fifths:"fifths", sevenchords:"diatonic", layout:"hidden"};
+const GAME_SLUGS={invaders:"blaster", "chord-invaders":"blaster", "harp-command":"command", harpcommand:"command", "chord-snake":"snake", "chord-asteroids":"asteroids", asteroids:"asteroids", "chord-stack":"stack", "chord-breakout":"breakout", breakout:"breakout", "fifths-defender":"fifths", fifths:"fifths", "chopper-rescue":"chopper", chopper:"chopper", sevenchords:"diatonic", layout:"hidden"};
 { const g=(urlParams.get("game")||"").toLowerCase(), k=GAME_SLUGS[g]||g; if(LABELS[k]) settings.mode=k; }
 const solo=urlParams.has("solo") && LABELS[settings.mode] && !!urlParams.get("game");
 if(!SETS[settings.set] || settings.set==="alt") settings.set="standard";
@@ -5167,6 +5532,7 @@ function nextQuestion(){
   if(q.kind==="stack") startStack();
   if(q.kind==="breakout") startBreakout();
   if(q.kind==="fifths") startFifths();
+  if(q.kind==="chopper") startChopper();
   if(q.kind==="simon") setTimeout(simonPlay,700);
 }
 function feedback(text,kind="",small=""){ const f=$("feedback"); f.className="feedback "+kind; f.textContent=text; if(small){ const s=document.createElement("small"); s.textContent=small; f.appendChild(s); } }
@@ -5274,6 +5640,7 @@ function answerChord(voices){
   if(q.answer.type==="stack") return stackChord(voices);
   if(q.answer.type==="breakout") return breakoutChord(voices);
   if(q.answer.type==="fifths") return fifthsChord(voices);
+  if(q.answer.type==="chopper") return chopperChord(voices);
   if(q.answer.type==="diatonic") return answerDiatonic(voices);
   if(q.answer.type==="reshape") return answerReshape(voices);
   if(q.answer.type==="alt") return answerAltChord(voices);
@@ -5477,13 +5844,14 @@ async function startTones(){
   if(!canWrite()){ tones.sim=make((tuneState.secret+tuneState.nudge)/10,.1,settings.tuneWave); tones.push(tones.sim); }   // no minichord: simulate it
 }
 function buildSpecial(){
-  const box=$("special"); box.innerHTML=""; box.hidden = !(q && ["tune","melody","smooth","simon","directions","pluckchord","buildscale","blaster","command","snake","asteroids","stack","breakout","fifths","diatonic","reshape","hidden","oddone","shades"].includes(q.kind)); if(box.hidden) return;
+  const box=$("special"); box.innerHTML=""; box.hidden = !(q && ["tune","melody","smooth","simon","directions","pluckchord","buildscale","blaster","command","snake","asteroids","stack","breakout","fifths","chopper","diatonic","reshape","hidden","oddone","shades"].includes(q.kind)); if(box.hidden) return;
   if(q.kind==="command"){ buildCommandField(box); return; }
   if(q.kind==="snake"){ buildSnakeField(box); return; }
   if(q.kind==="asteroids"){ buildAsteroidsField(box); return; }
   if(q.kind==="stack"){ buildStackField(box); return; }
   if(q.kind==="breakout"){ buildBreakoutField(box); return; }
   if(q.kind==="fifths"){ buildFifthsField(box); return; }
+  if(q.kind==="chopper"){ buildChopperField(box); return; }
   if(q.kind==="blaster"){
     const field=document.createElement("div"); field.className="field arcade"; field.setAttribute("aria-label","Falling chords");
     const ground=document.createElement("div"); ground.className="ground"; field.appendChild(ground);
@@ -5595,7 +5963,7 @@ function setMode(m){
   $("nowPlaying").textContent = `Playing: ${LABELS[m]||m}`;
   settings.mode=m; save();
   document.querySelectorAll(".modes button[data-mode]").forEach(x=>x.setAttribute("aria-pressed",x.dataset.mode===m));
-  $("sprint").disabled = MYSTERY.has(m) || m==="blaster" || m==="command" || m==="snake" || m==="asteroids" || m==="stack" || m==="breakout" || m==="fifths";
+  $("sprint").disabled = MYSTERY.has(m) || m==="blaster" || m==="command" || m==="snake" || m==="asteroids" || m==="stack" || m==="breakout" || m==="fifths" || m==="chopper";
   stats.streak=0; scoreboard(); nextQuestion();
   if(switching){
     const back=restoreExcept(new Set([...(q.needs||[]).map(n=>n.addr), ...(q.borrows||[]), ...roundBorrows, 31]));   // keep what the new game uses
@@ -5605,7 +5973,7 @@ function setMode(m){
   }
 }
 document.querySelectorAll(".modes button[data-mode]").forEach(b=>{ b.setAttribute("aria-pressed", b.dataset.mode===settings.mode); b.onclick=()=>setMode(b.dataset.mode); });
-$("sprint").disabled = MYSTERY.has(settings.mode) || settings.mode==="blaster" || settings.mode==="command" || settings.mode==="snake" || settings.mode==="asteroids" || settings.mode==="stack" || settings.mode==="breakout" || settings.mode==="fifths";
+$("sprint").disabled = MYSTERY.has(settings.mode) || settings.mode==="blaster" || settings.mode==="command" || settings.mode==="snake" || settings.mode==="asteroids" || settings.mode==="stack" || settings.mode==="breakout" || settings.mode==="fifths" || settings.mode==="chopper";
 $("nowPlaying").textContent = `Playing: ${LABELS[settings.mode]||settings.mode}`;
 for(const [id,key] of [["gameMenu","menuOpen"]]){
   const d=$(id); if(saved[key]===false) d.open=false;
@@ -5662,6 +6030,7 @@ mc.addEventListener("device", ()=>{
   else if(blast && blast.kind==="stack") stDevice();
   else if(blast && blast.kind==="breakout") boDevice();
   else if(blast && blast.kind==="fifths") fdDevice();
+  else if(blast && blast.kind==="chopper") chDevice();
   else if(blast){ blastSetup(); if(blast.phase!=="play") blastHomeKey(); blastKey(); }
   if(q && !solved && !rebuilding) applyNeeds();
   mine(); needs();
