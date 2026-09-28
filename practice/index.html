@@ -3732,7 +3732,7 @@ function fdMenu(over){
     again.onclick=()=>beginFifths(blast.startLevel); ov.appendChild(again);
     sfx("over");
   } else {
-    ov.innerHTML=`<h3>FIFTHS DEFENDER</h3><p>THE TWELVE KEYS STAND ROUND YOU IN FIFTHS: C AT THE TOP, G ONE STEP ROUND, F ONE STEP BACK.</p><p>${knobsReady() ? "TURN A KNOB ON THE MINICHORD TO AIM DOWN A KEY." : "AIM DOWN A KEY WITH THE MOUSE OR THE ARROW KEYS. WITH FIRMWARE 17, A KNOB DOES IT."}</p><p>PLAY THAT KEY'S CHORD TO FIRE. LATER, ITS RELATIVE MINOR, ITS DOMINANT SEVENTH, OR ITS NOTE ON THE HARP.</p><p>AN ENEMY THAT REACHES THE MIDDLE COSTS A LIFE.</p>`;
+    ov.innerHTML=`<h3>FIFTHS DEFENDER</h3><p>THE TWELVE KEYS STAND ROUND YOU IN FIFTHS: C AT THE TOP, G ONE STEP ROUND, F ONE STEP BACK.</p><p>${knobsReady() ? "TURN A KNOB ON THE MINICHORD TO AIM DOWN A KEY: C IN THE MIDDLE, SHARPS TO THE RIGHT, FLATS TO THE LEFT. HOLD IT AT EITHER END TO KEEP TURNING." : "AIM DOWN A KEY WITH THE MOUSE OR THE ARROW KEYS. WITH FIRMWARE 17, A KNOB DOES IT."}</p><p>PLAY THAT KEY'S CHORD TO FIRE. LATER, ITS RELATIVE MINOR, ITS DOMINANT SEVENTH, OR ITS NOTE ON THE HARP.</p><p>AN ENEMY THAT REACHES THE MIDDLE COSTS A LIFE.</p>`;
     const how=document.createElement("button"); how.className="howto"; how.textContent="▶ HOW TO PLAY"; how.onclick=()=>fdDemo(); ov.appendChild(how);
   }
   const row=(label, list, get, set)=>{ const r=document.createElement("div"); r.className="optrow"; const l=document.createElement("span"); l.className="optlabel"; l.textContent=label;
@@ -3758,7 +3758,7 @@ function fdMenu(over){
 function beginFifths(level){
   piano.start(); stopDemo(); clearTimeout(blast.attract); clearTimeout(blast.cabT);
   if(blast.overlay){ blast.overlay.remove(); blast.overlay=null; }
-  Object.assign(blast,{foes:[], score:0, lives:3, level, startLevel:level, kills:0, levelKills:0, phase:"play", over:false, jamUntil:0, modFor:null,
+  Object.assign(blast,{foes:[], score:0, lives:3, level, startLevel:level, kills:0, levelKills:0, aimOffset:0, knobV:null, edgeAt:null, phase:"play", over:false, jamUntil:0, modFor:null,
     next:performance.now()+1500, gap:3000*speedMul()*Math.pow(.93,level), creep:22/speedMul()*Math.pow(1.06,level)});
   saved.fifthsStart=level; save();
   stats.streak=0; scoreboard(); fdLayout(); fdLabels();
@@ -3776,11 +3776,29 @@ function fdAimAt(i){
   if(!blast || blast.kind!=="fifths" || i===blast.aim) return;
   blast.aim=mod(i,12); sfx("press"); fdLabels(); fdHelp();
 }
-function fdKnob(v){ if(blast && blast.phase==="play") fdAimAt(Math.min(11, Math.floor(v*12))); }
+// The knob has end stops, so the circle has a seam somewhere on it. It goes opposite C: C is the middle
+// of the knob's travel, the fifths running clockwise to the right (G, D, A, E, B) and anticlockwise to
+// the left (F, B♭, E♭, A♭, D♭), and both ends are F♯/G♭, the same spoke, as far from home as it gets.
+// And it turns endlessly: held against either end stop, the aim keeps stepping round that way, the
+// whole mapping turning with it, so the knob never jumps back when it's turned away from the end.
+function fdKnob(v){
+  if(!blast || blast.phase!=="play") return;
+  blast.knobV=v; fdAimAt(mod(Math.round(v*12)-6+(blast.aimOffset||0), 12));
+}
+const FD_EDGE=.025, FD_EDGE_WAIT=420, FD_EDGE_STEP=260;   // how close to an end stop counts, how long before it starts, how often it steps
+function fdEdge(now){
+  const v=blast.knobV; if(v==null || blast.phase!=="play"){ blast.edgeAt=null; return; }
+  const dir = v<=FD_EDGE ? -1 : v>=1-FD_EDGE ? 1 : 0;
+  if(!dir){ blast.edgeAt=null; return; }
+  if(blast.edgeAt==null){ blast.edgeAt=now+FD_EDGE_WAIT; return; }
+  if(now<blast.edgeAt) return;
+  blast.edgeAt=now+FD_EDGE_STEP; blast.aimOffset=(blast.aimOffset||0)+dir; fdKnob(v);
+}
 function fdTick(now){
   if(!blast || blast.kind!=="fifths") return;
   const dt=Math.min(.05,(now-blast.last)/1000); blast.last=now;
   if(blast.phase==="play" || blast.phase==="demo"){
+    fdEdge(now);
     if(blast.phase==="play" && now>=blast.next && blast.foes.filter(f=>!f.dead).length<4+blast.level){ fdSpawn(); blast.next=now+blast.gap*(.75+Math.random()*.5); }
     for(const f of blast.foes){
       if(f.dead) continue;
