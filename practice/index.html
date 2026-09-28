@@ -324,6 +324,11 @@
 .fdkey.unused{opacity:.3}
 
 /* high scores: the entry, the board in the title loop, the line at game over */
+.overlay.hssplash{z-index:8;background:rgba(7,6,12,.82)}
+.hssplash h3.over{font-size:clamp(1.6rem,5vw,2.8rem)!important;animation:overin .6s cubic-bezier(.2,1.5,.4,1) both}
+@keyframes overin{from{transform:scale(2.2);opacity:0}}
+.hssplash .hsfinal{font-size:1.5rem!important;color:#FFD35A!important}
+.hssplash .hsnext{color:#7FE9FF!important;min-height:1.4em}
 .overlay.hsentry{z-index:8;background:rgba(7,6,12,.92)}
 .hsentry .hsscore{font-size:1.4rem!important;color:#FFD35A!important}
 .hsletters{display:flex;gap:14px;margin:6px 0 4px}
@@ -4048,9 +4053,18 @@ function hsOffer(next){
     if(!blast || blast.phase!=="over") return;
     const makes = scores.length<10 || score>scores[scores.length-1].score;
     if(!makes){ next(); return; }
-    hsEntry(slug, score, next);
+    gameOverSplash(score, ()=>hsEntry(slug, score, next));
   });
   return true;
+}
+// Before the initials: GAME OVER, the final score and level, held for a few seconds while nothing the
+// player does counts, so the chord or knob turn still in their hands when they lost can't set a letter.
+function gameOverSplash(score, then){
+  const ov=document.createElement("div"); ov.className="overlay hssplash";
+  ov.innerHTML=`<h3 class="over">GAME OVER</h3><p class="hsfinal">${score.toLocaleString("en-US")}</p><p>LEVEL ${blast.level+1}</p><p class="hsnext">…</p>`;
+  blast.field.appendChild(ov); sfx("over");
+  setTimeout(()=>{ if(blast && blast.phase==="over"){ const n=ov.querySelector(".hsnext"); n.textContent="NEW HIGH SCORE!"; n.classList.add("blink"); sfx("bonus"); } }, 1800);
+  setTimeout(()=>{ ov.remove(); if(blast && blast.phase==="over") then(); }, 3600);
 }
 function hsEntry(slug, score, next){
   const ov=document.createElement("div"); ov.className="overlay hsentry";
@@ -4060,9 +4074,10 @@ function hsEntry(slug, score, next){
   blast.field.appendChild(ov);
   const st={letters, pos:0, ov, done:false};
   const draw=()=>{ [...ov.querySelectorAll(".hsletters span")].forEach((e,i)=>{ e.textContent=st.letters[i]; e.classList.toggle("on", i===st.pos); }); };
-  const step=d=>{ const i=HS_CHARS.indexOf(st.letters[st.pos]); st.letters[st.pos]=HS_CHARS[mod(i+d, HS_CHARS.length)]; sfx("press"); draw(); };
-  const move=d=>{ st.pos=Math.max(0,Math.min(2,st.pos+d)); draw(); };
-  const set=()=>{ sfx("key"); if(st.pos<2){ st.pos++; draw(); } else finish(); };
+  const step=d=>{ if(!settled()) return; const i=HS_CHARS.indexOf(st.letters[st.pos]); st.letters[st.pos]=HS_CHARS[mod(i+d, HS_CHARS.length)]; sfx("press"); draw(); };
+  const move=d=>{ if(!settled()) return; st.pos=Math.max(0,Math.min(2,st.pos+d)); draw(); };
+  const opened=performance.now(), settled=()=>performance.now()-opened>700;   // a moment's grace before input counts
+  const set=()=>{ if(!settled()) return; sfx("key"); if(st.pos<2){ st.pos++; draw(); } else finish(); };
   const finish=async()=>{
     if(st.done) return; st.done=true; blast.hsEntry=null;
     const initials=st.letters.join(""); saved.hsInitials=initials;
@@ -4084,7 +4099,11 @@ function hsEntry(slug, score, next){
     blast.hsResult=`${initials} · #${rank} ON ${shared?"THE BOARD":"THIS COMPUTER'S BOARD"}`;
     sfx("level"); ov.remove(); next();
   };
-  blast.hsEntry={step, move, set, finish, back:()=>move(-1), knob:v=>{ st.letters[st.pos]=HS_CHARS[Math.min(HS_CHARS.length-1,Math.floor(v*HS_CHARS.length))]; draw(); }, type:ch=>{ st.letters[st.pos]=ch; set(); }};
+  blast.hsEntry={step, move, set, finish, back:()=>move(-1), knob:v=>{   // relative: where the knob rests when a letter comes up is that letter; a sixth of a turn either way is six letters
+    if(!settled()) return;
+    if(st.knobBase==null || st.knobPos!==st.pos){ st.knobBase=v; st.knobPos=st.pos; st.knobFrom=HS_CHARS.indexOf(st.letters[st.pos]); return; }
+    const d=Math.round((v-st.knobBase)*36); if(!d) return;
+    st.letters[st.pos]=HS_CHARS[mod(st.knobFrom+d, HS_CHARS.length)]; draw(); }, type:ch=>{ if(!settled()) return; st.letters[st.pos]=ch; draw(); set(); }};
   draw(); sfx("bonus");
 }
 // the game over screen says what became of the score
