@@ -1821,7 +1821,7 @@ function startCommand(){
 // the minichord connected (or already there): keep reading it; between games the harp is chromatic
 function commandDevice(){
   if(!blast || blast.kind!=="command" || !canWrite()) return;
-  if(!blast.setupDone){ blast.setupDone=true; if(!(35 in borrowed)) borrow(35, mc.params[35]); if(hasSetting(30)) ensure(30,0); poll(true); }
+  arcadeSetup(()=>{ if(!(35 in borrowed)) borrow(35, mc.params[35]); if(hasSetting(30)) ensure(30,0); });
   // what this minichord can play decides which levels are open: redraw the title screen when that changes
   const sig=HC_LEVELS.map((_,i)=>hcLevelOk(i)).join();
   if(blast.phase==="menu" && blast.overlay && blast.menuSig!==sig){ const hid=blast.overlay.hidden; blast.overlay.remove(); blast.overlay=null; commandMenu(); blast.overlay.hidden=hid; }
@@ -1850,43 +1850,17 @@ function blastBarCommand(){
   const toGo = blast.phase==="play" ? ` · NEXT ${Math.max(0,hcHitsToLevel(blast.level)-(blast.levelHits||0))}` : "";
   blast.hud.innerHTML=`<span>SCORE ${blast.score}${multTag()}</span><span class="lvl">LEVEL ${blast.level+1}${key}${toGo}</span><span class="lives">${"♥".repeat(Math.max(0,blast.lives))||"-"}</span>`;
 }
-function commandMenu(over){
-  if(over && hsOffer(()=>commandMenu(true))) return;
-  const ov=document.createElement("div"); ov.className="overlay";
-  const best=saved.best.command||0;
-  if(over){
-    ov.innerHTML=`<h3 class="over">GAME OVER</h3><p>SCORE ${blast.score} · LEVEL ${blast.level+1} · BEST ${best}</p>`;
-    const again=document.createElement("button"); again.className="go"; again.innerHTML=`PLAY AGAIN<small>from level ${blast.startLevel+1}</small>`;
-    again.onclick=()=>beginCommand(blast.startLevel); ov.appendChild(again);
-    sfx("over");
-  } else {
-    ov.innerHTML=`<h3>HARP COMMAND</h3><p>NOTES FALL TOWARD YOUR CANNONS.</p><p>PLUCK THE STRING THAT PLAYS ONE AND ITS CANNON FIRES.</p><p class="starline">${PIXEL_STAR}NOTES SCORE BIG AND NEVER HURT.</p><p>A WRONG STRING FREEZES YOUR CANNONS.</p>`;
-    const how=document.createElement("button"); how.className="howto"; how.textContent="▶ HOW TO PLAY"; how.onclick=()=>commandDemo(); ov.appendChild(how);
-  }
-  const row=(label, list, get, set)=>{ const r=document.createElement("div"); r.className="optrow"; const l=document.createElement("span"); l.className="optlabel"; l.textContent=label;
-    const g=document.createElement("div"); g.className="levels";
-    const mark=b=>{ [...g.children].forEach(x=>{ x.style.background=""; x.style.color=""; }); b.style.background="#F1E8D2"; b.style.color="#16132A"; };
-    list.forEach((n,i)=>{ const b=document.createElement("button"); b.textContent=n; if(get()===i) mark(b); b.onclick=()=>{ set(i); mark(b); }; g.appendChild(b); });
-    r.append(l,g); ov.appendChild(r); };
-  row("SPEED", SPEEDS.map(x=>x[0].toUpperCase()), ()=>+saved.speed||0, i=>{ saved.speed=i; save(); });
-  row("NOTE SIZE", SIZES.map(x=>x[0]), ()=>saved.chordSize??1, i=>{ saved.chordSize=i; save(); applyChordSize(); });
-  // how many notes fall at once: more targets on the screen, more chances at the right string, at any speed
-  row("NOTES AT ONCE", HC_DENSITY.map(x=>x[0]), ()=>saved.hcDensity??1, i=>{ saved.hcDensity=i; save(); });
-  const lp=document.createElement("p"); lp.className = over ? "" : "blink"; lp.textContent = over ? "OR START FROM" : "CHOOSE A LEVEL"; ov.appendChild(lp);
-  const lv=document.createElement("div"); lv.className="levels";
-  HC_LEVELS.forEach((L,i)=>{ const b=document.createElement("button"); const ok=hcLevelOk(i);
-    b.innerHTML=`${i+1}<small>${L.n}${ok?"":"<br>NEEDS THE TEST FIRMWARE"}</small>`; b.disabled=!ok; b.onclick=()=>beginCommand(i); lv.appendChild(b); });
-  ov.appendChild(lv); blast.menuSig=HC_LEVELS.map((_,i)=>hcLevelOk(i)).join();
-  if(!over && best){ const p=document.createElement("p"); p.textContent=`BEST ${best}`; ov.appendChild(p); }
-  arcadeKeys(ov);
-  if(!over) arcadeCredit(ov);
-  if(over) hsGameOverLine(ov);
-  blast.field.appendChild(ov); blast.overlay=ov;
-  if(over) overTimeout(ov, ()=>commandMenu());
-  if(!over){ cabinet(ov); return; }
-  clearTimeout(blast.attract);
-  if(!over) blast.attract=setTimeout(()=>{ if(blast && blast.kind==="command" && blast.phase==="menu" && blast.overlay===ov) commandDemo(); }, 25000);
-}
+const COMMANDMENU_G={key:"command", title:"HARP COMMAND",
+  rules:()=>`<p>NOTES FALL TOWARD YOUR CANNONS.</p><p>PLUCK THE STRING THAT PLAYS ONE AND ITS CANNON FIRES.</p><p class="starline">${PIXEL_STAR}NOTES SCORE BIG AND NEVER HURT.</p><p>A WRONG STRING FREEZES YOUR CANNONS.</p>`,
+  rows:row=>{
+    row("SPEED", SPEEDS.map(x=>x[0].toUpperCase()), ()=>+saved.speed||0, i=>{ saved.speed=i; save(); });
+    row("NOTE SIZE", SIZES.map(x=>x[0]), ()=>saved.chordSize??1, i=>{ saved.chordSize=i; save(); applyChordSize(); });
+    // how many notes fall at once: more targets on the screen, more chances at the right string, at any speed
+    row("NOTES AT ONCE", HC_DENSITY.map(x=>x[0]), ()=>saved.hcDensity??1, i=>{ saved.hcDensity=i; save(); });
+  },
+  levels:HC_LEVELS, ok:hcLevelOk, needs:"NEEDS THE TEST FIRMWARE",
+  begin:i=>beginCommand(i), demo:()=>commandDemo(), modNote:false};
+function commandMenu(over){ arcadeMenu(COMMANDMENU_G, over); }
 function beginCommand(level){
   piano.start(); stopDemo(); clearTimeout(blast.attract);
   cancelAnimationFrame(blast.raf); blast.last=performance.now(); blast.raf=requestAnimationFrame(commandTick);
@@ -2027,11 +2001,7 @@ function commandDemo(){
   stopDemo(); clearTimeout(blast.attract); piano.start();
   if(blast.overlay) blast.overlay.hidden=true;
   blast.phase="demo"; hcLayout();
-  const el=document.createElement("div"); el.className="demo"; blast.field.appendChild(el); blast.field.classList.add("demoing");
-  const token={run:true, el}; blast.demo=token;
-  el.innerHTML=`<div class="demohead"><span class="demotag blink">DEMO</span><span class="demotitle"></span><button class="demoskip">SKIP ▶</button></div><p class="democap"></p>`;
-  el.querySelector(".demoskip").onclick=()=>endCommandDemo(token);
-  const $d=s=>el.querySelector(s), sleep=ms=>new Promise(r=>setTimeout(r,ms));
+  const {el, token, say, sleep, step}=demoShell(endCommandDemo), $d=s=>el.querySelector(s);
   demoHarp("command");
   sfx("attract");
   (async()=>{
@@ -2199,7 +2169,7 @@ function startSnake(){
 }
 function snDevice(){
   if(!blast || blast.kind!=="snake" || !canWrite()) return;
-  if(!blast.setupDone){ blast.setupDone=true; poll(true); kmHarp(); }
+  arcadeSetup(()=>{ kmHarp(); });
   const sig=SN_LEVELS.map((_,i)=>snLevelOk(i)).join();
   if(blast.phase==="menu" && blast.overlay && blast.menuSig!==sig){ const hid=blast.overlay.hidden; blast.overlay.remove(); blast.overlay=null; snMenu(); blast.overlay.hidden=hid; }
 }
@@ -2223,44 +2193,17 @@ function snBar(){
   const max=SN_MAX[blast.level]||6, load=blast.tail.length;
   blast.hud.innerHTML=`<span>SCORE ${blast.score}${multTag()}</span><span class="lvl">LEVEL ${blast.level+1} · LOAD ${load}/${max}</span><span class="lives">${"♥".repeat(Math.max(0,blast.lives))||"-"}</span>`;
 }
-function snMenu(over){
-  if(over && hsOffer(()=>snMenu(true))) return;
-  const ov=document.createElement("div"); ov.className="overlay";
-  const best=saved.best.snake||0;
-  if(over){
-    ov.innerHTML=`<h3 class="over">GAME OVER</h3><p>SCORE ${blast.score} · LEVEL ${blast.level+1} · BEST ${best}</p>`;
-    const again=document.createElement("button"); again.className="go"; again.innerHTML=`PLAY AGAIN<small>from level ${blast.startLevel+1}</small>`;
-    again.onclick=()=>beginSnake(blast.startLevel); ov.appendChild(again);
-    sfx("over");
-  } else {
-    ov.innerHTML=`<h3>CHORD SNAKE</h3><p>EAT NOTES. WHEN THE ONES YOU CARRY SPELL A CHORD, PLAY IT TO CASH THEM IN.</p><p>STEER ON THE HARP OR THE ARROW KEYS. B DROPS YOUR OLDEST NOTE.</p>`;
-    const how=document.createElement("button"); how.className="howto"; how.textContent="▶ HOW TO PLAY"; how.onclick=()=>snDemo(); ov.appendChild(how);
-  }
-  const row=(label, list, get, set)=>{ const r=document.createElement("div"); r.className="optrow"; const l=document.createElement("span"); l.className="optlabel"; l.textContent=label;
-    const g=document.createElement("div"); g.className="levels";
-    const mark=b=>{ [...g.children].forEach(x=>{ x.style.background=""; x.style.color=""; }); b.style.background="#F1E8D2"; b.style.color="#16132A"; };
-    list.forEach((n,i)=>{ const b=document.createElement("button"); b.textContent=n; if(get()===i) mark(b); b.onclick=()=>{ set(i); mark(b); }; g.appendChild(b); });
-    r.append(l,g); ov.appendChild(r); };
-  row("SPEED", SPEEDS.map(x=>x[0].toUpperCase()), ()=>+saved.speed||0, i=>{ saved.speed=i; save(); });
-  row("HARP", ["STANDARD STRIP","KEYMASTER GRID"], ()=>saved.harpLayout==="keymaster"?1:0, i=>{ saved.harpLayout = i ? "keymaster" : "strip"; save();
+const SNMENU_G={key:"snake", title:"CHORD SNAKE",
+  rules:()=>`<p>EAT NOTES. WHEN THE ONES YOU CARRY SPELL A CHORD, PLAY IT TO CASH THEM IN.</p><p>STEER ON THE HARP OR THE ARROW KEYS. B DROPS YOUR OLDEST NOTE.</p>`,
+  rows:row=>{
+    row("SPEED", SPEEDS.map(x=>x[0].toUpperCase()), ()=>+saved.speed||0, i=>{ saved.speed=i; save(); });
+    row("HARP", ["STANDARD STRIP","KEYMASTER GRID"], ()=>saved.harpLayout==="keymaster"?1:0, i=>{ saved.harpLayout = i ? "keymaster" : "strip"; save();
     kmRestrip(); });
-  row("HARP SOUND", ["NORMAL","QUIET","OFF"], ()=>saved.harpSound??1, i=>{ saved.harpSound=i; save(); if(blast && blast.setupDone) kmHarp(); });
-  const lp=document.createElement("p"); lp.className = over ? "" : "blink"; lp.textContent = over ? "OR START FROM" : "CHOOSE A LEVEL"; ov.appendChild(lp);
-  const lv=document.createElement("div"); lv.className="levels";
-  SN_LEVELS.forEach((L,i)=>{ const b=document.createElement("button"), ok=snLevelOk(i);
-    b.innerHTML=`${i+1}<small>${L.n}${ok?"":"<br>NEEDS A MINICHORD"}</small>`; b.disabled=!ok; b.onclick=()=>beginSnake(i); lv.appendChild(b); });
-  ov.appendChild(lv); blast.menuSig=SN_LEVELS.map((_,i)=>snLevelOk(i)).join();
-  if(!over && best){ const p=document.createElement("p"); p.textContent=`BEST ${best}`; ov.appendChild(p); }
-  arcadeModNote(ov);
-  arcadeKeys(ov);
-  if(!over) arcadeCredit(ov);
-  if(over) hsGameOverLine(ov);
-  blast.field.appendChild(ov); blast.overlay=ov;
-  if(over) overTimeout(ov, ()=>snMenu());
-  if(!over){ cabinet(ov); return; }
-  clearTimeout(blast.attract);
-  if(!over) blast.attract=setTimeout(()=>{ if(blast && blast.kind==="snake" && blast.phase==="menu" && blast.overlay===ov) snDemo(); }, 25000);
-}
+    row("HARP SOUND", ["NORMAL","QUIET","OFF"], ()=>saved.harpSound??1, i=>{ saved.harpSound=i; save(); if(blast && blast.setupDone) kmHarp(); });
+  },
+  levels:SN_LEVELS, ok:snLevelOk, needs:"NEEDS A MINICHORD",
+  begin:i=>beginSnake(i), demo:()=>snDemo(), modNote:"always"};
+function snMenu(over){ arcadeMenu(SNMENU_G, over); }
 // a fresh snake in the middle, pointing right, carrying nothing
 function snReset(){
   const cx=Math.floor(blast.cols/2)-2, cy=Math.floor(blast.rows/2);
@@ -2420,15 +2363,10 @@ function snDemo(){
   stopDemo(); clearTimeout(blast.attract); piano.start();
   if(blast.overlay) blast.overlay.hidden=true;
   blast.phase="demo"; snLayout();
-  const el=document.createElement("div"); el.className="demo"; blast.field.appendChild(el); blast.field.classList.add("demoing");
-  const token={run:true, el}; blast.demo=token;
-  el.innerHTML=`<div class="demohead"><span class="demotag blink">DEMO</span><span class="demotitle"></span><button class="demoskip">SKIP ▶</button></div><p class="democap"></p>`;
-  el.querySelector(".demoskip").onclick=()=>endSnDemo(token);
-  const $d=s=>el.querySelector(s), sleep=ms=>new Promise(r=>setTimeout(r,ms)), say=(t,c)=>{ $d(".demotitle").textContent=t||""; $d(".democap").textContent=c; };
+  const {el, token, say, sleep, step}=demoShell(endSnDemo), $d=s=>el.querySelector(s);
   const litZone=(...zs)=>{ [...blast.strip.children].forEach(c=>c.classList.toggle("demo-on", zs.includes(c.dataset.zone))); };
   sfx("attract");
   (async()=>{
-    const step=async ms=>{ await sleep(ms); if(!token.run) throw 0; };
     try{
       const grid=kmLayout().cols===3;
       say("THE HARP IS YOUR CONTROLLER", grid ? "ITS FOUR ROWS OF THREE ARE A D-PAD, WITH TWO BUTTONS IN THE MIDDLE." : "TOP TO BOTTOM, THE STRIP IS UP, LEFT, TWO BUTTONS, RIGHT AND DOWN."); await step(3200);
@@ -2516,7 +2454,7 @@ function startAsteroids(){
 }
 function asDevice(){
   if(!blast || blast.kind!=="asteroids" || !canWrite()) return;
-  if(!blast.setupDone){ blast.setupDone=true; poll(true); asHarp(); }
+  arcadeSetup(()=>{ asHarp(); });
   const sig=AS_LEVELS.map((_,i)=>asLevelOk(i)).join();
   if(blast.phase==="menu" && blast.overlay && blast.menuSig!==sig){ const hid=blast.overlay.hidden; blast.overlay.remove(); blast.overlay=null; asMenu(); blast.overlay.hidden=hid; }
 }
@@ -2539,42 +2477,15 @@ function asBar(){
   if(!blast || blast.kind!=="asteroids" || !blast.hud) return;
   blast.hud.innerHTML=`<span>SCORE ${blast.score}${multTag()}</span><span class="lvl">LEVEL ${blast.level+1}</span><span class="lives">${"♥".repeat(Math.max(0,blast.lives))||"-"}</span>`;
 }
-function asMenu(over){
-  if(over && hsOffer(()=>asMenu(true))) return;
-  const ov=document.createElement("div"); ov.className="overlay";
-  const best=saved.best.asteroids||0;
-  if(over){
-    ov.innerHTML=`<h3 class="over">GAME OVER</h3><p>SCORE ${blast.score} · LEVEL ${blast.level+1} · BEST ${best}</p>`;
-    const again=document.createElement("button"); again.className="go"; again.innerHTML=`PLAY AGAIN<small>from level ${blast.startLevel+1}</small>`;
-    again.onclick=()=>beginAsteroids(blast.startLevel); ov.appendChild(again);
-    sfx("over");
-  } else {
-    ov.innerHTML=`<h3>CHORD ASTEROIDS</h3><p>PLAY A ROCK'S CHORD TO CRACK IT INTO ITS NOTES.</p><p>PLUCK EACH NOTE ON THE HARP TO SHOOT IT DOWN.</p><p class="starline">${PIXEL_STAR}ROCKS SCORE BIG AND NEVER HURT.</p>`;
-    const how=document.createElement("button"); how.className="howto"; how.textContent="▶ HOW TO PLAY"; how.onclick=()=>asDemo(); ov.appendChild(how);
-  }
-  const row=(label, list, get, set)=>{ const r=document.createElement("div"); r.className="optrow"; const l=document.createElement("span"); l.className="optlabel"; l.textContent=label;
-    const g=document.createElement("div"); g.className="levels";
-    const mark=b=>{ [...g.children].forEach(x=>{ x.style.background=""; x.style.color=""; }); b.style.background="#F1E8D2"; b.style.color="#16132A"; };
-    list.forEach((n,i)=>{ const b=document.createElement("button"); b.textContent=n; if(get()===i) mark(b); b.onclick=()=>{ set(i); mark(b); }; g.appendChild(b); });
-    r.append(l,g); ov.appendChild(r); };
-  row("SPEED", SPEEDS.map(x=>x[0].toUpperCase()), ()=>+saved.speed||0, i=>{ saved.speed=i; save(); });
-  row("LABEL SIZE", SIZES.map(x=>x[0]), ()=>saved.chordSize??1, i=>{ saved.chordSize=i; save(); applyChordSize(); });
-  const lp=document.createElement("p"); lp.className = over ? "" : "blink"; lp.textContent = over ? "OR START FROM" : "CHOOSE A LEVEL"; ov.appendChild(lp);
-  const lv=document.createElement("div"); lv.className="levels";
-  AS_LEVELS.forEach((L,i)=>{ const b=document.createElement("button"), ok=asLevelOk(i);
-    b.innerHTML=`${i+1}<small>${L.n}${ok?"":"<br>NEEDS A MINICHORD"}</small>`; b.disabled=!ok; b.onclick=()=>beginAsteroids(i); lv.appendChild(b); });
-  ov.appendChild(lv); blast.menuSig=AS_LEVELS.map((_,i)=>asLevelOk(i)).join();
-  if(!over && best){ const p=document.createElement("p"); p.textContent=`BEST ${best}`; ov.appendChild(p); }
-  arcadeModNote(ov);
-  arcadeKeys(ov);
-  if(!over) arcadeCredit(ov);
-  if(over) hsGameOverLine(ov);
-  blast.field.appendChild(ov); blast.overlay=ov;
-  if(over) overTimeout(ov, ()=>asMenu());
-  if(!over){ cabinet(ov); return; }
-  clearTimeout(blast.attract);
-  if(!over) blast.attract=setTimeout(()=>{ if(blast && blast.kind==="asteroids" && blast.phase==="menu" && blast.overlay===ov) asDemo(); }, 25000);
-}
+const ASMENU_G={key:"asteroids", title:"CHORD ASTEROIDS",
+  rules:()=>`<p>PLAY A ROCK'S CHORD TO CRACK IT INTO ITS NOTES.</p><p>PLUCK EACH NOTE ON THE HARP TO SHOOT IT DOWN.</p><p class="starline">${PIXEL_STAR}ROCKS SCORE BIG AND NEVER HURT.</p>`,
+  rows:row=>{
+    row("SPEED", SPEEDS.map(x=>x[0].toUpperCase()), ()=>+saved.speed||0, i=>{ saved.speed=i; save(); });
+    row("LABEL SIZE", SIZES.map(x=>x[0]), ()=>saved.chordSize??1, i=>{ saved.chordSize=i; save(); applyChordSize(); });
+  },
+  levels:AS_LEVELS, ok:asLevelOk, needs:"NEEDS A MINICHORD",
+  begin:i=>beginAsteroids(i), demo:()=>asDemo(), modNote:"always"};
+function asMenu(over){ arcadeMenu(ASMENU_G, over); }
 function beginAsteroids(level){
   piano.start(); stopDemo(); clearTimeout(blast.attract);
   if(blast.overlay){ blast.overlay.remove(); blast.overlay=null; }
@@ -2728,16 +2639,11 @@ function asDemo(){
   stopDemo(); clearTimeout(blast.attract); piano.start();
   if(blast.overlay) blast.overlay.hidden=true;
   blast.phase="demo"; asCentre(); blast.drift=40;
-  const el=document.createElement("div"); el.className="demo"; blast.field.appendChild(el); blast.field.classList.add("demoing");
-  const token={run:true, el}; blast.demo=token;
-  el.innerHTML=`<div class="demohead"><span class="demotag blink">DEMO</span><span class="demotitle"></span><button class="demoskip">SKIP ▶</button></div><p class="democap"></p>`;
-  el.querySelector(".demoskip").onclick=()=>endAsDemo(token);
-  const $d=s=>el.querySelector(s), sleep=ms=>new Promise(r=>setTimeout(r,ms)), say=(t,c)=>{ $d(".demotitle").textContent=t||""; $d(".democap").textContent=c; };
+  const {el, token, say, sleep, step}=demoShell(endAsDemo), $d=s=>el.querySelector(s);
   const play=notes=>{ if(settings.sounds && piano.ctx){ const go=()=>piano.play(notes,{when:.02,dur:1.1}); piano.ctx.state==="running"?go():piano.ctx.resume().then(go).catch(()=>{}); } };
   demoHarp("asteroids");
   sfx("attract");
   (async()=>{
-    const step=async ms=>{ await sleep(ms); if(!token.run) throw 0; };
     try{
       say("CHORD ASTEROIDS","CHORD ROCKS DRIFT TOWARD YOUR SHIP.");
       const W=blast.field.clientWidth;
@@ -2842,7 +2748,7 @@ function startStack(){
 }
 function stDevice(){
   if(!blast || blast.kind!=="stack" || !canWrite()) return;
-  if(!blast.setupDone){ blast.setupDone=true; poll(true); kmHarp(); if(knobsReady()) borrow(238,1); }
+  arcadeSetup(()=>{ kmHarp(); if(knobsReady()) borrow(238,1); });
   // the title screen mentions the knob once the minichord says it has one to send
   const sig=String(knobsReady());
   if(blast.phase==="menu" && blast.overlay && blast.menuSig!==sig){ const hid=blast.overlay.hidden; blast.overlay.remove(); blast.overlay=null; stMenu(); blast.overlay.hidden=hid; blast.menuSig=sig; }
@@ -2882,43 +2788,18 @@ function stBar(){
   if(!blast || blast.kind!=="stack" || !blast.hud) return;
   blast.hud.innerHTML=`<span>SCORE ${blast.score}${multTag()}</span><span class="lvl">LEVEL ${blast.level+1} · ${ST_LEVELS[blast.level].n.toUpperCase()}</span><span>RISE IN ${Math.max(0,blast.riseIn||0)}</span>`;
 }
-function stMenu(over){
-  if(over && hsOffer(()=>stMenu(true))) return;
-  const ov=document.createElement("div"); ov.className="overlay";
-  const best=saved.best.stack||0;
-  if(over){
-    ov.innerHTML=`<h3 class="over">GAME OVER</h3><p>SCORE ${blast.score} · ROWS ${blast.clears} · BEST ${best}</p>`;
-    const again=document.createElement("button"); again.className="go"; again.innerHTML=`PLAY AGAIN<small>from level ${blast.startLevel+1}</small>`;
-    again.onclick=()=>beginStack(blast.startLevel); ov.appendChild(again);
-    sfx("over");
-  } else {
-    ov.innerHTML=`<h3>CHORD STACK</h3><p>ONE COLUMN FOR EACH NOTE, C TO B. SLIDE A PIECE TO TRANSPOSE IT${knobsReady() ? ": TURN A KNOB ON THE MINICHORD AND IT SLIDES" : ""}.</p><p>NOTES FALL DOWN THEIR COLUMNS. WHEN A ROW HOLDS A CHORD, PLAY IT TO CLEAR IT.</p><p>EVERY FEW PIECES A ROW OF STRAY NOTES RISES FROM BELOW. DON'T LET THE STACK REACH THE TOP.</p><p>A INVERTS · B DROPS · UP SWAPS SHARPS AND FLATS</p>`;
-    const how=document.createElement("button"); how.className="howto"; how.textContent="▶ HOW TO PLAY"; how.onclick=()=>stDemo(); ov.appendChild(how);
-  }
-  const row=(label, list, get, set)=>{ const r=document.createElement("div"); r.className="optrow"; const l=document.createElement("span"); l.className="optlabel"; l.textContent=label;
-    const g=document.createElement("div"); g.className="levels";
-    const mark=b=>{ [...g.children].forEach(x=>{ x.style.background=""; x.style.color=""; }); b.style.background="#F1E8D2"; b.style.color="#16132A"; };
-    list.forEach((n,i)=>{ const b=document.createElement("button"); b.textContent=n; if(get()===i) mark(b); b.onclick=()=>{ set(i); mark(b); }; g.appendChild(b); });
-    r.append(l,g); ov.appendChild(r); };
-  row("SPEED", SPEEDS.map(x=>x[0].toUpperCase()), ()=>+saved.speed||0, i=>{ saved.speed=i; save(); });
-  row("HARP", ["STANDARD STRIP","KEYMASTER GRID"], ()=>saved.harpLayout==="keymaster"?1:0, i=>{ saved.harpLayout = i ? "keymaster" : "strip"; save();
+const STMENU_G={key:"stack", title:"CHORD STACK",
+  rules:()=>`<p>ONE COLUMN FOR EACH NOTE, C TO B. SLIDE A PIECE TO TRANSPOSE IT${knobsReady() ? ": TURN A KNOB ON THE MINICHORD AND IT SLIDES" : ""}.</p><p>NOTES FALL DOWN THEIR COLUMNS. WHEN A ROW HOLDS A CHORD, PLAY IT TO CLEAR IT.</p><p>EVERY FEW PIECES A ROW OF STRAY NOTES RISES FROM BELOW. DON'T LET THE STACK REACH THE TOP.</p><p>A INVERTS · B DROPS · UP SWAPS SHARPS AND FLATS</p>`,
+  stat:()=>`ROWS ${blast.clears}`,
+  rows:row=>{
+    row("SPEED", SPEEDS.map(x=>x[0].toUpperCase()), ()=>+saved.speed||0, i=>{ saved.speed=i; save(); });
+    row("HARP", ["STANDARD STRIP","KEYMASTER GRID"], ()=>saved.harpLayout==="keymaster"?1:0, i=>{ saved.harpLayout = i ? "keymaster" : "strip"; save();
     kmRestrip(); });
-  row("HARP SOUND", ["NORMAL","QUIET","OFF"], ()=>saved.harpSound??1, i=>{ saved.harpSound=i; save(); if(blast && blast.setupDone) kmHarp(); });
-  const lp=document.createElement("p"); lp.className = over ? "" : "blink"; lp.textContent = over ? "OR START FROM" : "CHOOSE A LEVEL"; ov.appendChild(lp);
-  const lv=document.createElement("div"); lv.className="levels";
-  ST_LEVELS.forEach((L,i)=>{ const b=document.createElement("button"); b.innerHTML=`${i+1}<small>${L.n}</small>`; b.onclick=()=>beginStack(i); lv.appendChild(b); });
-  ov.appendChild(lv);
-  if(!over && best){ const p=document.createElement("p"); p.textContent=`BEST ${best}`; ov.appendChild(p); }
-  arcadeModNote(ov);
-  arcadeKeys(ov);
-  if(!over) arcadeCredit(ov);
-  if(over) hsGameOverLine(ov);
-  blast.field.appendChild(ov); blast.overlay=ov;
-  if(over) overTimeout(ov, ()=>stMenu());
-  if(!over){ cabinet(ov); return; }
-  clearTimeout(blast.attract);
-  if(!over) blast.attract=setTimeout(()=>{ if(blast && blast.kind==="stack" && blast.phase==="menu" && blast.overlay===ov) stDemo(); }, 25000);
-}
+    row("HARP SOUND", ["NORMAL","QUIET","OFF"], ()=>saved.harpSound??1, i=>{ saved.harpSound=i; save(); if(blast && blast.setupDone) kmHarp(); });
+  },
+  levels:ST_LEVELS,
+  begin:i=>beginStack(i), demo:()=>stDemo(), modNote:"always"};
+function stMenu(over){ arcadeMenu(STMENU_G, over); }
 // A piece is spelled by its intervals, the way chords are built: its lowest note named for its
 // column (a black-key column as a sharp or a flat, the piece's own choice, kept as it slides), and
 // each other note the letter its interval calls for, a third two letters up, a fifth four. So a
@@ -3092,15 +2973,10 @@ function stDemo(){
   if(blast.overlay) blast.overlay.hidden=true;
   blast.phase="demo"; stLayout();
   blast.grid=[...Array(ST_ROWS)].map(()=>Array(12).fill(null)); blast.level=0;
-  const el=document.createElement("div"); el.className="demo"; blast.field.appendChild(el); blast.field.classList.add("demoing");
-  const token={run:true, el}; blast.demo=token;
-  el.innerHTML=`<div class="demohead"><span class="demotag blink">DEMO</span><span class="demotitle"></span><button class="demoskip">SKIP ▶</button></div><p class="democap"></p>`;
-  el.querySelector(".demoskip").onclick=()=>endStDemo(token);
-  const $d=s=>el.querySelector(s), sleep=ms=>new Promise(r=>setTimeout(r,ms)), say=(t,c)=>{ $d(".demotitle").textContent=t||""; $d(".democap").textContent=c; };
+  const {el, token, say, sleep, step}=demoShell(endStDemo), $d=s=>el.querySelector(s);
   const play=notes=>{ if(settings.sounds && piano.ctx){ const go=()=>piano.play(notes,{when:.02,dur:1.1}); piano.ctx.state==="running"?go():piano.ctx.resume().then(go).catch(()=>{}); } };
   sfx("attract");
   (async()=>{
-    const step=async ms=>{ await sleep(ms); if(!token.run) throw 0; };
     const fall=async n=>{ for(let k=0;k<n;k++){ if(stFits(blast.piece,blast.piece.x,blast.piece.y+1)){ blast.piece.y++; stDraw(); } await step(110); } };
     try{
       say("CHORD STACK","TWELVE COLUMNS, ONE FOR EACH NOTE, C TO B, WRAPPING ROUND."); stDraw(); await step(3200);
@@ -3455,7 +3331,7 @@ function startBreakout(){
 }
 function boDevice(){
   if(!blast || blast.kind!=="breakout" || !canWrite()) return;
-  if(!blast.setupDone){ blast.setupDone=true; poll(true); if(hasSetting(30)) ensure(30,0); if(slashReady()) ensure(113,1); if(knobsReady()) borrow(238,1); }
+  arcadeSetup(()=>{ if(hasSetting(30)) ensure(30,0); if(slashReady()) ensure(113,1); if(knobsReady()) borrow(238,1); });
   const sig=BO_LEVELS.map((_,i)=>boLevelOk(i)).join()+knobsReady();
   if(blast.phase==="menu" && blast.overlay && blast.menuSig!==sig){ const hid=blast.overlay.hidden; blast.overlay.remove(); blast.overlay=null; boMenu(); blast.overlay.hidden=hid; }
 }
@@ -3480,41 +3356,16 @@ function boBar(){
   if(!blast || blast.kind!=="breakout" || !blast.hud) return;
   blast.hud.innerHTML=`<span>SCORE ${blast.score}${multTag()}</span><span class="lvl">LEVEL ${blast.level+1}</span><span class="lives">${"♥".repeat(Math.max(0,blast.lives))||"-"}</span>`;
 }
-function boMenu(over){
-  if(over && hsOffer(()=>boMenu(true))) return;
-  const ov=document.createElement("div"); ov.className="overlay";
-  const best=saved.best.breakout||0;
-  if(over){
-    ov.innerHTML=`<h3 class="over">GAME OVER</h3><p>SCORE ${blast.score} · LEVEL ${blast.level+1} · BEST ${best}</p>`;
-    const again=document.createElement("button"); again.className="go"; again.innerHTML=`PLAY AGAIN<small>from level ${blast.startLevel+1}</small>`;
-    again.onclick=()=>beginBreakout(blast.startLevel); ov.appendChild(again);
-    sfx("over");
-  } else {
-    ov.innerHTML=`<h3>CHORD BREAKOUT</h3><p>${knobsReady() ? "TURN A KNOB ON THE MINICHORD TO MOVE THE PADDLE (THE MOD KNOB, OR CHOOSE ANOTHER)." : "MOVE THE PADDLE WITH THE MOUSE OR THE ARROW KEYS. WITH FIRMWARE 17, A KNOB ON THE MINICHORD DOES IT."}</p><p>THE BALL CRACKS A CHORD BRICK. PLAY ITS CHORD BEFORE THE BALL COMES BACK AND IT BREAKS.</p><p>MISS IT AND THE BRICK HEALS. LET THE BALL PAST AND IT COSTS A LIFE.</p><p class="starline">${PIXEL_STAR}BRICKS SCORE FIVE TIMES AS MUCH.</p>`;
-    const how=document.createElement("button"); how.className="howto"; how.textContent="▶ HOW TO PLAY"; how.onclick=()=>boDemo(); ov.appendChild(how);
-  }
-  const row=(label, list, get, set)=>{ const r=document.createElement("div"); r.className="optrow"; const l=document.createElement("span"); l.className="optlabel"; l.textContent=label;
-    const g=document.createElement("div"); g.className="levels";
-    const mark=b=>{ [...g.children].forEach(x=>{ x.style.background=""; x.style.color=""; }); b.style.background="#F1E8D2"; b.style.color="#16132A"; };
-    list.forEach((n,i)=>{ const b=document.createElement("button"); b.textContent=n; if(get()===i) mark(b); b.onclick=()=>{ set(i); mark(b); }; g.appendChild(b); });
-    r.append(l,g); ov.appendChild(r); };
-  row("SPEED", SPEEDS.map(x=>x[0].toUpperCase()), ()=>+saved.speed||0, i=>{ saved.speed=i; save(); });
-  row("LABEL SIZE", SIZES.map(x=>x[0]), ()=>saved.chordSize??1, i=>{ saved.chordSize=i; save(); applyChordSize(); });
-  row("PADDLE", ["NARROW","NORMAL","WIDE"], ()=>saved.boPaddle??1, i=>{ saved.boPaddle=i; save(); });
-  const lp=document.createElement("p"); lp.className = over ? "" : "blink"; lp.textContent = over ? "OR START FROM" : "CHOOSE A LEVEL"; ov.appendChild(lp);
-  const lv=document.createElement("div"); lv.className="levels";
-  BO_LEVELS.forEach((L,i)=>{ const b=document.createElement("button"), ok=boLevelOk(i);
-    b.innerHTML=`${i+1}<small>${L.n}${ok?"":"<br>NEEDS THE TEST FIRMWARE"}</small>`; b.disabled=!ok; b.onclick=()=>beginBreakout(i); lv.appendChild(b); });
-  ov.appendChild(lv); blast.menuSig=BO_LEVELS.map((_,i)=>boLevelOk(i)).join()+knobsReady();
-  if(!over && best){ const p=document.createElement("p"); p.textContent=`BEST ${best}`; ov.appendChild(p); }
-  if(!over) arcadeModNote(ov);
-  arcadeKeys(ov);
-  if(!over) arcadeCredit(ov);
-  if(over) hsGameOverLine(ov);
-  blast.field.appendChild(ov); blast.overlay=ov;
-  if(over) overTimeout(ov, ()=>boMenu());
-  if(!over){ cabinet(ov); return; }
-}
+const BOMENU_G={key:"breakout", title:"CHORD BREAKOUT",
+  rules:()=>`<p>${knobsReady() ? "TURN A KNOB ON THE MINICHORD TO MOVE THE PADDLE (THE MOD KNOB, OR CHOOSE ANOTHER)." : "MOVE THE PADDLE WITH THE MOUSE OR THE ARROW KEYS. WITH FIRMWARE 17, A KNOB ON THE MINICHORD DOES IT."}</p><p>THE BALL CRACKS A CHORD BRICK. PLAY ITS CHORD BEFORE THE BALL COMES BACK AND IT BREAKS.</p><p>MISS IT AND THE BRICK HEALS. LET THE BALL PAST AND IT COSTS A LIFE.</p><p class="starline">${PIXEL_STAR}BRICKS SCORE FIVE TIMES AS MUCH.</p>`,
+  rows:row=>{
+    row("SPEED", SPEEDS.map(x=>x[0].toUpperCase()), ()=>+saved.speed||0, i=>{ saved.speed=i; save(); });
+    row("LABEL SIZE", SIZES.map(x=>x[0]), ()=>saved.chordSize??1, i=>{ saved.chordSize=i; save(); applyChordSize(); });
+    row("PADDLE", ["NARROW","NORMAL","WIDE"], ()=>saved.boPaddle??1, i=>{ saved.boPaddle=i; save(); });
+  },
+  levels:BO_LEVELS, ok:boLevelOk, needs:"NEEDS THE TEST FIRMWARE", sig:()=>String(knobsReady()),
+  begin:i=>beginBreakout(i), demo:()=>boDemo(), modNote:"title"};
+function boMenu(over){ arcadeMenu(BOMENU_G, over); }
 // the wall: rows of chord bricks across the top, sized to the field
 function boLayout(){
   const f=blast.field, W=f.clientWidth, H=f.clientHeight;
@@ -3745,14 +3596,9 @@ function boDemo(){
   stopDemo(); clearTimeout(blast.attract); piano.start();
   if(blast.overlay) blast.overlay.hidden=true;
   blast.phase="demo"; blast.level=0; blast.demoAuto=true; boLayout(); boWall(); boServe(); blast.serveAt=performance.now()+900;
-  const el=document.createElement("div"); el.className="demo"; blast.field.appendChild(el); blast.field.classList.add("demoing");
-  const token={run:true, el}; blast.demo=token;
-  el.innerHTML=`<div class="demohead"><span class="demotag blink">DEMO</span><span class="demotitle"></span><button class="demoskip">SKIP ▶</button></div><p class="democap"></p>`;
-  el.querySelector(".demoskip").onclick=()=>endBoDemo(token);
-  const say=(t,c)=>{ el.querySelector(".demotitle").textContent=t||""; el.querySelector(".democap").textContent=c; };
+  const {el, token, say, sleep, step}=demoShell(endBoDemo);
   sfx("attract");
   (async()=>{
-    const sleep=ms=>new Promise(r=>setTimeout(r,ms)), step=async ms=>{ await sleep(ms); if(!token.run) throw 0; };
     try{
       say("CHORD BREAKOUT", knobsReady() ? "TURN A KNOB ON THE MINICHORD TO MOVE THE PADDLE." : "MOVE THE PADDLE WITH A KNOB, THE MOUSE OR THE ARROW KEYS."); await step(4200);
       say("CRACK IT","THE BALL CRACKS THE BRICK IT HITS. IT GLOWS."); await step(4200);
@@ -3814,7 +3660,7 @@ function startFifths(){
 }
 function fdDevice(){
   if(!blast || blast.kind!=="fifths" || !canWrite()) return;
-  if(!blast.setupDone){ blast.setupDone=true; poll(true); if(hasSetting(30)) ensure(30,0); if(knobsReady()) borrow(238,1); asHarp(); }
+  arcadeSetup(()=>{ if(hasSetting(30)) ensure(30,0); if(knobsReady()) borrow(238,1); asHarp(); });
   const sig=FD_LEVELS.map((_,i)=>fdLevelOk(i)).join()+knobsReady();
   if(blast.phase==="menu" && blast.overlay && blast.menuSig!==sig){ const hid=blast.overlay.hidden; blast.overlay.remove(); blast.overlay=null; fdMenu(); blast.overlay.hidden=hid; }
 }
@@ -3852,39 +3698,14 @@ function fdBar(){
   const L=FD_LEVELS[blast.level];
   blast.hud.innerHTML=`<span>SCORE ${blast.score}${multTag()}</span><span class="lvl">LEVEL ${blast.level+1} · ${L.n.toUpperCase()}</span><span class="lives">${"♥".repeat(Math.max(0,blast.lives))||"-"}</span>`;
 }
-function fdMenu(over){
-  if(over && hsOffer(()=>fdMenu(true))) return;
-  const ov=document.createElement("div"); ov.className="overlay";
-  const best=saved.best.fifths||0;
-  if(over){
-    ov.innerHTML=`<h3 class="over">GAME OVER</h3><p>SCORE ${blast.score} · LEVEL ${blast.level+1} · BEST ${best}</p>`;
-    const again=document.createElement("button"); again.className="go"; again.innerHTML=`PLAY AGAIN<small>from level ${blast.startLevel+1}</small>`;
-    again.onclick=()=>beginFifths(blast.startLevel); ov.appendChild(again);
-    sfx("over");
-  } else {
-    ov.innerHTML=`<h3>FIFTHS DEFENDER</h3><p>THE TWELVE KEYS STAND ROUND YOU IN FIFTHS: C AT THE TOP, G ONE STEP ROUND, F ONE STEP BACK.</p><p>${knobsReady() ? "TURN A KNOB ON THE MINICHORD TO AIM DOWN A KEY: C IN THE MIDDLE, SHARPS TO THE RIGHT, FLATS TO THE LEFT. HOLD IT AT EITHER END TO KEEP TURNING." : "AIM DOWN A KEY WITH THE MOUSE OR THE ARROW KEYS. WITH FIRMWARE 17, A KNOB DOES IT."}</p><p>PLAY THAT KEY'S CHORD TO FIRE. LATER, ITS RELATIVE MINOR, ITS DOMINANT SEVENTH, OR ITS NOTE ON THE HARP.</p><p>AN ENEMY THAT REACHES THE MIDDLE COSTS A LIFE.</p>`;
-    const how=document.createElement("button"); how.className="howto"; how.textContent="▶ HOW TO PLAY"; how.onclick=()=>fdDemo(); ov.appendChild(how);
-  }
-  const row=(label, list, get, set)=>{ const r=document.createElement("div"); r.className="optrow"; const l=document.createElement("span"); l.className="optlabel"; l.textContent=label;
-    const g=document.createElement("div"); g.className="levels";
-    const mark=b=>{ [...g.children].forEach(x=>{ x.style.background=""; x.style.color=""; }); b.style.background="#F1E8D2"; b.style.color="#16132A"; };
-    list.forEach((n,i)=>{ const b=document.createElement("button"); b.textContent=n; if(get()===i) mark(b); b.onclick=()=>{ set(i); mark(b); }; g.appendChild(b); });
-    r.append(l,g); ov.appendChild(r); };
-  row("SPEED", SPEEDS.map(x=>x[0].toUpperCase()), ()=>+saved.speed||0, i=>{ saved.speed=i; save(); });
-  const lp=document.createElement("p"); lp.className = over ? "" : "blink"; lp.textContent = over ? "OR START FROM" : "CHOOSE A LEVEL"; ov.appendChild(lp);
-  const lv=document.createElement("div"); lv.className="levels";
-  FD_LEVELS.forEach((L,i)=>{ const b=document.createElement("button"), ok=fdLevelOk(i);
-    b.innerHTML=`${i+1}<small>${L.n}${ok?"":"<br>NEEDS A MINICHORD"}</small>`; b.disabled=!ok; b.onclick=()=>beginFifths(i); lv.appendChild(b); });
-  ov.appendChild(lv); blast.menuSig=FD_LEVELS.map((_,i)=>fdLevelOk(i)).join()+knobsReady();
-  if(!over && best){ const p=document.createElement("p"); p.textContent=`BEST ${best}`; ov.appendChild(p); }
-  if(!over) arcadeModNote(ov);
-  arcadeKeys(ov);
-  if(!over) arcadeCredit(ov);
-  if(over) hsGameOverLine(ov);
-  blast.field.appendChild(ov); blast.overlay=ov;
-  if(over) overTimeout(ov, ()=>fdMenu());
-  if(!over){ cabinet(ov); return; }
-}
+const FDMENU_G={key:"fifths", title:"FIFTHS DEFENDER",
+  rules:()=>`<p>THE TWELVE KEYS STAND ROUND YOU IN FIFTHS: C AT THE TOP, G ONE STEP ROUND, F ONE STEP BACK.</p><p>${knobsReady() ? "TURN A KNOB ON THE MINICHORD TO AIM DOWN A KEY: C IN THE MIDDLE, SHARPS TO THE RIGHT, FLATS TO THE LEFT. HOLD IT AT EITHER END TO KEEP TURNING." : "AIM DOWN A KEY WITH THE MOUSE OR THE ARROW KEYS. WITH FIRMWARE 17, A KNOB DOES IT."}</p><p>PLAY THAT KEY'S CHORD TO FIRE. LATER, ITS RELATIVE MINOR, ITS DOMINANT SEVENTH, OR ITS NOTE ON THE HARP.</p><p>AN ENEMY THAT REACHES THE MIDDLE COSTS A LIFE.</p>`,
+  rows:row=>{
+    row("SPEED", SPEEDS.map(x=>x[0].toUpperCase()), ()=>+saved.speed||0, i=>{ saved.speed=i; save(); });
+  },
+  levels:FD_LEVELS, ok:fdLevelOk, needs:"NEEDS A MINICHORD", sig:()=>String(knobsReady()),
+  begin:i=>beginFifths(i), demo:()=>fdDemo(), modNote:"title"};
+function fdMenu(over){ arcadeMenu(FDMENU_G, over); }
 function beginFifths(level){
   piano.start(); stopDemo(); clearTimeout(blast.attract); clearTimeout(blast.cabT);
   if(blast.overlay){ blast.overlay.remove(); blast.overlay=null; }
@@ -4032,15 +3853,10 @@ function fdDemo(){
   stopDemo(); clearTimeout(blast.attract); piano.start();
   if(blast.overlay) blast.overlay.hidden=true;
   blast.phase="demo"; blast.level=0; blast.foes=[]; blast.creep=18; fdLayout(); fdLabels();
-  const el=document.createElement("div"); el.className="demo"; blast.field.appendChild(el); blast.field.classList.add("demoing");
-  const token={run:true, el}; blast.demo=token;
-  el.innerHTML=`<div class="demohead"><span class="demotag blink">DEMO</span><span class="demotitle"></span><button class="demoskip">SKIP ▶</button></div><p class="democap"></p>`;
-  el.querySelector(".demoskip").onclick=()=>endFdDemo(token);
-  const say=(t,c)=>{ el.querySelector(".demotitle").textContent=t||""; el.querySelector(".democap").textContent=c; };
-  const play=notes=>{ if(settings.sounds && piano.ctx){ const go=()=>piano.play(notes,{when:.02,dur:1}); piano.ctx.state==="running"?go():piano.ctx.resume().then(go).catch(()=>{}); } };
+  const {el, token, say, sleep, step}=demoShell(endFdDemo);
+  const play=demoPlay;
   sfx("attract");
   (async()=>{
-    const sleep=ms=>new Promise(r=>setTimeout(r,ms)), step=async ms=>{ await sleep(ms); if(!token.run) throw 0; };
     const turnTo=async i=>{ while(blast.aim!==i){ const d=mod(i-blast.aim,12)<=6?1:-1; blast.aim=mod(blast.aim+d,12); sfx("press"); fdLabels(); await step(260); } };
     try{
       say("FIFTHS DEFENDER","THE TWELVE KEYS STAND ROUND YOU IN FIFTHS. C AT THE TOP, G ONE STEP ROUND."); await step(4000);
@@ -4063,6 +3879,79 @@ function endFdDemo(token){
 
 
 
+
+
+// ---------- the arcade kit: what every game's title screen and demo share ----------
+// A game describes its menu (title, rules, option rows, levels, what the game over line counts,
+// where the modifier note goes) and arcadeMenu builds it, the same way for all of them; a demo
+// asks demoShell for its stage and its clock. A fix here lands in every game at once.
+
+// one option row: a label, and buttons of which the chosen one is lit
+function arcadeRow(parent, label, list, get, set){
+  const r=document.createElement("div"); r.className="optrow";
+  const l=document.createElement("span"); l.className="optlabel"; l.textContent=label;
+  const g=document.createElement("div"); g.className="levels";
+  const mark=b=>{ [...g.children].forEach(x=>{ x.style.background=""; x.style.color=""; x.setAttribute("aria-pressed","false"); });
+    b.style.background="#F1E8D2"; b.style.color="#16132A"; b.setAttribute("aria-pressed","true"); };
+  list.forEach((n,i)=>{ const b=document.createElement("button"); b.textContent=n; b.setAttribute("aria-pressed","false");
+    if(get()===i) mark(b); b.onclick=()=>{ set(i); mark(b); }; g.appendChild(b); });
+  r.append(l,g); parent.appendChild(r);
+  return r;
+}
+// a game's title screen or game over screen, from its description:
+//   key       where its best score is kept (saved.best[key])
+//   title     its name, as the title screen shows it
+//   rules()   the rules, as paragraphs
+//   stat()    what the game over line counts beside the score (the level, unless it says otherwise)
+//   rows(row) its option rows: row(label, list, get, set) for each
+//   levels    its levels (objects with n, or plain names); ok(i) whether this minichord can play one,
+//             and needs, what to say when it can't; sig(), anything else its title screen depends on
+//   begin(i)  start at level i; demo(), its demo
+//   modNote   where the modifier note shows: "always", "title" (not at game over) or false
+function arcadeMenu(g, over){
+  if(over && hsOffer(()=>arcadeMenu(g,true))) return;
+  const ov=document.createElement("div"); ov.className="overlay";
+  const best=saved.best[g.key]||0;
+  if(over){
+    ov.innerHTML=`<h3 class="over">GAME OVER</h3><p>SCORE ${blast.score} · ${g.stat ? g.stat() : `LEVEL ${blast.level+1}`} · BEST ${best}</p>`;
+    const again=document.createElement("button"); again.className="go"; again.innerHTML=`PLAY AGAIN<small>from level ${blast.startLevel+1}</small>`;
+    again.onclick=()=>g.begin(blast.startLevel); ov.appendChild(again);
+    sfx("over");
+  } else {
+    ov.innerHTML=`<h3>${g.title}</h3>${g.rules()}`;
+    const how=document.createElement("button"); how.className="howto"; how.textContent="▶ HOW TO PLAY"; how.onclick=()=>g.demo(); ov.appendChild(how);
+  }
+  if(g.rows) g.rows((...a)=>arcadeRow(ov,...a));
+  const lp=document.createElement("p"); lp.className = over ? "" : "blink"; lp.textContent = over ? "OR START FROM" : "CHOOSE A LEVEL"; ov.appendChild(lp);
+  const lv=document.createElement("div"); lv.className="levels";
+  g.levels.forEach((L,i)=>{ const b=document.createElement("button"), ok=g.ok ? g.ok(i) : true, n=typeof L==="string" ? L : L.n;
+    b.innerHTML=`${i+1}<small>${n}${ok?"":`<br>${g.needs}`}</small>`; b.disabled=!ok; b.onclick=()=>g.begin(i); lv.appendChild(b); });
+  ov.appendChild(lv);
+  if(g.ok) blast.menuSig=g.levels.map((_,i)=>g.ok(i)).join()+(g.sig ? g.sig() : "");
+  if(!over && best){ const p=document.createElement("p"); p.textContent=`BEST ${best}`; ov.appendChild(p); }
+  if(g.modNote==="always" || (g.modNote==="title" && !over)) arcadeModNote(ov);
+  arcadeKeys(ov);
+  if(!over) arcadeCredit(ov);
+  if(over) hsGameOverLine(ov);
+  blast.field.appendChild(ov); blast.overlay=ov;
+  if(over) overTimeout(ov, ()=>arcadeMenu(g));
+  else cabinet(ov);
+}
+// a demo's stage: the DEMO banner with its title and caption, a skip button, the token that stops it,
+// and its clock (step throws once the demo has been stopped, which ends the script)
+function demoShell(end){
+  const el=document.createElement("div"); el.className="demo"; blast.field.appendChild(el); blast.field.classList.add("demoing");
+  const token={run:true, el}; blast.demo=token;
+  el.innerHTML=`<div class="demohead"><span class="demotag blink">DEMO</span><span class="demotitle"></span><button class="demoskip">SKIP ▶</button></div><p class="democap"></p>`;
+  el.querySelector(".demoskip").onclick=()=>end(token);
+  const say=(t,c)=>{ el.querySelector(".demotitle").textContent=t||""; el.querySelector(".democap").textContent=c; };
+  const sleep=ms=>new Promise(r=>setTimeout(r,ms)), step=async ms=>{ await sleep(ms); if(!token.run) throw 0; };
+  return {el, token, say, sleep, step};
+}
+// a demo's chord, heard on the page's piano
+function demoPlay(notes){ if(settings.sounds && piano.ctx){ const go=()=>piano.play(notes,{when:.02,dur:1}); piano.ctx.state==="running"?go():piano.ctx.resume().then(go).catch(()=>{}); } }
+// setting up for the minichord, once per game: its settings read regularly, and whatever it borrows
+function arcadeSetup(fn){ if(blast.setupDone) return; blast.setupDone=true; poll(true); if(fn) fn(); }
 
 // ---------- the CRT look ----------
 // An optional old-monitor look for the arcade: scanlines, a soft glow, the picture's corners
@@ -4415,7 +4304,7 @@ function startChopper(){
 }
 function chDevice(){
   if(!blast || blast.kind!=="chopper" || !canWrite()) return;
-  if(!blast.setupDone){ blast.setupDone=true; poll(true); if(hasSetting(30)) ensure(30,0); }
+  arcadeSetup(()=>{ if(hasSetting(30)) ensure(30,0); });
 }
 function buildChopperField(box){
   const field=document.createElement("div"); field.className="field arcade chopper"; field.setAttribute("aria-label","The landing zones");
@@ -4496,38 +4385,15 @@ function chBar(){
   if(!blast || blast.kind!=="chopper" || !blast.hud) return;
   blast.hud.innerHTML=`<span>SCORE ${blast.score}${multTag()}</span><span class="lvl">LEVEL ${blast.level+1} · RESCUES ${blast.rescues}</span><span class="lives">${"♥".repeat(Math.max(0,blast.lives))||"-"}</span>`;
 }
-function chMenu(over){
-  if(over && hsOffer(()=>chMenu(true))) return;
-  const ov=document.createElement("div"); ov.className="overlay";
-  const best=saved.best.chopper||0;
-  if(over){
-    ov.innerHTML=`<h3 class="over">GAME OVER</h3><p>SCORE ${blast.score} · RESCUES ${blast.rescues} · BEST ${best}</p>`;
-    const again=document.createElement("button"); again.className="go"; again.innerHTML=`PLAY AGAIN<small>from level ${blast.startLevel+1}</small>`;
-    again.onclick=()=>beginChopper(blast.startLevel); ov.appendChild(again);
-    sfx("over");
-  } else {
-    ov.innerHTML=`<h3>CHOPPER RESCUE</h3><p>THE RADIO CALLS COORDINATES IN THEORY. DECODE THEM: "SURVIVORS AT vi IN G" IS Em.</p><p>TROUBLE BREAKS OUT IN MORE THAN ONE PLACE, AND ONLY THE RADIO SAYS WHICH. PLAY THE CHORD AND THE CHOPPER FLIES THERE.</p><p>A WRONG CHORD FLIES SOMEWHERE EMPTY AND BURNS TIME. DON'T LET THE FLARE BURN OUT.</p>`;
-    const how=document.createElement("button"); how.className="howto"; how.textContent="▶ HOW TO PLAY"; how.onclick=()=>chDemo(); ov.appendChild(how);
-  }
-  const row=(label, list, get, set)=>{ const r=document.createElement("div"); r.className="optrow"; const l=document.createElement("span"); l.className="optlabel"; l.textContent=label;
-    const g=document.createElement("div"); g.className="levels";
-    const mark=b=>{ [...g.children].forEach(x=>{ x.style.background=""; x.style.color=""; }); b.style.background="#F1E8D2"; b.style.color="#16132A"; };
-    list.forEach((n,i)=>{ const b=document.createElement("button"); b.textContent=n; if(get()===i) mark(b); b.onclick=()=>{ set(i); mark(b); }; g.appendChild(b); });
-    r.append(l,g); ov.appendChild(r); };
-  row("SPEED", SPEEDS.map(x=>x[0].toUpperCase()), ()=>+saved.speed||0, i=>{ saved.speed=i; save(); });
-  const lp=document.createElement("p"); lp.className = over ? "" : "blink"; lp.textContent = over ? "OR START FROM" : "CHOOSE A LEVEL"; ov.appendChild(lp);
-  const lv=document.createElement("div"); lv.className="levels";
-  CH_LEVELS.forEach((L,i)=>{ const b=document.createElement("button"); b.innerHTML=`${i+1}<small>${L.n}</small>`; b.onclick=()=>beginChopper(i); lv.appendChild(b); });
-  ov.appendChild(lv);
-  if(!over && best){ const p=document.createElement("p"); p.textContent=`BEST ${best}`; ov.appendChild(p); }
-  if(!over) arcadeModNote(ov);
-  arcadeKeys(ov);
-  if(!over) arcadeCredit(ov);
-  if(over) hsGameOverLine(ov);
-  blast.field.appendChild(ov); blast.overlay=ov;
-  if(over) overTimeout(ov, ()=>chMenu());
-  if(!over){ cabinet(ov); return; }
-}
+const CHMENU_G={key:"chopper", title:"CHOPPER RESCUE",
+  rules:()=>`<p>THE RADIO CALLS COORDINATES IN THEORY. DECODE THEM: "SURVIVORS AT vi IN G" IS Em.</p><p>TROUBLE BREAKS OUT IN MORE THAN ONE PLACE, AND ONLY THE RADIO SAYS WHICH. PLAY THE CHORD AND THE CHOPPER FLIES THERE.</p><p>A WRONG CHORD FLIES SOMEWHERE EMPTY AND BURNS TIME. DON'T LET THE FLARE BURN OUT.</p>`,
+  stat:()=>`RESCUES ${blast.rescues}`,
+  rows:row=>{
+    row("SPEED", SPEEDS.map(x=>x[0].toUpperCase()), ()=>+saved.speed||0, i=>{ saved.speed=i; save(); });
+  },
+  levels:CH_LEVELS,
+  begin:i=>beginChopper(i), demo:()=>chDemo(), modNote:"title"};
+function chMenu(over){ arcadeMenu(CHMENU_G, over); }
 function beginChopper(level){
   piano.start(); stopDemo(); clearTimeout(blast.attract); clearTimeout(blast.cabT);
   if(blast.overlay){ blast.overlay.remove(); blast.overlay=null; }
@@ -4640,16 +4506,11 @@ function chDemo(){
   stopDemo(); clearTimeout(blast.attract); piano.start();
   if(blast.overlay) blast.overlay.hidden=true;
   blast.phase="demo"; blast.level=0; chLayout(); blast.pos={base:true}; blast.found=null; chPlace(true); chDrawMap();
-  const el=document.createElement("div"); el.className="demo"; blast.field.appendChild(el); blast.field.classList.add("demoing");
-  const token={run:true, el}; blast.demo=token;
-  el.innerHTML=`<div class="demohead"><span class="demotag blink">DEMO</span><span class="demotitle"></span><button class="demoskip">SKIP ▶</button></div><p class="democap"></p>`;
-  el.querySelector(".demoskip").onclick=()=>endChDemo(token);
-  const say=(t,c)=>{ el.querySelector(".demotitle").textContent=t||""; el.querySelector(".democap").textContent=c; };
-  const play=notes=>{ if(settings.sounds && piano.ctx){ const go=()=>piano.play(notes,{when:.02,dur:1}); piano.ctx.state==="running"?go():piano.ctx.resume().then(go).catch(()=>{}); } };
+  const {el, token, say, sleep, step}=demoShell(endChDemo);
+  const play=demoPlay;
   const radio=txt=>{ blast.radioEl.querySelector(".chtext").textContent=txt; sfx("key"); };
   sfx("attract");
   (async()=>{
-    const sleep=ms=>new Promise(r=>setTimeout(r,ms)), step=async ms=>{ await sleep(ms); if(!token.run) throw 0; };
     const trouble=(k,col,row)=>{ blast.emerg=chEmergencies(k,{col,row}); chDrawMap(); };
     const fly=async(col,row,notes)=>{ play(notes); blast.pos={col,row}; chPlace(false); sfx("shoot"); await step(700); blast.emerg=[];
       blast.found={col,row}; chDrawMap(); sfx("bonus"); await step(800); blast.found={col,row,saved:true}; chDrawMap();
@@ -4753,7 +4614,7 @@ function startFleet(){
 }
 function kfDevice(){
   if(!blast || blast.kind!=="fleet" || !canWrite()) return;
-  if(!blast.setupDone){ blast.setupDone=true; poll(true); asHarp(); if(hasSetting(30)) ensure(30,0); if(hasSetting(35)) borrow(35, keyIndexOf(0)); }   // the chart is the plain buttons in C
+  arcadeSetup(()=>{ asHarp(); if(hasSetting(30)) ensure(30,0); if(hasSetting(35)) borrow(35, keyIndexOf(0)); });   // the chart is the plain buttons in C
   // a key signature set with the key change combo calls that key (major, or its relative minor)
   // (a key the minichord was already in counts too, when the minichord reports the combo on its own:
   // that's how C major and A minor, the chart's own signature, get called)
@@ -4837,32 +4698,12 @@ function kfBar(){
   if(!blast || blast.kind!=="fleet" || !blast.hud) return;
   blast.hud.innerHTML=`<span>SCORE ${blast.score}${multTag()}</span><span class="lvl">LEVEL ${blast.level+1} · ${KF_LEVELS[blast.level].n.toUpperCase()}</span><span class="lives">${"♥".repeat(Math.max(0,blast.lives))||"-"}</span>`;
 }
-function kfMenu(over){
-  if(over && hsOffer(()=>kfMenu(true))) return;
-  const ov=document.createElement("div"); ov.className="overlay";
-  const best=saved.best.fleet||0;
-  if(over){
-    ov.innerHTML=`<h3 class="over">GAME OVER</h3><p>SCORE ${blast.score} · FLEETS SUNK ${blast.waves} · BEST ${best}</p>`;
-    const again=document.createElement("button"); again.className="go"; again.innerHTML=`PLAY AGAIN<small>from level ${blast.startLevel+1}</small>`;
-    again.onclick=()=>beginFleet(blast.startLevel); ov.appendChild(again);
-    sfx("over");
-  } else {
-    ov.innerHTML=`<h3>KEY FLEET</h3><p>THE ENEMY'S SHIPS ARE KEYS, HIDDEN ON THE CHORD CHART. THREE CHORDS SIDE BY SIDE IN A ROW ARE A KEY'S IV, I AND V: F C G IS C MAJOR.</p><p>FIRE BY PLAYING CHORDS. HITS CRIPPLE A SHIP; TO SINK IT, CALL ITS KEY: PLUCK ITS TONIC ON THE HARP, OR PLAY ITS V7 THEN I.</p><p>CALL A KEY BEFORE ALL ITS CHORDS ARE HIT FOR A BONUS. A WRONG CALL COSTS A TORPEDO.</p>`;
-    const how=document.createElement("button"); how.className="howto"; how.textContent="▶ HOW TO PLAY"; how.onclick=()=>kfDemo(); ov.appendChild(how);
-  }
-  const lp=document.createElement("p"); lp.className = over ? "" : "blink"; lp.textContent = over ? "OR START FROM" : "CHOOSE A LEVEL"; ov.appendChild(lp);
-  const lv=document.createElement("div"); lv.className="levels";
-  KF_LEVELS.forEach((L,i)=>{ const b=document.createElement("button"); b.innerHTML=`${i+1}<small>${L.n}</small>`; b.onclick=()=>beginFleet(i); lv.appendChild(b); });
-  ov.appendChild(lv);
-  if(!over && best){ const p=document.createElement("p"); p.textContent=`BEST ${best}`; ov.appendChild(p); }
-  if(!over) arcadeModNote(ov);
-  arcadeKeys(ov);
-  if(!over) arcadeCredit(ov);
-  if(over) hsGameOverLine(ov);
-  blast.field.appendChild(ov); blast.overlay=ov;
-  if(over) overTimeout(ov, ()=>kfMenu());
-  if(!over){ cabinet(ov); return; }
-}
+const KFMENU_G={key:"fleet", title:"KEY FLEET",
+  rules:()=>`<p>THE ENEMY'S SHIPS ARE KEYS, HIDDEN ON THE CHORD CHART. THREE CHORDS SIDE BY SIDE IN A ROW ARE A KEY'S IV, I AND V: F C G IS C MAJOR.</p><p>FIRE BY PLAYING CHORDS. HITS CRIPPLE A SHIP; TO SINK IT, CALL ITS KEY: PLUCK ITS TONIC ON THE HARP, OR PLAY ITS V7 THEN I.</p><p>CALL A KEY BEFORE ALL ITS CHORDS ARE HIT FOR A BONUS. A WRONG CALL COSTS A TORPEDO.</p>`,
+  stat:()=>`FLEETS SUNK ${blast.waves}`,
+  levels:KF_LEVELS,
+  begin:i=>beginFleet(i), demo:()=>kfDemo(), modNote:"title"};
+function kfMenu(over){ arcadeMenu(KFMENU_G, over); }
 function beginFleet(level){
   piano.start(); stopDemo(); clearTimeout(blast.attract); clearTimeout(blast.cabT);
   if(blast.overlay){ blast.overlay.remove(); blast.overlay=null; }
@@ -5011,16 +4852,11 @@ function kfDemo(){
   blast.ships=[{kind:"major", cells:[[0,0],[1,0],[2,0]], name:"C MAJOR", detail:"IV · I · V", hits:new Set(), sunk:false, misses:0},
                {kind:"major", cells:[[4,0],[5,0],[6,0]], name:"E MAJOR", detail:"IV · I · V", hits:new Set(), sunk:false, misses:0}];
   blast.shots=new Map(); blast.torps=9; blast.lastHit=null; kfDraw();
-  const el=document.createElement("div"); el.className="demo"; blast.field.appendChild(el); blast.field.classList.add("demoing");
-  const token={run:true, el}; blast.demo=token;
-  el.innerHTML=`<div class="demohead"><span class="demotag blink">DEMO</span><span class="demotitle"></span><button class="demoskip">SKIP ▶</button></div><p class="democap"></p>`;
-  el.querySelector(".demoskip").onclick=()=>endKfDemo(token);
-  const say=(t,c)=>{ el.querySelector(".demotitle").textContent=t||""; el.querySelector(".democap").textContent=c; };
-  const play=notes=>{ if(settings.sounds && piano.ctx){ const go=()=>piano.play(notes,{when:.02,dur:1}); piano.ctx.state==="running"?go():piano.ctx.resume().then(go).catch(()=>{}); } };
+  const {el, token, say, sleep, step}=demoShell(endKfDemo);
+  const play=demoPlay;
   const CH={F:[53,57,60],C:[48,52,55],G:[55,59,62],D:[50,54,57],A:[57,61,64],E:[52,56,59],B:[59,63,66]};
   sfx("attract");
   (async()=>{
-    const sleep=ms=>new Promise(r=>setTimeout(r,ms)), step=async ms=>{ await sleep(ms); if(!token.run) throw 0; };
     const fire=async (l)=>{ play(CH[l]); kfFire(KF_COLS.indexOf(l),0,true); await step(900); };
     try{
       say("KEY FLEET","THE CHART IS THE CHORD BUTTONS. THEIR COLUMNS RUN IN FIFTHS, SO A KEY'S CHORDS SIT SIDE BY SIDE."); await step(4400);
@@ -5115,53 +4951,15 @@ function startBlaster(){
   blast.raf=requestAnimationFrame(blastTick);
 }
 // the cabinet's menu, and its game over: choose a level to start from
-function blastMenu(over){
-  if(over && hsOffer(()=>blastMenu(true))) return;
-  const ov=document.createElement("div"); ov.className="overlay";
-  const best=saved.best.blaster||0;
-  if(over){
-    ov.innerHTML=`<h3 class="over">GAME OVER</h3><p>SCORE ${blast.score} · LEVEL ${blast.level+1} · BEST ${best}</p>`;
-    const again=document.createElement("button"); again.className="go"; again.innerHTML=`PLAY AGAIN<small>from level ${blast.startLevel+1}</small>`;
-    again.onclick=()=>beginBlast(blast.startLevel); ov.appendChild(again);
-    const p=document.createElement("p"); p.textContent="OR START FROM"; ov.appendChild(p);
-    sfx("over");
-  } else {
-    // each rule on its own line, the star chords with the star itself in front
-    ov.innerHTML=`<h3>CHORD INVADERS</h3><p>PLAY EACH CHORD BEFORE IT LANDS.</p><p class="starline">${PIXEL_STAR}CHORDS SCORE BIG AND NEVER HURT.</p>${keyComboReady() ? "<p>SET THE KEY WHEN A KEY BAR FALLS.</p>" : ""}`;
-    const how=document.createElement("button"); how.className="howto"; how.textContent="▶ HOW TO PLAY"; how.onclick=()=>runDemo(); ov.appendChild(how);
-  }
-  // the speed, chosen here and remembered
-  const sp=document.createElement("div"); sp.className="levels";
-  const spl=document.createElement("span"); spl.className="optlabel"; spl.textContent="SPEED";
-  SPEEDS.forEach(([n],i)=>{ const b=document.createElement("button"); b.textContent=n.toUpperCase(); b.setAttribute("aria-pressed", String((+saved.speed||0)===i));
-    if((+saved.speed||0)===i){ b.style.background="#F1E8D2"; b.style.color="#16132A"; }
-    b.onclick=()=>{ saved.speed=i; save(); [...sp.children].forEach(x=>{ x.style.background=""; x.style.color=""; }); b.style.background="#F1E8D2"; b.style.color="#16132A"; };
-    sp.appendChild(b); });
-  const spRow=document.createElement("div"); spRow.className="optrow"; spRow.append(spl, sp); ov.append(spRow);
-  // the chord symbols' size, chosen here and remembered
-  const sz=document.createElement("div"); sz.className="levels";
-  const szl=document.createElement("span"); szl.className="optlabel"; szl.textContent="CHORD SIZE";
-  const mark=b=>{ [...sz.children].forEach(x=>{ x.style.background=""; x.style.color=""; }); b.style.background="#F1E8D2"; b.style.color="#16132A"; };
-  SIZES.forEach(([n],i)=>{ const b=document.createElement("button"); b.textContent=n; if((saved.chordSize??1)===i) mark(b);
-    b.onclick=()=>{ saved.chordSize=i; save(); applyChordSize(); mark(b); }; sz.appendChild(b); });
-  const szRow=document.createElement("div"); szRow.className="optrow"; szRow.append(szl, sz); ov.append(szRow);
-  if(!over){ const lvl=document.createElement("p"); lvl.className="blink"; lvl.textContent="CHOOSE A LEVEL"; ov.appendChild(lvl); }
-  const lv=document.createElement("div"); lv.className="levels";
-  LEVEL_NAMES.forEach((n,i)=>{ const ok=levelOk(i);   // every level listed, the ones this minichord can't play marked
-    const b=document.createElement("button"); b.innerHTML=`${i+1}<small>${n}${ok?"":"<br>NEEDS THE TEST FIRMWARE"}</small>`; b.disabled=!ok; b.onclick=()=>beginBlast(i); lv.appendChild(b); });
-  ov.appendChild(lv);
-  if(!over && best) { const p=document.createElement("p"); p.textContent=`BEST ${best}`; ov.appendChild(p); }
-  arcadeModNote(ov);
-  arcadeKeys(ov);
-  if(!over) arcadeCredit(ov);
-  if(over) hsGameOverLine(ov);
-  blast.field.appendChild(ov); blast.overlay=ov;
-  if(over) overTimeout(ov, ()=>blastMenu());
-  if(!over){ cabinet(ov); return; }
-  // attract mode: left on the title screen, the cabinet plays its demo, as arcade machines do
-  clearTimeout(blast.attract);
-  if(!over) blast.attract=setTimeout(()=>{ if(blast && blast.phase==="menu" && blast.overlay===ov) runDemo(true); }, 25000);
-}
+const BLASTMENU_G={key:"blaster", title:"CHORD INVADERS",
+  rules:()=>`<p>PLAY EACH CHORD BEFORE IT LANDS.</p><p class="starline">${PIXEL_STAR}CHORDS SCORE BIG AND NEVER HURT.</p>${keyComboReady() ? "<p>SET THE KEY WHEN A KEY BAR FALLS.</p>" : ""}`,
+  rows:row=>{
+    row("SPEED", SPEEDS.map(x=>x[0].toUpperCase()), ()=>+saved.speed||0, i=>{ saved.speed=i; save(); });
+    row("CHORD SIZE", SIZES.map(x=>x[0]), ()=>saved.chordSize??1, i=>{ saved.chordSize=i; save(); applyChordSize(); });
+  },
+  levels:LEVEL_NAMES, ok:levelOk, needs:"NEEDS THE TEST FIRMWARE",
+  begin:i=>beginBlast(i), demo:()=>runDemo(), modNote:"always"};
+function blastMenu(over){ arcadeMenu(BLASTMENU_G, over); }
 
 // ---------- the demo: how to play the minichord ----------
 // An arcade attract mode that teaches the instrument. A pixel minichord sits at the foot of the

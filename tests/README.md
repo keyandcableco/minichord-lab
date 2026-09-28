@@ -13,6 +13,7 @@ key presses, checking what should happen.
 | Test | What it checks |
 |---|---|
 | `pages` | every game opens on its own page in the arcade's dress, its title loop running |
+| `demos` | every game's demo starts, shows its captions, and skips back to the title |
 | `invaders` | falling chords are shot by playing them; setting the key a key bar asks for scores |
 | `harp-command` | falling notes are shot by their strings; a wrong string freezes; settings given back |
 | `chord-snake` | the snake eats notes and cashes chords in; the harp steers |
