@@ -3358,37 +3358,69 @@ function boTick(now){
   }
   blast.raf=requestAnimationFrame(boTick);
 }
+// The ball moves in small steps, never more than two pixels at a time, so it can't pass through a
+// brick's corner between frames. It's a circle: against a brick it bounces off the side it actually
+// struck, or off a corner at the angle the corner turns it, and it's lifted clear of whatever it hit
+// so it never sticks. Off the paddle, the further from its middle, the steeper the bounce, and it
+// never leaves too flat to come back.
+const BO_R=7;
 function boBall(now, dt){
-  const b=blast.ball, p=blast.paddle, W=blast.W, H=blast.H, R=7;
+  const b=blast.ball, p=blast.paddle, R=BO_R;
   if(b.stuck){
     b.x=p.x+p.w/2; b.y=blast.padY-R-2;
     if(now>=blast.serveAt){ const a=(Math.random()-.5)*.8; b.vx=Math.sin(a)*b.speed; b.vy=-Math.cos(a)*b.speed; b.stuck=false; sfx("shoot"); }
   } else {
-    b.x+=b.vx*dt; b.y+=b.vy*dt;
-    if(b.x<R){ b.x=R; b.vx=Math.abs(b.vx); } if(b.x>W-R){ b.x=W-R; b.vx=-Math.abs(b.vx); }
-    if(b.y<40+R){ b.y=40+R; b.vy=Math.abs(b.vy); }
-    // the paddle: the further from its middle, the steeper the bounce; any brick still cracked heals
-    if(b.vy>0 && b.y+R>=blast.padY && b.y+R<=blast.padY+16 && b.x>=p.x-R && b.x<=p.x+p.w+R){
-      const off=Math.max(-1,Math.min(1,(b.x-(p.x+p.w/2))/(p.w/2))), a=off*1.05;
-      b.vx=Math.sin(a)*b.speed; b.vy=-Math.cos(a)*b.speed; b.y=blast.padY-R;
-      sfx("press"); boHeal();
-    }
-    // the bricks
-    for(const k of blast.bricks){
-      if(!k.alive) continue;
-      const nx=Math.max(k.x,Math.min(b.x,k.x+k.w)), ny=Math.max(k.y,Math.min(b.y,k.y+k.h));
-      if((b.x-nx)**2+(b.y-ny)**2>R*R) continue;
-      const ox=Math.min(Math.abs(b.x-k.x), Math.abs(b.x-(k.x+k.w))), oy=Math.min(Math.abs(b.y-k.y), Math.abs(b.y-(k.y+k.h)));
-      if(ox<oy) b.vx=-b.vx; else b.vy=-b.vy;
-      b.x+=b.vx*dt*1.5; b.y+=b.vy*dt*1.5;
-      if(!k.cracked){ k.cracked=true; k.crackedAt=now; k.el.classList.add("cracked"); sfx("key"); boHelp(); }
-      else sfx("press");
-      if(blast.phase==="demo" && blast.demoAuto) setTimeout(()=>{ if(blast && k.alive && k.cracked) boBreak(k, true); }, 650);
-      break;
-    }
-    if(b.y>H+R){ if(blast.phase==="demo"){ boServe(); return; } boLost(); return; }
+    const dist=Math.hypot(b.vx,b.vy)*dt, steps=Math.max(1,Math.ceil(dist/2)), h=dt/steps;
+    for(let i=0;i<steps;i++){ if(boStep(now, h)===false) return; }
   }
   blast.ballEl.style.transform=`translate(${b.x-R}px,${b.y-R}px)`;
+}
+// one small step; false when the ball has gone
+function boStep(now, h){
+  const b=blast.ball, p=blast.paddle, W=blast.W, H=blast.H, R=BO_R, top=40;
+  const px=b.x, py=b.y;
+  b.x+=b.vx*h; b.y+=b.vy*h;
+  // the walls: reflected exactly where it met them
+  if(b.x<R){ b.x=R+(R-b.x); b.vx=Math.abs(b.vx); }
+  else if(b.x>W-R){ b.x=(W-R)-(b.x-(W-R)); b.vx=-Math.abs(b.vx); }
+  if(b.y<top+R){ b.y=top+R+(top+R-b.y); b.vy=Math.abs(b.vy); }
+  // the paddle: met on its way down, as it crosses the paddle's top edge
+  const pt=blast.padY;
+  if(b.vy>0 && py+R<=pt+1 && b.y+R>=pt && b.x>=p.x-R*.7 && b.x<=p.x+p.w+R*.7){
+    const off=Math.max(-1,Math.min(1,(b.x-(p.x+p.w/2))/(p.w/2))), a=off*1.05;   // up to 60° either side
+    b.vx=Math.sin(a)*b.speed; b.vy=-Math.cos(a)*b.speed; b.y=pt-R;
+    sfx("press"); boHeal();
+    return true;
+  }
+  // a brick: the nearest point of it to the ball's centre gives the side or corner it struck
+  for(const k of blast.bricks){
+    if(!k.alive) continue;
+    const nx=Math.max(k.x,Math.min(b.x,k.x+k.w)), ny=Math.max(k.y,Math.min(b.y,k.y+k.h));
+    let dx=b.x-nx, dy=b.y-ny, d=Math.hypot(dx,dy);
+    if(d>=R) continue;
+    let ux, uy;
+    if(d>1e-6){ ux=dx/d; uy=dy/d; }
+    else {                                      // the centre got inside: out the way it came in
+      const l=b.x-k.x, r=k.x+k.w-b.x, t=b.y-k.y, bo=k.y+k.h-b.y, m=Math.min(l,r,t,bo);
+      [ux,uy] = m===l?[-1,0] : m===r?[1,0] : m===t?[0,-1] : [0,1]; d=0;
+    }
+    b.x=nx+ux*(R+.5); b.y=ny+uy*(R+.5);      // lifted clear
+    const vn=b.vx*ux+b.vy*uy;
+    if(vn<0){ b.vx-=2*vn*ux; b.vy-=2*vn*uy; } // reflected about the surface it struck
+    boKeepAngle(b);
+    if(!k.cracked){ k.cracked=true; k.crackedAt=now; k.el.classList.add("cracked"); sfx("key"); boHelp(); }
+    else sfx("press");
+    if(blast.phase==="demo" && blast.demoAuto) setTimeout(()=>{ if(blast && k.alive && k.cracked) boBreak(k, true); }, 650);
+    break;
+  }
+  if(b.y>H+R){ if(blast.phase==="demo"){ boServe(); return false; } boLost(); return false; }
+  return true;
+}
+// the speed stays the same, and the ball never runs so flat it takes forever to come back
+function boKeepAngle(b){
+  const sp=b.speed, minVy=sp*.28;
+  if(Math.abs(b.vy)<minVy){ b.vy=(b.vy<0?-1:1)*minVy; }
+  const m=Math.hypot(b.vx,b.vy)||1; b.vx*=sp/m; b.vy*=sp/m;
 }
 function boHeal(){
   let healed=0;
