@@ -349,6 +349,23 @@
 .helper .board .hbpad span.km-A,.helper .board .hbpad span.km-B,.helper .board .kmplate .kdot.km-A,.helper .board .kmplate .kdot.km-B{color:#FFD35A}
 .helper .board .hbpad span.hit,.helper .board .kmplate .kdot.hit{animation:kmhit .25s ease-out}
 .helper .board .hbpad span.demo-on,.helper .board .kmplate .kdot.demo-on{background:#FFD35A;color:#16132A;box-shadow:0 0 10px rgba(255,211,90,.95)}
+
+/* the CRT look: scanlines, glow, a vignette with rounded corners, a faint roll and flicker, a colour fringe */
+.field.arcade.crt{border-radius:18px/14px;filter:saturate(1.15) contrast(1.05)}
+.field.arcade.crt::before{content:"";position:absolute;inset:0;z-index:20;pointer-events:none;border-radius:inherit;
+  background:repeating-linear-gradient(to bottom,rgba(0,0,0,0) 0,rgba(0,0,0,0) 2px,rgba(0,0,0,.28) 3px,rgba(0,0,0,0) 4px),
+             radial-gradient(ellipse at center,rgba(0,0,0,0) 58%,rgba(0,0,0,.55) 100%);
+  box-shadow:inset 0 0 60px rgba(0,0,0,.65),inset 0 0 8px rgba(120,160,255,.15)}
+.field.arcade.crt::after{content:"";position:absolute;left:0;right:0;top:-30%;height:30%;z-index:21;pointer-events:none;
+  background:linear-gradient(to bottom,rgba(255,255,255,0),rgba(255,255,255,.035),rgba(255,255,255,0));animation:crtroll 7s linear infinite}
+@keyframes crtroll{to{transform:translateY(430%)}}
+.field.arcade.crt .fchord,.field.arcade.crt .hud,.field.arcade.crt .overlay h3,.field.arcade.crt .overlay p,.field.arcade.crt .banner,
+.field.arcade.crt .sntile,.field.arcade.crt .snseg,.field.arcade.crt .stcell,.field.arcade.crt .bobrick,.field.arcade.crt .fdkey,.field.arcade.crt .popup{
+  text-shadow:-1px 0 rgba(255,60,60,.55),1px 0 rgba(60,200,255,.55),0 0 6px rgba(255,255,255,.25)}
+.field.arcade.crt canvas.fx{filter:blur(.35px) brightness(1.12)}
+.field.arcade.crt .overlay{animation:crtflicker 4s steps(1) infinite}
+@keyframes crtflicker{0%,100%{opacity:1}47%{opacity:.97}48%{opacity:1}83%{opacity:.985}}
+@media (prefers-reduced-motion:reduce){.field.arcade.crt::after,.field.arcade.crt .overlay{animation:none}}
 /* the demo's pixel minichord */
 .overlay button.howto{border-color:#FFD35A;color:#FFD35A}
 .demo{position:absolute;inset:0;z-index:5;display:flex;flex-direction:column;justify-content:flex-start;padding:10px 14px;pointer-events:none}
@@ -1669,6 +1686,7 @@ function commandMenu(over){
   if(!over) arcadeCredit(ov);
   if(over) hsGameOverLine(ov);
   blast.field.appendChild(ov); blast.overlay=ov;
+  if(over) overTimeout(ov, ()=>commandMenu());
   if(!over){ cabinet(ov); return; }
   clearTimeout(blast.attract);
   if(!over) blast.attract=setTimeout(()=>{ if(blast && blast.kind==="command" && blast.phase==="menu" && blast.overlay===ov) commandDemo(); }, 25000);
@@ -2041,6 +2059,7 @@ function snMenu(over){
   if(!over) arcadeCredit(ov);
   if(over) hsGameOverLine(ov);
   blast.field.appendChild(ov); blast.overlay=ov;
+  if(over) overTimeout(ov, ()=>snMenu());
   if(!over){ cabinet(ov); return; }
   clearTimeout(blast.attract);
   if(!over) blast.attract=setTimeout(()=>{ if(blast && blast.kind==="snake" && blast.phase==="menu" && blast.overlay===ov) snDemo(); }, 25000);
@@ -2354,6 +2373,7 @@ function asMenu(over){
   if(!over) arcadeCredit(ov);
   if(over) hsGameOverLine(ov);
   blast.field.appendChild(ov); blast.overlay=ov;
+  if(over) overTimeout(ov, ()=>asMenu());
   if(!over){ cabinet(ov); return; }
   clearTimeout(blast.attract);
   if(!over) blast.attract=setTimeout(()=>{ if(blast && blast.kind==="asteroids" && blast.phase==="menu" && blast.overlay===ov) asDemo(); }, 25000);
@@ -2694,6 +2714,7 @@ function stMenu(over){
   if(!over) arcadeCredit(ov);
   if(over) hsGameOverLine(ov);
   blast.field.appendChild(ov); blast.overlay=ov;
+  if(over) overTimeout(ov, ()=>stMenu());
   if(!over){ cabinet(ov); return; }
   clearTimeout(blast.attract);
   if(!over) blast.attract=setTimeout(()=>{ if(blast && blast.kind==="stack" && blast.phase==="menu" && blast.overlay===ov) stDemo(); }, 25000);
@@ -3016,6 +3037,7 @@ function cabinet(ov){
   [...ov.children].forEach(c=>opts.appendChild(c));
   opts.querySelector("h3")?.classList.add("small");
   beginnerRow(opts);
+  crtRow(opts);
   if(["breakout","fifths","stack"].includes(cabKind()) && knobsReady()) knobRow(opts);
   ov.append(title, roll, board, opts);
   hsFetch(hsSlug());                                        // fetched now, so it's ready when its turn comes
@@ -3061,7 +3083,7 @@ function beginnerRow(opts){
   const r=document.createElement("div"); r.className="optrow"; const l=document.createElement("span"); l.className="optlabel"; l.textContent="BEGINNER";
   const g=document.createElement("div"); g.className="levels";
   const mark=b=>{ [...g.children].forEach(x=>{ x.style.background=""; x.style.color=""; }); b.style.background="#F1E8D2"; b.style.color="#16132A"; };
-  [["OFF",false],["SHOW WHAT TO PRESS",true]].forEach(([t,v])=>{ const b=document.createElement("button"); b.textContent=t; if(!!saved.beginner===v) mark(b);
+  [["OFF",false],["SHOW WHAT TO PRESS (NO HIGH SCORES)",true]].forEach(([t,v])=>{ const b=document.createElement("button"); b.textContent=t; if(!!saved.beginner===v) mark(b);
     b.onclick=()=>{ saved.beginner=v; save(); mark(b); helperSync(); }; g.appendChild(b); });
   r.append(l,g);
   // the harp games need to know which harp to draw
@@ -3273,6 +3295,7 @@ function boMenu(over){
   if(!over) arcadeCredit(ov);
   if(over) hsGameOverLine(ov);
   blast.field.appendChild(ov); blast.overlay=ov;
+  if(over) overTimeout(ov, ()=>boMenu());
   if(!over){ cabinet(ov); return; }
 }
 // the wall: rows of chord bricks across the top, sized to the field
@@ -3610,6 +3633,7 @@ function fdMenu(over){
   if(!over) arcadeCredit(ov);
   if(over) hsGameOverLine(ov);
   blast.field.appendChild(ov); blast.overlay=ov;
+  if(over) overTimeout(ov, ()=>fdMenu());
   if(!over){ cabinet(ov); return; }
 }
 function beginFifths(level){
@@ -3771,6 +3795,37 @@ function endFdDemo(token){
 }
 
 
+
+
+// ---------- the CRT look ----------
+// An optional old-monitor look for the arcade: scanlines, a soft glow, the picture's corners
+// darkened and rounded as a tube's are, a faint roll and flicker, and a slight colour fringe on the
+// lettering. All of it is drawn over the field by the browser's own compositor, so it costs next to
+// nothing, even on a slow machine. Switched on the title screens' options, and remembered.
+function crtSync(){ document.querySelectorAll(".field.arcade").forEach(f=>f.classList.toggle("crt", !!saved.crt)); }
+function crtRow(opts){
+  const r=document.createElement("div"); r.className="optrow"; const l=document.createElement("span"); l.className="optlabel"; l.textContent="SCREEN";
+  const g=document.createElement("div"); g.className="levels";
+  const mark=b=>{ [...g.children].forEach(x=>{ x.style.background=""; x.style.color=""; }); b.style.background="#F1E8D2"; b.style.color="#16132A"; };
+  [["FLAT",false],["CRT",true]].forEach(([t,v])=>{ const b=document.createElement("button"); b.textContent=t; if(!!saved.crt===v) mark(b);
+    b.onclick=()=>{ saved.crt=v; save(); mark(b); crtSync(); }; g.appendChild(b); });
+  r.append(l,g);
+  const before=opts.querySelector("p.blink") || [...opts.querySelectorAll(".levels")].pop();
+  opts.insertBefore(r, before);
+}
+new MutationObserver(()=>{ if(saved.crt) crtSync(); }).observe(document.getElementById("special")||document.body, {childList:true});
+
+// ---------- game over, then back to the title loop ----------
+// Left alone, a game over screen goes back to the title, rules, board and demo after a while, as a
+// cabinet does. Not while initials are being entered, and not once the player has started again.
+function overTimeout(ov, toTitle){
+  clearTimeout(blast.overT);
+  blast.overT=setTimeout(()=>{
+    if(!blast || blast.overlay!==ov || blast.phase!=="over" || blast.hsEntry) return;
+    ov.remove(); blast.overlay=null; blast.phase="menu"; toTitle();
+  }, 25000);
+}
+
 // ---------- high scores ----------
 // Every arcade game keeps a board of the ten best, shown in the title loop after the rules, and
 // entered arcade-style at game over: three initials picked with the arrow keys, the harp's d-pad or
@@ -3795,13 +3850,13 @@ function hsFetch(slug, force){
 // the board to show: the shared one if it answered, otherwise this browser's
 async function hsBoard(slug){ const g=await hsFetch(slug); return g ? {scores:g, shared:true} : {scores:hsLocal(slug), shared:false}; }
 // a score counts when a minichord was connected and played through the game
-function hsEligible(){ return !!(blast && canWrite() && (blast.midiIn||0)>=5 && blast.score>0); }
+function hsEligible(){ return !!(blast && canWrite() && !blast.helped && (blast.midiIn||0)>=5 && blast.score>0); }
 const hsSeconds=()=> Math.round((performance.now()-(blast.startedAt||performance.now()))/1000);
 // at game over: offer the initials entry if the score makes the board; next() shows the game over screen
 function hsOffer(next){
   if(!blast || blast.hsDone) return false;
   blast.hsDone=true;
-  if(!hsEligible()){ blast.hsNote = canWrite() ? "" : "CONNECT A MINICHORD TO PUT SCORES ON THE BOARD"; return false; }
+  if(!hsEligible()){ blast.hsNote = !canWrite() ? "CONNECT A MINICHORD TO PUT SCORES ON THE BOARD" : blast.helped ? "BEGINNER MODE WAS ON: THIS ONE STAYS OFF THE BOARD" : ""; return false; }
   const slug=hsSlug(), score=blast.score;
   hsBoard(slug).then(({scores})=>{
     if(!blast || blast.phase!=="over") return;
@@ -3979,6 +4034,7 @@ function blastMenu(over){
   if(!over) arcadeCredit(ov);
   if(over) hsGameOverLine(ov);
   blast.field.appendChild(ov); blast.overlay=ov;
+  if(over) overTimeout(ov, ()=>blastMenu());
   if(!over){ cabinet(ov); return; }
   // attract mode: left on the title screen, the cabinet plays its demo, as arcade machines do
   clearTimeout(blast.attract);
@@ -4147,7 +4203,7 @@ function blastHomeKey(){
   if(!blast || !canWrite() || !hasSetting(35) || mc.params[35]===keyIndexOf(0)) return;
   borrow(35, keyIndexOf(0)); modPill();
 }
-function stopBlaster(){ if(blast){ stopDemo(); clearTimeout(blast.attract); clearTimeout(blast.cabT); blast.over=true; cancelAnimationFrame(blast.raf); poll(false); } blast=null; }
+function stopBlaster(){ if(blast){ stopDemo(); clearTimeout(blast.attract); clearTimeout(blast.cabT); clearTimeout(blast.overT); blast.over=true; cancelAnimationFrame(blast.raf); poll(false); } blast=null; }
 function blastBar(){
   if(!blast || !blast.hud) return;
   const key = blast.keyTarget ? ` · KEY ${blast.keyTarget.name}` : "";
@@ -4331,7 +4387,7 @@ function fxDraw(now, dt){
   const fx=blast.fx; if(!fx) return; fx.resize();
   // a game's clock and its count of what the minichord played start with its first frame of play
   // (every time play begins, Play Again straight from game over included)
-  if(blast.phase==="play" && blast.lastPhase!=="play"){ blast.startedAt=now; blast.midiIn=0; blast.hsDone=false; blast.hsResult=null; blast.hsNote=null; }
+  if(blast.phase==="play" && blast.lastPhase!=="play"){ blast.startedAt=now; blast.midiIn=0; blast.hsDone=false; blast.hsResult=null; blast.hsNote=null; blast.helped=!!saved.beginner; }
   blast.lastPhase=blast.phase;
   const g=fx.g, W=fx.w, H=fx.h;
   fxBackground(g, W, H, now, dt);
