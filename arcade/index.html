@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Minichord Arcade</title>
+<meta name="description" content="Seven arcade games played on the minichord itself: shoot down chords, command the harp, steer a snake, crack chord asteroids, stack intervals, break out and defend the circle of fifths. Free, in the browser, from Minichord Lab.">
+<!-- the card a link to this page unfurls into -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Minichord Lab">
+<meta property="og:title" content="Minichord Arcade">
+<meta property="og:description" content="Seven arcade games played on the minichord itself. Free, in the browser.">
+<meta property="og:url" content="https://chordlab.keyandcable.com/arcade/">
+<meta property="og:image" content="https://chordlab.keyandcable.com/arcade/card.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="MINICHORD ARCADE in a neon marquee above seven arcade screens">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://chordlab.keyandcable.com/arcade/card.png">
+<link rel="icon" href="../core/logo.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+@font-face{font-family:"Minichord Lab Accidentals";font-style:normal;font-weight:100 900;font-display:swap;src:url("../core/fonts/lab-accidentals.woff2") format("woff2");size-adjust:85%;unicode-range:U+266D-266F,U+1D12A-1D12B}
+:root{--ink:#F1E8D2;--dim:#9A93B5;--gold:#FFD35A;--cyan:#7FE9FF;--pink:#FF5AA0;--felt:#8B0000;--night:#07060C}
+*{box-sizing:border-box}
+html{background:var(--night);scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;min-height:100vh;color:var(--ink);font-family:"Minichord Lab Accidentals","Press Start 2P",ui-monospace,monospace;font-size:14px;line-height:1.8;
+  padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px);overflow-x:hidden}
+a{color:var(--gold)}
+/* the starfield behind everything, and scanlines over everything */
+#stars{position:fixed;inset:0;width:100%;height:100%;z-index:0;image-rendering:pixelated}
+body::after{content:"";position:fixed;inset:0;z-index:50;pointer-events:none;
+  background:repeating-linear-gradient(to bottom,transparent 0,transparent 2px,rgba(0,0,0,.22) 3px,transparent 4px),radial-gradient(ellipse at center,transparent 60%,rgba(0,0,0,.5) 100%)}
+main{position:relative;z-index:1;max-width:1180px;margin:0 auto;padding:22px 18px 40px}
+/* the felt strip and the way back to the Lab */
+.topbar{display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:.6rem;color:var(--dim)}
+.topbar a{color:var(--dim);text-decoration:none}.topbar a:hover{color:var(--gold)}
+.topbar img{width:26px;height:26px;vertical-align:middle;background:#FFF8E7;border:2px solid #D4A017;padding:2px;margin-right:8px}
+/* the marquee: a lit sign with chaser bulbs round its edge */
+.marquee{position:relative;margin:26px auto 10px;max-width:900px;padding:38px 20px 32px;text-align:center;background:linear-gradient(180deg,#1A0E22,#0B0714);
+  border:6px solid #2A1C35;box-shadow:0 0 0 3px #000,0 0 50px rgba(255,90,160,.18),inset 0 0 40px rgba(0,0,0,.8)}
+.bulbs{position:absolute;inset:-3px;pointer-events:none;background:
+  radial-gradient(circle,var(--gold) 0 3px,transparent 4px) 0 0/22px 22px repeat-x,
+  radial-gradient(circle,var(--gold) 0 3px,transparent 4px) 0 100%/22px 22px repeat-x;
+  animation:chase .5s steps(2) infinite}
+.bulbs.side{background:
+  radial-gradient(circle,var(--gold) 0 3px,transparent 4px) 0 0/22px 22px repeat-y,
+  radial-gradient(circle,var(--gold) 0 3px,transparent 4px) 100% 0/22px 22px repeat-y}
+@keyframes chase{50%{filter:brightness(.35) saturate(.6)}}
+.marquee h1{margin:0;font-weight:400;font-size:clamp(1.6rem,6.2vw,3.6rem);line-height:1.2;letter-spacing:.04em;color:#FFE9A8;
+  text-shadow:0 0 6px #FFD35A,0 0 18px #FF8A3D,0 0 38px #FF5AA0,4px 4px 0 #000;animation:neon 6s infinite}
+.marquee h1 small{display:block;font-size:.34em;letter-spacing:.3em;color:var(--cyan);text-shadow:0 0 8px var(--cyan),3px 3px 0 #000;margin-bottom:.6em}
+@keyframes neon{0%,18%,22%,62%,64%,100%{opacity:1}20%,63%{opacity:.55}}
+.marquee p{margin:18px 0 0;font-size:.7rem;color:var(--ink)}
+.insert{display:inline-flex;align-items:center;gap:12px;margin-top:20px;font-size:.8rem;color:var(--gold);animation:blink 1.1s steps(2) infinite}
+.insert svg{width:34px;height:20px}
+@keyframes blink{50%{opacity:0}}
+/* the high scores, scrolling across under the marquee */
+.ticker{position:relative;margin:18px 0 34px;overflow:hidden;white-space:nowrap;border-top:2px solid #2A1C35;border-bottom:2px solid #2A1C35;background:rgba(0,0,0,.55);padding:10px 0}
+.ticker .run{display:inline-block;padding-left:100%;animation:tick var(--dur,40s) linear infinite;font-size:.66rem;will-change:transform}
+.ticker b{color:var(--gold);font-weight:400}.ticker i{font-style:normal;color:var(--cyan)}.ticker span{color:var(--dim);margin:0 22px}
+@keyframes tick{to{transform:translate3d(-100%,0,0)}}
+/* the cabinets */
+h2{font-weight:400;font-size:.9rem;color:var(--cyan);text-align:center;margin:0 0 22px;text-shadow:0 0 8px rgba(127,233,255,.6)}
+.games{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:26px}
+.cab{position:relative;display:block;text-decoration:none;color:var(--ink);background:linear-gradient(180deg,#221733,#130D1E);border:4px solid #000;
+  box-shadow:0 0 0 3px #2F2342,8px 8px 0 #000;padding:14px 14px 16px;transition:transform .15s,box-shadow .15s}
+.cab:hover,.cab:focus-visible{transform:translate(-3px,-3px);box-shadow:0 0 0 3px var(--gold),11px 11px 0 #000;outline:none}
+.cab .num{position:absolute;top:-14px;left:-14px;width:34px;height:34px;display:flex;align-items:center;justify-content:center;background:var(--felt);color:#FFE9A8;border:3px solid #000;font-size:.7rem}
+.screen{position:relative;border:6px solid #050407;border-radius:14px/10px;overflow:hidden;background:#000;box-shadow:inset 0 0 0 2px #3A2D4E}
+.screen img{display:block;width:100%;height:auto;aspect-ratio:1200/630;filter:saturate(1.1)}
+.screen::after{content:"";position:absolute;inset:0;pointer-events:none;border-radius:inherit;
+  background:repeating-linear-gradient(to bottom,transparent 0,transparent 2px,rgba(0,0,0,.25) 3px,transparent 4px),radial-gradient(ellipse at center,transparent 55%,rgba(0,0,0,.55) 100%)}
+.screen .press{position:absolute;left:0;right:0;bottom:12%;text-align:center;font-size:.75rem;color:var(--gold);text-shadow:0 0 8px #000,3px 3px 0 #000;opacity:0}
+.cab:hover .press,.cab:focus-visible .press{opacity:1;animation:blink .8s steps(2) infinite}
+.cab h3{margin:14px 0 8px;font-weight:400;font-size:.95rem;color:var(--gold);text-shadow:3px 3px 0 #000}
+.cab p{margin:0 0 12px;font-size:.58rem;line-height:1.9;color:#D8D0E8}
+.panel{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between}
+.plays{display:flex;gap:6px;flex-wrap:wrap}
+.plays span{font-size:.48rem;padding:5px 7px;border:2px solid #000;background:#2F2342;color:var(--cyan)}
+.hi{font-size:.52rem;color:var(--dim);white-space:nowrap}.hi b{color:var(--ink);font-weight:400}
+/* how to play */
+.how{margin:46px auto 0;max-width:900px;background:rgba(0,0,0,.6);border:4px solid #000;box-shadow:0 0 0 3px #2F2342;padding:26px 22px}
+.steps{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:18px;counter-reset:s}
+.steps li{counter-increment:s;font-size:.62rem;line-height:1.9}
+.steps li::before{content:counter(s);display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;margin:0 10px 8px 0;background:var(--gold);color:#16132A;border:3px solid #000}
+.note{margin:22px 0 0;font-size:.52rem;line-height:2;color:var(--dim)}
+footer{margin:40px 0 0;text-align:center;font-size:.52rem;line-height:2.2;color:var(--dim)}
+footer a{color:var(--gold);text-decoration:none;border-bottom:2px solid rgba(255,211,90,.35)}
+@media (max-width:560px){body{font-size:12px}.marquee{padding:30px 12px 24px}.games{grid-template-columns:1fr}}
+@media (prefers-reduced-motion:reduce){.bulbs,.marquee h1,.insert,.ticker .run,.cab:hover .press{animation:none}.ticker .run{padding-left:0;white-space:normal}}
+</style>
+</head>
+<body>
+<canvas id="stars" aria-hidden="true"></canvas>
+<main>
+  <div class="topbar">
+    <a href="../"><img src="../core/logo.svg" alt="">MINICHORD LAB</a>
+    <a href="https://minichord.com" target="_blank" rel="noopener">WHAT'S A MINICHORD? ↗</a>
+  </div>
+
+  <header class="marquee">
+    <div class="bulbs" aria-hidden="true"></div><div class="bulbs side" aria-hidden="true"></div>
+    <h1><small>KEY &amp; CABLE PRESENTS</small>MINICHORD<br>ARCADE</h1>
+    <p>SEVEN GAMES, PLAYED ON THE MINICHORD ITSELF</p>
+    <div class="insert" aria-hidden="true">
+      <svg viewBox="0 0 17 10" shape-rendering="crispEdges"><path fill="#FFD35A" d="M0 3h9v4H0zM9 2h2v6H9zM11 3h4v1h-4zM11 6h4v1h-4zM15 3h1v1h-1zM15 6h1v1h-1z"/></svg>
+      INSERT MINICHORD
+    </div>
+  </header>
+
+  <div class="ticker" aria-label="High scores"><div class="run" id="ticker">LOADING THE HIGH SCORES …</div></div>
+
+  <h2>SELECT A GAME</h2>
+  <div class="games" id="games"></div>
+
+  <section class="how" aria-label="How to play">
+    <h2>HOW TO PLAY</h2>
+    <ol class="steps">
+      <li>PLUG YOUR MINICHORD INTO THE COMPUTER WITH A USB CABLE.</li>
+      <li>OPEN A GAME IN CHROME, EDGE OR OPERA, WHICH CAN TALK TO MIDI INSTRUMENTS.</li>
+      <li>PRESS CONNECT AND ALLOW MIDI. AFTER THAT, EVERY GAME CONNECTS BY ITSELF.</li>
+    </ol>
+    <p class="note">EACH GAME HAS A DEMO, A BEGINNER MODE THAT SHOWS WHAT TO PRESS, AND A HIGH-SCORE BOARD FOR MINICHORD PLAYERS. HARDER SETTINGS SCORE MORE. SOME EXTRAS (KNOB STEERING, KEY BARS, SLASH CHORD LEVELS) NEED THE UNOFFICIAL <a href="https://github.com/keyandcableco/minichord/tree/test-allFeatures" target="_blank" rel="noopener">TEST-ALLFEATURES FIRMWARE</a>; THE GAMES STILL PLAY WITHOUT IT.</p>
+  </section>
+
+  <footer>
+    MADE BY <a href="https://keyandcable.com" target="_blank" rel="noopener">THE KEY &amp; CABLE CO.</a> FOR THE <a href="https://minichord.com" target="_blank" rel="noopener">MINICHORD</a><br>
+    <a href="../">MINICHORD LAB</a> · <a href="../practice/">THE PRACTICE ROOM</a>
+  </footer>
+</main>
+
+<script type="module">
+import {SCORES_API} from "../core/scores.js";
+
+// the games, in the order they arrived
+const GAMES=[
+  {slug:"invaders", path:"invaders", name:"CHORD INVADERS", plays:["CHORDS"], pitch:"Chords fall through space. Play each one on the buttons before it lands, and set the key when a key bar falls."},
+  {slug:"harp-command", path:"harp-command", name:"HARP COMMAND", plays:["HARP"], pitch:"Missile Command for the harp: pluck the string that plays each falling note, through keys, scale degrees, solfège and the staff."},
+  {slug:"chord-snake", path:"chord-snake", name:"CHORD SNAKE", plays:["HARP D-PAD","CHORDS"], pitch:"Steer on the harp, eat spelled notes, and play the chord they spell to cash them in. Watch your load."},
+  {slug:"chord-asteroids", path:"chord-asteroids", name:"CHORD ASTEROIDS", plays:["CHORDS","HARP"], pitch:"Play a rock's chord to crack it into its notes, then pluck each note to shoot it down."},
+  {slug:"chord-stack", path:"chord-stack", name:"CHORD STACK", plays:["KNOB","HARP D-PAD","CHORDS"], pitch:"Slide falling intervals to transpose them, stack them into chords, and play each chord to clear its row."},
+  {slug:"chord-breakout", path:"chord-breakout", name:"CHORD BREAKOUT", plays:["KNOB","CHORDS"], pitch:"Arkanoid with chords: steer with a knob, crack a brick, and play its chord before the ball comes back."},
+  {slug:"fifths-defender", path:"fifths-defender", name:"FIFTHS DEFENDER", plays:["KNOB","CHORDS","HARP"], pitch:"Tempest on the circle of fifths: turn a knob to aim down a key and play its chord to fire."},
+];
+
+const grid=document.getElementById("games");
+grid.innerHTML=GAMES.map((g,i)=>`<a class="cab" href="../${g.path}/">
+  <span class="num">${i+1}</span>
+  <div class="screen"><img src="../${g.path}/card.png" alt="" loading="lazy" width="1200" height="630"><div class="press">PRESS START</div></div>
+  <h3>${g.name}</h3>
+  <p>${g.pitch}</p>
+  <div class="panel"><div class="plays">${g.plays.map(x=>`<span>${x}</span>`).join("")}</div><div class="hi" id="hi-${g.slug}">HI —</div></div>
+</a>`).join("");
+
+// the boards: each game's best, on its cabinet and in the ticker
+const api=String(SCORES_API||"").replace(/\/+$/,"");
+const board=slug=>{
+  const ctl=new AbortController(), t=setTimeout(()=>ctl.abort(),5000);
+  return fetch(`${api}/api/scores/${slug}`,{signal:ctl.signal}).then(r=>r.ok?r.json():null).then(j=>j?j.scores:null).catch(()=>null).finally(()=>clearTimeout(t));
+};
+(async()=>{
+  const all=api ? await Promise.all(GAMES.map(g=>board(g.slug))) : GAMES.map(()=>null);
+  const parts=[];
+  GAMES.forEach((g,i)=>{
+    const s=all[i], top=s && s[0];
+    if(top){ document.getElementById(`hi-${g.slug}`).innerHTML=`HI <b>${top.score.toLocaleString("en-US")}</b> ${top.initials}`;
+      parts.push(`<b>${g.name}</b> ${s.slice(0,3).map((r,k)=>`${["1ST","2ND","3RD"][k]} <i>${r.initials}</i> ${r.score.toLocaleString("en-US")}`).join(" · ")}`); }
+    else document.getElementById(`hi-${g.slug}`).textContent="HI — BE THE FIRST";
+  });
+  const ticker=document.getElementById("ticker");
+  if(parts.length){ ticker.innerHTML=parts.join("<span>★</span>"); ticker.style.setProperty("--dur", `${Math.max(30, parts.length*9)}s`); }
+  else ticker.textContent = all.some(x=>x) ? "NO SCORES YET. PLUG IN A MINICHORD AND BE THE FIRST ON THE BOARD." : "THE HIGH-SCORE BOARDS ARE RESTING. THE GAMES AREN'T.";
+})();
+
+// the starfield: drawn small and scaled up, in three layers drifting down; still if motion is unwelcome
+const cv=document.getElementById("stars"), g=cv.getContext("2d"), still=matchMedia("(prefers-reduced-motion: reduce)").matches;
+let W=0,H=0,stars=[];
+function size(){ W=Math.ceil(innerWidth/3); H=Math.ceil(innerHeight/3); cv.width=W; cv.height=H;
+  stars=[...Array(Math.min(500,Math.floor(W*H/150)))].map(()=>({x:Math.random()*W, y:Math.random()*H, z:1+Math.floor(Math.random()*3)})); }
+function draw(dt){
+  g.fillStyle="#07060C"; g.fillRect(0,0,W,H);
+  for(const s of stars){ s.y+=s.z*dt*6; if(s.y>=H){ s.y-=H; s.x=Math.random()*W; }
+    g.fillStyle=s.z===3?"#FFFFFF":s.z===2?"#9D98C9":"#4B4670"; g.fillRect(Math.floor(s.x),Math.floor(s.y),1,s.z===3?2:1); }
+}
+size(); addEventListener("resize", size);
+if(still) draw(0);
+else { let last=performance.now(); const tick=now=>{ const dt=Math.min(.05,(now-last)/1000); last=now; if(!document.hidden) draw(dt); requestAnimationFrame(tick); }; requestAnimationFrame(tick); }
+</script>
+</body>
+</html>

@@ -466,7 +466,7 @@ details.fold[open] .nowplaying{display:none}
     <button data-mode="stack">Chord Stack</button>
     <button data-mode="breakout">Chord Breakout</button>
     <button data-mode="fifths">Fifths Defender</button>
-    <span class="arcadelinks">or on their own pages: <a href="../invaders/">Chord Invaders</a> · <a href="../harp-command/">Harp Command</a> · <a href="../chord-snake/">Chord Snake</a> · <a href="../chord-asteroids/">Chord Asteroids</a> · <a href="../chord-stack/">Chord Stack</a> · <a href="../chord-breakout/">Chord Breakout</a> · <a href="../fifths-defender/">Fifths Defender</a></span>
+    <span class="arcadelinks"><a href="../arcade/">The arcade lobby</a> · or on their own pages: <a href="../invaders/">Chord Invaders</a> · <a href="../harp-command/">Harp Command</a> · <a href="../chord-snake/">Chord Snake</a> · <a href="../chord-asteroids/">Chord Asteroids</a> · <a href="../chord-stack/">Chord Stack</a> · <a href="../chord-breakout/">Chord Breakout</a> · <a href="../fifths-defender/">Fifths Defender</a></span>
   </div>
   <div class="modes" role="group" aria-label="Read and play">
     <span class="grp">Read and play</span>
@@ -594,6 +594,7 @@ import {Minichord, spell} from "../core/minichord.js";
 import {chordName, chordId, isChord, hzOf, spellTones} from "../core/theory.js";
 import {TEMPERAMENT_TABLE, tune} from "../core/temperaments.js";
 import {Piano} from "../core/sound.js";
+import {SCORES_API as SCORES_HOST} from "../core/scores.js";
 
 const mc=new Minichord(); window.mc=mc;
 const piano=new Piano();
@@ -3936,8 +3937,8 @@ function overTimeout(ov, toTitle){
 // connected and played through the game. They go to the shared board (arcade-scores on the
 // flask-stack, reached through Tailscale Funnel) and to this browser's own board, which is also
 // what's shown if the shared one can't be reached.
-const SCORES_API="https://keyandcable-pi.tailaeddec.ts.net/";                 // the Funnel address of arcade-scores
-const scoresOnline=()=> !SCORES_API.includes("SCORES-HOST");
+const SCORES_API=String(SCORES_HOST||"").replace(/\/+$/,"");   // the Funnel address of arcade-scores (core/scores.js), no trailing slash
+const scoresOnline=()=> !!SCORES_API && !SCORES_API.includes("SCORES-HOST");
 const HS_SLUG={blaster:"invaders", command:"harp-command", snake:"chord-snake", asteroids:"chord-asteroids", stack:"chord-stack", breakout:"chord-breakout", fifths:"fifths-defender"};
 const HS_CHARS="ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 const hsCache={};                                        // the shared boards, as last fetched
