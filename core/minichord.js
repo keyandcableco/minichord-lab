@@ -105,7 +105,7 @@ export class Minichord extends EventTarget {
   /** ask for every setting; asks again if no reply comes, and says so if none ever does */
   requestDump(){
     if(!this.out || !this.sysex) return;
-    this.out.send([0xF0,0,0,0,0,0xF7]);
+    this.out.send([0xF0,0,0,0,0,0xF7]); this._asked=(this._asked||0)+1;
     clearTimeout(this._dumpT);
     this._dumpT=setTimeout(()=>{
       if(this.params[35]!==undefined) return;
@@ -122,6 +122,9 @@ export class Minichord extends EventTarget {
   _dump(d){
     this._dumpTries=0; clearTimeout(this._dumpT);
     if(d.length!==514) return;   // 256 parameters as two 7-bit bytes, plus F0 and F7
+    // a dump nobody asked for: the minichord reporting a change made on the instrument itself,
+    // such as the key change combo (the test firmware reports every key picked that way)
+    this.unasked = !(this._asked>0); if(this._asked>0) this._asked--;
     for(let i=0;i<256;i++) this.params[i]=d[1+2*i]+128*d[2+2*i];
     if(this.params[110]===1 && !this.zone.known){ this.zone={type:"lower", members:this.params[108]===1?15:4, known:true}; }
     this.dispatchEvent(new Event("device"));

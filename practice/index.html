@@ -4752,13 +4752,16 @@ function kfDevice(){
   if(!blast || blast.kind!=="fleet" || !canWrite()) return;
   if(!blast.setupDone){ blast.setupDone=true; poll(true); asHarp(); if(hasSetting(30)) ensure(30,0); if(hasSetting(35)) borrow(35, keyIndexOf(0)); }   // the chart is the plain buttons in C
   // a key signature set with the key change combo calls that key (major, or its relative minor)
-  if(hasSetting(35) && mc.params[35]!==keyIndexOf(0) && mc.params[35]!=null){
-    const f=KEY_FIFTHS[mc.params[35]] ?? 0, maj=mod(7*f,12), min=mod(maj+9,12);
-    borrow(35, keyIndexOf(0));                                                   // back to the plain buttons
-    if(blast.phase==="play") kfCall(s=>(!s.minor && pcOfName(s.tonic)===maj) || (s.minor && pcOfName(s.tonic)===min), `THE KEY OF ${KEY_NAMES_BY_FIFTHS(f)}`);
+  // (a key the minichord was already in counts too, when the minichord reports the combo on its own:
+  // that's how C major and A minor, the chart's own signature, get called)
+  const picked = mc.unasked && blast.phase==="play"; mc.unasked=false;
+  if(hasSetting(35) && mc.params[35]!=null && (mc.params[35]!==keyIndexOf(0) || picked)){
+    const idx=mc.params[35], f=KEY_FIFTHS[idx] ?? 0, maj=mod(7*f,12), min=mod(maj+9,12), name=mc.keyName||"?";
+    if(idx!==keyIndexOf(0)) borrow(35, keyIndexOf(0));                           // back to the plain buttons
+    if(blast.phase==="play") kfCall(s=>(!s.minor && pcOfName(s.tonic)===maj) || (s.minor && pcOfName(s.tonic)===min), `KEY OF ${name}`);
   }
+  if(blast.phase==="play" && canWrite() && !pollT) poll(true);                  // keep listening for the combo
 }
-const KEY_NAMES_BY_FIFTHS=f=>["G♭","D♭","A♭","E♭","B♭","F","C","G","D","A","E","B","F♯","C♯"][f+6]||"C";
 function buildFleetField(box){
   const field=document.createElement("div"); field.className="field arcade fleet"; field.setAttribute("aria-label","The chart of the sea");
   const hud=document.createElement("div"); hud.className="hud"; field.appendChild(hud); fullButton(field);
@@ -4823,7 +4826,7 @@ function kfSide(){
   if(crippled && blast.phase==="play") h+=`<p class="kfcall blink">${crippled>1?crippled+" SHIPS":"A SHIP"} CRIPPLED: CALL ${crippled>1?"THEIR KEYS":"ITS KEY"}!</p>`;
   if(blast.islands && blast.islands.size) h+=`<p class="kfhow">ROCKS: NO SHIP THERE.</p>`;
   if(L.counts) h+=`<p class="kfhow">THE NUMBERS: HOW MANY SHIP CHORDS IN EACH COLUMN AND ROW.</p>`;
-  h+=`<p class="kfhow">SINK A SHIP BY CALLING ITS KEY:${kfHarpOk()?"<br>· PLUCK ITS TONIC ON THE HARP":""}<br>· PLAY ITS V7 THEN I${canWrite()?"<br>· OR SET ITS KEY SIGNATURE":""}<br>A WRONG CALL COSTS A TORPEDO.</p>`;
+  h+=`<p class="kfhow">SINK A SHIP BY CALLING ITS KEY:${kfHarpOk()?"<br>· PLUCK ITS TONIC ON THE HARP":""}<br>· PLAY ITS V7 THEN I${canWrite()?"<br>· OR THE KEY CHANGE COMBO: HOLD BOTH PRESET BUTTONS AND PRESS THE KEY IN THE MIDDLE ROW (TOP ROW SHARPS, BOTTOM ROW FLATS). A MINOR SHIP TAKES ITS RELATIVE MAJOR'S KEY: A MINOR IS C":""}<br>A WRONG CALL COSTS A TORPEDO.</p>`;
   blast.sideEl.innerHTML=h;
 }
 const kfHarpOk=()=> !!(KF_LEVELS[blast.level||0].harp || saved.beginner);
@@ -4961,7 +4964,7 @@ function kfCall(match, what, quiet){
   const ship=blast.ships.filter(s=>!s.sunk && match(s)).sort((a,b)=>b.hits.size-a.hits.size)[0];
   if(!ship){
     if(quiet) return false;
-    blast.torps--; heard(what,false,"NO SHIP IN THAT KEY"); sfx("miss"); buzz(blast.field,true); kfBar(); kfDraw();
+    blast.torps--; heard(what,false,"NO SHIP IN THAT KEY"); banner("NO SHIP THERE", `${what}: A TORPEDO WASTED`); sfx("miss"); buzz(blast.field,true); kfBar(); kfDraw();
     if(blast.torps<=0 && !blast.ships.every(s=>s.sunk)) kfOut();
     return false;
   }
