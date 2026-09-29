@@ -41,7 +41,7 @@ function arcadeBonus(id){
   const g = BONUS_GAMES.find(x=>x.id===id) || rnd(pool.filter(x=>x.id!==blast.lastBonus)) || rnd(pool);
   blast.lastBonus=g.id; blast.bonusPhase=blast.phase; blast.phase="bonus"; blast.bonusStart=performance.now();
   helpChord(null);
-  const el=document.createElement("div"); el.className="bonus";
+  const el=document.createElement("div"); el.className="bonusround";
   el.innerHTML=`<div class="bohead"><span class="rainbow">BONUS ROUND</span><b>${g.name}</b></div><p class="boinstr">${g.instr}</p><div class="bostage"></div>
     <div class="botime"><i></i></div><p class="boscore">BONUS <b>0</b></p>`;
   blast.field.appendChild(el);

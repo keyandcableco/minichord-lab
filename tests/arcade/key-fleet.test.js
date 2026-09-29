@@ -26,6 +26,10 @@ const t=require("./harness").load("key-fleet");
   chord(V,"7"); await sleep(300); chord(s1.tonic, s1.minor?"m":""); await sleep(400);
   check("its V7 then I sinks it", s1.sunk, `${V}7 → ${s1.tonic}${s1.minor?"m":""}`);
   a.ships=[{kind:"major", cells:[[0,0],[1,0],[2,0]], name:"C MAJOR", detail:"", tonic:"C", minor:false, hits:new Set(), sunk:false, misses:0}];
+  // a call on a ship not yet hit is blind, and costs a torpedo
+  const tb=a.torps; chord("G","7"); await sleep(300); chord("C"); await sleep(300);
+  check("a key can't be called on a ship not yet hit", !a.ships[0].sunk && a.torps===tb-1 && /NO CONTACT/.test(t.heard()), t.heard());
+  a.ships[0].hits.add("1,0");                                 // contact: one of its chords hit
   mc._asked=0; const dump=[0xF0]; for(let k=0;k<256;k++){ const v=mc.params[k]||0; dump.push(v&127, v>>7); } dump.push(0xF7); dump[71]=0; dump[72]=0;
   mc._dump(dump); await sleep(100);
   check("the combo picking C (reported unasked) calls C major", a.ships[0].sunk, t.heard());

@@ -198,7 +198,7 @@ function kfSide(){
   if(blast.islands && blast.islands.size) h+=`<p class="kfhow">ROCKS: NO SHIP THERE.</p>`;
   if(L.counts) h+=`<p class="kfhow">THE NUMBERS: HOW MANY SHIP CHORDS IN EACH COLUMN AND ROW.</p>`;
   if(kfWide()) h+=`<p class="kfmod">MODIFIER: <b>${kfSharp()?"♯ SHARPENS":"♭ FLATTENS"}</b><br><span>PLUCK THE HARP TO FLIP IT</span></p>`;
-  h+=`<p class="kfhow">SINK A SHIP BY CALLING ITS KEY:${kfHarpOk()?"<br>· PLUCK ITS TONIC ON THE HARP":""}<br>· PLAY ITS V7 THEN I${canWrite()?"<br>· OR THE KEY CHANGE COMBO: HOLD BOTH PRESET BUTTONS AND PRESS THE KEY IN THE MIDDLE ROW (TOP ROW SHARPS, BOTTOM ROW FLATS). A MINOR SHIP TAKES ITS RELATIVE MAJOR'S KEY: A MINOR IS C":""}<br>A WRONG CALL COSTS A TORPEDO.</p>`;
+  h+=`<p class="kfhow">SINK A SHIP BY CALLING ITS KEY:${kfHarpOk()?"<br>· PLUCK ITS TONIC ON THE HARP":""}<br>· PLAY ITS V7 THEN I${canWrite()?"<br>· OR THE KEY CHANGE COMBO: HOLD BOTH PRESET BUTTONS AND PRESS THE KEY IN THE MIDDLE ROW (TOP ROW SHARPS, BOTTOM ROW FLATS). A MINOR SHIP TAKES ITS RELATIVE MAJOR'S KEY: A MINOR IS C":""}<br>ONLY A SHIP YOU'VE HIT CAN BE CALLED; A WRONG OR BLIND CALL COSTS A TORPEDO.</p>`;
   blast.sideEl.innerHTML=h;
 }
 const kfWide=()=> !!KF_LEVELS[blast.level||0].span;
@@ -208,7 +208,7 @@ function kfBar(){
   blast.hud.innerHTML=`<span>SCORE ${blast.score}${multTag()}</span><span class="lvl">LEVEL ${blast.level+1} · ${KF_LEVELS[blast.level].n.toUpperCase()}</span><span class="lives">${"♥".repeat(Math.max(0,blast.lives))||"-"}</span>`;
 }
 const KFMENU_G={key:"fleet", title:"KEY FLEET",
-  rules:()=>`<p>THE ENEMY'S SHIPS ARE KEYS, HIDDEN ON THE CHORD CHART. THREE CHORDS SIDE BY SIDE IN A ROW ARE A KEY'S IV, I AND V: F C G IS C MAJOR.</p><p>FIRE BY PLAYING CHORDS. HITS CRIPPLE A SHIP; TO SINK IT, CALL ITS KEY: PLUCK ITS TONIC ON THE HARP, OR PLAY ITS V7 THEN I.</p><p>CALL A KEY BEFORE ALL ITS CHORDS ARE HIT FOR A BONUS. A WRONG CALL COSTS A TORPEDO.</p>`,
+  rules:()=>`<p>THE ENEMY'S SHIPS ARE KEYS, HIDDEN ON THE CHORD CHART. THREE CHORDS SIDE BY SIDE IN A ROW ARE A KEY'S IV, I AND V: F C G IS C MAJOR.</p><p>FIRE BY PLAYING CHORDS. HITS CRIPPLE A SHIP; TO SINK IT, CALL ITS KEY: PLUCK ITS TONIC ON THE HARP, OR PLAY ITS V7 THEN I.</p><p>ONCE YOU'VE HIT ONE OF A SHIP'S CHORDS, CALL ITS KEY EARLY FOR A BONUS. A WRONG OR BLIND CALL COSTS A TORPEDO.</p>`,
   stat:()=>`FLEETS SUNK ${blast.waves}`,
   levels:KF_LEVELS,
   begin:i=>beginFleet(i), demo:()=>kfDemo(), modNote:"title"};
@@ -229,7 +229,7 @@ function beginFleet(level){
 function kfWave(){
   const L=KF_LEVELS[blast.level]; kfSetSea(L); kfLayout();
   blast.ships=kfFleet(L); blast.shots=new Map(); blast.lastHit=null; blast.busy=false; blast.phase="play"; clearTimeout(blast.pendingDom?.timer); blast.pendingDom=null;
-  blast.torps=Math.max(5, Math.round(L.torps*(1.15-(+saved.speed||0)*.07)));   // faster speeds, fewer torpedoes
+  blast.torps=Math.max(5, Math.round(L.torps*(1-(+saved.speed||0)*.07)));      // faster speeds, fewer torpedoes
   kfBar(); kfDraw();
 }
 function kfTick(now){
@@ -322,9 +322,13 @@ function kfLand(col,row,quiet){
 function kfCall(match, what, quiet){
   if(!blast || blast.kind!=="fleet" || (blast.phase!=="play" && !quiet)) return false;
   const ship=blast.ships.filter(s=>!s.sunk && match(s)).sort((a,b)=>b.hits.size-a.hits.size)[0];
-  if(!ship){
+  // a key can only be called on a ship you've made contact with, one of its chords hit: calling keys
+  // blind, one after another, costs a torpedo each, the same as calling one that isn't there
+  const blind = ship && !ship.hits.size && !quiet;
+  if(!ship || blind){
     if(quiet) return false;
-    blast.torps--; heard(what,false,"NO SHIP IN THAT KEY"); banner("NO SHIP THERE", `${what}: A TORPEDO WASTED`); sfx("miss"); buzz(blast.field,true); kfBar(); kfDraw();
+    blast.torps--; heard(what,false, blind ? "NO CONTACT: HIT ONE OF ITS CHORDS FIRST" : "NO SHIP IN THAT KEY");
+    banner(blind ? "NO CONTACT" : "NO SHIP THERE", `${what}: A TORPEDO WASTED`); sfx("miss"); buzz(blast.field,true); kfBar(); kfDraw();
     if(blast.torps<=0 && !blast.ships.every(s=>s.sunk)) kfOut();
     return false;
   }

@@ -130,9 +130,16 @@ function cabinet(ov){
   ov.append(title, roll, points, board, opts);
   hsFetch(hsSlug());                                        // fetched now, so it's ready when its turn comes
   ov.addEventListener("click", e=>{ if(ov.dataset.stage!=="options"){ e.stopPropagation(); cabWake(); } }, true);
-  inner.addEventListener("animationend", e=>{ if(e.target!==inner || !blast || blast.overlay!==ov || ov.dataset.stage!=="rules" || blast.phase!=="menu") return;
-    ov.classList.add("crediting");                            // the roll has stopped with the credit in the middle: hold it there
-    blast.cabT=gameLater(()=>{ if(blast && blast.overlay===ov && ov.dataset.stage==="rules" && blast.phase==="menu") cabStage(ov,"points"); }, 3800); });
+  // The roll stops with the credit in the middle of the screen. The credit stays there, lifted off
+  // the roll, while the rest of the rules carry on up and away; then the points.
+  inner.addEventListener("animationend", e=>{ if(e.target!==inner || e.animationName!=="cabroll" || !blast || blast.overlay!==ov || ov.dataset.stage!=="rules" || blast.phase!=="menu") return;
+    const cr=inner.querySelector(".credit.rolled");
+    if(cr){ const hold=document.createElement("div"); hold.className="cabhold"; hold.appendChild(cr.cloneNode(true)); roll.appendChild(hold);
+      cr.style.visibility="hidden";
+      inner.style.setProperty("--off", `${parseFloat(inner.style.getPropertyValue("--end")||"0")-roll.clientHeight-200}px`);
+      inner.style.animation="cabrollaway 2.4s linear forwards"; }
+    ov.classList.add("crediting");
+    blast.cabT=gameLater(()=>{ if(blast && blast.overlay===ov && ov.dataset.stage==="rules" && blast.phase==="menu") cabStage(ov,"points"); }, 4200); });
   cabStage(ov, "title");
 }
 function cabStage(ov, stage){
@@ -140,8 +147,9 @@ function cabStage(ov, stage){
   clearTimeout(blast.cabT); clearTimeout(blast.attract);
   ov.dataset.stage=stage;
   if(stage==="title") blast.cabT=gameLater(()=>{ if(blast && blast.overlay===ov && ov.dataset.stage==="title") cabStage(ov,"rules"); }, 3600);
-  ov.classList.remove("crediting");
+  ov.classList.remove("crediting"); ov.querySelector(".cabhold")?.remove();
   if(stage==="rules"){ const inner=ov.querySelector(".cabscroll"); if(inner){ inner.style.animation="none"; void inner.offsetWidth;
+    inner.querySelector(".credit.rolled")?.style.removeProperty("visibility");
     // where the roll stops: with the credit's middle at the middle of the screen (it starts just below the screen)
     const roll=ov.querySelector(".cab-rules"), cr=inner.querySelector(".credit.rolled");
     if(cr && roll.clientHeight) inner.style.setProperty("--end", `${-(roll.clientHeight/2 + cr.offsetTop + cr.offsetHeight/2)}px`);
