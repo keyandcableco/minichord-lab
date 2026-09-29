@@ -270,6 +270,12 @@ function asDemo(){
         asFire(r, ()=>{ r.deadAt=performance.now(); r.el.remove(); explode(r.x,r.y,16); sfx("boom"); });
       }
       await step(1000); say("","EVERY NOTE OF A CHORD SHOT DOWN SCORES A BONUS. A WRONG STRING JAMS YOUR GUN."); await step(3400);
+      // dodging: a rock comes straight for the ship, and the ship swings round its orbit out of the way
+      say("DODGE","YOUR SHIP FLIES AN ORBIT. SWING ROUND IT TO DODGE: THE MOD KNOB, OR THE ARROW KEYS.");
+      const W2=blast.field.clientWidth, incoming=asRock("chord", W2-50, blast.cy, "Am", {root:"A", q:"m", tones:["A","C","E"], rootPc:9});
+      incoming.vx=-(W2-50-blast.cx)/2.6; incoming.vy=0; await step(1100);
+      blast.orbitWant=(blast.orbitA??Math.PI/2)-Math.PI*.55; sfx("press"); await step(1900);   // swung clear: the rock sails through where it was
+      if(!incoming.dead) asKill(incoming); await step(900);
       say("READY?","CHOOSE A LEVEL."); sfx("level"); await step(2600);
       endAsDemo(token);
     }catch(e){ /* skipped */ }
@@ -279,6 +285,7 @@ function endAsDemo(token){
   if(blast && blast.demo===token) demoHarpDone();
   if(!blast || blast.demo!==token) return;
   stopDemo(); blast.phase="menu"; blast.rocks.forEach(r=>{ if(!r.dead) asKill(r); }); blast.rocks=[]; blast.score=0;
+  blast.orbitWant=Math.PI/2;                                                   // the ship home to its starting place
   if(blast.overlay) blast.overlay.hidden=false;
   clearTimeout(blast.attract);
   blast.attract=gameLater(()=>{ if(blast && blast.kind==="asteroids" && blast.phase==="menu" && blast.overlay && !blast.overlay.hidden) asDemo(); }, 25000);
