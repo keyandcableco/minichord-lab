@@ -50,13 +50,20 @@ function arcadeBonus(id){
   b.say=t=>{ el.querySelector(".boinstr").textContent=t; };
   b.finish=()=>bonusEnd(b);
   blast.bonus=b; sfx("level");
-  b.timer=setInterval(()=>{ const left=1-(performance.now()-b.t0)/(b.secs*1000);
-    el.querySelector(".botime i").style.transform=`scaleX(${Math.max(0,left)})`;
-    if(left<=0) bonusEnd(b); }, 100);
-  g.start(b);
+  // first the warning: what's coming, its rules, and a count down; then the mini-game and its clock
+  el.classList.add("intro"); b.stage.innerHTML=`<p class="bocount">3</p>`;
+  let n=3; b.countT=setInterval(()=>{ n--; const c=b.stage.querySelector(".bocount");
+    if(n>0){ if(c) c.textContent=n; sfx("press"); return; }
+    clearInterval(b.countT); if(b.over) return;
+    el.classList.remove("intro"); b.ready=true; b.t0=performance.now(); sfx("start");
+    b.timer=setInterval(()=>{ const left=1-(performance.now()-b.t0)/(b.secs*1000);
+      el.querySelector(".botime i").style.transform=`scaleX(${Math.max(0,left)})`;
+      if(left<=0) bonusEnd(b); }, 100);
+    g.start(b); }, BONUS_WARN/3);
 }
+const BONUS_WARN=4200;
 function bonusEnd(b){
-  if(b.over) return; b.over=true; clearInterval(b.timer); if(b.g.stop) b.g.stop(b);
+  if(b.over) return; b.over=true; clearInterval(b.timer); clearInterval(b.countT); if(b.g.stop) b.g.stop(b);
   const pts=mulPts(b.score*(blast.level+1));
   b.el.querySelector(".bostage").innerHTML=`<p class="boresult">${b.result||""}</p><p class="bototal">BONUS <b>+${pts}</b></p>`;
   blast.score+=pts; sfx("level");
@@ -71,11 +78,12 @@ function bonusEnd(b){
   }, 1800);
 }
 // input, while a bonus plays: it goes to the mini-game, not the game underneath
-function bonusChord(voices){ const b=blast.bonus; if(!b || b.over || !b.g.chord) return; b.g.chord(b, voices.map(v=>v.pitch)); }
-function bonusNote(pc){ const b=blast.bonus; if(!b || b.over || !b.g.note) return; b.g.note(b, mod(pc,12)); }
-function bonusKnob(v){ const b=blast.bonus; if(!b || b.over || !b.g.knob) return; b.g.knob(b, v); }
+function bonusChord(voices){ const b=blast.bonus; if(!b || b.over || !b.ready || !b.g.chord) return; b.g.chord(b, voices.map(v=>v.pitch)); }
+function bonusNote(pc){ const b=blast.bonus; if(!b || b.over || !b.ready || !b.g.note) return; b.g.note(b, mod(pc,12)); }
+function bonusKnob(v){ const b=blast.bonus; if(!b || b.over || !b.ready || !b.g.knob) return; b.g.knob(b, v); }
 document.addEventListener("keydown", e=>{
   const b=blast && blast.bonus; if(!b || b.over || /INPUT|SELECT|TEXTAREA/.test(document.activeElement?.tagName||"")) return;
+  if(!b.ready){ e.preventDefault(); e.stopImmediatePropagation(); return; }     // the warning: keys wait
   if(b.g.key && b.g.key(b, e.code, e.shiftKey)!==false){ e.preventDefault(); e.stopImmediatePropagation(); }
 }, true);
 const bCard=(t,cls="")=>`<span class="bocard ${cls}">${t}</span>`;

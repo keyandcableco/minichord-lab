@@ -78,7 +78,7 @@ function stDevice(){
   arcadeSetup(()=>{ kmHarp(); if(knobsReady()) borrow(238,1); });
   // the title screen mentions the knob once the minichord says it has one to send
   const sig=String(knobsReady());
-  if(blast.phase==="menu" && blast.overlay && blast.menuSig!==sig){ const hid=blast.overlay.hidden; blast.overlay.remove(); blast.overlay=null; stMenu(); blast.overlay.hidden=hid; blast.menuSig=sig; }
+  if(blast.phase==="menu" && blast.overlay && blast.menuSig!==sig){ if(menuRebuild(()=>stMenu())) blast.menuSig=sig; }
 }
 // A knob is the transposition dial: turned, the falling piece slides through the twelve columns, C at
 // one end of the knob's travel and B at the other, stopping short of anything in its way.

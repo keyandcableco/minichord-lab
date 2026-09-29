@@ -55,7 +55,7 @@ function boDevice(){
   if(!blast || blast.kind!=="breakout" || !canWrite()) return;
   arcadeSetup(()=>{ asHarp(); if(hasSetting(30)) ensure(30,0); if(slashReady()) ensure(113,1); if(knobsReady()) borrow(238,1); });   // the harp chromatic, for the cannon
   const sig=BO_LEVELS.map((_,i)=>boLevelOk(i)).join()+knobsReady();
-  if(blast.phase==="menu" && blast.overlay && blast.menuSig!==sig){ const hid=blast.overlay.hidden; blast.overlay.remove(); blast.overlay=null; boMenu(); blast.overlay.hidden=hid; }
+  if(blast.phase==="menu" && blast.overlay && blast.menuSig!==sig){ menuRebuild(()=>boMenu()); }
 }
 function buildBreakoutField(box){
   const field=document.createElement("div"); field.className="field arcade breakout"; field.setAttribute("aria-label","The Chord Breakout wall");

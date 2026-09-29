@@ -127,6 +127,7 @@ function cabinet(ov){
   crtRow(opts);
   multLine(opts);
   if(["breakout","fifths","stack"].includes(cabKind()) && knobsReady()) knobRow(opts);
+  cabPages(opts, ov);
   ov.append(title, roll, points, board, opts);
   hsFetch(hsSlug());                                        // fetched now, so it's ready when its turn comes
   ov.addEventListener("click", e=>{ if(ov.dataset.stage!=="options"){ e.stopPropagation(); cabWake(); } }, true);
@@ -154,6 +155,7 @@ function cabStage(ov, stage){
     const roll=ov.querySelector(".cab-rules"), cr=inner.querySelector(".credit.rolled");
     if(cr && roll.clientHeight) inner.style.setProperty("--end", `${-(roll.clientHeight/2 + cr.offsetTop + cr.offsetHeight/2)}px`);
     inner.style.animation=`cabroll ${Math.max(12, inner.children.length*2.4)}s linear forwards`; } }
+  if(stage==="options") ov.dataset.optpage="options";
   if(stage==="options") blast.cabT=gameLater(()=>{ if(blast && blast.overlay===ov && ov.dataset.stage==="options" && blast.phase==="menu") cabStage(ov,"title"); }, 45000);
   if(stage==="points"){                                        // what things are worth, then the board
     pointsRender(ov.querySelector(".cab-points"));
@@ -165,6 +167,27 @@ function cabStage(ov, stage){
     blast.cabT=gameLater(()=>{ if(blast && blast.overlay===ov && ov.dataset.stage==="scores" && blast.phase==="menu"){ const d=DEMO_FOR[cabKind()]; if(d) d(); } }, 9000);
   }
 }
+// The options screen in two pages: the options first, then the levels, so neither is crowded. The
+// level buttons, the level prompt, the best score, the minichord's shortcuts and the credit go on the
+// second page; everything else on the first.
+function cabPages(opts, ov){
+  const kids=[...opts.children], h3=opts.querySelector("h3");
+  const toLevels=c=> (c.classList.contains("levels") && !c.closest(".optrow")) || (c.tagName==="P" && (c.classList.contains("blink") || /^BEST /.test(c.textContent) || c.classList.contains("padhint") || c.classList.contains("credit")));
+  const p1=document.createElement("div"); p1.className="cab-optpage";
+  const p2=document.createElement("div"); p2.className="cab-levelpage";
+  if(h3) p2.appendChild(h3.cloneNode(true));
+  kids.forEach(c=> (toLevels(c) ? p2 : p1).appendChild(c));
+  const next=document.createElement("button"); next.className="go"; next.textContent="CHOOSE A LEVEL ▶"; next.onclick=e=>{ e.stopPropagation(); ov.dataset.optpage="levels"; sfx("press"); };
+  const back=document.createElement("button"); back.className="howto"; back.textContent="◀ OPTIONS"; back.onclick=e=>{ e.stopPropagation(); ov.dataset.optpage="options"; sfx("press"); };
+  p1.appendChild(next); p2.appendChild(back);
+  opts.append(p1, p2);
+}
+// the keyboard between the two pages: Enter on to the levels, Escape back to the options
+document.addEventListener("keydown", e=>{
+  const ov=blast && blast.overlay; if(!ov || ov.hidden || ov.dataset.stage!=="options" || /INPUT|SELECT|TEXTAREA/.test(document.activeElement?.tagName||"")) return;
+  if(e.code==="Enter" && ov.dataset.optpage!=="levels" && !/BUTTON/.test(document.activeElement?.tagName||"")){ e.preventDefault(); ov.dataset.optpage="levels"; sfx("press"); }
+  else if((e.code==="Escape" || e.code==="Backspace") && ov.dataset.optpage==="levels"){ e.preventDefault(); ov.dataset.optpage="options"; sfx("press"); }
+});
 // someone's here: show the options
 function cabWake(){
   const ov=blast && blast.overlay; if(!ov || ov.hidden || !ov.dataset.stage || ov.dataset.stage==="options") return false;
@@ -194,7 +217,7 @@ function beginnerRow(opts){
   r.append(l,g);
   // the harp games need to know which harp to draw
   let harpRow=null;
-  if(helpUsesHarp(cabKind()) && ![...opts.querySelectorAll(".optlabel")].some(x=>x.textContent==="HARP")){
+  if(helpUsesHarp(cabKind()) && cabKind()!=="breakout" && ![...opts.querySelectorAll(".optlabel")].some(x=>x.textContent==="HARP")){   // Breakout's few notes play on any harp
     harpRow=document.createElement("div"); harpRow.className="optrow"; const hl=document.createElement("span"); hl.className="optlabel"; hl.textContent="HARP";
     const hg=document.createElement("div"); hg.className="levels";
     const hmark=b=>{ [...hg.children].forEach(x=>{ x.style.background=""; x.style.color=""; }); b.style.background="#F1E8D2"; b.style.color="#16132A"; };

@@ -49,7 +49,7 @@ function asDevice(){
   if(!blast || blast.kind!=="asteroids" || !canWrite()) return;
   arcadeSetup(()=>{ asHarp(); });
   const sig=AS_LEVELS.map((_,i)=>asLevelOk(i)).join();
-  if(blast.phase==="menu" && blast.overlay && blast.menuSig!==sig){ const hid=blast.overlay.hidden; blast.overlay.remove(); blast.overlay=null; asMenu(); blast.overlay.hidden=hid; }
+  if(blast.phase==="menu" && blast.overlay && blast.menuSig!==sig){ menuRebuild(()=>asMenu()); }
 }
 function buildAsteroidsField(box){
   const field=document.createElement("div"); field.className="field arcade asteroids"; field.setAttribute("aria-label","The Chord Asteroids field");

@@ -811,6 +811,7 @@ mc.addEventListener("device", ()=>{
   else if(blast && blast.kind==="fleet") kfDevice();
   else if(blast && blast.kind==="sweeper") swDevice();
   else if(blast){ blastSetup(); if(blast.phase!=="play") blastHomeKey(); blastKey(); }
+  arcadeVolumeWatch();
   if(q && !solved && !rebuilding) applyNeeds();
   mine(); needs();
   // a round built before the minichord's settings arrived is rebuilt now, on the minichord
@@ -865,4 +866,5 @@ function arcadePage(){
   const box=document.createElement("section"); box.className="moregames"; box.setAttribute("aria-label","More arcade games");
   box.innerHTML=`<h2>MORE IN THE ARCADE</h2><div class="row">${others.map(g=>`<a href="../${HS_SLUG[g]}/"><img src="../${HS_SLUG[g]}/card.png" alt="" loading="lazy" width="1200" height="630"><span>${LABELS[g].toUpperCase()}</span></a>`).join("")}</div>`;
   document.querySelector("section.game").after(box);
+  requestAnimationFrame(()=>document.documentElement.classList.remove("arcadeboot"));   // set up: show it
 }

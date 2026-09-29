@@ -99,7 +99,7 @@ function commandDevice(){
   arcadeSetup(()=>{ if(!(35 in borrowed)) borrow(35, mc.params[35]); if(hasSetting(30)) ensure(30,0); });
   // what this minichord can play decides which levels are open: redraw the title screen when that changes
   const sig=HC_LEVELS.map((_,i)=>hcLevelOk(i)).join();
-  if(blast.phase==="menu" && blast.overlay && blast.menuSig!==sig){ const hid=blast.overlay.hidden; blast.overlay.remove(); blast.overlay=null; commandMenu(); blast.overlay.hidden=hid; }
+  if(blast.phase==="menu" && blast.overlay && blast.menuSig!==sig){ menuRebuild(()=>commandMenu()); }
   if(blast.phase!=="play" && blast.wave.kind!=="chrom"){ blast.wave={kind:"chrom"}; hcTuneHarp(); hcLabels(); }
   if(blast.phase!=="play" && mc.params[98]!==1 && !blast.tunedMenu){ blast.tunedMenu=true; hcTuneHarp(); }
 }

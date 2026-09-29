@@ -2,6 +2,16 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<script>
+// A game's own page opens this page with ?game=<name>&solo. Dress it for the arcade before the first
+// paint, and keep it hidden until the arcade's set up, so the Practice Room never flashes up first.
+(function(){ var u=new URLSearchParams(location.search), g=u.get("game"), h=document.documentElement;
+  if(!u.has("solo") || !g) return; h.classList.add("solo");
+  if(/^(invaders|chord-invaders|harp-command|harpcommand|chord-snake|chord-asteroids|chord-stack|chord-breakout|fifths-defender|chopper-rescue|key-fleet|chord-sweeper)$/.test(g)){
+    h.classList.add("arcadepage","arcadeboot"); setTimeout(function(){ h.classList.remove("arcadeboot"); }, 4000); }   // never hidden for long, whatever happens
+})();
+</script>
+<style>html.arcadeboot body{visibility:hidden}html.arcadeboot{background:#07060C}</style>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>The Practice Room · Minichord Lab</title>
 <meta name="description" content="Games for getting to know the minichord: read a chord's letters, numeral, staff notes or key and answer on the buttons or harp, or work out what a mystery setting did to the instrument.">
@@ -284,6 +294,9 @@
 @keyframes cabroll{0%{transform:translate3d(0,0,0)}100%{transform:translate3d(0,var(--end,calc(-100% - 480px)),0)}}
 .cab-options{display:flex;flex-direction:column;align-items:center;gap:10px;width:100%}
 .cab-options h3.small{font-size:1.1rem}
+/* the options screen's two pages: options, then levels */
+.cab-optpage,.cab-levelpage{display:flex;flex-direction:column;align-items:center;gap:12px;width:100%}
+.overlay[data-optpage="levels"] .cab-optpage,.overlay:not([data-optpage="levels"]) .cab-levelpage{display:none}
 /* beginner mode: the minichord and the harp, behind the play */
 .helper{position:absolute;z-index:1;pointer-events:none}
 .helper.hboard{right:10px;bottom:28px;width:min(420px,44%)}
@@ -567,6 +580,11 @@ html.arcadepage .gamebar{align-items:flex-end}
 .botime i{display:block;height:100%;background:#FFD35A;transform-origin:left}
 .boscore b,.bototal b{color:#FFD35A;font-weight:400}.bototal{font-size:1.1rem}
 .boresult{color:#7FE08A;margin:0}
+.bonusround.intro .bohead{font-size:1.3rem;animation:blink .5s steps(2) infinite}
+.bonusround.intro .bohead b{font-size:1.8rem}
+.bonusround.intro .boinstr{font-size:.75rem;color:#F1E8D2;line-height:2.2}
+.bonusround.intro .botime,.bonusround.intro .boscore{visibility:hidden}
+.bocount{font:400 3rem "Press Start 2P",monospace;color:#FFD35A;text-shadow:4px 4px 0 #000;margin:0}
 /* the demo's pixel minichord */
 .overlay button.howto{border-color:#FFD35A;color:#FFD35A}
 .demo{position:absolute;inset:0;z-index:5;display:flex;flex-direction:column;justify-content:flex-start;padding:10px 14px;pointer-events:none}
@@ -620,8 +638,9 @@ html.arcadepage #input{background:#0E0A16;color:#9A93B5;border:2px solid #2F2342
 html.arcadepage .titlerow{position:relative;justify-content:center;margin:26px auto 8px;max-width:760px;padding:26px 16px 22px;background:linear-gradient(180deg,#1A0E22,#0B0714);
   border:5px solid #2A1C35;box-shadow:0 0 0 3px #000,0 0 40px rgba(255,90,160,.16),inset 0 0 30px rgba(0,0,0,.8)}
 html.arcadepage .titlerow::before,html.arcadepage .titlerow::after{content:"";position:absolute;inset:-3px;pointer-events:none;animation:chase .5s steps(2) infinite}
-html.arcadepage .titlerow::before{background:radial-gradient(circle,#FFD35A 0 3px,transparent 4px) 0 0/22px 22px repeat-x,radial-gradient(circle,#FFD35A 0 3px,transparent 4px) 0 100%/22px 22px repeat-x}
-html.arcadepage .titlerow::after{background:radial-gradient(circle,#FFD35A 0 3px,transparent 4px) 0 0/22px 22px repeat-y,radial-gradient(circle,#FFD35A 0 3px,transparent 4px) 100% 0/22px 22px repeat-y}
+/* the bulbs spaced evenly to fill each edge exactly, whatever the title's width, so none spill at the corners */
+html.arcadepage .titlerow::before{background:radial-gradient(circle,#FFD35A 0 3px,transparent 4px) 0 0/22px 22px space no-repeat,radial-gradient(circle,#FFD35A 0 3px,transparent 4px) 0 100%/22px 22px space no-repeat}
+html.arcadepage .titlerow::after{background:radial-gradient(circle,#FFD35A 0 3px,transparent 4px) 0 0/22px 22px no-repeat space,radial-gradient(circle,#FFD35A 0 3px,transparent 4px) 100% 0/22px 22px no-repeat space}
 @keyframes chase{50%{filter:brightness(.35) saturate(.6)}}
 html.arcadepage #pageTitle{margin:0;font:400 clamp(1.1rem,4.4vw,2.4rem)/1.3 "Press Start 2P",monospace;color:#FFE9A8;text-align:center;letter-spacing:.04em;
   text-shadow:0 0 6px #FFD35A,0 0 16px #FF8A3D,0 0 32px #FF5AA0,4px 4px 0 #000}

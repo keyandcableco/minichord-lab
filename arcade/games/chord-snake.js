@@ -60,7 +60,7 @@ function snDevice(){
   if(!blast || blast.kind!=="snake" || !canWrite()) return;
   arcadeSetup(()=>{ kmHarp(); });
   const sig=SN_LEVELS.map((_,i)=>snLevelOk(i)).join();
-  if(blast.phase==="menu" && blast.overlay && blast.menuSig!==sig){ const hid=blast.overlay.hidden; blast.overlay.remove(); blast.overlay=null; snMenu(); blast.overlay.hidden=hid; }
+  if(blast.phase==="menu" && blast.overlay && blast.menuSig!==sig){ menuRebuild(()=>snMenu()); }
 }
 const snLevelOk=i=> !SN_LEVELS[i].barry || canWrite();
 function buildSnakeField(box){

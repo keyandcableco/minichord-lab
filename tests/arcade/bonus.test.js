@@ -9,10 +9,12 @@ const t=require("./harness").load("chord-snake", {storage:{saved:{bonus:true}}})
   // it falls due two levels on
   a.level=a.bonusAt; await sleep(120);
   check("two levels on, a bonus round starts", !!bonus() && a.phase==="bonus", bonus() && bonus().g.name);
+  check("it warns first: the rules and a count down, nothing counted yet", bonus() && !bonus().ready && t.d.querySelector(".bonusround.intro .bocount"));
   const endIt=async()=>{ for(let i=0;i<60 && bonus();i++) await sleep(100); };
   w.eval("clearInterval(blast.bonus.timer); blast.bonus.over=true; blast.bonus.el.remove(); blast.bonus=null; blast.phase='play'");
   const play=async(id, fn)=>{
     const s0=a.score; w.eval(`arcadeBonus("${id}")`); await sleep(80); const b=bonus();
+    for(let i=0;i<60 && !b.ready;i++) await sleep(100);                        // the warning first
     await fn(b); await endIt();
     return {gained:a.score-s0, back:a.phase==="play", result:b.result};
   };

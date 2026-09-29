@@ -60,7 +60,7 @@ function load(slug, {storage}={}){
     mc.writeParam=(a,v)=>{ writes.push([a,v]); mc.params[a]=v; };
     mc.requestDump=()=>{ mc._asked=(mc._asked||0)+1; setTimeout(()=>{ mc._asked--; mc.dispatchEvent(new w.Event("device")); },5); };
     for(let a=0;a<256;a++) mc.params[a]=0;
-    Object.assign(mc.params, {7:firmware, 35:key, 97:150, 238:0}, extra);
+    Object.assign(mc.params, {2:80, 3:80, 7:firmware, 35:key, 97:150, 238:0}, extra);   // harp and chord volume up, as they usually are
     mc.dispatchEvent(new w.Event("device"));
   }
   const IV={"":[0,4,7], m:[0,3,7], "7":[0,4,7,10], maj7:[0,4,7,11], m7:[0,3,7,10], "°":[0,3,6], "+":[0,4,8]};

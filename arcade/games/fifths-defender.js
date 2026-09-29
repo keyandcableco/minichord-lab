@@ -48,7 +48,7 @@ function fdDevice(){
   if(!blast || blast.kind!=="fifths" || !canWrite()) return;
   arcadeSetup(()=>{ if(hasSetting(30)) ensure(30,0); if(knobsReady()) borrow(238,1); asHarp(); });
   const sig=FD_LEVELS.map((_,i)=>fdLevelOk(i)).join()+knobsReady();
-  if(blast.phase==="menu" && blast.overlay && blast.menuSig!==sig){ const hid=blast.overlay.hidden; blast.overlay.remove(); blast.overlay=null; fdMenu(); blast.overlay.hidden=hid; }
+  if(blast.phase==="menu" && blast.overlay && blast.menuSig!==sig){ menuRebuild(()=>fdMenu()); }
 }
 function buildFifthsField(box){
   const field=document.createElement("div"); field.className="field arcade fifths"; field.setAttribute("aria-label","The circle of fifths");

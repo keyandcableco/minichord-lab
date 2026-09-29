@@ -2,7 +2,8 @@
 const t=require("./harness").load("chord-snake");
 (async()=>{
   const {sb, sleep, key, note, chord, check, d}=t;
-  await sleep(150); t.connect({key:2}); await sleep(100);
+  await sleep(150); t.connect({key:2, extra:{2:0, 3:0}}); await sleep(100);      // both volumes right down
+  check("a volume that's down is turned up for the game", t.mc.params[2]===70 && t.mc.params[3]===70);
   const a=await t.start(2); await sleep(900);
   const DIRK={up:"ArrowUp",down:"ArrowDown",left:"ArrowLeft",right:"ArrowRight"};
   function route(){   // breadth-first to the nearest tile, round walls and body
@@ -21,6 +22,6 @@ const t=require("./harness").load("chord-snake");
   note(11); await sleep(20);
   check("the harp steers", !!d.querySelector(".kmstrip .km.hit"));
   sb.restoreAll();
-  check("leaving gives back the harp's level", t.mc.params[97]===150);
+  check("leaving gives back the harp's level, and the volumes", t.mc.params[97]===150 && t.mc.params[2]===0 && t.mc.params[3]===0);
   t.done();
 })();

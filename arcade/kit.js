@@ -83,8 +83,36 @@ function newRun(){ if(blast) blast.gen=(blast.gen||0)+1; }
 function gameLater(fn, ms){ const b=blast, g=b && b.gen;
   const run=()=>{ if(!(b && blast===b && b.gen===g)) return; if(b.phase==="bonus"){ setTimeout(run,200); return; } fn(); };   // a bonus playing: wait for it
   return setTimeout(run, ms||0); }
+// A title screen rebuilt because the minichord's settings changed what it offers (once they first
+// arrive, usually). Only at a quiet moment: not while the title loop is mid-way through its rules,
+// points or scores, which it would redraw under the player; and if they were choosing options, they
+// stay on that page.
+function menuRebuild(build){
+  const old=blast.overlay, hid=old.hidden, st=old.dataset.stage, pg=old.dataset.optpage;
+  if(st && st!=="title" && st!=="options") return false;            // mid-loop: the next device update tries again
+  old.remove(); blast.overlay=null; build(); blast.overlay.hidden=hid;
+  if(st==="options" && blast.overlay.dataset.stage){ cabStage(blast.overlay,"options"); blast.overlay.dataset.optpage=pg||"options"; }
+  return true;
+}
 // setting up for the minichord, once per game: its settings read regularly, and whatever it borrows
-function arcadeSetup(fn){ if(blast.setupDone) return; blast.setupDone=true; poll(true); if(fn) fn(); }
+function arcadeSetup(fn){ if(blast.setupDone) return; blast.setupDone=true; poll(true); arcadeVolumes(); if(fn) fn(); }
+// The minichord's chord and harp volumes (addresses 3 and 2, on the knobs by default) are also its MIDI
+// velocities: turned right down, it sends notes a game can't hear. So a game turns up whichever it
+// listens to, if it's down, for as long as it plays, and says so; and if one goes down mid-game, it says that.
+const ARCADE_HARP=new Set(["command","snake","asteroids","stack","fifths","breakout","fleet","sweeper"]);
+const ARCADE_CHORDS=k=>k!=="command";
+function arcadeVolumes(){
+  const up=[];
+  if(ARCADE_CHORDS(blast.kind) && hasSetting(3) && (mc.params[3]??100)<25){ borrow(3,70); up.push("CHORD"); }
+  if(ARCADE_HARP.has(blast.kind) && hasSetting(2) && (mc.params[2]??100)<25){ borrow(2,70); up.push("HARP"); }
+  if(up.length) banner(`${up.join(" AND ")} VOLUME UP`, "IT WAS DOWN, SO THE GAME COULDN'T HEAR IT");
+}
+function arcadeVolumeWatch(){
+  if(!blast || blast.phase!=="play" || !canWrite()) return;
+  const down=[]; if(ARCADE_CHORDS(blast.kind) && (mc.params[3]??100)<5) down.push("CHORD"); if(ARCADE_HARP.has(blast.kind) && (mc.params[2]??100)<5) down.push("HARP");
+  const key=down.join(); if(key===blast.volWarned) return; blast.volWarned=key;
+  if(down.length) banner(`TURN THE ${down.join(" AND ")} VOLUME UP`, "AT ZERO THE GAME CAN'T HEAR YOU");
+}
 
 // ---------- the CRT look ----------
 // An optional old-monitor look for the arcade: scanlines, a soft glow, the picture's corners
