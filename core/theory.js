@@ -1,6 +1,6 @@
 /* ============================================================================
  * theory.js: pitch-class set tools for Minichord Lab, in any equal division N
- * (12 for the usual chromatic, 19 and 31 for the minichord's EDO temperaments)
+ * (12 for the usual chromatic, 19, 24 and 31 for the minichord's EDO temperaments)
  * ========================================================================== */
 import {spell} from "./minichord.js";
 

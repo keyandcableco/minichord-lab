@@ -28,6 +28,8 @@
 #net .tri.past{fill:var(--accent)}
 #net .tri.now.up{fill:var(--accent);fill-opacity:.55}
 #net .tri.now.down{fill:var(--v0);fill-opacity:.5}
+#net .tri.now.quarter{fill:var(--v2);fill-opacity:.55}   /* 24-EDO: a chord a quarter-tone up */
+#net .qtag{font:700 13px system-ui,sans-serif;fill:var(--v2);text-anchor:middle;paint-order:stroke;stroke:var(--board);stroke-width:3px}
 #net .edge{stroke:var(--accent);stroke-width:5;stroke-linecap:round}
 #net .node{fill:var(--panel);stroke:var(--ink);stroke-width:1.2;opacity:.9}
 #net .node.lit{fill:var(--ink)}
@@ -247,6 +249,7 @@ const N19=["C","C♯","D♭","D","D♯","E♭","E","E♯","F","F♯","G♭","G",
 const N31={0:"C",5:"D",10:"E",13:"F",18:"G",23:"A",28:"B"};
 function label(step){
   if(N===12) return spell(step, mc.keyFifths);
+  if(N===24) return spell(Math.floor(step/2), mc.keyFifths)+(step%2 ? " +¼" : "");   // twelve, and a quarter-tone up from each
   if(N===19) return N19[step];
   return N31[step] ?? String(step);
 }
@@ -255,7 +258,16 @@ function label(step){
 const trail=[];          // settled chords: {pitches, voices, name, tri|null, nodes, c:[x,y], path, flips, actual, best, jump}
 let live=null;           // the chord sounding now (drawn even before it settles)
 
+// In 24 the fifths and thirds are 14 and 8 steps, both even, so the lattice only reaches the twelve
+// notes on even steps: 24 is two copies of twelve a quarter-tone apart, with no fifth or third
+// between them. A chord all on the quarter-tones goes where its twin a quarter-tone down would, and is
+// marked +¼; a chord with some notes on each (the neutral third) shows each quarter-tone note marked.
 function place(pitches, prev){
+  if(N===24){
+    const steps=pitches.map(p=>stepOf(p,24)), odd=steps.filter(s=>mod(s,2)).length;
+    if(odd){ const down=pitches.map((p,k)=>mod(steps[k],2) ? p-.5 : p);
+      return {...place(down, prev), quarter: odd===steps.length ? "all" : "some", quarterPcs:[...new Set(steps.filter(s=>mod(s,2)).map(s=>mod(s-1,24)))]}; }
+  }
   const set=pcSet(pitches,N), want=set.join(",");
   const near = prev ? prev.c : [0,0];
   const tri = triadOf(set);
@@ -288,7 +300,10 @@ mc.addEventListener("chord", e=>{
   }
   const flips = at.path!=null ? at.path.length : null;
   const jump = prev && (at.path==null || flips>2) && Math.hypot(at.c[0]-prev.c[0], at.c[1]-prev.c[1])>S*1.2;
-  trail.push({pitches:P, voices, name: N===12 ? chordName(P, mc.keyFifths) : null, ...at, flips, actual, best, jump});
+  const name = N===12 ? chordName(P, mc.keyFifths)
+    : N===24 && !at.quarter ? chordName(P, mc.keyFifths)
+    : N===24 && at.quarter==="all" ? chordName(P.map(p=>p-.5), mc.keyFifths)+" +¼" : null;
+  trail.push({pitches:P, voices, name, ...at, flips, actual, best, jump});
   if(trail.length>40) trail.shift();
   recentre();
   readout();
@@ -324,7 +339,7 @@ function recentre(){
 
 function draw(){
   if(!world) return;
-  for(const e of triEls.values()){ e.setAttribute("class", e.getAttribute("class").replace(/ (now|past)/g,"")); e.style.fillOpacity=""; }
+  for(const e of triEls.values()){ e.setAttribute("class", e.getAttribute("class").replace(/ (now|past|quarter)/g,"")); e.style.fillOpacity=""; }
   for(const n of nodeEls.values()){ n.c.classList.remove("lit"); n.t.classList.remove("lit"); }
   // fading history of lit triangles
   const recent=trail.slice(-8);
@@ -339,6 +354,10 @@ function draw(){
   if(cur){
     for(const t of cur.tris){ const x=triEls.get(triKey(t)); if(x){ x.classList.add("now"); x.style.fillOpacity=""; if(!sounding) x.style.fillOpacity=".25"; } }
     for(const [i,j] of cur.nodes){ const n=nodeEls.get(i+","+j); if(n){ n.c.classList.add("lit"); n.t.classList.add("lit"); } }
+    if(cur.quarter==="all"){ for(const t of cur.tris){ const x=triEls.get(triKey(t)); if(x) x.classList.add("quarter"); }
+      const tag=el("text",{class:"qtag",x:cur.c[0],y:cur.c[1]+5},markLayer); tag.textContent="+¼"; }
+    else if(cur.quarter==="some") for(const [i,j] of cur.nodes){ if(!cur.quarterPcs.includes(pcAt(i,j))) continue;
+      const [x,y]=pos(i,j), tag=el("text",{class:"qtag",x:x+14,y:y-12},markLayer); tag.textContent="+¼"; }
     if(!cur.tri && cur.nodes.length>1){
       // non-triads: join neighbouring notes
       for(let a=0;a<cur.nodes.length;a++) for(let b=a+1;b<cur.nodes.length;b++){
@@ -407,7 +426,8 @@ mc.addEventListener("device", ()=>{
   const parts=[];
   if(mc.keyName) parts.push(`Key of <b>${mc.keyName}</b>`);
   if(mc.temperament!=null) parts.push(`temperament <b>${TEMPERAMENTS[mc.temperament]||mc.temperament}</b>`);
-  if(mc.division!==12) parts.push(`the map uses ${mc.division} steps: fifths of ${Math.round(mc.division*Math.log2(1.5))}, major thirds of ${Math.round(mc.division*Math.log2(1.25))}`);
+  if(mc.division===24) parts.push(`the map is twelve's: in 24 steps the fifths and thirds (14 and 8) never leave the even steps, so a quarter-tone chord sits a quarter-tone up from its twin, marked +¼`);
+  else if(mc.division!==12) parts.push(`the map uses ${mc.division} steps: fifths of ${Math.round(mc.division*Math.log2(1.5))}, major thirds of ${Math.round(mc.division*Math.log2(1.25))}`);
   $("device").innerHTML = parts.length ? parts.join(", ")+"." : "";
   if(mc.division!==N){ setDivision(mc.division); trail.length=0; cam.x=cam.y=cam.tx=cam.ty=0; }
   build();

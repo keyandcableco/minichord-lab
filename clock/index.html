@@ -97,7 +97,7 @@ label.inline{display:flex;align-items:center;gap:8px;color:var(--muted);font-siz
       <h2>Clock</h2>
       <div class="row">
         <label class="inline">Steps around the clock
-          <select id="division"><option value="follow">Follow the minichord</option><option value="12">12</option><option value="19">19</option><option value="31">31</option></select>
+          <select id="division"><option value="follow">Follow the minichord</option><option value="12">12</option><option value="19">19</option><option value="24">24</option><option value="31">31</option></select>
         </label>
         <label class="inline">Labels
           <select id="labels"><option value="names">Note names</option><option value="numbers">Step numbers</option></select>
@@ -145,6 +145,7 @@ const N31_NATURALS={0:"C",5:"D",10:"E",13:"F",18:"G",23:"A",28:"B"};
 function stepLabel(k,n){
   if(labelMode==="numbers") return String(k);
   if(n===12) return spell(k,keyF());
+  if(n===24) return k%2 ? "" : spell(k/2, keyF());          // the twelve named, the quarter-tones between left as ticks
   if(n===19) return N19[k];
   return N31_NATURALS[k] ?? "";
 }
