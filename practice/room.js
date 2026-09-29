@@ -282,7 +282,7 @@ function nextQuestion(){
   $("next").textContent = sprint ? "Skip" : "Next";
   buildPicker();
   if(q.answer.type==="key") poll(true);
-  if(q.kind!=="temper" && !(q.needs||[]).some(n=>n.addr===237)) q.needs=[...(q.needs||[]), EQUAL];
+  if(q.kind!=="temper" && q.kind!=="frets" && !(q.needs||[]).some(n=>n.addr===237)) q.needs=[...(q.needs||[]), EQUAL];   // (Between the Frets sets 24-EDO itself, where it can)
   // every other game plays the standard chords, whether a layout game or the double tap left the alternate on
   if(!(q.needs||[]).some(n=>n.addr===39) && canWrite() && mc.params[39]!==undefined) q.needs=[...(q.needs||[]), STANDARD_LAYOUT];   // the temperament taster has no needs of its own
   applyNeeds();

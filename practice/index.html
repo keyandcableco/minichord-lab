@@ -512,6 +512,13 @@ html.arcadepage .gamebar{align-items:flex-end}
 .field.chopper .demo{justify-content:flex-end;padding-bottom:18px}   /* the demo's caption at the foot, clear of the radio */
 .field.chopper .demo .demohead{position:absolute;top:10px;left:14px;right:14px}
 .chsurv.ben svg{width:60px;height:auto;animation:benwave .4s steps(2) infinite}
+/* Ben's card: held in the middle of the field for a few seconds */
+.chbencard{position:absolute;left:50%;top:50%;z-index:12;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:10px;padding:18px 26px;background:rgba(7,6,12,.92);border:4px solid #F1E8D2;box-shadow:0 0 0 4px #000,0 0 40px rgba(255,211,90,.35);text-align:center;animation:bencardin .4s steps(4)}
+.chbencard.going{opacity:0;transition:opacity .45s}
+.chbenpic svg{width:150px;height:auto;animation:benwave .4s steps(2) infinite}
+.chbencard b{font:400 1.4rem "Press Start 2P",monospace;font-weight:400;text-shadow:3px 3px 0 #000}
+.chbencard span{font:400 .6rem/1.8 "Press Start 2P",monospace;color:#F1E8D2}
+@keyframes bencardin{from{transform:translate(-50%,-50%) scale(.3)}to{transform:translate(-50%,-50%) scale(1)}}
 @keyframes benwave{50%{transform:translateY(-3px)}}
 .chsignal{position:absolute;z-index:6;display:flex;gap:6px;transform:translate(-50%,-50%);pointer-events:none}
 .chsignal b{min-width:1.6em;padding:6px 6px;text-align:center;font:400 .7rem "Minichord Lab Accidentals","Press Start 2P",monospace;font-weight:400;background:#16132A;color:#9A93B5;border:3px solid #000}

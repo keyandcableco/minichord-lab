@@ -18,6 +18,12 @@
 // them (E sharpened plays F), nor C and F one below, so the game asks for quarter-sharps only on C, D,
 // F, G and A, sharpening, and quarter-flats only on D, E, G, A and B, flattening: every letter one way
 // or the other, the modifier's way set for each.
+//
+// On firmware 18 and up, the minichord does it itself: the game sets it to 24-EDO (temperament 12),
+// where the modifier moves a note a quarter-tone, and to MPE, where each voice's exact pitch arrives
+// as a bend, and leaves its speaker on. Then the player hears the instrument play the note between the
+// frets, and any letter can go either way.
+const frInstrument=()=> canWrite() && (mc.params[7]??0)>=18 && hasSetting(237) && hasSetting(110);
 const FR_SHARPABLE=["C","D","F","G","A"], FR_FLATTABLE=["D","E","G","A","B"];
 const FR_NAT={C:0,D:2,E:4,F:5,G:7,A:9,B:11};
 const FR_LEVELS=[
@@ -41,8 +47,11 @@ function startFrets(){
 }
 function frDevice(){
   if(!blast || blast.kind!=="frets" || !canWrite()) return;
-  // the minichord's speaker silenced (the page makes the sounds, retuned), the key held at C
-  arcadeSetup(()=>{ if(hasSetting(97)) borrow(97,0); if(hasSetting(35)) borrow(35, keyIndexOf(0)); if(hasSetting(30)) ensure(30,0); if(hasSetting(31)) borrow(31, mc.params[31]??0); });
+  // the key held at C; then either the minichord in 24-EDO and MPE, playing the quarter-tones itself,
+  // or its speaker silenced and the page making the sounds, retuned
+  arcadeSetup(()=>{ if(hasSetting(35)) borrow(35, keyIndexOf(0)); if(hasSetting(30)) ensure(30,0); if(hasSetting(31)) borrow(31, mc.params[31]??0);
+    if(frInstrument()){ blast.instrument=true; borrow(237,12); borrow(110,1); }
+    else if(hasSetting(97)) borrow(97,0); });
 }
 function buildFretsField(box){
   const field=document.createElement("div"); field.className="field arcade frets"; field.setAttribute("aria-label","Between the frets");
@@ -77,7 +86,7 @@ function frDrawBoard(marks=[]){
   el.innerHTML=h+"</svg>";
 }
 const FRMENU_G={key:"frets", title:"BETWEEN THE FRETS",
-  rules:()=>`<p>A NOTE PLAYS, THEN ANOTHER: THE SAME, A QUARTER-TONE SHARP, OR A QUARTER-TONE FLAT?</p><p>ANSWER ON ANY COLUMN: MAJOR ROW SHARP, MINOR ROW IN TUNE, 7 ROW FLAT. PLUCK THE HARP TO HEAR IT AGAIN.</p><p>THEN FIND THE NOTE IN BETWEEN: HERE THE MODIFIER MEANS A QUARTER-TONE.</p>`,
+  rules:()=>`<p>A NOTE PLAYS, THEN ANOTHER: THE SAME, A QUARTER-TONE SHARP, OR A QUARTER-TONE FLAT?</p><p>ANSWER ON ANY COLUMN: MAJOR ROW SHARP, MINOR ROW IN TUNE, 7 ROW FLAT. PLUCK THE HARP TO HEAR IT AGAIN.</p><p>THEN FIND THE NOTE IN BETWEEN: HERE THE MODIFIER MEANS A QUARTER-TONE.</p><p>${frInstrument() ? "YOUR MINICHORD PLAYS THE QUARTER-TONES ITSELF, IN 24-EDO." : "THE PAGE PLAYS THEM; FIRMWARE 18 LETS THE MINICHORD PLAY THEM ITSELF."}</p>`,
   stat:()=>`RIGHT ${blast.right}`,
   rows:row=>{ row("SPEED", SPEEDS.map(x=>x[0].toUpperCase()), ()=>+saved.speed||0, i=>{ saved.speed=i; save(); }); },
   levels:FR_LEVELS, begin:i=>beginFrets(i), demo:()=>frDemo(), modNote:false};
@@ -94,7 +103,7 @@ function beginFrets(level){
   gameLater(()=>frAsk(), 1600);
 }
 // ---------- the questions ----------
-const frOk=(letter,dir)=> dir>0 ? FR_SHARPABLE.includes(letter) : dir<0 ? FR_FLATTABLE.includes(letter) : true;
+const frOk=(letter,dir)=> blast && blast.instrument ? true : dir>0 ? FR_SHARPABLE.includes(letter) : dir<0 ? FR_FLATTABLE.includes(letter) : true;
 function frPickOff(){ return rnd([0,50,-50]); }
 function frQuestion(kind){
   const off=frPickOff(), dir=Math.sign(off);
@@ -151,9 +160,14 @@ function fretsChord(voices){
   if(!blast || blast.kind!=="frets") return;
   if(blast.phase==="demo" && blast.demo){ endFrDemo(blast.demo); return; }
   const q=blast.q; if(blast.phase!=="play" || !q || performance.now()<q.at-400) return;
-  const pitches=voices.map(v=>v.pitch), id=chordId(pitches); if(!id) return;
+  const pitches=voices.map(v=>v.note ?? Math.round(v.pitch)), id=chordId(pitches); if(!id) return;   // named from the note numbers; bends are the quarter-tones
   const row = ["","6"].includes(id.quality) ? 0 : ["m","m6"].includes(id.quality) ? 1 : id.quality==="7" ? 2 : -1;
   if(q.step==="find"){
+    if(blast.instrument){                                                         // the minichord's own quarter-tone: the root voice's exact pitch
+      const rv=voices.find(v=>mod(v.note ?? Math.round(v.pitch),12)===id.root), at=rv ? mod(rv.pitch,12) : -1, want=mod(FR_NAT[q.letter]+q.off/100,12);
+      if(rv && Math.min(Math.abs(at-want), 12-Math.abs(at-want))<.2) frFound(true); else { heard(chordName(pitches,0),false,`${q.letter} AND THE MODIFIER`); sfx("miss"); }
+      return;
+    }
     const want=(FR_NAT[q.letter]+Math.sign(q.off)+12)%12;
     if(id.root===want) frFound(true); else { heard(SHARP_NAMES[id.root],false,`${q.letter} AND THE MODIFIER`); sfx("miss"); }
     return;
@@ -174,7 +188,7 @@ function frRight(){
 function frFound(ok){
   const q=blast.q;
   if(ok){ const pts=mulPts(30*(blast.level+1)); blast.score+=pts; frBar(); heard(`${q.letter}${q.off>0?" +¼":" −¼"}`,true); sfx("bonus");
-    if(settings.sounds && piano.ctx) piano.play([60+FR_NAT[q.letter]+q.off/100],{when:.02,dur:.9});   // the note in between, as the modifier made it
+    if(!blast.instrument && settings.sounds && piano.ctx) piano.play([60+FR_NAT[q.letter]+q.off/100],{when:.02,dur:.9});   // the note in between (the minichord played it itself, in 24-EDO)
     frSay(`THAT'S IT: THE NOTE BETWEEN THE FRETS. +${pts}`); }
   else frSay(`IT WAS ${q.letter} AND THE MODIFIER`);
   frNext(1600);

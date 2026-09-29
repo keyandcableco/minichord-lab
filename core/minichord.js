@@ -51,7 +51,7 @@ export class Minichord extends EventTarget {
   get keyName(){ return this.keyIndex==null ? null : KEY_NAMES[this.keyIndex] ?? null; }
   get keyFifths(){ return this.keyIndex==null ? 0 : (KEY_FIFTHS[this.keyIndex] ?? 0); }
   get temperament(){ return this.params[237] ?? null; }
-  get division(){ const t=this.temperament; return t===10 ? 19 : t===11 ? 31 : 12; }
+  get division(){ const t=this.temperament; return t===10 ? 19 : t===11 ? 31 : t===12 ? 24 : 12; }
   /** the pitch of A4 in Hz: master tuning (address 109) is stored in tenths of a hertz; 0 means 440 */
   get aHz(){ const v=this.params[109]; return v ? v/10 : 440; }
   get masterCh(){ return this.zone.type==="lower" ? 0 : 15; }

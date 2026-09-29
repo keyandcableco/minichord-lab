@@ -21,12 +21,14 @@ export const TEMPERAMENT_TABLE = [
   {"label": "Kellner", "division": 12, "cents": [8, -2, 3, 2, -3, 6, -4, 5, 0, 0, 4, -1], "note": "Herbert Anton Kellner's 1977 proposal for the tuning of Bach's Well-Tempered Clavier. Five fifths (C–G, G–D, D–A, A–E and B–F#) narrowed by a fifth of the Pythagorean comma. Thirds from 2.7 cents wide in C major to 21.5 in Db, F# and Ab."},
   {"label": "1/6 Meantone", "division": 12, "cents": [5, -7, 2, 10, -2, 7, -5, 3, -8, 0, 8, -3], "note": "Meantone with fifths narrowed by a sixth of the syntonic comma. Major thirds are 7.2 cents wide instead of pure, and the wolf between G# and Eb shrinks to 16 cents, so more keys are usable. Often associated with Gottfried Silbermann's organs."},
   {"label": "19-EDO", "division": 19, "cents": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "note": "Nineteen steps to the octave. The buttons mean exactly what they did, but C# and Db are now different notes a step apart, with C# the lower. Minor thirds land within a cent of pure; fifths pay 7 cents for it."},
-  {"label": "31-EDO", "division": 31, "cents": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "note": "Thirty-one steps. Major thirds essentially exact, and the augmented sixth lands within a cent of the 7:4 harmonic seventh — the interval twelve-note tuning has no room for. Sharps and flats are two steps apart here."}
+  {"label": "31-EDO", "division": 31, "cents": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "note": "Thirty-one steps. Major thirds essentially exact, and the augmented sixth lands within a cent of the 7:4 harmonic seventh — the interval twelve-note tuning has no room for. Sharps and flats are two steps apart here."},
+  {"label": "24-EDO", "division": 24, "cents": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "note": "Twenty-four steps: twelve, with a quarter-tone between each pair. The buttons and key signatures mean what they always did, and the modifier moves a note by a quarter-tone instead of a semitone, so it plays the notes between the frets. The neutral third, halfway between major and minor, is right there, as are 11:8 and 11:6. Over MIDI the quarter-tones round to a semitone; MPE mode sends them exactly."},
 ];
 
 const NATURAL = {C:0,D:2,E:4,F:5,G:7,A:9,B:11};
-const EDO_NATURALS = {19:{C:0,D:3,E:6,F:8,G:11,A:14,B:17}, 31:{C:0,D:5,E:10,F:13,G:18,A:23,B:28}};
-const EDO_SHARP = {19:1, 31:2};
+// 24 is twelve doubled: a MIDI note alone lands on the twelve it contains; its quarter-tones arrive as MPE bends
+const EDO_NATURALS = {19:{C:0,D:3,E:6,F:8,G:11,A:14,B:17}, 31:{C:0,D:5,E:10,F:13,G:18,A:23,B:28}, 24:{C:0,D:4,E:8,F:10,G:14,A:18,B:22}};
+const EDO_SHARP = {19:1, 31:2, 24:2};
 const ACC = {"♯":1,"♭":-1,"𝄪":2,"𝄫":-2};
 
 /** the pitch, in semitones, that a MIDI note sounds at in a temperament

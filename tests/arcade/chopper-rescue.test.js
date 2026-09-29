@@ -9,7 +9,7 @@ const t=require("./harness").load("chopper-rescue");
   check("the game switches the knobs on, so a knob can turn the dial", t.mc.params[238]===1);
   const a=await t.start(4); await sleep(1500);
   const texts=[]; let decoysShown=true, tunedEach=true, signalOrder=true;
-  const tuneIn=async how=>{ for(let k=0;k<50 && !a.tune;k++) await sleep(100); const tn=a.tune; if(!tn) return false;
+  const tuneIn=async how=>{ for(let k=0;k<80 && !a.tune;k++) await sleep(100); const tn=a.tune; if(!tn) return false;
     if(how==="harp") note(tn.pc);
     else if(how==="knob") knob(Math.round(tn.target*127), 20);                  // any knob turns the dial
     else if(how==="keys"){ for(let i=0;i<200 && a.tune && Math.abs(w.eval("chCents()"))>8;i++){ key(w.eval("chCents()")<0?"ArrowRight":"ArrowLeft"); await sleep(3); } }
@@ -23,7 +23,7 @@ const t=require("./harness").load("chopper-rescue");
     if(i===2){ const dec=a.emerg.find(e=>!e.real); if(dec){ chord([5,0,7,2,9,4,11][dec.col], ["","m","7"][dec.row]); await sleep(700);
       check("flying to a decoy finds the wrong emergency", /NOT THIS ONE/.test(t.heard()), t.heard()); await sleep(900); } }
     for(const l of c.legs){ chord(l.root, l.q); await sleep(700); }
-    for(let k=0;k<30 && !a.signal;k++) await sleep(50);
+    for(let k=0;k<120 && !a.signal;k++) await sleep(50);                   // (Ben takes a moment first)
     const sg=a.signal; if(!sg){ signalOrder=false; continue; }
     if(i===1){ note((t.PC[sg.tones[0]]+1)%12); await sleep(20); check("a wrong note isn't their signal", /NOT THEIR SIGNAL/.test(t.heard()), t.heard()); }
     // this level's signal starts from the 3rd: the first inversion
@@ -31,7 +31,8 @@ const t=require("./harness").load("chopper-rescue");
     const wasBen=a.lastBen;
     for(const n of sg.tones){ note(t.PC[n]); await sleep(20); }
     if(i===3) a.benNext=true;                                                  // the next call: Ben
-    if(i===4){ await sleep(1400); check("now and then the hikers turn out to be Ben, and he's rescued", wasBen && a.benDone, `score ${a.score}`); }
+    if(i===4){ await sleep(1400); check("now and then the hikers turn out to be Ben, and he's rescued", wasBen && a.benDone, `score ${a.score}`);
+      check("his card holds in the middle of the field", /MERCI, BEN/.test((t.d.querySelector(".chbencard")||{}).textContent||"")); }
     await sleep(2200);
   }
   check("every call tuned in, by the harp, the keys or a knob", tunedEach && texts.length>=8, `${texts.length} tuned`);

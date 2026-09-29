@@ -348,10 +348,10 @@ function chopperChord(voices){
   const what=blast.call.what; blast.lastBen=!!blast.call.ben; blast.call=null;   // the clock stops: they're found
   gameLater(()=>{ if(!blast || blast.kind!=="chopper") return;
     const ben=l && blast.lastBen; blast.found={...pad, ben}; chDrawMap(); sfx("bonus");   // there they are: answer their signal
-    if(ben) banner("IT'S BEN!", "HE MADE THE MINICHORD. SIGNAL HIM!");
-    chSignal(l, pad, sigPts=>gameLater(()=>{ if(!blast || blast.kind!=="chopper") return;
+    // Ben takes a moment to appreciate: a card, him waving his minichord, before the signal starts
+    const signal=()=>chSignal(l, pad, sigPts=>gameLater(()=>{ if(!blast || blast.kind!=="chopper") return;
       blast.found={...pad, saved:true, ben}; blast.emerg=[]; chDrawMap();   // aboard, and the other alarms were false
-      let benPts=0; if(ben){ blast.benDone=true; benPts=mulPts(500); banner("MERCI, BEN!", `BEN IS SAFE · +${benPts}`); sfx("level"); }
+      let benPts=0; if(ben){ blast.benDone=true; benPts=mulPts(500); chBenCard("MERCI, BEN!", `BEN IS SAFE · +${benPts}`); sfx("level"); }
       blast.score+=pts; blast.rescues++; stats.streak=blast.rescues; scoreboard();
       blast.score+=benPts; popup(x,y-34,`${ben?"BEN":what} +${pts+sigPts+benPts}`,"#FFD35A"); chBar(); helpChord(null);
       blast.pos={base:true}; chPlace(false);                      // home
@@ -359,10 +359,22 @@ function chopperChord(voices){
         const [bx,by]=chBase(); explode(bx,by-10,16,["#7FE08A","#FFD35A","#F1E8D2"]);
         if(blast.rescues%6===0 && blast.level<CH_LEVELS.length-1){ blast.level++; blast.timeFor*=.93; sfx("level"); banner(`LEVEL ${blast.level+1}`, CH_LEVELS[blast.level].n.toUpperCase()); }
         else if(blast.rescues%6===0){ blast.timeFor*=.93; banner("FASTER!"); }
-        gameLater(()=>{ if(blast && blast.kind==="chopper" && blast.phase==="play") chNewCall(); }, 900);
+        gameLater(()=>{ if(blast && blast.kind==="chopper" && blast.phase==="play") chNewCall(); }, ben ? CH_BEN_HOLD+900 : 900);   // after Ben's card
       }, 650);
     }, 400));
+    if(ben){ chBenCard("IT'S BEN!", "HE MADE THE MINICHORD · SIGNAL HIM IN!"); sfx("level"); gameLater(signal, CH_BEN_HOLD); }
+    else signal();
   }, 600);
+}
+// Ben's card: him, large and waving his minichord, in the middle of the field for a few seconds
+const CH_BEN_HOLD=4200;
+function chBenCard(title, sub){
+  if(!blast || !blast.field) return;
+  blast.field.querySelector(".chbencard")?.remove();
+  const c=document.createElement("div"); c.className="chbencard";
+  c.innerHTML=`<div class="chbenpic">${CH_BEN}</div><b class="rainbow">${title}</b><span>${sub}</span>`;
+  blast.field.appendChild(c);
+  setTimeout(()=>{ c.classList.add("going"); setTimeout(()=>c.remove(), 500); }, CH_BEN_HOLD-500);
 }
 
 // ---------- Chopper Rescue's demo ----------
