@@ -24,6 +24,20 @@ const t=require("./harness").load("chord-breakout");
     if(a.ball) knob(Math.max(0,Math.min(127,Math.round((a.ball.x-a.paddle.w/2)/(a.W-a.paddle.w)*127))));
     const k=a.bricks.find(b=>b.alive && b.cracked); if(k){ const n=a.bricks.filter(b=>!b.alive).length; chord(k.rootPc, k.q); await sleep(30); if(a.bricks.filter(b=>!b.alive).length>n) broken++; } }
   check("a cracked brick's chord breaks it", broken>=2, `${broken} broken`);
+  // the power-up: a power brick broken rains its chord's tones; the cannon, steered by the knob, shoots
+  // each one when it's under it and its note is plucked; the ball waits meanwhile
+  const pb=a.bricks.find(b=>b.alive); pb.power=true; pb.cracked=true; pb.el.classList.add("cracked");
+  chord(pb.rootPc, pb.q); await sleep(60);
+  check("a power brick broken rains its chord's tones, the paddle a cannon", !!a.power && a.power.tones.length>=3 && t.d.querySelector(".bopaddle.cannon"), a.power && a.power.chord);
+  let shot=0;
+  for(const tone of [...a.power.tones]){ const W=a.W-a.paddle.w; knob(Math.max(0,Math.min(127,Math.round((tone.x-a.paddle.w/2)/W*127)))); await sleep(220);
+    t.note(tone.pc); await sleep(40); if(tone.gone) shot++; }
+  check("steered under each tone, its note shoots it", shot===a.power?.total || shot>=3, `${shot} shot`);
+  for(let i=0;i<40 && a.power;i++) await sleep(100);
+  check("then the ball comes back into play", !a.power && !t.d.querySelector(".bopaddle.cannon"));
+  // what bricks are worth: Chord Invaders' ladder
+  const w1=t.w.eval("boPoints({q:'',root:'C'})"), w2=t.w.eval("boPoints({q:'m7',root:'C'})"), w3=t.w.eval("boPoints({q:'',root:'F♯'})");
+  check("bricks are worth Chord Invaders' points: more for richer chords and the modifier", w2>w1 && w3>w1, `${w1} ${w2} ${w3}`);
   sb.restoreAll();
   check("leaving switches the knobs back off", t.mc.params[238]===0);
   t.done();

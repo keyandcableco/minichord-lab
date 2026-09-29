@@ -119,7 +119,9 @@ function fxDraw(now, dt){
   const fx=blast.fx; if(!fx) return;
   // a game's clock and its count of what the minichord played start with its first frame of play
   // (every time play begins, Play Again straight from game over included)
-  if(blast.phase==="play" && blast.lastPhase!=="play"){ blast.mult=diffMult(); blast.startedAt=now; blast.midiIn=0; blast.hsDone=false; blast.hsResult=null; blast.hsNote=null; blast.helped=!!saved.beginner; }
+  if(blast.phase==="play" && blast.bonusGen!==blast.gen){ blast.bonusGen=blast.gen; blast.bonusAt=(blast.level||0)+BONUS_EVERY; }   // the first bonus, two levels on
+  if(bonusDue()) arcadeBonus();
+  if(blast.phase==="play" && blast.lastPhase!=="play" && blast.lastPhase!=="bonus"){ blast.mult=diffMult(); blast.startedAt=now; blast.midiIn=0; blast.hsDone=false; blast.hsResult=null; blast.hsNote=null; blast.helped=!!saved.beginner; }
   blast.lastPhase=blast.phase;
   // how the machine is keeping up: if frames come slowly for a couple of seconds the field goes light,
   // the canvas drawn every other frame and the glows dropped

@@ -176,7 +176,7 @@ document.addEventListener("keydown", e=>{
 // games the string for the note that matters now, drawn as the standard strip or the keymaster's
 // four rows of three. It sits behind the play, a little see-through, so nothing falling is hidden.
 const helpUsesChords=k=>["blaster","snake","asteroids","stack","breakout","fifths","chopper"].includes(k);
-const helpUsesHarp=k=>["command","asteroids","fifths"].includes(k);
+const helpUsesHarp=k=>["command","asteroids","fifths","breakout"].includes(k);
 function beginnerRow(opts){
   const r=document.createElement("div"); r.className="optrow"; const l=document.createElement("span"); l.className="optlabel"; l.textContent="BEGINNER";
   const g=document.createElement("div"); g.className="levels";
@@ -240,7 +240,7 @@ function helperBoard(k){
       L.drawOrder.forEach(pc=>{ const z=L.byString[pc], c=document.createElement("span"); c.className=`km km-${z}`; c.dataset.zone=z; c.dataset.pc=pc; c.textContent=KM_GLYPH[z]; pad.appendChild(c); });
     }
   }
-  if(k==="asteroids" || k==="fifths"){
+  if(k==="asteroids" || k==="fifths" || k==="breakout"){
     const board=el.querySelector(".board"), nameOf=i=>SHARP_NAMES[i];
     if(saved.harpLayout==="keymaster"){
       const cover=document.createElement("div"); cover.className="hbcover"; place(cover, MC_HARP.slot); board.appendChild(cover);   // no strip under the plate

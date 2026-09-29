@@ -80,7 +80,9 @@ function demoPlay(notes){ if(settings.sounds && piano.ctx){ const go=()=>piano.p
 // still going: a timer from a game that's over can't reach into the next one (Play Again pressed at
 // once, say, while the old game still had a wave or a radio call on its way).
 function newRun(){ if(blast) blast.gen=(blast.gen||0)+1; }
-function gameLater(fn, ms){ const b=blast, g=b && b.gen; return setTimeout(()=>{ if(b && blast===b && b.gen===g) fn(); }, ms||0); }
+function gameLater(fn, ms){ const b=blast, g=b && b.gen;
+  const run=()=>{ if(!(b && blast===b && b.gen===g)) return; if(b.phase==="bonus"){ setTimeout(run,200); return; } fn(); };   // a bonus playing: wait for it
+  return setTimeout(run, ms||0); }
 // setting up for the minichord, once per game: its settings read regularly, and whatever it borrows
 function arcadeSetup(fn){ if(blast.setupDone) return; blast.setupDone=true; poll(true); if(fn) fn(); }
 
@@ -126,7 +128,7 @@ const POINTS_FOR={
   snake:[["CHORD CASHED IN","15 A NOTE"],["★ NOTE","50"],["NOTE DROPPED","−5"]],
   asteroids:[["CHORD ROCK CRACKED","20"],["★ ROCK","60"],["NOTE SHOT","10"],["CHORD CLEARED","25"]],
   stack:[["ROW CLEARED","15 A NOTE"],["ROWS AT ONCE","× ROWS"]],
-  breakout:[["BRICK","10 A NOTE"],["★ BRICK","× 5"],["RALLY","UP TO × 4"]],
+  breakout:()=>[...BLAST_TIERS.map(([,n,sp,v])=>[n,String(v),sp]), ["NEEDS THE MODIFIER","× 1.5"], ["SLASH CHORD","× 1.5"], ["★ BRICK","× 5"], ["RALLY","UP TO × 4"], ["CHORD TONE SHOT","20"], ["WHOLE CHORD SHOT","× 2"]],
   fifths:[["ENEMY","10"],["HIT FAR OUT","UP TO +10"],["★ ENEMY","50"]],
   sweeper:[["SQUARE SWEPT","5"],["MINE DEFUSED","100"],["SQUARES LEFT UNSWEPT","+2 EACH"],["QUICK CLEAR","UP TO +270"]],
   fleet:[["HIT","10"],["SHIP SUNK","50 A CHORD"],["SUNK BY DEDUCTION","+40 A CHORD UNHIT"],["NO MISSES","× 2"],["TORPEDO LEFT OVER","20"]],
@@ -172,6 +174,7 @@ function arcadeSettings(){
   if(k==="breakout") choice("PADDLE", ["NARROW","NORMAL","WIDE"], ()=>saved.boPaddle??1, i=>{ saved.boPaddle=i; save(); }, "FROM THE NEXT GAME");
   choice("BEGINNER", ["OFF","SHOW WHAT TO PRESS"], ()=>saved.beginner?1:0, i=>{ saved.beginner=!!i; save(); helperSync(true); }, "NO HIGH SCORES WITH IT ON");
   choice("SCREEN", ["FLAT","CRT"], ()=>saved.crt?1:0, i=>{ saved.crt=!!i; save(); crtSync(); });
+  choice("BONUS ROUNDS", ["ON","OFF"], ()=>saved.bonus===false?1:0, i=>{ saved.bonus=!i; save(); }, "A MINI-GAME EVERY TWO LEVELS");
   if(["blaster","asteroids","breakout","fifths","command"].includes(k))
     choice("LETTERING", SIZES.map(x=>x[0]), ()=>saved.chordSize??1, i=>{ saved.chordSize=i; save(); applyChordSize(); });
   if(["snake","stack","command","asteroids","fifths","sweeper"].includes(k))

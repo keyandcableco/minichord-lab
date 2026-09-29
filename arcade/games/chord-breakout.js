@@ -11,14 +11,29 @@
 // to the paddle, and heals if it isn't. Clear the wall to move on; let the ball past and it costs a
 // life. The knobs need firmware 17's "knobs send MIDI" (address 238), which the game turns on
 // while it plays; any knob steers, whichever moved last.
+// The bricks carry every chord type Chord Invaders drops, worth what they're worth there (major least,
+// Barry Harris's sixths and diminished sevenths most), half as much again for the modifier or a slash.
+// Some bricks carry a power-up: broken, they rain their chord's tones, the ball waits, and the paddle
+// turns into a cannon, still steered by the knob, that fires at a tone when it's under it and that
+// note is plucked on the harp. Shoot the whole chord for double.
 const BO_LEVELS=[
   {n:"Major and minor", qs:["","m"], roots:"natural"},
   {n:"Sevenths", qs:["","m","7"], roots:"natural"},
   {n:"Sharps and flats", qs:["","m","7"], roots:"all"},
+  {n:"maj7 and m7", qs:["","m","7","maj7","m7"], roots:"all"},
   {n:"Every chord type", qs:["","m","7","maj7","m7","°","+"], roots:"all"},
   {n:"Slash chords", qs:["","m"], roots:"natural", slash:true},
+  {n:"Barry Harris", qs:["","m","7","maj7","m7","°","+"], roots:"all", barry:true},
 ];
-const boLevelOk=i=> !BO_LEVELS[i].slash || slashReady();
+const boLevelOk=i=> !(BO_LEVELS[i].slash && !slashReady()) && !(BO_LEVELS[i].barry && (!canWrite() || settings.set==="barry"));
+// what a brick is worth before the rally and the level: Chord Invaders' ladder
+function boPoints(k){
+  let p=BLAST_WORTH[k.q] ?? 10;
+  const {li,acc}=parse(k.root); if(acc!==keyAcc(li, devFifths())) p*=1.5;
+  if(k.bass) p*=1.5;
+  if(k.bonus) p*=5;
+  return Math.round(p);
+}
 const knobsReady=()=>canWrite() && hasSetting(238) && (mc.params[7]??0)>=10;   // the setting, on firmware that has it
 function genBreakout(){
   return {kind:"breakout", prompt:"Chord Breakout", sub:"Turn a knob on the minichord to move the paddle (or use the mouse or arrow keys). The ball cracks the chord brick it hits: play that chord before the ball comes back to the paddle and the brick breaks, or it heals. Clear the wall to go on; let the ball past and it costs a life.",
@@ -38,7 +53,7 @@ function startBreakout(){
 }
 function boDevice(){
   if(!blast || blast.kind!=="breakout" || !canWrite()) return;
-  arcadeSetup(()=>{ if(hasSetting(30)) ensure(30,0); if(slashReady()) ensure(113,1); if(knobsReady()) borrow(238,1); });
+  arcadeSetup(()=>{ asHarp(); if(hasSetting(30)) ensure(30,0); if(slashReady()) ensure(113,1); if(knobsReady()) borrow(238,1); });   // the harp chromatic, for the cannon
   const sig=BO_LEVELS.map((_,i)=>boLevelOk(i)).join()+knobsReady();
   if(blast.phase==="menu" && blast.overlay && blast.menuSig!==sig){ const hid=blast.overlay.hidden; blast.overlay.remove(); blast.overlay=null; boMenu(); blast.overlay.hidden=hid; }
 }
@@ -86,7 +101,8 @@ function boLayout(){
 }
 function boPick(L){
   for(let k=0;k<40;k++){
-    const root=rnd(L.roots==="natural" ? ["C","D","E","F","G","A","B"] : ROOTS), q=rnd(L.qs), t=spellChord(root,q); if(!t) continue;
+    const q0=rnd(L.qs), q=blast.barry ? (BARRY_SWAP[q0]??q0) : q0;
+    const root=rnd(L.roots==="natural" ? ["C","D","E","F","G","A","B"] : ROOTS), t=spellChord(root,q); if(!t) continue;
     let bass=null; if(L.slash && Math.random()<.6){ bass=rnd([t[1],t[2]]); }
     return {root, q, bass, sym:root+q+(bass?"/"+bass:""), rootPc:pcOfName(root), bassPc:bass?pcOfName(bass):null};
   }
@@ -95,12 +111,13 @@ function boPick(L){
 function boWall(){
   blast.bricks.forEach(b=>b.el.remove()); blast.bricks=[];
   const L=BO_LEVELS[blast.level], rows=Math.min(5, 3+Math.floor(blast.level/2)), cols=8; blast.cols=cols;
+  if(L.barry && !blast.barry && canWrite()){ blast.barry=true; borrow(33,1); modPill(); }       // Barry Harris mode, for the sixths
   for(let r=0;r<rows;r++) for(let c=0;c<cols;c++){
-    const ch=boPick(L), bonus=Math.random()<.07;
-    const el=document.createElement("div"); el.className="bobrick"+(bonus?" bonus":"")+` row${r%5}`;
+    const ch=boPick(L), bonus=Math.random()<.07, power=!bonus && Math.random()<.09;
+    const el=document.createElement("div"); el.className="bobrick"+(bonus?" bonus":"")+(power?" power":"")+` row${r%5}`;
     el.innerHTML=(bonus?PIXEL_STAR:""); el.append(ch.sym);
     blast.field.appendChild(el);
-    blast.bricks.push({...ch, el, r, c, alive:true, cracked:false, bonus});
+    blast.bricks.push({...ch, el, r, c, alive:true, cracked:false, bonus, power});
   }
   boLayout();
 }
@@ -130,7 +147,7 @@ function boTick(now){
     if(blast.keyDir) p.target=(p.target??p.x)+blast.keyDir*520*dt;
     if(p.target!=null){ p.target=Math.max(0,Math.min(W-p.w,p.target)); p.x+=(p.target-p.x)*Math.min(1,dt*18); }
     blast.padEl.style.transform=`translateX(${p.x}px)`;
-    boBall(now, dt);
+    if(blast.power) boPowerTick(now, dt); else boBall(now, dt);
   }
   blast.raf=requestAnimationFrame(boTick);
 }
@@ -209,7 +226,8 @@ function boBreak(k, quiet){
   k.alive=false; k.el.classList.add("gone"); setTimeout(()=>k.el.remove(),300);
   explode(k.x+k.w/2, k.y+k.h/2, 22, k.bonus?["#7FE9FF","#FFFFFF","#FFD35A"]:["#FFD35A","#FF8A3D","#F1E8D2"]);
   sfx(k.bonus?"bonus":"boom");
-  if(!quiet){ blast.rally++; const pts=mulPts((k.bonus?5:1)*spellChord(k.root,k.q).length*10*(blast.level+1)*Math.min(4,blast.rally));
+  if(!quiet && k.power) boPowerUp(k);
+  if(!quiet){ blast.rally++; const pts=mulPts(boPoints(k)*(blast.level+1)*Math.min(4,blast.rally));
     blast.score+=pts; popup(k.x+k.w/2, k.y, `+${pts}${blast.rally>1?` ×${Math.min(4,blast.rally)}`:""}`, k.bonus?"#7FE9FF":undefined); boBar(); stats.streak=blast.rally; scoreboard(); }
   boHelp();
   if(!blast.bricks.some(x=>x.alive)){
@@ -221,6 +239,43 @@ function boBreak(k, quiet){
     gameLater(()=>{ if(blast && blast.kind==="breakout" && blast.phase==="play"){ boWall(); boServe(); boBar(); } }, 900);
   }
 }
+// ---------- the power-up: the chord's tones rain, and the paddle's a cannon ----------
+function boPowerUp(k){
+  const tones=spellChord(k.root,k.q)||[]; if(!tones.length || blast.phase!=="play") return;
+  const cx=k.x+k.w/2, spread=Math.min(blast.W*.8, 90*tones.length);
+  blast.power={chord:k.sym, total:tones.length, shot:0, tones:tones.map((n,i)=>{ const el=document.createElement("div"); el.className="botone"; el.textContent=n; blast.field.appendChild(el);
+    return {name:n, pc:pcOfName(n), x:Math.max(30,Math.min(blast.W-30, cx+(i-(tones.length-1)/2)*spread/Math.max(1,tones.length-1||1))), y:k.y+k.h, vy:(38+Math.random()*16)/speedMul(), el}; })};
+  blast.padEl.classList.add("cannon"); blast.ballEl.classList.add("held");
+  banner("POWER UP!", `SHOOT ${k.sym}'S TONES ON THE HARP`); sfx("bonus");
+}
+function boPowerTick(now, dt){
+  const pw=blast.power, p=blast.paddle, R=BO_R;
+  if(blast.ball) blast.ballEl.style.transform=`translate(${blast.ball.x-R}px,${blast.ball.y-R}px)`;   // the ball waits where it was
+  for(const t of pw.tones){ if(t.gone) continue;
+    t.y+=t.vy*dt; t.el.style.transform=`translate(${t.x}px,${t.y}px) translate(-50%,-50%)`;
+    const under=Math.abs(t.x-(p.x+p.w/2))<p.w*.35; t.el.classList.toggle("aimed", under);
+    if(t.y>=blast.padY){ t.gone=true; t.el.classList.add("lost"); setTimeout(()=>t.el.remove(),400); } }
+  const lowest=pw.tones.filter(t=>!t.gone).sort((a,b)=>b.y-a.y)[0];
+  if(lowest && lowest!==pw.helped){ pw.helped=lowest; helpString(lowest.pc); }
+  if(pw.tones.every(t=>t.gone)) boPowerDone();
+}
+// a harp note: the cannon fires at the tone above it, if that's the note
+function breakoutNote(pc){
+  if(!blast || blast.kind!=="breakout" || !blast.power || blast.phase!=="play") return;
+  const pw=blast.power, p=blast.paddle, cx=p.x+p.w/2;
+  const same=pw.tones.filter(t=>!t.gone && t.pc===mod(pc,12));
+  if(!same.length){ heard(SHARP_NAMES[mod(pc,12)],false,"NOT IN THE CHORD"); sfx("miss"); return; }
+  const t=same.find(t=>Math.abs(t.x-cx)<p.w*.35);
+  if(!t){ heard(same[0].name,false,"LINE THE CANNON UP UNDER IT"); return; }
+  t.gone=true; pw.shot++;
+  const P=PX; blast.fx.missiles.push({x0:cx/P, y0:blast.padY/P, x1:t.x/P, y1:t.y/P, t0:performance.now(), dur:140, hit:()=>{ t.el.remove(); explode(t.x,t.y,18,["#7FE9FF","#FFD35A","#F1E8D2"]); }});
+  const pts=mulPts(20*(blast.level+1)); blast.score+=pts; popup(t.x,t.y-16,`${t.name} +${pts}`,"#7FE9FF"); heard(t.name,true); sfx("shoot"); boBar();
+}
+function boPowerDone(){
+  const pw=blast.power; blast.power=null; helpChord(null);
+  blast.padEl.classList.remove("cannon"); blast.ballEl.classList.remove("held");
+  if(pw.shot===pw.total){ const pts=mulPts(20*pw.total*(blast.level+1)); blast.score+=pts; banner("WHOLE CHORD!", `${pw.chord} · +${pts}`); sfx("level"); boBar(); }
+}
 function boLost(){
   explode(blast.ball.x, blast.H-20, 26, ["#FF4B3E","#FF8A3D","#FFD35A"]);
   sfx("miss"); buzz(blast.field,true); blast.lives--; boBar(); boHeal();
@@ -231,11 +286,11 @@ function boLost(){
   }
   banner(`${blast.lives} ${blast.lives===1?"LIFE":"LIVES"} LEFT`); boServe();
 }
-// a chord from the buttons: every cracked brick of that chord breaks
+// a chord from the buttons: every cracked brick of that chord breaks (not while the cannon's out)
 function breakoutChord(voices){
   if(!blast || blast.kind!=="breakout") return;
   if(blast.phase==="demo" && blast.demo){ endBoDemo(blast.demo); return; }
-  if(blast.phase!=="play") return;
+  if(blast.phase!=="play" || blast.power) return;
   const pitches=voices.map(v=>v.pitch), name=chordName(pitches,devFifths());
   const matches=i=>{
     if(i.bassPc==null) return isChord(pitches,i.rootPc,i.q);
@@ -264,6 +319,7 @@ const knobHold={};
 mc.addEventListener("knob", e=>{
   if(!blast || !blast.field) return;
   const {knob, value}=e.detail;
+  if(blast.bonus){ if(knob===steerKnob()) bonusKnob(value); return; }         // a bonus round
   if(blast.hsEntry){ if(knob===steerKnob()) blast.hsEntry.knob(value); return; }
   if(cabWaiting()){
     const base=(blast.knobBase||(blast.knobBase={}));

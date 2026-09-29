@@ -1,0 +1,33 @@
+// Bonus rounds: every two levels a mini-game takes over, and each can be won; while it plays the
+// game underneath is paused, and afterwards it carries on where it was, with the bonus in its score.
+const t=require("./harness").load("chord-snake", {storage:{saved:{bonus:true}}});
+(async()=>{
+  const {w, sleep, chord, note, key, check}=t;
+  await sleep(150); t.connect(); await sleep(100);
+  const a=await t.start(0); await sleep(300);
+  const bonus=()=>w.eval("blast && blast.bonus");
+  // it falls due two levels on
+  a.level=a.bonusAt; await sleep(120);
+  check("two levels on, a bonus round starts", !!bonus() && a.phase==="bonus", bonus() && bonus().g.name);
+  const endIt=async()=>{ for(let i=0;i<60 && bonus();i++) await sleep(100); };
+  w.eval("clearInterval(blast.bonus.timer); blast.bonus.over=true; blast.bonus.el.remove(); blast.bonus=null; blast.phase='play'");
+  const play=async(id, fn)=>{
+    const s0=a.score; w.eval(`arcadeBonus("${id}")`); await sleep(80); const b=bonus();
+    await fn(b); await endIt();
+    return {gained:a.score-s0, back:a.phase==="play", result:b.result};
+  };
+  let r=await play("tune", async b=>{ for(let i=0;i<200 && Math.abs(b.cents)>.6;i++){ key(b.cents<0?"ArrowUp":"ArrowDown"); await sleep(2); } chord("C"); });
+  check("TUNE IT: tuned to A 440 and locked in", r.gained>0 && r.back, r.result);
+  r=await play("missing", async b=>{ for(let i=0;i<4;i++){ note(t.PC[b.ans]); await sleep(20); } });
+  check("MISSING NOTE: four notes found", r.gained>0 && r.back, r.result);
+  r=await play("odd", async b=>{ for(let i=0;i<3;i++){ chord(t.PC[b.ans.root], b.ans.q); await sleep(20); } });
+  check("ODD ONE OUT: three intruders caught", r.gained>0 && r.back, r.result);
+  r=await play("detective", async b=>{ for(let i=0;i<3;i++){ chord(t.PC[b.ans.root]); await sleep(20); } });
+  check("KEY DETECTIVE: three keys named", r.gained>0 && r.back, r.result);
+  r=await play("simon", async b=>{ for(let k=0;k<2;k++){ for(let i=0;i<60 && !b.listening;i++) await sleep(100); for(const c of b.seq){ chord(t.PC[c.root], c.q); await sleep(20); } await sleep(100); } for(let i=0;i<60 && !b.listening;i++) await sleep(100); const c=b.seq[0]; chord((t.PC[c.root]+1)%12, "m"); });
+  check("SIMON SAYS: sequences played back", r.gained>0 && r.back, r.result);
+  // the snake paused through all that, and moves again after
+  const head=JSON.stringify(a.body[0]); await sleep(900);
+  check("the game carries on where it was", a.phase==="play" && JSON.stringify(a.body[0])!==head);
+  t.done();
+})();

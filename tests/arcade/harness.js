@@ -15,7 +15,9 @@ function load(slug, {storage}={}){
   const dom=new JSDOM(`<!doctype html><html><body>${body}</body></html>`,
     {runScripts:"dangerously", pretendToBeVisual:true, url: slug ? `http://localhost/practice/?game=${slug}&solo` : `http://localhost/practice/`});
   const w=dom.window;
-  if(storage) w.localStorage.setItem("lab-spellbound", JSON.stringify(storage));
+  // bonus rounds off, so a test that climbs levels isn't interrupted, unless it asks for them
+  const st=storage||{}; st.saved={bonus:false, ...(st.saved||{})};
+  w.localStorage.setItem("lab-spellbound", JSON.stringify(st));
   w.SCORES_HOST="";                                   // no shared board: the local one
   w.matchMedia=()=>({matches:false, addEventListener(){}});
   w.fetch=()=>Promise.reject(new Error("offline"));

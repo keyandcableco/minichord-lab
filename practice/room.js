@@ -399,6 +399,7 @@ function answerChord(voices){
   clearTimeout(pendingWrong); pendingWrong=null;
   if(!q || solved) return;
   if(blast && blast.hsEntry){ blast.hsEntry.set(); return; }                     // initials: a chord sets the letter
+  if(blast && blast.bonus){ bonusChord(voices); return; }                      // a bonus round
   if(blast && blast.phase==="play") blast.midiIn=(blast.midiIn||0)+1;
   if(arcadeMenuChord(voices)) return;            // an arcade title screen, played from the buttons
   if(q.answer.type==="blaster") return blasterChord(voices);
@@ -440,6 +441,7 @@ function answerChord(voices){
   }
 }
 function answerNote(pc, pickedName){
+  if(blast && blast.bonus){ bonusNote(pc); return; }                           // a bonus round
   if(blast && blast.hsEntry){ const c=kmControl(pc), h=blast.hsEntry;               // initials: the harp as a d-pad
     if(c==="up") h.step(1); else if(c==="down") h.step(-1); else if(c==="left"||c==="B") h.move(-1); else if(c==="right") h.move(1); else h.set(); return; }
   if(cabWaiting()){ cabWake(); return; }
@@ -451,6 +453,7 @@ function answerNote(pc, pickedName){
   if(q && q.kind==="fifths") return fifthsNote(pc);
   if(q && q.kind==="fleet") return fleetNote(pc);
   if(q && q.kind==="sweeper") return sweeperNote(pc);
+  if(q && q.kind==="breakout") return breakoutNote(pc);
   if(!q || solved) return;
   if(q.answer.type==="note" && pc===q.answer.pc && pickedName && q.answer.name && pickedName!==q.answer.name)
     return correct(`Right note: ${q.answer.name}. Here it's spelled ${q.answer.name}, not ${pickedName}.`);

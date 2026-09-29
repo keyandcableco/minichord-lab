@@ -326,6 +326,15 @@
 @keyframes crackglow{50%{box-shadow:0 0 14px rgba(255,211,90,.95)}}
 .bobrick.gone{opacity:0;transform:scale(1.3)}
 .bopaddle{position:absolute;left:0;z-index:3;height:12px;background:#F1E8D2;border:2px solid #07060C;box-shadow:inset 0 -3px 0 #B5AC96,0 0 0 2px #FFD35A}
+/* the power-up: its bricks pulse, their tones fall, the paddle's a cannon and the ball waits */
+.bobrick.power{box-shadow:0 0 0 2px #7FE9FF,0 0 12px rgba(127,233,255,.7);animation:powerbrick .6s steps(2) infinite}
+@keyframes powerbrick{50%{box-shadow:0 0 0 2px #FFD35A,0 0 16px rgba(255,211,90,.8)}}
+.botone{position:absolute;left:0;top:0;z-index:4;padding:6px 8px;font:400 .8rem "Minichord Lab Accidentals","Press Start 2P",monospace;color:#16132A;background:#7FE9FF;border:3px solid #07060C;box-shadow:0 0 12px rgba(127,233,255,.6);will-change:transform}
+.botone.aimed{background:#FFD35A;box-shadow:0 0 16px rgba(255,211,90,.9)}
+.botone.lost{opacity:0;transition:opacity .4s}
+.bopaddle.cannon{background:#7FE9FF;box-shadow:inset 0 -3px 0 #3A8FA8,0 0 0 2px #7FE9FF}
+.bopaddle.cannon::after{content:"";position:absolute;left:50%;top:-14px;width:10px;height:14px;transform:translateX(-50%);background:#7FE9FF;border:2px solid #07060C;border-bottom:0}
+.boball.held{box-shadow:0 0 14px #7FE9FF;opacity:.5}
 .boball{position:absolute;left:0;top:0;z-index:3;width:14px;height:14px;background:#FFFFFF;box-shadow:0 0 8px rgba(255,255,255,.8);transform:translate(-40px,-40px)}
 
 /* Fifths Defender: the keys round the rim */
@@ -531,6 +540,27 @@ html.arcadepage .gamebar{align-items:flex-end}
 .swkeys li{display:flex;align-items:center;gap:8px}.swkeys li b{color:#FFD35A;font-weight:400}
 .swkeys li.found{opacity:.4;text-decoration:line-through}
 .swsig{width:auto;height:40px;flex:none}.swsig line{stroke:#9A93B5;stroke-width:.7}.swsig .glyph{fill:#F1E8D2;font-family:"Minichord Lab Music";font-size:24px}
+/* bonus rounds */
+.field .bonus{position:absolute;inset:0;z-index:25;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:20px;background:rgba(7,6,12,.94);text-align:center;font:400 .6rem/1.9 "Press Start 2P",monospace;color:#F1E8D2}
+.bonus .bohead{display:flex;flex-direction:column;gap:8px;font-size:1rem}
+.bonus .bohead b{color:#FFD35A;font-weight:400;font-size:1.3rem;text-shadow:3px 3px 0 #000}
+.bonus .boinstr{max-width:60ch;color:#7FE9FF;margin:0}
+.bonus .bostage{min-height:110px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px}
+.bocards{display:flex;flex-wrap:wrap;gap:12px;justify-content:center;align-items:center}
+.bocard{min-width:2.4em;padding:12px 14px;border:3px solid #07060C;background:#F1E8D2;color:#16132A;box-shadow:0 4px 0 #000;font:400 .9rem "Minichord Lab Accidentals","Press Start 2P",monospace}
+.bocards.big .bocard{font-size:1.1rem}
+.bocard.q{background:#FFD35A;animation:blink .6s steps(2) infinite}
+.bocard.dim{background:#3A3D48;color:#9A93B5}.bocard.lit{background:#7FE9FF}.bocard.done{background:#7FE08A}
+.boarrow{color:#9A93B5;font-size:1rem}
+.bosym{font:400 1.6rem "Minichord Lab Accidentals","Press Start 2P",monospace;color:#FFD35A;margin:0}
+.bosmall{color:#9A93B5;margin:0}
+.bobeat{width:90px;height:90px;border-radius:50%;border:4px solid #7FE9FF;display:flex;align-items:center;justify-content:center}
+.bobeat i{display:block;width:60px;height:60px;border-radius:50%;background:#7FE9FF;animation:beatpulse 1s ease-in-out infinite}
+@keyframes beatpulse{50%{transform:scale(.3);opacity:.3}}
+.botime{width:min(420px,80%);height:10px;border:2px solid #3A2D4E;background:#0E0A16}
+.botime i{display:block;height:100%;background:#FFD35A;transform-origin:left}
+.boscore b,.bototal b{color:#FFD35A;font-weight:400}.bototal{font-size:1.1rem}
+.boresult{color:#7FE08A;margin:0}
 /* the demo's pixel minichord */
 .overlay button.howto{border-color:#FFD35A;color:#FFD35A}
 .demo{position:absolute;inset:0;z-index:5;display:flex;flex-direction:column;justify-content:flex-start;padding:10px 14px;pointer-events:none}
@@ -824,6 +854,7 @@ details.fold[open] .nowplaying{display:none}
 <script defer src="../arcade/sounds.js"></script>
 <script defer src="../arcade/games/invaders-demo.js"></script>
 <script defer src="../arcade/screen.js"></script>
+<script defer src="../arcade/bonus.js"></script>
 <script defer src="room.js"></script>
 <!-- say-thanks -->
 <p style="text-align:center;margin:28px 0 18px;font-size:14px;opacity:0.8">Minichord Lab by <a href="https://keyandcable.com/projects.html" target="_blank" rel="noopener" style="color:inherit">The Key &amp; Cable Company</a> &middot; <a href="https://keyandcable.com/thanks.html" target="_blank" rel="noopener" style="color:inherit;font-weight:bold">Say thanks</a></p>
