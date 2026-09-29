@@ -7,7 +7,7 @@
 // paint, and keep it hidden until the arcade's set up, so the Practice Room never flashes up first.
 (function(){ var u=new URLSearchParams(location.search), g=u.get("game"), h=document.documentElement;
   if(!u.has("solo") || !g) return; h.classList.add("solo");
-  if(/^(invaders|chord-invaders|harp-command|harpcommand|chord-snake|chord-asteroids|chord-stack|chord-breakout|fifths-defender|chopper-rescue|key-fleet|chord-sweeper)$/.test(g)){
+  if(/^(invaders|chord-invaders|harp-command|harpcommand|chord-snake|chord-asteroids|chord-stack|chord-breakout|fifths-defender|chopper-rescue|key-fleet|chord-sweeper|between-the-frets)$/.test(g)){
     h.classList.add("arcadepage","arcadeboot"); setTimeout(function(){ h.classList.remove("arcadeboot"); }, 4000); }   // never hidden for long, whatever happens
 })();
 </script>
@@ -620,6 +620,22 @@ html.arcadepage .gamebar{align-items:flex-end}
 .fsplate .nesbtn button svg{width:70%;height:auto}
 .fsplate .fsreset{background:#1C1C22}
 @media (max-aspect-ratio:1/1){ .fsscreen{height:auto;width:88vw} }   /* a phone held upright: fit the width */
+/* Between the Frets: a stage in black and white polka dots, a fretboard, the band */
+.frstage{position:absolute;inset:0;z-index:2;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:60px 16px 20px;pointer-events:none}
+.frband{position:absolute;left:0;right:0;bottom:14px;display:flex;justify-content:space-between;padding:0 18px}
+.frplayer svg{width:70px;height:auto;animation:frbob .5s steps(2) infinite}
+.frplayer.right svg{animation-delay:.25s}
+@keyframes frbob{50%{transform:translateY(-3px)}}
+.frboard{width:min(620px,86%);background:#07060C;border:3px solid #F1E8D2;box-shadow:6px 6px 0 #000;padding:6px}
+.frboard svg{display:block;width:100%;height:auto}
+.frboard .frlbl{font:400 9px "Press Start 2P",monospace;fill:#F1E8D2}
+.frboard .frtag{font:400 8px "Press Start 2P",monospace;fill:#FFD35A}
+.frprompt{margin:0;font:400 .8rem/1.8 "Minichord Lab Accidentals","Press Start 2P",monospace;color:#F1E8D2;text-align:center;text-shadow:2px 2px 0 #000;max-width:60ch;min-height:1.8em;background:#07060C;padding:4px 10px}
+.frrows{display:flex;flex-wrap:wrap;justify-content:center;gap:8px}
+.frrows span{font:400 .5rem "Minichord Lab Accidentals","Press Start 2P",monospace;color:#16132A;background:#F1E8D2;border:2px solid #000;padding:6px 8px}
+.frtime{width:min(420px,70%);height:8px;border:2px solid #F1E8D2;background:#07060C}
+.frtime i{display:block;height:100%;background:#FF5AA0;transform-origin:left}
+@media (prefers-reduced-motion:reduce){.frplayer svg{animation:none}}
 /* the demo's pixel minichord */
 .overlay button.howto{border-color:#FFD35A;color:#FFD35A}
 .demo{position:absolute;inset:0;z-index:5;display:flex;flex-direction:column;justify-content:flex-start;padding:10px 14px;pointer-events:none}
@@ -773,7 +789,8 @@ details.fold[open] .nowplaying{display:none}
     <button data-mode="chopper">Chopper Rescue</button>
     <button data-mode="fleet">Key Fleet</button>
     <button data-mode="sweeper">Chord Sweeper</button>
-    <span class="arcadelinks"><a href="../arcade/">The arcade lobby</a> · or on their own pages: <a href="../invaders/">Chord Invaders</a> · <a href="../harp-command/">Harp Command</a> · <a href="../chord-snake/">Chord Snake</a> · <a href="../chord-asteroids/">Chord Asteroids</a> · <a href="../chord-stack/">Chord Stack</a> · <a href="../chord-breakout/">Chord Breakout</a> · <a href="../fifths-defender/">Fifths Defender</a> · <a href="../chopper-rescue/">Chopper Rescue</a> · <a href="../key-fleet/">Key Fleet</a> · <a href="../chord-sweeper/">Chord Sweeper</a></span>
+    <button data-mode="frets">Between the Frets</button>
+    <span class="arcadelinks"><a href="../arcade/">The arcade lobby</a> · or on their own pages: <a href="../invaders/">Chord Invaders</a> · <a href="../harp-command/">Harp Command</a> · <a href="../chord-snake/">Chord Snake</a> · <a href="../chord-asteroids/">Chord Asteroids</a> · <a href="../chord-stack/">Chord Stack</a> · <a href="../chord-breakout/">Chord Breakout</a> · <a href="../fifths-defender/">Fifths Defender</a> · <a href="../chopper-rescue/">Chopper Rescue</a> · <a href="../key-fleet/">Key Fleet</a> · <a href="../chord-sweeper/">Chord Sweeper</a> · <a href="../between-the-frets/">Between the Frets</a></span>
   </div>
   <div class="modes" role="group" aria-label="Read and play">
     <span class="grp">Read and play</span>
@@ -911,6 +928,7 @@ details.fold[open] .nowplaying{display:none}
 <script defer src="../arcade/games/chopper-rescue.js"></script>
 <script defer src="../arcade/games/key-fleet.js"></script>
 <script defer src="../arcade/games/chord-sweeper.js"></script>
+<script defer src="../arcade/games/between-the-frets.js"></script>
 <script defer src="../arcade/sounds.js"></script>
 <script defer src="../arcade/games/invaders-demo.js"></script>
 <script defer src="../arcade/screen.js"></script>

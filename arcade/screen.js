@@ -84,6 +84,10 @@ function fxPaintBackground(kind, W, H){
   } else if(kind==="snake"){
     g.fillStyle="#08100C"; g.fillRect(0,0,W,H);
     g.fillStyle="#1B3325"; for(let y=1;y<H;y+=4) for(let x=1;x<W;x+=4) g.fillRect(x,y,1,1);
+  } else if(kind==="frets"){
+    // black, in white polka dots: a stage in costume
+    g.fillStyle="#07060C"; g.fillRect(0,0,W,H);
+    for(let y=4, r=0; y<H; y+=10, r++) for(let x=(r%2?9:4); x<W; x+=10){ g.fillStyle="#F1E8D2"; g.fillRect(x,y,2,2); }
   } else if(kind==="sweeper"){
     // the airfield: grey tarmac in slabs, a runway's dashes, grass at the edges
     for(let y=0;y<H;y+=6) for(let x=0;x<W;x+=6){ g.fillStyle=["#2A2C30","#26282C","#2E3034"][Math.floor(rand()*3)]; g.fillRect(x,y,6,6); }
@@ -256,10 +260,10 @@ function blasterChord(voices){
   }
   blastBar();
 }
-const GENS={spell:genSpell, command:genCommand, snake:genSnake, asteroids:genAsteroids, stack:genStack, breakout:genBreakout, fifths:genFifths, chopper:genChopper, fleet:genFleet, sweeper:genSweeper, hidden:genHidden, oddone:genOddOne, shades:genShades, reshape:genReshape, blaster:genBlaster, diatonic:genDiatonic, numeral:genNumeral, staff:genStaff, slash:genSlash, key:genKey, harp:genHarp, missing:genMissing,
+const GENS={spell:genSpell, command:genCommand, snake:genSnake, asteroids:genAsteroids, stack:genStack, breakout:genBreakout, fifths:genFifths, chopper:genChopper, fleet:genFleet, sweeper:genSweeper, frets:genFrets, hidden:genHidden, oddone:genOddOne, shades:genShades, reshape:genReshape, blaster:genBlaster, diatonic:genDiatonic, numeral:genNumeral, staff:genStaff, slash:genSlash, key:genKey, harp:genHarp, missing:genMissing,
   melody:()=>genMelody(false), solfa:()=>genMelody(true), chordscale:genChordScale, smooth:genSmooth, whichvoice:genWhichVoice, simon:genSimon, directions:genDirections, pluckchord:genPluckChord, buildscale:genBuildScale,
   scale:genScale, transpose:genTranspose, temper:genTemper, tune:genTune};
 const MYSTERY=new Set(["scale","transpose","temper","tune"]);
-const LABELS={spell:"Spell it", hidden:"Hidden layout", oddone:"Odd one out", shades:"Shades of the third", reshape:"Reshape", blaster:"Chord Invaders", command:"Harp Command", snake:"Chord Snake", asteroids:"Chord Asteroids", stack:"Chord Stack", breakout:"Chord Breakout", fifths:"Fifths Defender", chopper:"Chopper Rescue", fleet:"Key Fleet", sweeper:"Chord Sweeper", diatonic:"Seven chords", numeral:"Numerals", staff:"On the staff", slash:"Slash chords", key:"Key detective", harp:"Harp hunt", missing:"Missing note", mix:"Mix",
+const LABELS={spell:"Spell it", hidden:"Hidden layout", oddone:"Odd one out", shades:"Shades of the third", reshape:"Reshape", blaster:"Chord Invaders", command:"Harp Command", snake:"Chord Snake", asteroids:"Chord Asteroids", stack:"Chord Stack", breakout:"Chord Breakout", fifths:"Fifths Defender", chopper:"Chopper Rescue", fleet:"Key Fleet", sweeper:"Chord Sweeper", frets:"Between the Frets", diatonic:"Seven chords", numeral:"Numerals", staff:"On the staff", slash:"Slash chords", key:"Key detective", harp:"Harp hunt", missing:"Missing note", mix:"Mix",
   melody:"Play by number", solfa:"Play by solfège", chordscale:"Chord scales", smooth:"Smooth moves", whichvoice:"Which voice moved?", simon:"Simon says", directions:"Follow the directions", pluckchord:"Pluck the chord", buildscale:"Build the scale",
   scale:"Scale detective", transpose:"Transpose detective", temper:"Temperament taster", tune:"Tune up"};

@@ -9,7 +9,7 @@
 // buttons' columns, F C G D A E B from the left, count 1 to 7: a column's major button starts that
 // level, its minor button sets that speed, and its 7 button switches to that arcade game. The key
 // signature's sharps and flats don't matter; the column is read from the chord's letter.
-const ARCADE_GAMES=["blaster","command","snake","asteroids","stack","breakout","fifths","chopper","fleet","sweeper"];
+const ARCADE_GAMES=["blaster","command","snake","asteroids","stack","breakout","fifths","chopper","fleet","sweeper","frets"];
 const COLUMN_LETTERS="FCGDAEB";
 function arcadeMenuChord(voices){
   if(cabWaiting()){ cabWake(); return true; }
@@ -143,8 +143,8 @@ function arcadeModNote(ov){
 // roll up the screen like credits; then the demo; then round again, until someone plays a chord,
 // plucks the harp, presses a key or clicks. That brings up the options (speed, levels and the rest),
 // which go back to the title if they're left alone. Game over goes straight to its options.
-const DEMO_FOR={blaster:()=>runDemo(true), command:()=>commandDemo(), snake:()=>snDemo(), asteroids:()=>asDemo(), stack:()=>stDemo(), breakout:()=>boDemo(), fifths:()=>fdDemo(), chopper:()=>chDemo(), fleet:()=>kfDemo(), sweeper:()=>swDemo()};
-const TITLE_FOR={blaster:"CHORD INVADERS", command:"HARP COMMAND", snake:"CHORD SNAKE", asteroids:"CHORD ASTEROIDS", stack:"CHORD STACK", breakout:"CHORD BREAKOUT", fifths:"FIFTHS DEFENDER", chopper:"CHOPPER RESCUE", fleet:"KEY FLEET", sweeper:"CHORD SWEEPER"};
+const DEMO_FOR={blaster:()=>runDemo(true), command:()=>commandDemo(), snake:()=>snDemo(), asteroids:()=>asDemo(), stack:()=>stDemo(), breakout:()=>boDemo(), fifths:()=>fdDemo(), chopper:()=>chDemo(), fleet:()=>kfDemo(), sweeper:()=>swDemo(), frets:()=>frDemo()};
+const TITLE_FOR={blaster:"CHORD INVADERS", command:"HARP COMMAND", snake:"CHORD SNAKE", asteroids:"CHORD ASTEROIDS", stack:"CHORD STACK", breakout:"CHORD BREAKOUT", fifths:"FIFTHS DEFENDER", chopper:"CHOPPER RESCUE", fleet:"KEY FLEET", sweeper:"CHORD SWEEPER", frets:"BETWEEN THE FRETS"};
 const cabKind=()=> blast && (blast.kind||"blaster");
 function cabinet(ov){
   const kids=[...ov.children];
