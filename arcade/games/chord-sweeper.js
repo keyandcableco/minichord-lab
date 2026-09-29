@@ -1,36 +1,61 @@
-// Chord Sweeper: a minefield where each mine is a key's home, and the notes around it give it away.
+// Chord Sweeper: a minefield where each mine is a key's home, and the tension around it points there.
 // Part of Minichord Lab's Practice Room page (practice/index.html), loaded there in order with the
 // others as plain scripts sharing one scope; see practice/boot.js.
 "use strict";
 
 // ---------- Chord Sweeper ----------
 // An ordinary minefield, eight by six, swept square by square with a cursor steered on the harp (A
-// sweeps, B flags) or the arrow keys. Each mine is the home of a key, its tonic, and every square
-// hides a note that says how close it is: right beside a mine, that key's 3rd or 5th (for G: B or D);
-// two squares away, the key's other notes (A, C, E, F♯); further out, notes outside the key. So the
-// notes swept say what the key is and how near its home lies. Put the cursor on a mine and play its
-// key's home chord (G major for a G mine, E minor for an E minor one) to defuse it; sweep a mine, or
-// play the wrong chord on it, and it goes off. Defuse every mine to clear the field.
+// sweeps, B flags) or the arrow keys. It's a game about tension and release. Each mine is the home of
+// a key, its tonic: the release. Every square around it hides tension pointing there, and how far a
+// square is from the mine is how many resolutions its chord is from home:
+//   right beside a mine   its key's V7 (G7 for C), one resolution away
+//   two away              V of V (D7: D7 to G7 to C)
+//   three away            V of V of V (A7)
+//   further out           calm: no tension to read
+// The harder levels bring in what else resolves home: the V7's tritone substitute (D♭7 for C, which
+// shares G7's tritone, F and B), and its substitutes up the chain (A♭7, E♭7); the leading-tone
+// diminished seventh (B°7), whose two tritones pull four ways; and the bare tritone, F–B, which
+// collapses in to E–C or out to F♯–A♯, so it points at C or at G♭, and only its neighbours tell which.
+// Sweeping a square plays its chord. Put the cursor on a mine and play its key's home chord to defuse
+// it, the resolution; sweep a mine, or play the wrong chord on it, and it goes off.
 const SW_W=8, SW_H=6;
 const SW_MAJOR=["C","G","D","A","E","B","F♯","F","B♭","E♭","A♭","D♭"], SW_MINOR=["A","E","B","F♯","C♯","D","G","C","F"];
 // The keys to find are shown beside the field: by name at the first levels, then only by their key
 // signature on a staff, and major or minor (a signature fits a major key and its relative minor).
+// subs: how often a clue is a tritone substitute instead; dim: whether the one beside a mine can be
+// the vii°7 or the bare tritone
 const SW_LEVELS=[
   {n:"One major key", mines:1, keys:[["C","G","D","F","A"],[]], named:true},
   {n:"One minor key", mines:1, keys:[[],["A","E","D","B","G"]], named:true},
   {n:"Two keys", mines:2, keys:[["C","G","D","F","A"],["A","E","D","B"]], named:true},
-  {n:"Sharps and flats", mines:2, keys:[SW_MAJOR,SW_MINOR]},
-  {n:"Three keys", mines:3, keys:[SW_MAJOR,SW_MINOR]},
+  {n:"Tritone substitutes", mines:2, keys:[SW_MAJOR,SW_MINOR], subs:.5},
+  {n:"Tritones and diminished", mines:3, keys:[SW_MAJOR,SW_MINOR], subs:.4, dim:true},
 ];
-const SW_STEPS=[[0,0],[1,2],[2,4],[3,5],[4,7],[5,9],[6,11]], SW_STEPS_MIN=[[0,0],[1,2],[2,3],[3,5],[4,7],[5,8],[6,10]];
 const SW_FIFTHS={C:0,G:1,D:2,A:3,E:4,B:5,"F♯":6,"C♯":7,F:-1,"B♭":-2,"E♭":-3,"A♭":-4,"D♭":-5,"G♭":-6};
-// a key: its home, its chord's 3rd and 5th, its other notes, and the five notes outside it, spelled
-// the way the key leans (sharps for sharp keys, flats for flat ones)
+// A key and its chain of tension: V7, V/V and V/V/V spelled from the key (in minor too, V7 being the
+// harmonic minor's), their tritone substitutes named the way a chart names them (D♭7 in C; in D♭,
+// D7 rather than E𝄫7), the leading-tone diminished seventh, and the V7's bare tritone.
 function swKeyOf(tonic, minor){
-  const steps=minor ? SW_STEPS_MIN : SW_STEPS, scale=steps.map(([l,s])=>above(tonic,l,s));
-  const fifths=(SW_FIFTHS[tonic]??0)-(minor?3:0), pcs=new Set(scale.map(pcOfName));
-  const outside=[...Array(12).keys()].filter(pc=>!pcs.has(pc)).map(pc=> (fifths<0 ? FLAT_NAMES : SHARP_NAMES)[pc]);
-  return {tonic, minor, name:`${tonic} ${minor?"MINOR":"MAJOR"}`, chord:tonic+(minor?"m":""), near:[scale[2],scale[4]], warm:[scale[1],scale[3],scale[5],scale[6]], outside};
+  const up=(l,s)=>above(tonic,l,s), sub=s=>FLAT_NAMES[(pcOfName(tonic)+s)%12];
+  return {tonic, minor, name:`${tonic} ${minor?"MINOR":"MAJOR"}`, chord:tonic+(minor?"m":""),
+    chain:[up(4,7), up(1,2), up(5,9)],            // the roots of V7, V/V and V/V/V
+    subs:[sub(1), sub(8), sub(3)],                // their tritone substitutes: ♭II7, ♭VI7, ♭III7
+    dim:up(6,11), tritone:[up(6,11), up(3,5)]};   // vii°7, and the V7's tritone (B and F in C)
+}
+// what a square shows, from its distance to the nearest mine and that mine's key: a chord (with the
+// notes it plays when swept), or calm
+const swTones=(root,q)=>spellChord(root,q)||[root];
+function swClueOptions(k, d, L){
+  if(d>3) return [{label:"·", tones:[]}];
+  const i=d-1, out=[{label:k.chain[i]+"7", tones:swTones(k.chain[i],"7")}];
+  if(L.subs) out.push({label:k.subs[i]+"7", tones:swTones(k.subs[i],"7"), sub:true});
+  if(L.dim && d===1) out.push({label:k.dim+"°7", tones:swTones(k.dim,"°7"), dim:true}, {label:k.tritone.join("–"), tones:k.tritone, tritone:true});
+  return out;
+}
+function swClue(k, d, L){
+  const o=swClueOptions(k, d, L); if(o.length===1) return o[0];
+  if(L.dim && d===1 && Math.random()<.35) return rnd(o.filter(x=>x.dim||x.tritone));
+  return L.subs && Math.random()<L.subs ? o.find(x=>x.sub) : o[0];
 }
 const swKey=(x,y)=>x+","+y;
 function genSweeper(){
@@ -84,7 +109,7 @@ function swDraw(){
     let inner="", cls="";
     if(m && m.defused){ inner=`<b class="home">${m.key.chord}</b>`; cls=" defused"; }
     else if(m && (m.boom || reveal)){ inner=SW_MINE+(reveal?`<small class="mk">${m.key.chord}</small>`:""); cls=m.boom?" boom":" shown"; }
-    else if(open){ inner=`<b>${blast.clue.get(k)}</b>`; if(saved.beginner) cls=` d${Math.min(3,swDist(x,y))}`; }
+    else if(open){ const c=blast.clue.get(k)||{label:"·"}; inner=`<b>${c.label}</b>`; if(c.label==="·") cls=" calm"; if(saved.beginner) cls+=` d${Math.min(3,swDist(x,y))}`; }
     else if(blast.flags.has(k)) inner=SW_FLAG;
     h+=`<span class="swcell${open?" open":""}${cls}${cur?" cur":""}" data-x="${x}" data-y="${y}" style="left:${blast.gx+x*s}px;top:${blast.gy+y*s}px;width:${s}px;height:${s}px">${inner}</span>`;
   }
@@ -106,15 +131,16 @@ function swSide(){
   const done=k=>blast.mines.some(m=>m.key===k && m.defused);
   const find=(blast.keys||[]).map(k=>`<li class="${done(k)?"found":""}">${L.named ? `<b>${k.name}</b>` : `${swSigSvg((SW_FIFTHS[k.tonic]??0)-(k.minor?3:0))}<b>${k.minor?"MINOR":"MAJOR"}</b>`}</li>`).join("");
   blast.sideEl.innerHTML=`<p class="swfind">FIND ${L.named?"":"THESE KEYS"}</p><ul class="swkeys">${find}</ul><p>TO DEFUSE <b>${blast.mines.length?left:(blast.keys||[]).length}</b></p><p>SWEEPS <b>${blast.sweeps}</b></p>
-    <p class="swhow">NEXT TO A MINE: ITS KEY'S 3RD OR 5TH. TWO AWAY: THE KEY'S OTHER NOTES. FURTHER: NOTES OUTSIDE IT.</p>
-    <p class="swhow">ON A MINE, PLAY ITS KEY'S CHORD TO DEFUSE IT.</p>`;
+    <p class="swhow">NEXT TO A MINE: ITS V7. TWO AWAY: V OF V. THREE AWAY: V OF V OF V. FURTHER: CALM.</p>
+    ${L.subs?`<p class="swhow">A TRITONE SUBSTITUTE RESOLVES THE SAME WAY${L.dim?"; SO DO vii°7 AND THE BARE TRITONE":""}.</p>`:""}
+    <p class="swhow">ON A MINE, PLAY ITS KEY'S CHORD: THE RELEASE.</p>`;
 }
 function swBar(){
   if(!blast || blast.kind!=="sweeper" || !blast.hud) return;
   blast.hud.innerHTML=`<span>SCORE ${blast.score}${multTag()}</span><span class="lvl">LEVEL ${blast.level+1} · FIELD ${blast.fields+1}</span><span class="lives">${"♥".repeat(Math.max(0,blast.lives))||"-"}</span>`;
 }
 const SWMENU_G={key:"sweeper", title:"CHORD SWEEPER",
-  rules:()=>`<p>EACH MINE IS A KEY'S HOME. SWEPT SQUARES SHOW NOTES: NEXT TO A MINE, ITS KEY'S 3RD OR 5TH; TWO AWAY, THE KEY'S OTHER NOTES; FURTHER OUT, NOTES OUTSIDE THE KEY.</p><p>STEER ON THE HARP OR THE ARROW KEYS. A SWEEPS, B FLAGS.</p><p>ON A MINE, PLAY ITS KEY'S CHORD TO DEFUSE IT. SWEEP A MINE, OR PLAY THE WRONG CHORD ON IT, AND IT GOES OFF.</p>`,
+  rules:()=>`<p>A GAME OF TENSION AND RELEASE. EACH MINE IS A KEY'S HOME. SWEPT SQUARES SHOW THE TENSION POINTING THERE: NEXT TO A MINE, ITS V7; TWO AWAY, V OF V; THREE AWAY, V OF V OF V. FURTHER OUT IT'S CALM.</p><p>LATER, TRITONE SUBSTITUTES, DIMINISHED SEVENTHS AND BARE TRITONES POINT HOME TOO.</p><p>STEER ON THE HARP OR THE ARROW KEYS. A SWEEPS, B FLAGS.</p><p>ON A MINE, PLAY ITS KEY'S CHORD TO DEFUSE IT. SWEEP A MINE, OR PLAY THE WRONG CHORD ON IT, AND IT GOES OFF.</p>`,
   stat:()=>`FIELDS ${blast.fields}`,
   rows:row=>{
     row("HARP", ["STANDARD STRIP","KEYMASTER GRID"], ()=>saved.harpLayout==="keymaster"?1:0, i=>{ saved.harpLayout = i ? "keymaster" : "strip"; save(); kmRestrip(); });
@@ -155,7 +181,7 @@ function swLay(sx,sy){
   // every other square's note, from the key of the nearest mine
   for(let y=0;y<SW_H;y++) for(let x=0;x<SW_W;x++){ if(swMineAt(x,y)) continue;
     const near=blast.mines.map(m=>({m, d:Math.max(Math.abs(m.x-x),Math.abs(m.y-y))})).sort((a,b)=>a.d-b.d)[0], k=near.m.key;
-    blast.clue.set(swKey(x,y), rnd(near.d===1 ? k.near : near.d===2 ? k.warm : k.outside)); }
+    blast.clue.set(swKey(x,y), swClue(k, near.d, SW_LEVELS[blast.level])); }
 }
 function swTick(now){
   if(!blast || blast.kind!=="sweeper") return;
@@ -175,7 +201,13 @@ function swSweep(){
   if(m) return;
   blast.open.add(k); blast.sweeps++;
   const [px,py]=swXY(x,y), pts=mulPts(5*(blast.level+1)); blast.score+=pts; popup(px,py-20,`+${pts}`);
-  sfx("shoot"); swBar(); swDraw();
+  swHear(blast.clue.get(k)); swBar(); swDraw();
+}
+// a square's chord, heard: the tension, or, for calm, just the sweep
+function swHear(c){
+  if(!c || !c.tones.length || !settings.sounds || !piano.ctx){ sfx("shoot"); return; }
+  let last=52; const ms=c.tones.map(n=>{ let m=48+pcOfName(n); while(m<=last) m+=12; last=m; return m; });
+  const go=()=>piano.play(ms,{when:.02,dur:.9,vel:80}); piano.ctx.state==="running"?go():piano.ctx.resume().then(go).catch(()=>{});
 }
 // the harp: a d-pad, A sweeping and B flagging
 function sweeperNote(pc){
@@ -246,11 +278,12 @@ function swDemo(){
   sfx("attract");
   (async()=>{
     try{
-      say("CHORD SWEEPER","EACH MINE IS A KEY'S HOME. EVERY SQUARE HIDES A NOTE THAT SAYS HOW CLOSE IT IS."); await step(4200);
-      const far=cell(3)||cell(4); if(far){ await walk(...far); await sweep(); say("FAR OUT", `${at(...far)}: A NOTE OUTSIDE THE KEY. THE MINE IS SOME WAY OFF.`); await step(3400); }
-      const warm=cell(2); if(warm){ await walk(...warm); await sweep(); say("WARMER", `${at(...warm)}: ONE OF THE KEY'S OTHER NOTES. TWO SQUARES AWAY.`); await step(3400); }
-      const hot=cell(1); if(hot){ await walk(...hot); await sweep(); say("HOT", `${at(...hot)}: THE KEY'S 3RD OR 5TH. THE MINE IS RIGHT BESIDE IT. B AND D POINT TO G.`); await step(3800); }
-      await walk(m.x,m.y); say("DEFUSE IT","ON THE MINE, PLAY ITS KEY'S CHORD: G MAJOR."); await step(1800);
+      say("CHORD SWEEPER","A GAME OF TENSION AND RELEASE. EACH MINE IS A KEY'S HOME, AND THE TENSION AROUND IT POINTS THERE."); await step(4200);
+      const far=cell(4); if(far){ await walk(...far); await sweep(); say("CALM", "NO TENSION HERE: THE MINE IS SOME WAY OFF."); await step(3000); }
+      const c3=cell(3); if(c3){ await walk(...c3); await sweep(); swHear(blast.clue.get(swKey(...c3))); say("TENSION", `${at(...c3).label}: V OF V OF V. THREE RESOLUTIONS FROM HOME.`); await step(3400); }
+      const c2=cell(2); if(c2){ await walk(...c2); await sweep(); swHear(blast.clue.get(swKey(...c2))); say("CLOSER", `${at(...c2).label}: V OF V, TWO RESOLUTIONS AWAY.`); await step(3400); }
+      const c1=cell(1); if(c1){ await walk(...c1); await sweep(); swHear(blast.clue.get(swKey(...c1))); say("RIGHT BESIDE IT", `${at(...c1).label}: THE V7. ONE RESOLUTION, AND IT'S HOME: G.`); await step(3800); }
+      await walk(m.x,m.y); say("RELEASE","ON THE MINE, PLAY ITS KEY'S CHORD: G MAJOR. THE TENSION RESOLVES."); await step(1800);
       demoPlay([55,59,62,67]); m.defused=true; blast.phase="play"; swDraw(); blast.phase="demo"; const [px,py]=swXY(m.x,m.y); explode(px,py,30,["#7FE08A","#FFD35A"]); sfx("bonus"); await step(2600);
       say("READY?","SWEEP A MINE, OR PLAY THE WRONG CHORD ON IT, AND IT GOES OFF."); sfx("level"); await step(2600);
       endSwDemo(token);
