@@ -143,7 +143,7 @@ function boTick(now){
   if((blast.phase==="play" || blast.phase==="demo") && blast.ball){
     const p=blast.paddle, W=blast.W||blast.field.clientWidth;
     // the paddle: toward the knob's or the mouse's position, or pushed by the arrow keys
-    if(blast.phase==="demo" && blast.ball) p.target=blast.ball.x-p.w/2+Math.sin(now/300)*p.w*.2;
+    if(blast.phase==="demo" && blast.ball) p.target = blast.demoAim!=null ? blast.demoAim-p.w/2 : blast.ball.x-p.w/2+Math.sin(now/300)*p.w*.2;
     if(blast.keyDir) p.target=(p.target??p.x)+blast.keyDir*520*dt;
     if(p.target!=null){ p.target=Math.max(0,Math.min(W-p.w,p.target)); p.x+=(p.target-p.x)*Math.min(1,dt*18); }
     blast.padEl.style.transform=`translateX(${p.x}px)`;
@@ -241,7 +241,7 @@ function boBreak(k, quiet){
 }
 // ---------- the power-up: the chord's tones rain, and the paddle's a cannon ----------
 function boPowerUp(k){
-  const tones=spellChord(k.root,k.q)||[]; if(!tones.length || blast.phase!=="play") return;
+  const tones=spellChord(k.root,k.q)||[]; if(!tones.length || (blast.phase!=="play" && blast.phase!=="demo")) return;
   const cx=k.x+k.w/2, spread=Math.min(blast.W*.8, 90*tones.length);
   blast.power={chord:k.sym, total:tones.length, shot:0, tones:tones.map((n,i)=>{ const el=document.createElement("div"); el.className="botone"; el.textContent=n; blast.field.appendChild(el);
     return {name:n, pc:pcOfName(n), x:Math.max(30,Math.min(blast.W-30, cx+(i-(tones.length-1)/2)*spread/Math.max(1,tones.length-1||1))), y:k.y+k.h, vy:(38+Math.random()*16)/speedMul(), el}; })};
@@ -270,6 +270,13 @@ function breakoutNote(pc){
   t.gone=true; pw.shot++;
   const P=PX; blast.fx.missiles.push({x0:cx/P, y0:blast.padY/P, x1:t.x/P, y1:t.y/P, t0:performance.now(), dur:140, hit:()=>{ t.el.remove(); explode(t.x,t.y,18,["#7FE9FF","#FFD35A","#F1E8D2"]); }});
   const pts=mulPts(20*(blast.level+1)); blast.score+=pts; popup(t.x,t.y-16,`${t.name} +${pts}`,"#7FE9FF"); heard(t.name,true); sfx("shoot"); boBar();
+}
+// the demo's cannon: what a harp pluck does, lined up under the tone
+function boDemoShoot(t){
+  const pw=blast.power; if(!pw || t.gone) return;
+  const p=blast.paddle, cx=p.x+p.w/2, P=PX; t.gone=true; pw.shot++; helpString(t.pc); demoPlay([60+t.pc]);
+  blast.fx.missiles.push({x0:cx/P, y0:blast.padY/P, x1:t.x/P, y1:t.y/P, t0:performance.now(), dur:140, hit:()=>{ t.el.remove(); explode(t.x,t.y,18,["#7FE9FF","#FFD35A","#F1E8D2"]); }});
+  popup(t.x,t.y-16,t.name,"#7FE9FF"); sfx("shoot");
 }
 function boPowerDone(){
   const pw=blast.power; blast.power=null; helpChord(null);
@@ -337,6 +344,7 @@ mc.addEventListener("knob", e=>{
   const v=step/127;
   if(blast.kind==="stack") return stKnob(v);
   if(blast.kind==="asteroids") return asKnob(v);
+  if(blast.kind==="sight") return sightKnob(v);
   if(blast.kind==="fifths") return fdKnob(v);
   if(blast.kind!=="breakout") return;
   const W=blast.W||blast.field.clientWidth; blast.paddle.target=v*(W-blast.paddle.w); blast.steer="knob";
@@ -370,6 +378,13 @@ function boDemo(){
       say("CRACK IT","THE BALL CRACKS THE BRICK IT HITS. IT GLOWS."); await step(4200);
       say("PLAY IT","PLAY THAT CHORD BEFORE THE BALL COMES BACK AND THE BRICK BREAKS."); await step(4500);
       say("OR IT HEALS","IF THE BALL REACHES THE PADDLE FIRST, THE BRICK HEALS."); await step(4000);
+      // the power-up: a brick's chord rains its tones and the paddle turns cannon, sliding under each to shoot it
+      const pk=blast.bricks.find(b=>b.alive && !b.cracked);
+      if(pk){ pk.alive=false; pk.el && pk.el.remove(); explode(pk.x+pk.w/2, pk.y+pk.h/2, 22, ["#FFD35A","#F1E8D2","#7FE9FF"]); boPowerUp(pk);
+        say("POWER UP","BREAK A POWER BRICK AND ITS CHORD'S TONES RAIN DOWN. THE PADDLE BECOMES A CANNON."); await step(2400);
+        say("SHOOT THE TONES","SLIDE UNDER EACH TONE AND PLUCK IT ON THE HARP. SHOOT THEM ALL FOR THE WHOLE CHORD.");
+        for(const t of [...(blast.power?blast.power.tones:[])]){ if(t.gone) continue; blast.demoAim=t.x; await step(650); boDemoShoot(t); await step(450); }
+        blast.demoAim=null; await step(1600); }
       say("READY?","CLEAR THE WALL. DON'T LET THE BALL PAST."); sfx("level"); await step(3200);
       endBoDemo(token);
     }catch(e){ /* skipped */ }
@@ -377,6 +392,8 @@ function boDemo(){
 }
 function endBoDemo(token){
   if(!blast || blast.demo!==token) return;
+  if(blast.power){ blast.power.tones.forEach(t=>t.el.remove()); blast.power=null; blast.padEl.classList.remove("cannon"); blast.ballEl.classList.remove("held"); }
+  blast.demoAim=null;
   stopDemo(); blast.phase="menu"; blast.demoAuto=false; blast.ball=null; blast.ballEl.style.transform="translate(-40px,-40px)";
   blast.bricks.forEach(b=>b.el.remove()); blast.bricks=[];
   if(blast.overlay) blast.overlay.hidden=false;

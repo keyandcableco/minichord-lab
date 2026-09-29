@@ -1,6 +1,8 @@
 // Sight Line: a note plucked on the harp as it reaches the playhead scores (dead on, double); a wrong
 // string breaks the streak; a note that slips past costs a life; a key signature's sharp applies to
-// every note on its letter; ledger lines are drawn; a tune read to the end is named.
+// every note on its letter; ledger lines are drawn; a chord at the line is played on the buttons; an
+// inversion needs its bass, swung by the arrows (or a knob); a key change asks for the combo and pays
+// when the minichord is set; a tune read to the end is named; the demo scrolls as play does.
 const t=require("./harness").load("sight-line");
 (async()=>{
   const {w, sleep, note, check, d}=t;
@@ -21,9 +23,36 @@ const t=require("./harness").load("sight-line");
   // ledger lines: middle C on the treble staff gets one
   w.eval("blast.notes.push({dn:28,clef:'treble',acc:0,pc:0,name:'C',x:300}); slNoteEl(blast.notes[blast.notes.length-1])");
   check("middle C on the treble staff has its ledger line", d.querySelectorAll(".slstaff .snote")[d.querySelectorAll(".slstaff .snote").length-1].querySelectorAll("line").length===1);
+  // chords: the chord at the line, on the buttons (as the minichord would voice it)
+  const {sb}=t; const play=(n,bassPc)=>{ const root=48+n.rootPc, tones=[root, root+(n.q?3:4), root+7]; let v=tones;
+    if(bassPc!=null){ while(((v[0]%12)+12)%12!==bassPc) v=[...v.slice(1), v[0]+12]; } sb.answerChord(v.map((p,i)=>({pitch:p, voice:i}))); };
+  a.level=5; w.eval("slLevelStart()"); a.lives=9;
+  let chordHit=false; for(let k=0;k<30 && !chordHit;k++){ const m=await atLine(); if(!m) break; if(m.chord){ const s0=a.score; play(m); await sleep(20); chordHit=a.score>s0 && m.done; } else { note(m.pc); await sleep(20); } }
+  check("a chord at the line is played on the buttons", chordHit);
+  // inversions: the written bass is needed; the arrows swing the minichord's voicing
+  a.level=7; w.eval("slLevelStart()"); a.lives=9; t.key("ArrowUp"); await sleep(30);
+  check("the arrows swing the minichord's chord inversion", t.mc.params[37]===1 && a.inv===1);
+  let invOk=false, invWrong=false;
+  for(let k=0;k<40 && !(invOk && invWrong);k++){ const m=await atLine(); if(!m) break;
+    if(m.chord && m.inv && !invWrong){ play(m, m.rootPc); await sleep(20); invWrong = !m.done && /BASS/.test(t.heard()); play(m, m.bassPc); await sleep(20); invOk = invOk || m.done; }
+    else if(m.chord){ play(m, m.bassPc); await sleep(20); } else { note(m.pc); await sleep(20); } }
+  check("an inversion played in root position isn't it; with its bass, it is", invOk && invWrong, t.heard());
+  // a key change: asks for the combo, and pays once the minichord is in the new key
+  const ch=w.eval("(()=>{ const n={change:true, f:2, x:blast.ph+2}; blast.notes.push(n); slNoteEl(n); return n; })()");
+  await sleep(200);
+  check("a key change reaching the line puts the staff in the new key and asks for it", a.keyF===2 && a.keyWant===2);
+  const s1=a.score; t.mc.params[35]=w.eval("keyIndexOf(2)"); t.mc.dispatchEvent(new w.Event("device")); await sleep(50);
+  check("setting the minichord to it pays", a.score>s1 && a.keyWant==null);
   // tunes: read one to the end and it's named
-  a.level=6; w.eval("slLevelStart()"); a.lives=9;
+  a.level=9; w.eval("slLevelStart()"); a.lives=9;
   let named=false; for(let k=0;k<40 && !named;k++){ const m=await atLine(); if(!m) break; note(m.pc); await sleep(20); if(m.last){ await sleep(50); named = !!w.eval("blast.tune") && /ODE|TWINKLE|FRÈRE|MARY|AMAZING|SAINTS/.test(d.querySelector(".field .banner")?.textContent||""); } }
   check("a tune read to the end is named", named, d.querySelector(".field .banner")?.textContent);
+  // the demo scrolls as play does, reading each note and chord at the line and letting it carry on past
+  a.phase="menu"; a.lives=3; for(const n of a.notes) n.el && n.el.remove(); a.notes=[]; w.eval("slMenu(); slDemo()"); await sleep(50);
+  const caps=new Set(); let carried=false;
+  for(let i=0;i<220;i++){ await sleep(120); const cap=d.querySelector(".field .demo .demotitle")?.textContent||""; if(cap) caps.add(cap);
+    if(a.notes.some(n=>n.done && !n.change && n.x<a.ph-40)) carried=true; if(!d.querySelector(".field .demo")) break; }
+  check("the demo scrolls like play: notes read at the line carry on past it", carried);
+  check("the demo shows chords, a key change and an inversion", ["CHORDS","KEY CHANGE","INVERSIONS"].every(c=>caps.has(c)), [...caps].join(" | "));
   t.done();
 })();

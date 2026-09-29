@@ -419,7 +419,7 @@ function answerChord(voices){
   if(q.answer.type==="fleet") return fleetChord(voices);
   if(q.answer.type==="sweeper") return sweeperChord(voices);
   if(q.answer.type==="frets") return fretsChord(voices);
-  if(q.answer.type==="sight") return;                                          // Sight Line is read on the harp
+  if(q.answer.type==="sight") return sightChord(voices);
   if(q.answer.type==="diatonic") return answerDiatonic(voices);
   if(q.answer.type==="reshape") return answerReshape(voices);
   if(q.answer.type==="alt") return answerAltChord(voices);

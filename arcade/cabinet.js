@@ -170,7 +170,7 @@ function cabinet(ov){
   beginnerRow(opts);
   crtRow(opts);
   multLine(opts);
-  if(["breakout","fifths","stack","asteroids"].includes(cabKind()) && knobsReady()) knobRow(opts);
+  if(["breakout","fifths","stack","asteroids","sight"].includes(cabKind()) && knobsReady()) knobRow(opts);
   cabPages(opts, ov);
   ov.append(title, roll, points, board, opts);
   hsFetch(hsSlug());                                        // fetched now, so it's ready when its turn comes
@@ -250,7 +250,7 @@ document.addEventListener("keydown", e=>{
 // buttons (and the modifier, and a slash's bass) for the chord that matters now, and in the harp
 // games the string for the note that matters now, drawn as the standard strip or the keymaster's
 // four rows of three. It sits behind the play, a little see-through, so nothing falling is hidden.
-const helpUsesChords=k=>["blaster","snake","asteroids","stack","breakout","fifths","chopper"].includes(k);
+const helpUsesChords=k=>["blaster","snake","asteroids","stack","breakout","fifths","chopper","sight"].includes(k);
 const helpUsesHarp=k=>["command","asteroids","fifths","breakout","sight"].includes(k);
 function beginnerRow(opts){
   const r=document.createElement("div"); r.className="optrow"; const l=document.createElement("span"); l.className="optlabel"; l.textContent="BEGINNER";

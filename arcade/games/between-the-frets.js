@@ -316,10 +316,13 @@ function frDemo(){
     try{
       say("BETWEEN THE FRETS","THE NOTES BETWEEN THE NOTES: A QUARTER-TONE, HALF A SEMITONE."); frDrawBoard(); await step(3800);
       frSay("THE SAME, ¼ SHARP OR ¼ FLAT?"); blast.stageEl.querySelector(".frrows").innerHTML=["MAJ ROW: ¼ SHARP","MIN ROW: IN TUNE","7 ROW: ¼ FLAT"].map(t=>`<span>${t}</span>`).join("");
-      say("LISTEN","AN A, THEN ANOTHER. THE SECOND IS A LITTLE HIGH: BETWEEN A AND B♭."); frDrawBoard([{m:69,c:"#F1E8D2",t:"REF"}]); frPlay(q); await step(3200);
-      say("ANSWER","ANY COLUMN: THE MAJOR ROW FOR SHARP."); await step(2400); frReveal(q); sfx("key"); await step(1600);
+      say("LISTEN","AN A, THEN ANOTHER. THE SECOND IS A LITTLE HIGH: BETWEEN A AND B♭."); frDrawBoard([{m:69,c:"#F1E8D2",t:"REF"}]); frDrawStaff(frStaffNotes(q,false)); frPlay(q); await step(3200);
+      say("ANSWER","ANY COLUMN: THE MAJOR ROW FOR SHARP. THE FRETBOARD AND THE STAFF SHOW WHERE IT SITS: A HALF-SHARP."); await step(2400); frReveal(q); sfx("key"); await step(2600);
       say("FIND IT","HERE THE MODIFIER MEANS A QUARTER-TONE: A AND THE MODIFIER PLAYS A HALF-SHARP."); await step(2400);
       demoPlay([69.5]); sfx("bonus"); await step(2400);
+      say("HEAR THE WOBBLE","HOLD A CHORD AND TAP THE MODIFIER ON AND OFF: THE NOTE, THEN THE ONE BETWEEN THE FRETS.");
+      for(const m of [69,69.5,69,69.5]){ demoPlay([m]); await step(700); } await step(900);
+      say("ON THE HARP","ON FIRMWARE 18 THE MINICHORD PLAYS THEM ITSELF, IN 24-EDO: PLUCK THE NOTE BETWEEN THE FRETS ON THE HARP."); await step(3600);
       say("READY?","LEVELS GO FROM NOTES TO INTERVALS, THE NEUTRAL THIRD, AND RIFFS THAT BEND."); sfx("level"); await step(2800);
       endFrDemo(token);
     }catch(e){ /* skipped */ }

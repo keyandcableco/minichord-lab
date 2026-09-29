@@ -31,6 +31,7 @@ const DEMO_SCENES=[
   {key:true, title:"SETTING THE KEY", text:"HOLD BOTH PRESET BUTTONS. THE LIGHT BLINKS.", hold:3200},
   {key:true, keyPress:[3,1], text:"THE ROWS ARE NOW SHARP, NATURAL AND FLAT KEYS. PRESS ONE.", hold:3400},
   {key:false, keyDone:"D", text:"LET GO: YOU'RE IN D MAJOR. ITS F AND C BUTTONS NOW PLAY F♯ AND C♯.", hold:3800},
+  {title:"SCORING", text:"RICHER CHORDS SCORE MORE: A MAJOR CHORD 10, A MINOR 15, SEVENTHS 20 TO 30, UP TO 50 FOR SIXTHS AND DIMINISHED SEVENTHS. HALF AGAIN WITH THE MODIFIER, AND HALF AGAIN AS A SLASH CHORD.", hold:5200},
   {title:"READY?", text:"CHOOSE A LEVEL. PLAY EACH CHORD BEFORE IT LANDS.", hold:2800},
 ];
 function stopDemo(){ if(blast && blast.demo){ blast.demo.run=false; blast.demo.el.remove(); blast.demo=null; } if(blast && blast.field) blast.field.classList.remove("demoing"); }

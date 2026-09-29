@@ -391,10 +391,10 @@ function kfDemo(){
       blast.phase="play"; blast.lastHit=[2,0]; kfSide(); blast.phase="demo"; kfSideDemo();
       say("A HIT","G IS IN C MAJOR (F C G), G MAJOR (C G D) OR D MAJOR (G D A)."); await step(4200);
       say("","TRY D. A MISS, SO IT'S NOT G OR D MAJOR: IT'S C MAJOR."); await fire("D"); await step(2400);
-      say("CALL IT","NO NEED TO HIT F AND C: CALL THE KEY. PLUCK C, ITS TONIC, ON THE HARP."); await step(2600); play([60]); kfCall(s=>s.tonic==="C",null,true); await step(2800);
+      say("CALL IT","ONCE A SHIP'S BEEN HIT, CALL ITS KEY: NO NEED TO HIT F AND C. PLUCK C, ITS TONIC, ON THE HARP."); await step(2600); play([60]); kfCall(s=>s.tonic==="C",null,true); await step(2800);
       say("OR A CADENCE","ANOTHER WAY TO CALL A KEY: ITS V7 THEN I. B7 THEN E CALLS E MAJOR."); await step(2600);
       play([59,63,66,69]); await step(800); play([52,56,59]); kfCall(s=>s.tonic==="E",null,true); await step(2800);
-      say("READY?","SINK THE FLEET BEFORE THE TORPEDOES RUN OUT."); sfx("level"); await step(2600);
+      say("READY?","SINK THE FLEET BEFORE THE TORPEDOES RUN OUT. LATER THE SEA WIDENS: B♭ AND F♯, THEN EVERY KEY."); sfx("level"); await step(2600);
       endKfDemo(token);
     }catch(e){ /* skipped */ }
   })();
