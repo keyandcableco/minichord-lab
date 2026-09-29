@@ -6,6 +6,7 @@ const t=require("./harness").load("chord-sweeper");
   const {w, sleep, chord, note, key, check}=t;
   await sleep(150); t.connect(); await sleep(100);
   const a=await t.start(3);                                   // two keys, sharps and flats
+  check("the keys to find show before the first sweep, as key signatures at this level", t.d.querySelectorAll(".swkeys li").length===2 && t.d.querySelectorAll(".swkeys .swsig").length===2);
   key("Space"); await sleep(50);
   check("the first sweep is always safe", a.open.size===1 && a.lives===3 && a.mines.length===2);
   // the clue rule, over the whole field
@@ -28,5 +29,6 @@ const t=require("./harness").load("chord-sweeper");
   const m2=a.mines[1]; a.cur=[m2.x,m2.y];
   chord((t.PC[m2.key.tonic]+1)%12, "m"); await sleep(50);
   check("a wrong chord on a mine sets it off", m2.boom && a.lives===2, t.heard());
+  check("its mines are the keys it said to find", a.mines.every(m=>a.keys.includes(m.key)));
   t.done();
 })();

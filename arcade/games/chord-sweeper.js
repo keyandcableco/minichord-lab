@@ -13,10 +13,12 @@
 // play the wrong chord on it, and it goes off. Defuse every mine to clear the field.
 const SW_W=8, SW_H=6;
 const SW_MAJOR=["C","G","D","A","E","B","F♯","F","B♭","E♭","A♭","D♭"], SW_MINOR=["A","E","B","F♯","C♯","D","G","C","F"];
+// The keys to find are shown beside the field: by name at the first levels, then only by their key
+// signature on a staff, and major or minor (a signature fits a major key and its relative minor).
 const SW_LEVELS=[
-  {n:"One major key", mines:1, keys:[["C","G","D","F","A"],[]]},
-  {n:"One minor key", mines:1, keys:[[],["A","E","D","B","G"]]},
-  {n:"Two keys", mines:2, keys:[["C","G","D","F","A"],["A","E","D","B"]]},
+  {n:"One major key", mines:1, keys:[["C","G","D","F","A"],[]], named:true},
+  {n:"One minor key", mines:1, keys:[[],["A","E","D","B","G"]], named:true},
+  {n:"Two keys", mines:2, keys:[["C","G","D","F","A"],["A","E","D","B"]], named:true},
   {n:"Sharps and flats", mines:2, keys:[SW_MAJOR,SW_MINOR]},
   {n:"Three keys", mines:3, keys:[SW_MAJOR,SW_MINOR]},
 ];
@@ -89,10 +91,21 @@ function swDraw(){
   blast.gridEl.innerHTML=h;
   swSide();
 }
+// a key signature on a small treble staff, for the side panel
+function swSigSvg(f){
+  const SPc=6, TOP=10, y=dn=>TOP+(38-dn)*SPc/2, n=Math.abs(f), pos=f>0?SIG_SHARPS:SIG_FLATS, g=GLYPH[f>0?"1":"-1"];
+  let h=`<svg class="swsig" viewBox="0 0 ${40+Math.max(1,n)*7} 44" aria-label="${n} ${f>0?"sharp":"flat"}${n===1?"":"s"}">`;
+  for(let k=0;k<5;k++) h+=`<line x1="2" x2="${38+Math.max(1,n)*7}" y1="${TOP+k*SPc}" y2="${TOP+k*SPc}"/>`;
+  h+=`<text class="glyph" x="4" y="${y(32)}">${GLYPH.clef}</text>`;
+  for(let i=0;i<n;i++) h+=`<text class="glyph" x="${26+i*7}" y="${y(pos[i])}">${g}</text>`;
+  return h+"</svg>";
+}
 function swSide(){
   if(!blast.sideEl) return;
-  const left=blast.mines.filter(m=>!m.defused).length;
-  blast.sideEl.innerHTML=`<p>MINES <b>${blast.mines.length||SW_LEVELS[blast.level||0].mines}</b></p><p>TO DEFUSE <b>${blast.mines.length?left:"—"}</b></p><p>SWEEPS <b>${blast.sweeps}</b></p>
+  const left=blast.mines.filter(m=>!m.defused).length, L=SW_LEVELS[blast.level||0];
+  const done=k=>blast.mines.some(m=>m.key===k && m.defused);
+  const find=(blast.keys||[]).map(k=>`<li class="${done(k)?"found":""}">${L.named ? `<b>${k.name}</b>` : `${swSigSvg((SW_FIFTHS[k.tonic]??0)-(k.minor?3:0))}<b>${k.minor?"MINOR":"MAJOR"}</b>`}</li>`).join("");
+  blast.sideEl.innerHTML=`<p class="swfind">FIND ${L.named?"":"THESE KEYS"}</p><ul class="swkeys">${find}</ul><p>TO DEFUSE <b>${blast.mines.length?left:(blast.keys||[]).length}</b></p><p>SWEEPS <b>${blast.sweeps}</b></p>
     <p class="swhow">NEXT TO A MINE: ITS KEY'S 3RD OR 5TH. TWO AWAY: THE KEY'S OTHER NOTES. FURTHER: NOTES OUTSIDE IT.</p>
     <p class="swhow">ON A MINE, PLAY ITS KEY'S CHORD TO DEFUSE IT.</p>`;
 }
@@ -104,7 +117,6 @@ const SWMENU_G={key:"sweeper", title:"CHORD SWEEPER",
   rules:()=>`<p>EACH MINE IS A KEY'S HOME. SWEPT SQUARES SHOW NOTES: NEXT TO A MINE, ITS KEY'S 3RD OR 5TH; TWO AWAY, THE KEY'S OTHER NOTES; FURTHER OUT, NOTES OUTSIDE THE KEY.</p><p>STEER ON THE HARP OR THE ARROW KEYS. A SWEEPS, B FLAGS.</p><p>ON A MINE, PLAY ITS KEY'S CHORD TO DEFUSE IT. SWEEP A MINE, OR PLAY THE WRONG CHORD ON IT, AND IT GOES OFF.</p>`,
   stat:()=>`FIELDS ${blast.fields}`,
   rows:row=>{
-    row("SPEED", SPEEDS.map(x=>x[0].toUpperCase()), ()=>+saved.speed||0, i=>{ saved.speed=i; save(); });
     row("HARP", ["STANDARD STRIP","KEYMASTER GRID"], ()=>saved.harpLayout==="keymaster"?1:0, i=>{ saved.harpLayout = i ? "keymaster" : "strip"; save(); kmRestrip(); });
   },
   levels:SW_LEVELS, begin:i=>beginSweeper(i), demo:()=>swDemo(), modNote:false};
@@ -123,17 +135,22 @@ function beginSweeper(level){
 // a new field: the mines are laid at the first sweep, so it's always safe
 function swField(){
   Object.assign(blast,{mines:[], clue:new Map(), open:new Set(), flags:new Set(), cur:[3,2], sweeps:0, phase:"play", fieldAt:performance.now()});
+  blast.keys=swPickKeys(SW_LEVELS[blast.level]);
   swLayout(); swBar(); swDraw();
 }
+// a field's keys: as many as it has mines, no two sharing a home note
+function swPickKeys(L){
+  const all=[...L.keys[0].map(t=>swKeyOf(t,false)), ...L.keys[1].map(t=>swKeyOf(t,true))], out=[];
+  while(out.length<L.mines){ const k=rnd(all.filter(k=>!out.some(o=>pcOfName(o.tonic)===pcOfName(k.tonic)))); if(!k) break; out.push(k); }
+  return out;
+}
 function swLay(sx,sy){
-  const L=SW_LEVELS[blast.level], keys=[...L.keys[0].map(t=>swKeyOf(t,false)), ...L.keys[1].map(t=>swKeyOf(t,true))];
-  for(let tries=0; tries<400 && blast.mines.length<L.mines; tries++){
+  const keys=[...(blast.keys||swPickKeys(SW_LEVELS[blast.level]))];
+  for(let tries=0; tries<400 && keys.length; tries++){
     const x=Math.floor(Math.random()*SW_W), y=Math.floor(Math.random()*SW_H);
     if(Math.max(Math.abs(x-sx),Math.abs(y-sy))<2) continue;                       // not on or beside the first sweep
     if(blast.mines.some(m=>Math.max(Math.abs(m.x-x),Math.abs(m.y-y))<4)) continue;   // mines apart, their clues distinct
-    const used=new Set(blast.mines.map(m=>pcOfName(m.key.tonic)));
-    const key=rnd(keys.filter(k=>!used.has(pcOfName(k.tonic)))); if(!key) break;
-    blast.mines.push({x,y,key});
+    blast.mines.push({x,y,key:keys.shift()});
   }
   // every other square's note, from the key of the nearest mine
   for(let y=0;y<SW_H;y++) for(let x=0;x<SW_W;x++){ if(swMineAt(x,y)) continue;
@@ -220,7 +237,7 @@ function swDemo(){
   const {el, token, say, sleep, step}=demoShell(endSwDemo);
   blast.phase="demo"; blast.level=0; blast.mines=[]; blast.clue=new Map(); blast.open=new Set(); blast.flags=new Set(); blast.cur=[1,4]; blast.sweeps=0;
   // one G major mine; the clues laid as a game would lay them
-  const L=SW_LEVELS[0], keep=L.keys; SW_LEVELS[0].keys=[["G"],[]]; blast.mines=[]; swLay(1,4); SW_LEVELS[0].keys=keep;
+  blast.keys=[swKeyOf("G",false)]; blast.mines=[]; swLay(1,4);
   const m=blast.mines[0]; swLayout(); swDraw();
   const at=(x,y)=>blast.clue.get(swKey(x,y));
   const walk=async(x,y)=>{ while(blast.cur[0]!==x || blast.cur[1]!==y){ blast.cur=[blast.cur[0]+Math.sign(x-blast.cur[0]), blast.cur[1]+Math.sign(y-blast.cur[1])]; blast.phase="play"; swDraw(); blast.phase="demo"; sfx("press"); await step(180); } };

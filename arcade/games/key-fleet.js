@@ -152,12 +152,36 @@ function kfDraw(){
   for(const s of blast.ships){ if(!s.sunk && blast.phase!=="reveal") continue;
     const rows=[...new Set(s.cells.map(c=>c[1]))];
     rows.forEach(row=>{ const cs=s.cells.filter(c=>c[1]===row).map(c=>c[0]), c0=Math.min(...cs), c1=Math.max(...cs);
-      h+=`<span class="kfship${s.sunk?"":" afloat"}" style="left:${blast.sx+c0*cw+6}px;top:${blast.sy+row*rh+rh*.3}px;width:${(c1-c0+1)*cw-12}px;height:${rh*.4}px"></span>`; });
+      const n=c1-c0+1, wpx=n*cw-8, hpx=Math.min(rh*.62, wpx*.5);
+      h+=`<span class="kfship${s.sunk?"":" afloat"}" style="left:${blast.sx+c0*cw+4}px;top:${blast.sy+row*rh+(rh-hpx)/2}px;width:${wpx}px;height:${hpx}px">${kfShipSvg(n, s.sunk)}</span>`; });
     const [c,r]=s.cells[Math.floor(s.cells.length/2)], [x,y]=kfXY(c,r);
     if(s.sunk) h+=`<span class="kfname" style="left:${x}px;top:${y+rh*.34}px">${s.name}</span>`;
   }
   blast.seaEl.innerHTML=h;
   kfSide();
+}
+// A warship in pixels, as long as the chords it covers in a row: a hull pointed at the bow, a deck,
+// a gun turret over each chord, a bridge and funnel amidships. One chord long, a patrol boat. Sunk,
+// it's dark and burning; revealed at the end but never found, a grey outline.
+function kfShipSvg(n, sunk){
+  const L=n*20, H=12, mid=Math.floor(L/2);
+  const hull=sunk?"#2E3038":"#5A6070", deck=sunk?"#44464E":"#8A90A0", gun=sunk?"#1C1D22":"#3A3D48", edge="#101116";
+  let r=`<svg viewBox="0 0 ${L} ${H}" preserveAspectRatio="none" shape-rendering="crispEdges" aria-hidden="true">`;
+  // the hull: stern square, bow pointed, waterline dark
+  r+=`<path fill="${hull}" stroke="${edge}" stroke-width="1" d="M1 6H${L-5}L${L-1} 8L${L-4} 11H3L1 9Z"/>`;
+  r+=`<rect x="1" y="10" width="${L-5}" height="1" fill="${edge}"/>`;
+  // the deck
+  r+=`<rect x="3" y="5" width="${L-9}" height="1" fill="${deck}"/>`;
+  if(n===1){ r+=`<rect x="${mid-3}" y="2" width="6" height="3" fill="${deck}"/><rect x="${mid-1}" y="0" width="1" height="2" fill="${deck}"/>`; }
+  else{
+    // a turret over each chord but the middle, where the bridge and funnel stand
+    for(let i=0;i<n;i++){ const x=i*20+8; if(Math.abs(x+2-mid)<8) continue;
+      r+=`<rect x="${x}" y="3" width="5" height="2" fill="${gun}"/><rect x="${i*20+10<mid?x-3:x+5}" y="3" width="3" height="1" fill="${gun}"/>`; }
+    r+=`<rect x="${mid-4}" y="1" width="8" height="4" fill="${deck}"/><rect x="${mid-2}" y="2" width="4" height="1" fill="#7FE9FF"/>`;   // the bridge
+    r+=`<rect x="${mid+5}" y="0" width="3" height="5" fill="${gun}"/>`;                                                              // the funnel
+  }
+  if(sunk) r+=`<rect class="kffire" x="${mid-2}" y="0" width="3" height="3" fill="#FF8A3D"/><rect class="kffire" x="${Math.max(2,mid-12)}" y="3" width="2" height="2" fill="#FFD35A"/>`;
+  return r+"</svg>";
 }
 // the side panel: torpedoes, and what the last hit could mean
 function kfSide(){

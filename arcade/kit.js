@@ -112,7 +112,7 @@ const MULT_SPEED=[1,1.25,1.5,1.75,2];                      // Relaxed … Wild
 const MULT_DENSITY=[.8,1,1.25,1.5];                        // Harp Command: few, some, many, swarm
 const MULT_PADDLE=[1.3,1,.8];                              // Chord Breakout: narrow, normal, wide
 function diffMult(kind=cabKind()){
-  let m=MULT_SPEED[+saved.speed||0]||1;
+  let m = kind==="sweeper" ? 1 : MULT_SPEED[+saved.speed||0]||1;            // Chord Sweeper has no speed
   if(kind==="command") m*=MULT_DENSITY[saved.hcDensity??1]??1;
   if(kind==="breakout") m*=MULT_PADDLE[saved.boPaddle??1]??1;
   return Math.round(m*100)/100;
@@ -133,7 +133,7 @@ const POINTS_FOR={
   chopper:[["RESCUE","20"],["FAST RESCUE","UP TO +30"],["WAYPOINT","15"],["WHOLE ROUTE","× 2"],["WRONG PLACE","−2 SECONDS"]],
 };
 function multRows(kind){
-  const rows=[["SPEED", SPEEDS.map((x,i)=>`${x[0].toUpperCase()} ×${MULT_SPEED[i]}`)]];
+  const rows = kind==="sweeper" ? [] : [["SPEED", SPEEDS.map((x,i)=>`${x[0].toUpperCase()} ×${MULT_SPEED[i]}`)]];
   if(kind==="command") rows.push(["NOTES AT ONCE", ["FEW","SOME","MANY","SWARM"].map((n,i)=>`${n} ×${MULT_DENSITY[i]}`)]);
   if(kind==="breakout") rows.push(["PADDLE", ["NARROW","NORMAL","WIDE"].map((n,i)=>`${n} ×${MULT_PADDLE[i]}`)]);
   return rows;
@@ -144,7 +144,7 @@ function pointsRender(el){
   const k=cabKind(), pts=pointsFor(k), long=pts.length>6;
   let i=0; const d=()=>`style="animation-delay:${(i++)*(long?.28:.45)}s"`;
   el.innerHTML=`<h3>POINTS</h3><ul class="ptable${long?" long":""}">${pts.map(([a,b,sp])=>`<li ${d()}><span>${a}</span>${sp?`<em class="pspell">${sp}</em>`:""}<i></i><b>${b}</b></li>`).join("")}<li class="ptnote" ${d()}>ALL TIMES THE LEVEL</li></ul>
-    <p class="ptsub" ${d()}>HARDER PLAY SCORES MORE</p><ul class="ptable mult">${multRows(k).map(([n,list])=>`<li ${d()}><span>${n}</span><em>${list.join(" · ")}</em></li>`).join("")}</ul>`;
+    ${multRows(k).length?`<p class="ptsub" ${d()}>HARDER PLAY SCORES MORE</p>`:""}<ul class="ptable mult">${multRows(k).map(([n,list])=>`<li ${d()}><span>${n}</span><em>${list.join(" · ")}</em></li>`).join("")}</ul>`;
 }
 // the options screen: the multiplier for what's chosen, as it's chosen
 function multLine(opts){
@@ -167,7 +167,7 @@ function arcadeSettings(){
   const rows=[];
   const choice=(label, list, get, set, note)=>rows.push({label, list, get, set, note});
   choice("SOUNDS", ["ON","OFF"], ()=>settings.sounds?0:1, i=>{ settings.sounds=!i; save(); });
-  choice("SPEED", SPEEDS.map(x=>x[0].toUpperCase()), ()=>+saved.speed||0, i=>{ saved.speed=i; save(); }, "FROM THE NEXT GAME");
+  if(k!=="sweeper") choice("SPEED", SPEEDS.map(x=>x[0].toUpperCase()), ()=>+saved.speed||0, i=>{ saved.speed=i; save(); }, "FROM THE NEXT GAME");
   if(k==="command") choice("NOTES AT ONCE", ["FEW","SOME","MANY","SWARM"], ()=>saved.hcDensity??1, i=>{ saved.hcDensity=i; save(); }, "FROM THE NEXT GAME");
   if(k==="breakout") choice("PADDLE", ["NARROW","NORMAL","WIDE"], ()=>saved.boPaddle??1, i=>{ saved.boPaddle=i; save(); }, "FROM THE NEXT GAME");
   choice("BEGINNER", ["OFF","SHOW WHAT TO PRESS"], ()=>saved.beginner?1:0, i=>{ saved.beginner=!!i; save(); helperSync(true); }, "NO HIGH SCORES WITH IT ON");

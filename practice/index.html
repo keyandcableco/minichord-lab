@@ -182,8 +182,13 @@
 .overlay button:disabled{opacity:.4;cursor:default}
 .overlay p.padhint{font-size:.45rem;color:#8A83A8;max-width:70ch;line-height:1.8}
 .overlay p.credit{margin-top:6px;font-size:.5rem;color:#8A83A8;letter-spacing:.04em}
-.overlay .cabscroll p.credit.rolled{margin-top:5em;font-size:.62rem!important;line-height:2.6!important;color:#9A93B5!important}   /* the roll's last words, set apart */
+.overlay .cabscroll p.credit.rolled{margin-top:6em;font-size:.72rem!important;line-height:2.6!important;color:#9A93B5!important;transition:transform .6s ease-out}   /* the roll's last words, set apart */
 .overlay .cabscroll p.credit.rolled a{color:#FFD35A}
+.overlay.crediting .cabscroll p.credit.rolled{transform:scale(1.25);text-shadow:0 0 12px rgba(255,211,90,.35)}   /* held in the middle */
+/* the rainbow, for words that deserve it */
+.rainbow,.overlay .cabscroll p.credit.rolled a.rainbow{animation:rainbow 1.4s steps(7) infinite}
+@keyframes rainbow{0%{color:#FF4B3E}14%{color:#FF8A3D}28%{color:#FFD35A}42%{color:#7FE08A}57%{color:#7FE9FF}71%{color:#6FA7FF}85%{color:#C98BFF}100%{color:#FF4B3E}}
+@media (prefers-reduced-motion:reduce){.rainbow,.overlay .cabscroll p.credit.rolled a.rainbow{animation:none;color:#FFD35A}}
 .overlay p.credit a{color:#FFD35A;text-decoration:none;border-bottom:2px solid rgba(255,211,90,.35)}
 .overlay p.credit a:hover,.overlay p.credit a:focus-visible{color:#FFF4C2;border-bottom-color:#FFD35A}
 .blink{animation:blink 1s steps(2) infinite}@keyframes blink{50%{opacity:0}}
@@ -262,11 +267,15 @@
 @keyframes cabglow{50%{color:#FFF4C2;text-shadow:0 0 22px rgba(255,211,90,.9),3px 3px 0 #000}}
 .cab-title .cabpress{font-size:.62rem;color:#F1E8D2}
 .cab-rules{position:absolute;inset:0;overflow:hidden;display:flex;justify-content:center}
-.cabscroll{position:absolute;top:100%;left:6%;right:6%;will-change:transform;backface-visibility:hidden;display:flex;flex-direction:column;align-items:center;gap:16px;text-align:center}
+.cabscroll{position:absolute;top:100%;left:6%;right:6%;will-change:transform;backface-visibility:hidden;display:flex;flex-direction:column;align-items:center;gap:26px;text-align:center}
 .cabscroll h3{font-size:1.4rem}
-.cabscroll .cabhead{color:#FFD35A!important;font-size:.8rem!important}
-.cabscroll p{font-size:.72rem!important;line-height:2!important;color:#F1E8D2!important;max-width:60ch}
-@keyframes cabroll{0%{transform:translate3d(0,0,0)}100%{transform:translate3d(0,calc(-100% - 480px),0)}}
+.cabscroll .cabhead{font-size:.8rem!important;animation:rainbow 1.4s steps(7) infinite}
+/* the rules, easier on the eyes: more air, and each paragraph its own colour */
+.cabscroll p{font-size:.74rem!important;line-height:2.4!important;color:#F1E8D2!important;max-width:56ch;letter-spacing:.03em}
+.cabscroll p:nth-of-type(4n+2){color:#7FE9FF!important}
+.cabscroll p:nth-of-type(4n+3){color:#FFD35A!important}
+.cabscroll p:nth-of-type(4n+4){color:#FF9FC8!important}
+@keyframes cabroll{0%{transform:translate3d(0,0,0)}100%{transform:translate3d(0,var(--end,calc(-100% - 480px)),0)}}
 .cab-options{display:flex;flex-direction:column;align-items:center;gap:10px;width:100%}
 .cab-options h3.small{font-size:1.1rem}
 /* beginner mode: the minichord and the harp, behind the play */
@@ -482,8 +491,11 @@ html.arcadepage .gamebar{align-items:flex-end}
 .kfcell.miss i{font:400 1.6rem "Press Start 2P",monospace;color:#7FE9FF;font-style:normal}
 .kfcol{position:absolute;transform:translate(-50%,-50%);font:400 .6rem "Press Start 2P",monospace;color:#9A93B5}
 .kfrow{position:absolute;transform:translate(-100%,-50%);font:400 .45rem "Press Start 2P",monospace;color:#9A93B5}
-.kfship{position:absolute;box-sizing:border-box;background:#3A3D48;border:3px solid #16181E;border-radius:40% 40% 10% 10%/60% 60% 20% 20%;opacity:.85}
-.kfship.afloat{background:#5A6070;opacity:.7;border-style:dashed}
+.kfship{position:absolute;z-index:2;filter:drop-shadow(2px 3px 0 rgba(0,0,0,.45))}
+.kfship svg{display:block;width:100%;height:100%;image-rendering:pixelated}
+.kfship.afloat{opacity:.55}
+.kfship .kffire{animation:blink .35s steps(2) infinite}
+@media (prefers-reduced-motion:reduce){.kfship .kffire{animation:none}}
 .kfname{position:absolute;transform:translate(-50%,0);white-space:nowrap;font:400 .5rem "Press Start 2P",monospace;color:#FFD35A;text-shadow:2px 2px 0 #000;z-index:3}
 .kfside{position:absolute;z-index:3;font:400 .5rem/1.9 "Press Start 2P",monospace;color:#F1E8D2}
 .kftorps span{color:#9A93B5}
@@ -514,6 +526,11 @@ html.arcadepage .gamebar{align-items:flex-end}
 .swside{position:absolute;z-index:3;font:400 .5rem/2 "Press Start 2P",monospace;color:#F1E8D2}
 .swside b{color:#FFD35A;font-weight:400}
 .swside .swhow{color:#9A93B5;margin-top:12px}
+.swside .swfind{color:#7FE9FF}
+.swkeys{list-style:none;margin:4px 0 12px;padding:0;display:grid;gap:8px}
+.swkeys li{display:flex;align-items:center;gap:8px}.swkeys li b{color:#FFD35A;font-weight:400}
+.swkeys li.found{opacity:.4;text-decoration:line-through}
+.swsig{width:auto;height:40px;flex:none}.swsig line{stroke:#9A93B5;stroke-width:.7}.swsig .glyph{fill:#F1E8D2;font-family:"Minichord Lab Music";font-size:24px}
 /* the demo's pixel minichord */
 .overlay button.howto{border-color:#FFD35A;color:#FFD35A}
 .demo{position:absolute;inset:0;z-index:5;display:flex;flex-direction:column;justify-content:flex-start;padding:10px 14px;pointer-events:none}

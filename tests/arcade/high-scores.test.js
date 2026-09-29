@@ -18,7 +18,8 @@ if(process.argv[2]==="beginner"){
     for(let i=0;i<300 && a.phase==="play";i++){ key("Space"); await sleep(5); }
     await sleep(200);
     check("game over shows GAME OVER first", !!d.querySelector(".hssplash") && !d.querySelector(".hsentry"));
-    chord("C"); key("KeyZ"); await sleep(3700);
+    chord("C"); key("KeyZ");
+    for(let i=0;i<120 && !d.querySelector(".hsentry");i++) await sleep(50);      // however long this machine takes
     const ent=d.querySelector(".hsentry"), letters=()=>[...ent.querySelectorAll(".hsletters span")].map(x=>x.textContent).join("");
     check("then the initials entry, untouched by input during the splash", ent && letters()==="AAA", ent?letters():"no entry");
     key("KeyQ"); await sleep(10);

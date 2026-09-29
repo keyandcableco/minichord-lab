@@ -115,7 +115,7 @@ function cabinet(ov){
   rules.forEach(r=>inner.appendChild(r));
   // at the end of the roll, set apart and a line to each part, as film credits are
   if(credit){ const c=document.createElement("p"); c.className="credit rolled";
-    c.innerHTML=`MADE BY<br><a href="https://keyandcable.com" target="_blank" rel="noopener">THE KEY &amp; CABLE CO.</a><br>FOR<br><a href="https://minichord.com" target="_blank" rel="noopener">THE MINICHORD</a>`;
+    c.innerHTML=`MADE BY<br><a href="https://keyandcable.com" target="_blank" rel="noopener">THE KEY &amp; CABLE CO.</a><br>FOR<br><a class="rainbow" href="https://minichord.com" target="_blank" rel="noopener">THE MINICHORD</a>`;
     inner.appendChild(c); }
   roll.appendChild(inner);
   const points=document.createElement("div"); points.className="cab-points";
@@ -130,7 +130,9 @@ function cabinet(ov){
   ov.append(title, roll, points, board, opts);
   hsFetch(hsSlug());                                        // fetched now, so it's ready when its turn comes
   ov.addEventListener("click", e=>{ if(ov.dataset.stage!=="options"){ e.stopPropagation(); cabWake(); } }, true);
-  inner.addEventListener("animationend", e=>{ if(e.target===inner && blast && blast.overlay===ov && ov.dataset.stage==="rules" && blast.phase==="menu") cabStage(ov,"points"); });
+  inner.addEventListener("animationend", e=>{ if(e.target!==inner || !blast || blast.overlay!==ov || ov.dataset.stage!=="rules" || blast.phase!=="menu") return;
+    ov.classList.add("crediting");                            // the roll has stopped with the credit in the middle: hold it there
+    blast.cabT=gameLater(()=>{ if(blast && blast.overlay===ov && ov.dataset.stage==="rules" && blast.phase==="menu") cabStage(ov,"points"); }, 3800); });
   cabStage(ov, "title");
 }
 function cabStage(ov, stage){
@@ -138,7 +140,11 @@ function cabStage(ov, stage){
   clearTimeout(blast.cabT); clearTimeout(blast.attract);
   ov.dataset.stage=stage;
   if(stage==="title") blast.cabT=gameLater(()=>{ if(blast && blast.overlay===ov && ov.dataset.stage==="title") cabStage(ov,"rules"); }, 3600);
+  ov.classList.remove("crediting");
   if(stage==="rules"){ const inner=ov.querySelector(".cabscroll"); if(inner){ inner.style.animation="none"; void inner.offsetWidth;
+    // where the roll stops: with the credit's middle at the middle of the screen (it starts just below the screen)
+    const roll=ov.querySelector(".cab-rules"), cr=inner.querySelector(".credit.rolled");
+    if(cr && roll.clientHeight) inner.style.setProperty("--end", `${-(roll.clientHeight/2 + cr.offsetTop + cr.offsetHeight/2)}px`);
     inner.style.animation=`cabroll ${Math.max(12, inner.children.length*2.4)}s linear forwards`; } }
   if(stage==="options") blast.cabT=gameLater(()=>{ if(blast && blast.overlay===ov && ov.dataset.stage==="options" && blast.phase==="menu") cabStage(ov,"title"); }, 45000);
   if(stage==="points"){                                        // what things are worth, then the board
