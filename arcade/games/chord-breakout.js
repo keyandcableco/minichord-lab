@@ -328,6 +328,7 @@ mc.addEventListener("knob", e=>{
     return;
   }
   if(blast.knobBase) blast.knobBase={};
+  if(blast.kind==="chopper"){ chopperKnob(value); return; }                   // any knob tunes the radio
   if(knob!==steerKnob()) return;
   const step=Math.round(value*127), h=knobHold[knob] || (knobHold[knob]={last:null, dir:0});
   const d = h.last==null ? 1 : step-h.last;                                   // the first reading always counts

@@ -18,13 +18,20 @@ const CH_COLS="FCGDAEB", CH_ROWS=[["","MAJ"],["m","MIN"],["7","7"]];
 const CH_DEG=[[0,""],[2,"m"],[4,"m"],[5,""],[7,""],[9,"m"]];            // I ii iii IV V vi in a major key
 const CH_NUM=["I","ii","iii","IV","V","vi"];
 const CH_KEYS_NEAR=["C","G","F","D"], CH_KEYS_ALL=["C","G","D","A","E","F","B♭","E♭","A♭"];
+// Every call now begins and ends with music. It comes in through static, over a station tone: tune
+// the radio to it (a knob turns the dial, the arrow keys nudge it, or pluck the station's note on the
+// harp) until the beating stops, and only then does the call come through and its clock start. And at
+// the right place the survivors won't come up the winch until they're answered with their signal:
+// the chord's notes plucked on the harp in order, root upward, and at the top level from the 3rd, the
+// first inversion.
 const CH_LEVELS=[
-  {n:"Flight school", keys:["C"], hint:true},
-  {n:"Nearby keys", keys:CH_KEYS_NEAR, hint:true},
-  {n:"Every key", keys:CH_KEYS_ALL},
-  {n:"Sevenths and V of V", keys:CH_KEYS_NEAR, sevenths:true},
-  {n:"Borrowed chords and routes", keys:CH_KEYS_NEAR, sevenths:true, borrowed:true, routes:true},
+  {n:"Flight school", keys:["C"], hint:true, arp:"root"},
+  {n:"Nearby keys", keys:CH_KEYS_NEAR, hint:true, arp:"root"},
+  {n:"Every key", keys:CH_KEYS_ALL, arp:"root"},
+  {n:"Sevenths and V of V", keys:CH_KEYS_NEAR, sevenths:true, arp:"root"},
+  {n:"Borrowed chords and routes", keys:CH_KEYS_NEAR, sevenths:true, borrowed:true, routes:true, arp:"inv1"},
 ];
+const CH_TUNE_SECS=10, CH_TUNED=12;                 // seconds to tune in before the signal comes through weak; cents close enough
 // a scale degree of a key, spelled: the root name
 const chRoot=(key, semis)=>{ const letters={0:0,2:1,4:2,5:3,7:4,9:5,10:6,11:6,3:2,8:5}; return above(key, letters[semis]??0, semis) || key; };
 // one call: what the radio says, and the chord (or chords, for a route) that answers it
@@ -64,13 +71,13 @@ function startChopper(){
 }
 function chDevice(){
   if(!blast || blast.kind!=="chopper" || !canWrite()) return;
-  arcadeSetup(()=>{ if(hasSetting(30)) ensure(30,0); });
+  arcadeSetup(()=>{ asHarp(); if(hasSetting(30)) ensure(30,0); });          // the harp chromatic: the station's note, the signal
 }
 function buildChopperField(box){
   const field=document.createElement("div"); field.className="field arcade chopper"; field.setAttribute("aria-label","The landing zones");
   const hud=document.createElement("div"); hud.className="hud"; field.appendChild(hud); fullButton(field);
   const hd=document.createElement("div"); hd.className="heard"; field.appendChild(hd);
-  const radio=document.createElement("div"); radio.className="chradio"; radio.innerHTML=`<span class="chant">📻</span><span class="chtext">RADIO QUIET</span><span class="chfuel"><i></i></span>`; field.appendChild(radio);
+  const radio=document.createElement("div"); radio.className="chradio"; radio.innerHTML=`<span class="chant">📻</span><span class="chtext">RADIO QUIET</span><span class="chmeter" aria-label="Signal"><i></i><i></i><i></i><i></i><i></i></span><span class="chfuel"><i></i></span>`; field.appendChild(radio);
   const map=document.createElement("div"); map.className="chmap"; field.appendChild(map);
   const heli=document.createElement("div"); heli.className="chheli"; heli.innerHTML=CH_HELI; field.appendChild(heli);
   box.append(field);
@@ -184,11 +191,46 @@ function chNewCall(){
   if(call.legs.length===1) call.text=call.text.replace(/^[A-Z ]+ AT /, em.say+" ");   // "FIRE AT vi IN G"
   call.what=em.k.toUpperCase();
   const last=call.legs[call.legs.length-1]; blast.emerg=chEmergencies(em.k, chPad(last.root,last.q));
-  blast.call=call; blast.leg=0; blast.callAt=performance.now(); blast.deadline=blast.callAt+blast.timeFor*(blast.call.legs.length>1?1.8:1);
-  const t=blast.radioEl.querySelector(".chtext"), txt=blast.call.text; t.textContent="";
+  blast.pending=call; chTune();
+}
+// ---------- tuning in: the station's tone, the radio's, and the beating between them ----------
+function chTune(){
+  const station=48+Math.floor(Math.random()*12), target=.15+Math.random()*.7;   // its note; where on the dial it sits
+  blast.tune={pc:station%12, hz:440*Math.pow(2,(station+12-69)/12), target, dial:target+(Math.random()<.5?-1:1)*(.18+Math.random()*.25), at:performance.now(), heldAt:0};
+  blast.radioEl.classList.add("tuning");
+  blast.radioEl.querySelector(".chtext").textContent="▒▒ STATIC ▒▒  TUNE IN: A KNOB, ←→, OR PLUCK THE STATION'S NOTE";
+  const ctx=piano.ctx;
+  if(ctx && settings.sounds){ try{
+    const g=ctx.createGain(); g.gain.value=.06; g.connect(ctx.destination);
+    const a=ctx.createOscillator(), b=ctx.createOscillator(); a.type="triangle"; b.type="triangle"; a.frequency.value=blast.tune.hz; a.connect(g); b.connect(g); a.start(); b.start();
+    const n=ctx.createBufferSource(), buf=ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate), d=buf.getChannelData(0); for(let i=0;i<d.length;i++) d[i]=Math.random()*2-1;
+    n.buffer=buf; n.loop=true; const ng=ctx.createGain(); ng.gain.value=.03; n.connect(ng); ng.connect(ctx.destination); n.start();
+    blast.tune.audio={a,b,g,n,ng}; }catch(e){} }
+  chDial(blast.tune.dial);
+}
+const chCents=()=> (blast.tune.dial-blast.tune.target)*600;                     // the dial's whole width: a major 6th either side
+function chDial(v){
+  const t=blast.tune; if(!t) return; t.dial=Math.max(0,Math.min(1,v));
+  const c=chCents(), off=Math.abs(c), bars=off>200?0:off>100?1:off>50?2:off>25?3:off>CH_TUNED?4:5;
+  if(t.audio){ t.audio.b.frequency.value=t.hz*Math.pow(2,c/1200); t.audio.ng.gain.value=.03*Math.min(1,off/150); }
+  blast.radioEl.querySelectorAll(".chmeter i").forEach((x,i)=>x.classList.toggle("on", i<bars));
+  if(off<=CH_TUNED){ if(!t.heldAt) t.heldAt=performance.now(); } else t.heldAt=0;
+}
+function chTuned(how){
+  const t=blast.tune; if(!t) return; blast.tune=null;
+  if(t.audio){ try{ t.audio.a.stop(); t.audio.b.stop(); t.audio.n.stop(); t.audio.g.disconnect(); t.audio.ng.disconnect(); }catch(e){} }
+  blast.radioEl.classList.remove("tuning"); blast.radioEl.querySelectorAll(".chmeter i").forEach(x=>x.classList.add("on"));
+  const call=blast.pending; blast.pending=null; if(!call) return;
+  if(how!=="weak"){ const pts=mulPts((how==="ear"?25:15)*(blast.level+1)); blast.score+=pts; const [bx,by]=chBase(); popup(bx,by-60,`TUNED IN +${pts}`,"#7FE9FF"); sfx("key"); chBar(); }
+  chCallStart(call, how==="weak");
+}
+function chCallStart(call, weak){
+  blast.call=call; blast.leg=0; blast.callAt=performance.now(); blast.deadline=blast.callAt+blast.timeFor*(blast.call.legs.length>1?1.8:1)*(weak?.7:1);
+  const t=blast.radioEl.querySelector(".chtext"), txt=(weak?"(WEAK) ":"")+blast.call.text; t.textContent="";
   let i=0; const type=()=>{ if(!blast || blast.call===null || !t.isConnected) return; t.textContent=txt.slice(0,++i); if(i<txt.length) setTimeout(type, 28); };
   type(); sfx("key");
   blast.found=null; chDrawMap(); chHelp();
+  const L=CH_LEVELS[blast.level];
   if(L.hint){ const call=blast.call; gameLater(()=>{ if(blast && blast.call===call && blast.phase==="play"){   // training: the answer, half way through
     const l=call.legs[blast.leg]; const h=document.createElement("em"); h.className="chhint"; h.textContent=` … THAT'S ${l.root}${l.q}`; t.appendChild(h); } }, (blast.deadline-blast.callAt)*.5); }
 }
@@ -200,6 +242,11 @@ function chTick(now){
   if(!blast || blast.kind!=="chopper") return;
   const dt=Math.min(.05,(now-blast.last)/1000); blast.last=now;
   if(blast.fx) fxDraw(now, dt);
+  if(blast.phase==="play" && blast.tune){
+    if(blast.tune.heldAt && now-blast.tune.heldAt>500) chTuned("dial");              // held in tune: through
+    else if(now-blast.tune.at>CH_TUNE_SECS*1000) chTuned("weak");                   // never found: it comes through weak, less fuel
+  }
+  if(blast.phase==="play" && blast.signal && now>=blast.signal.until) chSignalLost();
   if(blast.phase==="play" && blast.call){
     const left=Math.max(0,(blast.deadline-now)/(blast.deadline-blast.callAt));
     const bar=blast.fuelEl||(blast.fuelEl=blast.radioEl.querySelector(".chfuel i")), q=Math.round(left*200)/200;
@@ -208,11 +255,51 @@ function chTick(now){
   }
   blast.raf=requestAnimationFrame(chTick);
 }
+function chQuiet(){ if(blast && blast.tune && blast.tune.audio){ try{ const a=blast.tune.audio; a.a.stop(); a.b.stop(); a.n.stop(); a.g.disconnect(); a.ng.disconnect(); }catch(e){} } if(blast){ blast.tune=null; blast.pending=null; } }
 function chMissed(){
   sfx("miss"); buzz(blast.field,true); blast.lives--; chBar();
   banner("TOO LATE", blast.lives>0 ? "THE FLARE BURNED OUT" : "");
   blast.call=null; blast.found=null; blast.emerg=[]; chDrawMap();
-  if(blast.lives<=0){ blast.phase="over"; blast.over=true; const best=Math.max(saved.best.chopper||0, blast.score); saved.best.chopper=best; save(); chMenu(true); return; }
+  if(blast.lives<=0){ chQuiet(); blast.phase="over"; blast.over=true; const best=Math.max(saved.best.chopper||0, blast.score); saved.best.chopper=best; save(); chMenu(true); return; }
+  gameLater(()=>{ if(blast && blast.kind==="chopper" && blast.phase==="play") chNewCall(); }, 1400);
+}
+function chopperKnob(v){ if(blast && blast.kind==="chopper" && blast.phase==="play" && blast.tune) chDial(v); }
+document.addEventListener("keydown", e=>{
+  if(!blast || blast.kind!=="chopper" || blast.phase!=="play" || !blast.tune || /INPUT|SELECT|TEXTAREA/.test(document.activeElement?.tagName||"")) return;
+  const d={ArrowLeft:-1,ArrowRight:1}[e.code]; if(!d) return;
+  e.preventDefault(); chDial(blast.tune.dial+d*(e.shiftKey?.04:.01));
+});
+// a harp note: the station's note tunes straight in; the chord's next note answers the survivors
+function chopperNote(pc){
+  if(!blast || blast.kind!=="chopper" || blast.phase!=="play") return;
+  pc=mod(pc,12);
+  if(blast.tune){ if(pc===blast.tune.pc){ heard(SHARP_NAMES[pc],true); chTuned("ear"); } else { heard(SHARP_NAMES[pc],false,"NOT THE STATION'S NOTE"); sfx("miss"); chDial(blast.tune.dial+(Math.random()<.5?-.05:.05)); } return; }
+  const sg=blast.signal; if(!sg) return;
+  if(pc===pcOfName(sg.tones[sg.i])){ sg.i++; heard(sg.tones[sg.i-1],true); sfx("key"); chSignalDraw(); if(sg.i>=sg.tones.length) chSignalled(); }
+  else { heard(SHARP_NAMES[pc],false,`NOT THEIR SIGNAL: ${sg.order==="inv1"?"FROM THE 3RD":"ROOT UP"}`); sfx("miss"); buzz(blast.field,true); sg.until-=800; }
+}
+// ---------- the signal: the chord's notes, in order, before the winch comes down ----------
+function chSignal(chord, pad, then){
+  const L=CH_LEVELS[blast.level], t=spellChord(chord.root, chord.q)||[chord.root];
+  const tones = L.arp==="inv1" ? [...t.slice(1), t[0]] : t;
+  blast.signal={tones, i:0, order:L.arp, pad, then, until:performance.now()+4500+1400*tones.length};
+  const [x,y]=chXY(pad.col,pad.row), el=document.createElement("div"); el.className="chsignal"; blast.field.appendChild(el); blast.signal.el=el;
+  el.style.left=`${x}px`; el.style.top=`${y-58}px`;
+  banner("SIGNAL THEM", L.arp==="inv1" ? `PLUCK ${chord.root}${chord.q} FROM THE 3RD` : `PLUCK ${chord.root}${chord.q} ROOT UP`);
+  chSignalDraw(); helpString(pcOfName(tones[0]));
+}
+function chSignalDraw(){
+  const sg=blast.signal; if(!sg) return;
+  sg.el.innerHTML=sg.tones.map((n,i)=>`<b class="${i<sg.i?"got":i===sg.i?"next":""}">${i<sg.i?n:"?"}</b>`).join("");
+  if(sg.i<sg.tones.length) helpString(pcOfName(sg.tones[sg.i]));
+}
+function chSignalled(){ const sg=blast.signal; blast.signal=null; sg.el.remove(); helpChord(null);
+  const pts=mulPts(10*sg.tones.length*(blast.level+1)); blast.score+=pts; sg.then(pts); }
+function chSignalLost(){ const sg=blast.signal; blast.signal=null; sg.el.remove(); helpChord(null);
+  blast.found=null; blast.pos={base:true}; chPlace(false); blast.busy=false;
+  sfx("miss"); buzz(blast.field,true); blast.lives--; chBar(); banner("THEY COULDN'T HOLD ON", blast.lives>0?"ANSWER THEIR SIGNAL IN TIME":"");
+  blast.emerg=[]; chDrawMap();
+  if(blast.lives<=0){ chQuiet(); blast.phase="over"; blast.over=true; const best=Math.max(saved.best.chopper||0, blast.score); saved.best.chopper=best; save(); chMenu(true); return; }
   gameLater(()=>{ if(blast && blast.kind==="chopper" && blast.phase==="play") chNewCall(); }, 1400);
 }
 // a chord from the buttons: fly there; if it's the called one, a rescue
@@ -222,6 +309,8 @@ function chopperChord(voices){
   if(blast.phase!=="play" || blast.busy) return;
   const pitches=voices.map(v=>v.pitch), id=chordId(pitches); if(!id) return;
   const root=spell(id.root, devFifths()), name=chordName(pitches, devFifths()), pad=chPad(root, id.quality==="6"?"":id.quality==="m6"?"m":id.quality);
+  if(blast.tune){ heard(name,false,"TUNE THE RADIO IN FIRST"); return; }
+  if(blast.signal){ heard(name,false,"ANSWER THEIR SIGNAL ON THE HARP"); return; }
   const l=blast.call && blast.call.legs[blast.leg];
   if(!l){ heard(name,false,"NO CALL YET"); return; }
   if(pad.col<0) return;
@@ -245,11 +334,11 @@ function chopperChord(voices){
   const pts=mulPts(Math.round((20+30*left)*(blast.level+1))*(blast.call.legs.length>1?2:1));
   const what=blast.call.what; blast.call=null;                    // the clock stops: they're found
   gameLater(()=>{ if(!blast || blast.kind!=="chopper") return;
-    blast.found={...pad}; chDrawMap(); sfx("bonus");               // there they are
-    gameLater(()=>{ if(!blast || blast.kind!=="chopper") return;
+    blast.found={...pad}; chDrawMap(); sfx("bonus");               // there they are: answer their signal
+    chSignal(l, pad, sigPts=>gameLater(()=>{ if(!blast || blast.kind!=="chopper") return;
       blast.found={...pad, saved:true}; blast.emerg=[]; chDrawMap();   // aboard, and the other alarms were false
       blast.score+=pts; blast.rescues++; stats.streak=blast.rescues; scoreboard();
-      popup(x,y-34,`${what} +${pts}`,"#FFD35A"); chBar(); helpChord(null);
+      popup(x,y-34,`${what} +${pts+sigPts}`,"#FFD35A"); chBar(); helpChord(null);
       blast.pos={base:true}; chPlace(false);                      // home
       gameLater(()=>{ if(!blast || blast.kind!=="chopper") return; blast.found=null; chDrawMap(); blast.busy=false;
         const [bx,by]=chBase(); explode(bx,by-10,16,["#7FE08A","#FFD35A","#F1E8D2"]);
@@ -257,7 +346,7 @@ function chopperChord(voices){
         else if(blast.rescues%6===0){ blast.timeFor*=.93; banner("FASTER!"); }
         gameLater(()=>{ if(blast && blast.kind==="chopper" && blast.phase==="play") chNewCall(); }, 900);
       }, 650);
-    }, 700);
+    }, 400));
   }, 600);
 }
 
@@ -278,8 +367,10 @@ function chDemo(){
       blast.pos={base:true}; chPlace(false); await step(700); blast.found=null; chDrawMap(); };
     try{
       say("CHOPPER RESCUE","THE RADIO CALLS COORDINATES IN THEORY. DECODE THEM INTO A CHORD."); await step(3800);
+      say("TUNE IN","EACH CALL COMES THROUGH STATIC. TURN A KNOB TILL THE BEATING STOPS, OR PLUCK THE STATION'S NOTE."); radio("▒▒ STATIC ▒▒"); await step(3600);
       radio("FIRE AT V IN C"); trouble("fire",2,0); say("DECODE","FIRES IN THREE PLACES, BUT THE RADIO SAYS WHICH: V IN C IS G."); await step(3800);
-      await fly(2,0,[55,59,62,67]); await step(1600);
+      await fly(2,0,[55,59,62,67]);
+      say("SIGNAL THEM","THEY'LL ONLY COME UP WHEN YOU PLUCK THEIR CHORD ROOT UP: G, B, D."); await step(3400);
       radio("YETI ATTACK AT vi IN G"); trouble("yeti",5,1); say("","vi IN G IS E MINOR."); await step(2800); await fly(5,1,[52,55,59,64]); await step(1600);
       radio("BEAR SIGHTED AT V OF V IN C"); trouble("bear",3,2); say("LATER","SEVENTHS, SECONDARY DOMINANTS, BORROWED CHORDS AND WHOLE ROUTES. V OF V IN C IS D7."); await step(3600);
       await fly(3,2,[50,54,57,60]); await step(1600);
@@ -290,7 +381,7 @@ function chDemo(){
 }
 function endChDemo(token){
   if(!blast || blast.demo!==token) return;
-  stopDemo(); blast.phase="menu"; blast.call=null; blast.found=null; blast.emerg=[]; blast.pos={base:true}; chPlace(true); blast.radioEl.querySelector(".chtext").textContent="RADIO QUIET"; chDrawMap();
+  stopDemo(); chQuiet(); blast.phase="menu"; blast.call=null; blast.found=null; blast.emerg=[]; blast.pos={base:true}; chPlace(true); blast.radioEl.querySelector(".chtext").textContent="RADIO QUIET"; chDrawMap();
   if(blast.overlay) blast.overlay.hidden=false;
   cabRestart();
 }

@@ -18,7 +18,7 @@
 const BONUS_EVERY=2;
 const bonusOn=()=> saved.bonus!==false;
 // the games whose harp is chromatic while they play, so any note can be plucked
-const BONUS_HARP_OK=new Set(["snake","stack","sweeper","asteroids","fifths","breakout","fleet"]);
+const BONUS_HARP_OK=new Set(["snake","stack","sweeper","asteroids","fifths","breakout","fleet","chopper"]);
 // every timestamp a game keeps, moved on by the bonus's length when the game resumes
 const BONUS_TIME_KEYS=new Set(["t0","born","next","nextMove","nextFall","deadAt","serveAt","jamUntil","frozenUntil","edgeAt","shieldAt","hurtAt","crackedAt","callAt","deadline","fieldAt","fallAt","stepAt"]);
 function bonusShift(o, d, depth=0){

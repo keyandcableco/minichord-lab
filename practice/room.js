@@ -454,6 +454,7 @@ function answerNote(pc, pickedName){
   if(q && q.kind==="fleet") return fleetNote(pc);
   if(q && q.kind==="sweeper") return sweeperNote(pc);
   if(q && q.kind==="breakout") return breakoutNote(pc);
+  if(q && q.kind==="chopper") return chopperNote(pc);
   if(!q || solved) return;
   if(q.answer.type==="note" && pc===q.answer.pc && pickedName && q.answer.name && pickedName!==q.answer.name)
     return correct(`Right note: ${q.answer.name}. Here it's spelled ${q.answer.name}, not ${pickedName}.`);

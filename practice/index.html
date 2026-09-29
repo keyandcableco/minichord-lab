@@ -503,6 +503,15 @@ html.arcadepage .gamebar{align-items:flex-end}
 .chradio .chant{font-size:1rem}
 .chradio .chtext{flex:1;min-height:1em;letter-spacing:.03em}
 .chfuel{width:120px;height:12px;border:2px solid #3A2D4E;background:#0E0A16}
+/* tuning in: the static, and a signal meter of five bars */
+.chmeter{display:flex;align-items:flex-end;gap:2px;height:16px}
+.chmeter i{display:block;width:4px;background:#3A2D4E}.chmeter i:nth-child(1){height:4px}.chmeter i:nth-child(2){height:7px}.chmeter i:nth-child(3){height:10px}.chmeter i:nth-child(4){height:13px}.chmeter i:nth-child(5){height:16px}
+.chmeter i.on{background:#7FE08A}
+.chradio.tuning .chtext{color:#9A93B5;animation:blink .35s steps(2) infinite}
+/* the survivors' signal: the chord's notes to pluck, in order */
+.chsignal{position:absolute;z-index:6;display:flex;gap:6px;transform:translate(-50%,-50%);pointer-events:none}
+.chsignal b{min-width:1.6em;padding:6px 6px;text-align:center;font:400 .7rem "Minichord Lab Accidentals","Press Start 2P",monospace;font-weight:400;background:#16132A;color:#9A93B5;border:3px solid #000}
+.chsignal b.next{background:#FFD35A;color:#16132A;animation:blink .5s steps(2) infinite}.chsignal b.got{background:#7FE08A;color:#16132A}
 .chfuel i{display:block;height:100%;background:#FFD35A;transform-origin:left;transform:scaleX(0)}
 .chfuel i.low{background:#FF4B3E;animation:blink .4s steps(2) infinite}
 .chmap{position:absolute;inset:0;z-index:2;pointer-events:none}
@@ -585,6 +594,22 @@ html.arcadepage .gamebar{align-items:flex-end}
 .bonusround.intro .boinstr{font-size:.75rem;color:#F1E8D2;line-height:2.2}
 .bonusround.intro .botime,.bonusround.intro .boscore{visibility:hidden}
 .bocount{font:400 3rem "Press Start 2P",monospace;color:#FFD35A;text-shadow:4px 4px 0 #000;margin:0}
+/* ---- the fullscreen cabinet ---- */
+.fscab{position:fixed;inset:0;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1.6vh;padding:2vh 2vw;box-sizing:border-box;overflow:hidden;
+  background:repeating-linear-gradient(135deg,rgba(255,90,160,.08) 0 12px,transparent 12px 44px),repeating-linear-gradient(45deg,rgba(127,233,255,.05) 0 8px,transparent 8px 52px),radial-gradient(ellipse at center,#1B0F26 0%,#07060C 72%)}
+.fsmarquee{position:relative;box-sizing:border-box;width:min(94vw,calc((100dvh - 24vh)*4/3 + 8vh));padding:1.6vh 2vw;text-align:center;background:linear-gradient(180deg,#2A1236,#12081A);border:4px solid #000;box-shadow:0 0 0 3px #3A2D4E,0 0 34px rgba(255,90,160,.35)}
+.fsmarquee span{font:400 clamp(.9rem,4.4vh,2.6rem)/1.2 "Press Start 2P",monospace;color:#FFE9A8;letter-spacing:.04em;text-shadow:0 0 6px #FFD35A,0 0 16px #FF8A3D,0 0 32px #FF5AA0,4px 4px 0 #000}
+.fsmarquee::before,.fsmarquee::after{content:"";position:absolute;inset:-3px;pointer-events:none;animation:chase .5s steps(2) infinite}
+.fsmarquee::before{background:radial-gradient(circle,#FFD35A 0 3px,transparent 4px) 0 0/22px 22px space no-repeat,radial-gradient(circle,#FFD35A 0 3px,transparent 4px) 0 100%/22px 22px space no-repeat}
+.fsmarquee::after{background:radial-gradient(circle,#FFD35A 0 3px,transparent 4px) 0 0/22px 22px no-repeat space,radial-gradient(circle,#FFD35A 0 3px,transparent 4px) 100% 0/22px 22px no-repeat space}
+.fsbezel{position:relative;padding:3vh 3vh 5.2vh;background:linear-gradient(160deg,#2A2033,#0D0A12);border:4px solid #000;border-radius:28px;
+  box-shadow:inset 0 0 0 3px #3A2D4E,inset 0 0 44px rgba(0,0,0,.85),0 24px 70px rgba(0,0,0,.85)}
+.fsbezel::before{content:"";position:absolute;inset:10px;border-radius:22px;pointer-events:none;
+  background:radial-gradient(1px 1px at 8% 12%,#9D98C9 50%,transparent 51%),radial-gradient(1px 1px at 92% 20%,#fff 50%,transparent 51%),radial-gradient(1px 1px at 12% 88%,#fff 50%,transparent 51%),radial-gradient(1px 1px at 88% 84%,#9D98C9 50%,transparent 51%)}
+.fsscreen{position:relative;height:calc(100dvh - 26vh);aspect-ratio:4/3;max-width:86vw;border-radius:34px/26px;overflow:hidden;box-shadow:0 0 0 6px #000,0 0 0 10px #2A2233,0 0 40px rgba(127,233,255,.12)}
+.fsscreen>.field{width:100%!important;height:100%!important;max-width:none!important;min-height:0!important;margin:0!important;border-radius:34px/26px}
+.fsplate{position:absolute;left:3.4vh;right:3.4vh;bottom:1.5vh;display:flex;justify-content:space-between;align-items:center;font:400 clamp(.35rem,1.3vh,.6rem) "Press Start 2P",monospace;color:#8A83A8;letter-spacing:.06em}
+@media (max-aspect-ratio:1/1){ .fsscreen{height:auto;width:88vw} }   /* a phone held upright: fit the width */
 /* the demo's pixel minichord */
 .overlay button.howto{border-color:#FFD35A;color:#FFD35A}
 .demo{position:absolute;inset:0;z-index:5;display:flex;flex-direction:column;justify-content:flex-start;padding:10px 14px;pointer-events:none}

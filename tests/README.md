@@ -21,12 +21,13 @@ key presses, checking what should happen.
 | `chord-stack` | pieces slide by keys, harp and knob; a chord clears its row; the stack rises |
 | `chord-breakout` | the knob steers (only the chosen one, without wobble or the mouse); the ball bounces true; chords break bricks |
 | `fifths-defender` | the knob's centred, endless dial; the aimed key's chord fires, another doesn't |
-| `chopper-rescue` | the radio decodes right; decoys; no repeated calls; nothing on the map gives it away |
+| `chopper-rescue` | tuning in by harp or keys; the radio decodes right; decoys; the survivors' signal in order; no repeated calls |
 | `chord-sweeper` | every square's note fits its distance from the nearest mine; the harp steers; a key's chord defuses its mine, a wrong one sets it off |
 | `key-fleet` | fleets never touch; hits cripple; keys are called by tonic, cadence and the key change combo |
 | `high-scores` | GAME OVER before the initials; input ignored at first; the board kept; beginner mode stays off it |
 | `lobby` | the arcade lobby's cabinets, best scores and ticker |
 | `bonus` | every two levels a bonus round starts; each of the five mini-games can be won; the game carries on after |
+| `fullscreen` | full screen builds the cabinet round the game, in CRT, and leaving puts it back |
 | `timers` | a game's timers belong to its run, so none from an old game reaches the next |
 | `practice-room` | the Practice Room around the arcade: every one of its games opens and deals a round |
 

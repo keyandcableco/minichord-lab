@@ -43,16 +43,42 @@ function arcadeKeys(ov){
 // the new size, and again on the way back.
 function fullButton(field){
   const b=document.createElement("button"); b.className="fullbtn"; b.type="button";
-  const label=()=>{ const on=document.fullscreenElement===field || document.webkitFullscreenElement===field; b.textContent = on ? "✕" : "⛶"; b.title = on ? "Leave full screen (F)" : "Full screen (F)"; b.setAttribute("aria-label", b.title); };
+  const label=()=>{ const on=!!document.querySelector(".fscab"); b.textContent = on ? "✕" : "⛶"; b.title = on ? "Leave full screen (F)" : "Full screen (F)"; b.setAttribute("aria-label", b.title); };
   b.onclick=()=>toggleFull(field); label(); field.appendChild(b);
   field._fullLabel=label;
 }
+// Full screen is a cabinet: the game's screen, 4:3 as an arcade monitor is, curved and in CRT, set
+// in a bezel with its nameplate, under a lit marquee with the game's name, side art either side. The
+// game's field moves into it and back out again, so nothing about the game changes. Where the browser
+// can't make a page full screen (an iPhone), the same cabinet fills the window instead.
+let fsHome=null;
 function toggleFull(field){
   field = field || (blast && blast.field); if(!field) return;
-  const on=document.fullscreenElement || document.webkitFullscreenElement;
-  if(on) (document.exitFullscreen || document.webkitExitFullscreen).call(document);
-  else (field.requestFullscreen || field.webkitRequestFullscreen || (()=>{})).call(field);
+  if(document.querySelector(".fscab")) return fsExit();
+  const cab=document.createElement("div"); cab.className="fscab";
+  cab.innerHTML=`<div class="fsmarquee"><span>${TITLE_FOR[cabKind()]||"MINICHORD ARCADE"}</span></div>
+    <div class="fsbezel"><div class="fsscreen"></div><div class="fsplate"><span>THE KEY &amp; CABLE CO.</span><span class="rainbow">MINICHORD ARCADE</span><span>INSERT MINICHORD</span></div></div>`;
+  fsHome={parent:field.parentNode, next:field.nextSibling, field};
+  cab.querySelector(".fsscreen").appendChild(field); document.body.appendChild(cab);
+  field.classList.add("crt","fscrt");
+  const req=cab.requestFullscreen || cab.webkitRequestFullscreen, pseudo=()=>cab.classList.add("pseudo");
+  try{ const p=req ? req.call(cab) : null; if(!req) pseudo(); else if(p && p.catch) p.catch(pseudo); }catch(e){ pseudo(); }
+  field._fullLabel && field._fullLabel(); setTimeout(arcadeRelayout,60);
 }
+function fsExit(){
+  if(document.fullscreenElement || document.webkitFullscreenElement) (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+  else fsRestore();
+}
+function fsRestore(){
+  const cab=document.querySelector(".fscab"); if(!cab || !fsHome) return;
+  const {parent, next, field}=fsHome; fsHome=null;
+  field.classList.remove("fscrt"); if(!saved.crt) field.classList.remove("crt");
+  parent.insertBefore(field, next && next.parentNode===parent ? next : null); cab.remove();
+  field._fullLabel && field._fullLabel(); setTimeout(arcadeRelayout,60);
+}
+// leaving full screen by the browser's own way out (Escape) takes the cabinet down too
+for(const ev of ["fullscreenchange","webkitfullscreenchange"]) document.addEventListener(ev, ()=>{
+  if(!(document.fullscreenElement || document.webkitFullscreenElement) && document.querySelector(".fscab:not(.pseudo)")) fsRestore(); });
 function arcadeRelayout(){
   if(!blast || !blast.field) return;
   if(blast.field._fullLabel) blast.field._fullLabel();
