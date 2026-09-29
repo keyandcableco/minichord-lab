@@ -57,6 +57,7 @@ function kmRestrip(){
   (blast.stripOrig||blast.strip)?.remove(); blast.stripOrig=null;
   blast.strip=kmStrip(blast.field);
   if(blast.kind==="snake"){ snLayout(); snDraw(); }
+  if(blast.kind==="sweeper"){ swLayout(); swDraw(); }
   helperSync(true);
 }
 function kmFlash(strip, pc){ if(!strip) return; const c=strip.querySelector(`[data-pc="${mod(pc,12)}"]`); if(!c) return; c.classList.remove("hit"); void c.offsetWidth; c.classList.add("hit"); }

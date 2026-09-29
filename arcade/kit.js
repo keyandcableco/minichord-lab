@@ -128,7 +128,7 @@ const POINTS_FOR={
   stack:[["ROW CLEARED","15 A NOTE"],["ROWS AT ONCE","× ROWS"]],
   breakout:[["BRICK","10 A NOTE"],["★ BRICK","× 5"],["RALLY","UP TO × 4"]],
   fifths:[["ENEMY","10"],["HIT FAR OUT","UP TO +10"],["★ ENEMY","50"]],
-  sweeper:[["CHORD SWEPT","10"],["FIELD CLEARED","100"],["QUICK CLEAR","UP TO +120"],["RIGHT FLAG","15"]],
+  sweeper:[["SQUARE SWEPT","5"],["MINE DEFUSED","100"],["SQUARES LEFT UNSWEPT","+2 EACH"],["QUICK CLEAR","UP TO +270"]],
   fleet:[["HIT","10"],["SHIP SUNK","50 A CHORD"],["SUNK BY DEDUCTION","+40 A CHORD UNHIT"],["NO MISSES","× 2"],["TORPEDO LEFT OVER","20"]],
   chopper:[["RESCUE","20"],["FAST RESCUE","UP TO +30"],["WAYPOINT","15"],["WHOLE ROUTE","× 2"],["WRONG PLACE","−2 SECONDS"]],
 };
@@ -174,9 +174,9 @@ function arcadeSettings(){
   choice("SCREEN", ["FLAT","CRT"], ()=>saved.crt?1:0, i=>{ saved.crt=!!i; save(); crtSync(); });
   if(["blaster","asteroids","breakout","fifths","command"].includes(k))
     choice("LETTERING", SIZES.map(x=>x[0]), ()=>saved.chordSize??1, i=>{ saved.chordSize=i; save(); applyChordSize(); });
-  if(["snake","stack","command","asteroids","fifths"].includes(k))
+  if(["snake","stack","command","asteroids","fifths","sweeper"].includes(k))
     choice("HARP", ["STANDARD STRIP","KEYMASTER"], ()=>saved.harpLayout==="keymaster"?1:0, i=>{ saved.harpLayout=i?"keymaster":"strip"; save(); if(["snake","stack"].includes(k)) kmRestrip(); else helperSync(true); });
-  if(["snake","stack"].includes(k))
+  if(["snake","stack","sweeper"].includes(k))
     choice("HARP SOUND", ["NORMAL","QUIET","OFF"], ()=>saved.harpSound??1, i=>{ saved.harpSound=i; save(); if(blast && blast.setupDone) kmHarp(); });
   if(["breakout","fifths","stack"].includes(k))
     choice("STEER WITH", ["CHORD KNOB","HARP KNOB","MOD KNOB"], ()=>steerKnob(), i=>{ saved.steerKnob=i; save(); });

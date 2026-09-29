@@ -1,46 +1,43 @@
-// Chord Sweeper: Minesweeper on the chord buttons, where neighbours are harmonic.
+// Chord Sweeper: a minefield where each mine is a key's home, and the notes around it give it away.
 // Part of Minichord Lab's Practice Room page (practice/index.html), loaded there in order with the
 // others as plain scripts sharing one scope; see practice/boot.js.
 "use strict";
 
 // ---------- Chord Sweeper ----------
-// An airfield laid out as the chord chart: columns F to B in fifths, rows for major and minor (and 7
-// from level 3). Mines lie under some chords. Playing a chord sweeps it: a mine goes off, otherwise
-// it shows how many of its neighbours are mined. A chord's neighbours are not the squares beside it
-// but the chords that share at least two notes with it: C major's are C minor, A minor and E minor
-// (the parallel, the relative and the leading-tone move), so reading the numbers means knowing which
-// chords are close. A sweep that finds no mined neighbours spreads to them, as Minesweeper's zeros
-// do. Plucking the harp switches to flagging: the next chord plants or lifts a flag. Sweep every safe
-// chord to clear the field; a mine costs a life.
-const SW_COLS="FCGDAEB", SW_ROWS=[["","MAJ",[0,4,7]],["m","MIN",[0,3,7]],["7","7",[0,4,7,10]]];
-const SW_NAT={F:5,C:0,G:7,D:2,A:9,E:4,B:11};
+// An ordinary minefield, eight by six, swept square by square with a cursor steered on the harp (A
+// sweeps, B flags) or the arrow keys. Each mine is the home of a key, its tonic, and every square
+// hides a note that says how close it is: right beside a mine, that key's 3rd or 5th (for G: B or D);
+// two squares away, the key's other notes (A, C, E, F♯); further out, notes outside the key. So the
+// notes swept say what the key is and how near its home lies. Put the cursor on a mine and play its
+// key's home chord (G major for a G mine, E minor for an E minor one) to defuse it; sweep a mine, or
+// play the wrong chord on it, and it goes off. Defuse every mine to clear the field.
+const SW_W=8, SW_H=6;
+const SW_MAJOR=["C","G","D","A","E","B","F♯","F","B♭","E♭","A♭","D♭"], SW_MINOR=["A","E","B","F♯","C♯","D","G","C","F"];
 const SW_LEVELS=[
-  {n:"Majors and minors", rows:2, mines:3, glow:true},
-  {n:"More mines", rows:2, mines:4, glow:true},
-  {n:"Sevenths join", rows:3, mines:5},
-  {n:"A crowded field", rows:3, mines:6},
-  {n:"Minefield", rows:3, mines:7},
+  {n:"One major key", mines:1, keys:[["C","G","D","F","A"],[]]},
+  {n:"One minor key", mines:1, keys:[[],["A","E","D","B","G"]]},
+  {n:"Two keys", mines:2, keys:[["C","G","D","F","A"],["A","E","D","B"]]},
+  {n:"Sharps and flats", mines:2, keys:[SW_MAJOR,SW_MINOR]},
+  {n:"Three keys", mines:3, keys:[SW_MAJOR,SW_MINOR]},
 ];
-const swKey=(c,r)=>c+","+r;
-const swPcs=(c,r)=>SW_ROWS[r][2].map(x=>(SW_NAT[SW_COLS[c]]+x)%12);
-// every chord's neighbours on this field: the chords sharing at least two notes with it
-function swNeighbours(rows){
-  const nb=new Map();
-  for(let r=0;r<rows;r++) for(let c=0;c<7;c++){
-    const a=swPcs(c,r), list=[];
-    for(let r2=0;r2<rows;r2++) for(let c2=0;c2<7;c2++){ if(c2===c && r2===r) continue;
-      const b=swPcs(c2,r2); if(a.filter(x=>b.includes(x)).length>=2) list.push([c2,r2]); }
-    nb.set(swKey(c,r), list);
-  }
-  return nb;
+const SW_STEPS=[[0,0],[1,2],[2,4],[3,5],[4,7],[5,9],[6,11]], SW_STEPS_MIN=[[0,0],[1,2],[2,3],[3,5],[4,7],[5,8],[6,10]];
+const SW_FIFTHS={C:0,G:1,D:2,A:3,E:4,B:5,"F♯":6,"C♯":7,F:-1,"B♭":-2,"E♭":-3,"A♭":-4,"D♭":-5,"G♭":-6};
+// a key: its home, its chord's 3rd and 5th, its other notes, and the five notes outside it, spelled
+// the way the key leans (sharps for sharp keys, flats for flat ones)
+function swKeyOf(tonic, minor){
+  const steps=minor ? SW_STEPS_MIN : SW_STEPS, scale=steps.map(([l,s])=>above(tonic,l,s));
+  const fifths=(SW_FIFTHS[tonic]??0)-(minor?3:0), pcs=new Set(scale.map(pcOfName));
+  const outside=[...Array(12).keys()].filter(pc=>!pcs.has(pc)).map(pc=> (fifths<0 ? FLAT_NAMES : SHARP_NAMES)[pc]);
+  return {tonic, minor, name:`${tonic} ${minor?"MINOR":"MAJOR"}`, chord:tonic+(minor?"m":""), near:[scale[2],scale[4]], warm:[scale[1],scale[3],scale[5],scale[6]], outside};
 }
+const swKey=(x,y)=>x+","+y;
 function genSweeper(){
-  return {kind:"sweeper", prompt:"Chord Sweeper", sub:"Minesweeper on the chord buttons. Play a chord to sweep it: it shows how many of its neighbours are mined, and a chord's neighbours are the chords sharing two notes with it. Pluck the harp to flag.",
-    answer:{type:"sweeper", name:"a chord you think is safe"}, hint:"C major's neighbours are C minor, A minor and E minor.", context:0};
+  return {kind:"sweeper", prompt:"Chord Sweeper", sub:"Each mine is a key's home. Swept squares show notes: the key's 3rd or 5th right next to it, its other notes two away, notes outside the key further out. Put the cursor on a mine and play its key's chord to defuse it.",
+    answer:{type:"sweeper", name:"the home chord of the mine under the cursor"}, hint:"Next to a G mine you'll find B and D, G's 3rd and 5th.", context:0};
 }
 function startSweeper(){
   blast={kind:"sweeper", score:0, lives:3, level:0, fields:0, over:true, phase:"menu", raf:0, field:null, hud:null, fx:null, noShip:true,
-    last:performance.now(), mines:new Set(), open:new Set(), flags:new Set(), flagMode:false, rows:2, nb:new Map()};
+    last:performance.now(), mines:[], clue:new Map(), open:new Set(), flags:new Set(), cur:[3,2], sweeps:0};
   swDevice();
   stats.streak=0; scoreboard(); buildSpecial();
   swMenu();
@@ -48,62 +45,68 @@ function startSweeper(){
 }
 function swDevice(){
   if(!blast || blast.kind!=="sweeper" || !canWrite()) return;
-  arcadeSetup(()=>{ asHarp(); if(hasSetting(30)) ensure(30,0); if(hasSetting(35)) borrow(35, keyIndexOf(0)); });   // the field is the plain buttons in C
+  arcadeSetup(()=>{ kmHarp(); if(hasSetting(30)) ensure(30,0); });
 }
 function buildSweeperField(box){
-  const field=document.createElement("div"); field.className="field arcade sweeper"; field.setAttribute("aria-label","The airfield");
+  const field=document.createElement("div"); field.className="field arcade sweeper"; field.setAttribute("aria-label","The minefield");
   const hud=document.createElement("div"); hud.className="hud"; field.appendChild(hud); fullButton(field);
   const hd=document.createElement("div"); hd.className="heard"; field.appendChild(hd);
   const grid=document.createElement("div"); grid.className="swgrid"; field.appendChild(grid);
   const side=document.createElement("div"); side.className="swside"; field.appendChild(side);
   box.append(field);
   if(blast && blast.kind==="sweeper"){
-    blast.field=field; blast.hud=hud; blast.heard=hd; blast.gridEl=grid; blast.sideEl=side; blast.fx=fxInit(field);
+    blast.field=field; blast.hud=hud; blast.heard=hd; blast.gridEl=grid; blast.sideEl=side; blast.fx=fxInit(field); blast.strip=kmStrip(field);
     setTimeout(()=>{ swLayout(); swDraw(); });
     if(blast.overlay) field.appendChild(blast.overlay);
+    // a click on a square moves the cursor there and sweeps it
+    grid.addEventListener("click", e=>{ const c=e.target.closest(".swcell"); if(!c || !blast || blast.phase!=="play") return;
+      blast.cur=[+c.dataset.x,+c.dataset.y]; swSweep(); });
   }
   swBar(); setTimeout(helperSync);
 }
 function swLayout(){
   const f=blast.field, W=f.clientWidth, H=f.clientHeight;
-  const right=W-Math.max(210, W*.24), left=70, top=90, bottom=H-40;
-  const size=Math.min((right-left)/7, (bottom-top)/Math.max(2,blast.rows||2));
-  blast.cs=size; blast.gx=left+((right-left)-7*size)/2; blast.gy=top+((bottom-top)-(blast.rows||2)*size)/2;
-  blast.sideEl.style.cssText=`left:${right+24}px;top:${top}px;width:${W-right-36}px`;
+  const left=Math.max(170, W*.2), right=W-Math.max(170, W*.18), top=86, bottom=H-34;
+  const s=Math.min((right-left)/SW_W, (bottom-top)/SW_H);
+  blast.cs=s; blast.gx=left+((right-left)-SW_W*s)/2; blast.gy=top+((bottom-top)-SW_H*s)/2;
+  blast.sideEl.style.cssText=`left:18px;top:${top}px;width:${left-36}px`;
 }
-const swXY=(c,r)=>[blast.gx+(c+.5)*blast.cs, blast.gy+(r+.5)*blast.cs];
-function swCount(c,r){ return (blast.nb.get(swKey(c,r))||[]).filter(([c2,r2])=>blast.mines.has(swKey(c2,r2))).length; }
+const swXY=(x,y)=>[blast.gx+(x+.5)*blast.cs, blast.gy+(y+.5)*blast.cs];
+const swMineAt=(x,y)=>blast.mines.find(m=>m.x===x && m.y===y);
+const swDist=(x,y)=>Math.min(...blast.mines.map(m=>Math.max(Math.abs(m.x-x),Math.abs(m.y-y))));
 function swDraw(){
   if(!blast || !blast.gridEl) return;
-  const s=blast.cs, rows=blast.rows||2; let h="";
-  SW_COLS.split("").forEach((l,c)=>{ h+=`<span class="swcol" style="left:${blast.gx+(c+.5)*s}px;top:${blast.gy-16}px">${l}</span>`; });
-  for(let r=0;r<rows;r++){
-    h+=`<span class="swrow" style="left:${blast.gx-10}px;top:${blast.gy+(r+.5)*s}px">${SW_ROWS[r][1]}</span>`;
-    for(let c=0;c<7;c++){
-      const k=swKey(c,r), open=blast.open.has(k), mine=blast.mines.has(k), boom=blast.boom===k, show=blast.phase==="reveal" && mine;
-      const n=open && !mine ? swCount(c,r) : 0, glow=blast.glow && blast.glow.has(k);
-      let inner = open && !mine ? (n ? `<b class="n${n}">${n}</b>` : "") : (boom||show) ? SW_MINE : blast.flags.has(k) ? SW_FLAG : "";
-      h+=`<span class="swcell${open?" open":""}${boom?" boom":""}${glow?" glow":""}" style="left:${blast.gx+c*s}px;top:${blast.gy+r*s}px;width:${s}px;height:${s}px"><small>${SW_COLS[c]}${SW_ROWS[r][0]}</small>${inner}</span>`;
-    }
+  const s=blast.cs, reveal=blast.phase==="reveal"; let h="";
+  for(let y=0;y<SW_H;y++) for(let x=0;x<SW_W;x++){
+    const k=swKey(x,y), open=blast.open.has(k), m=swMineAt(x,y), cur=blast.cur[0]===x && blast.cur[1]===y && blast.phase==="play";
+    let inner="", cls="";
+    if(m && m.defused){ inner=`<b class="home">${m.key.chord}</b>`; cls=" defused"; }
+    else if(m && (m.boom || reveal)){ inner=SW_MINE+(reveal?`<small class="mk">${m.key.chord}</small>`:""); cls=m.boom?" boom":" shown"; }
+    else if(open){ inner=`<b>${blast.clue.get(k)}</b>`; if(saved.beginner) cls=` d${Math.min(3,swDist(x,y))}`; }
+    else if(blast.flags.has(k)) inner=SW_FLAG;
+    h+=`<span class="swcell${open?" open":""}${cls}${cur?" cur":""}" data-x="${x}" data-y="${y}" style="left:${blast.gx+x*s}px;top:${blast.gy+y*s}px;width:${s}px;height:${s}px">${inner}</span>`;
   }
   blast.gridEl.innerHTML=h;
   swSide();
 }
 function swSide(){
   if(!blast.sideEl) return;
-  const safe=7*(blast.rows||2)-blast.mines.size, left=safe-[...blast.open].filter(k=>!blast.mines.has(k)).length;
-  blast.sideEl.innerHTML=`<p>MINES <b>${blast.mines.size||SW_LEVELS[blast.level||0].mines}</b></p><p>FLAGS <b>${blast.flags.size}</b></p><p>TO SWEEP <b>${blast.mines.size?left:"—"}</b></p>
-    <p class="${blast.flagMode?"swflagon blink":"swhow"}">${blast.flagMode?"FLAGGING: THE NEXT CHORD PLANTS OR LIFTS A FLAG":"PLUCK THE HARP TO FLAG"}</p>
-    <p class="swhow">A CHORD'S NEIGHBOURS SHARE TWO NOTES WITH IT. C MAJOR'S ARE Cm, Am AND Em.</p>`;
+  const left=blast.mines.filter(m=>!m.defused).length;
+  blast.sideEl.innerHTML=`<p>MINES <b>${blast.mines.length||SW_LEVELS[blast.level||0].mines}</b></p><p>TO DEFUSE <b>${blast.mines.length?left:"—"}</b></p><p>SWEEPS <b>${blast.sweeps}</b></p>
+    <p class="swhow">NEXT TO A MINE: ITS KEY'S 3RD OR 5TH. TWO AWAY: THE KEY'S OTHER NOTES. FURTHER: NOTES OUTSIDE IT.</p>
+    <p class="swhow">ON A MINE, PLAY ITS KEY'S CHORD TO DEFUSE IT.</p>`;
 }
 function swBar(){
   if(!blast || blast.kind!=="sweeper" || !blast.hud) return;
   blast.hud.innerHTML=`<span>SCORE ${blast.score}${multTag()}</span><span class="lvl">LEVEL ${blast.level+1} · FIELD ${blast.fields+1}</span><span class="lives">${"♥".repeat(Math.max(0,blast.lives))||"-"}</span>`;
 }
 const SWMENU_G={key:"sweeper", title:"CHORD SWEEPER",
-  rules:()=>`<p>THE AIRFIELD IS THE CHORD CHART. PLAY A CHORD TO SWEEP IT.</p><p>IT SHOWS HOW MANY OF ITS NEIGHBOURS ARE MINED, AND A CHORD'S NEIGHBOURS SHARE TWO NOTES WITH IT: C MAJOR'S ARE Cm, Am AND Em.</p><p>PLUCK THE HARP TO FLAG. SWEEP EVERY SAFE CHORD; A MINE COSTS A LIFE.</p>`,
+  rules:()=>`<p>EACH MINE IS A KEY'S HOME. SWEPT SQUARES SHOW NOTES: NEXT TO A MINE, ITS KEY'S 3RD OR 5TH; TWO AWAY, THE KEY'S OTHER NOTES; FURTHER OUT, NOTES OUTSIDE THE KEY.</p><p>STEER ON THE HARP OR THE ARROW KEYS. A SWEEPS, B FLAGS.</p><p>ON A MINE, PLAY ITS KEY'S CHORD TO DEFUSE IT. SWEEP A MINE, OR PLAY THE WRONG CHORD ON IT, AND IT GOES OFF.</p>`,
   stat:()=>`FIELDS ${blast.fields}`,
-  rows:row=>{ row("SPEED", SPEEDS.map(x=>x[0].toUpperCase()), ()=>+saved.speed||0, i=>{ saved.speed=i; save(); }); },
+  rows:row=>{
+    row("SPEED", SPEEDS.map(x=>x[0].toUpperCase()), ()=>+saved.speed||0, i=>{ saved.speed=i; save(); });
+    row("HARP", ["STANDARD STRIP","KEYMASTER GRID"], ()=>saved.harpLayout==="keymaster"?1:0, i=>{ saved.harpLayout = i ? "keymaster" : "strip"; save(); kmRestrip(); });
+  },
   levels:SW_LEVELS, begin:i=>beginSweeper(i), demo:()=>swDemo(), modNote:false};
 function swMenu(over){ arcadeMenu(SWMENU_G, over); }
 function beginSweeper(level){
@@ -117,17 +120,25 @@ function beginSweeper(level){
   swField();
   banner(`LEVEL ${level+1}`, SW_LEVELS[level].n.toUpperCase()); sfx("start");
 }
-// a new field: nothing swept, the mines laid only once the first chord is played, so it's safe
+// a new field: the mines are laid at the first sweep, so it's always safe
 function swField(){
-  const L=SW_LEVELS[blast.level];
-  blast.rows=L.rows; blast.nb=swNeighbours(L.rows); blast.mines=new Set(); blast.open=new Set(); blast.flags=new Set();
-  blast.flagMode=false; blast.boom=null; blast.glow=null; blast.phase="play"; blast.fieldAt=performance.now();
+  Object.assign(blast,{mines:[], clue:new Map(), open:new Set(), flags:new Set(), cur:[3,2], sweeps:0, phase:"play", fieldAt:performance.now()});
   swLayout(); swBar(); swDraw();
 }
-function swLay(firstKey){
-  const L=SW_LEVELS[blast.level], all=[];
-  for(let r=0;r<L.rows;r++) for(let c=0;c<7;c++){ const k=swKey(c,r); if(k!==firstKey) all.push(k); }
-  for(let n=0;n<L.mines && all.length;n++) blast.mines.add(all.splice(Math.floor(Math.random()*all.length),1)[0]);
+function swLay(sx,sy){
+  const L=SW_LEVELS[blast.level], keys=[...L.keys[0].map(t=>swKeyOf(t,false)), ...L.keys[1].map(t=>swKeyOf(t,true))];
+  for(let tries=0; tries<400 && blast.mines.length<L.mines; tries++){
+    const x=Math.floor(Math.random()*SW_W), y=Math.floor(Math.random()*SW_H);
+    if(Math.max(Math.abs(x-sx),Math.abs(y-sy))<2) continue;                       // not on or beside the first sweep
+    if(blast.mines.some(m=>Math.max(Math.abs(m.x-x),Math.abs(m.y-y))<4)) continue;   // mines apart, their clues distinct
+    const used=new Set(blast.mines.map(m=>pcOfName(m.key.tonic)));
+    const key=rnd(keys.filter(k=>!used.has(pcOfName(k.tonic)))); if(!key) break;
+    blast.mines.push({x,y,key});
+  }
+  // every other square's note, from the key of the nearest mine
+  for(let y=0;y<SW_H;y++) for(let x=0;x<SW_W;x++){ if(swMineAt(x,y)) continue;
+    const near=blast.mines.map(m=>({m, d:Math.max(Math.abs(m.x-x),Math.abs(m.y-y))})).sort((a,b)=>a.d-b.d)[0], k=near.m.key;
+    blast.clue.set(swKey(x,y), rnd(near.d===1 ? k.near : near.d===2 ? k.warm : k.outside)); }
 }
 function swTick(now){
   if(!blast || blast.kind!=="sweeper") return;
@@ -135,59 +146,66 @@ function swTick(now){
   if(blast.fx) fxDraw(now, dt);
   blast.raf=requestAnimationFrame(swTick);
 }
-// the harp: flagging on or off
+function swMove(dx,dy){ blast.cur=[Math.max(0,Math.min(SW_W-1,blast.cur[0]+dx)), Math.max(0,Math.min(SW_H-1,blast.cur[1]+dy))]; sfx("press"); swDraw(); }
+function swFlag(){ const k=swKey(...blast.cur); if(blast.open.has(k)) return; blast.flags.has(k) ? blast.flags.delete(k) : blast.flags.add(k); sfx("key"); swDraw(); }
+// sweep the square under the cursor: a note, or a mine going off
+function swSweep(){
+  const [x,y]=blast.cur, k=swKey(x,y);
+  if(blast.open.has(k) || blast.flags.has(k)) return;
+  if(!blast.mines.length) swLay(x,y);
+  const m=swMineAt(x,y);
+  if(m && !m.defused) return swBoom(m, "SWEPT A MINE");
+  if(m) return;
+  blast.open.add(k); blast.sweeps++;
+  const [px,py]=swXY(x,y), pts=mulPts(5*(blast.level+1)); blast.score+=pts; popup(px,py-20,`+${pts}`);
+  sfx("shoot"); swBar(); swDraw();
+}
+// the harp: a d-pad, A sweeping and B flagging
 function sweeperNote(pc){
   if(!blast || blast.kind!=="sweeper") return;
+  kmFlash(blast.strip, pc);
   if(blast.phase==="demo" && blast.demo){ endSwDemo(blast.demo); return; }
   if(blast.phase!=="play") return;
-  blast.flagMode=!blast.flagMode; sfx("press"); swSide();
+  const c=kmControl(pc);
+  if(c==="A") return swSweep();
+  if(c==="B") return swFlag();
+  const D={up:[0,-1],down:[0,1],left:[-1,0],right:[1,0]}[c]; if(D) swMove(...D);
 }
-// a chord: sweep it, or flag it
+document.addEventListener("keydown", e=>{
+  if(!q || q.kind!=="sweeper" || !blast || blast.phase!=="play" || /INPUT|SELECT|TEXTAREA/.test(document.activeElement?.tagName||"")) return;
+  const D={ArrowUp:[0,-1],ArrowDown:[0,1],ArrowLeft:[-1,0],ArrowRight:[1,0]}[e.code];
+  if(D){ e.preventDefault(); swMove(...D); }
+  else if(e.code==="Space" || e.code==="Enter"){ e.preventDefault(); swSweep(); }
+  else if(e.code==="KeyX"){ e.preventDefault(); swFlag(); }
+});
+// a chord: defusing the mine under the cursor, if it's that mine's key's home chord
 function sweeperChord(voices){
   if(!blast || blast.kind!=="sweeper") return;
   if(blast.phase==="demo" && blast.demo){ endSwDemo(blast.demo); return; }
   if(blast.phase!=="play") return;
-  const pitches=voices.map(v=>v.pitch), id=chordId(pitches); if(!id) return;
-  const f=devFifths(), root=spell(id.root, f), name=chordName(pitches, f), {li,acc}=parse(root);
-  const row = ["","6"].includes(id.quality) ? 0 : ["m","m6"].includes(id.quality) ? 1 : id.quality==="7" ? 2 : -1;
-  if(row<0 || row>=blast.rows){ heard(name,false,"NOT ON THE FIELD"); return; }
-  if(acc!==keyAcc(li,f)){ heard(name,false,"OFF THE FIELD"); return; }       // the field is the plain buttons
-  const col=SW_COLS.indexOf(root[0]), k=swKey(col,row);
-  if(blast.flagMode){ blast.flagMode=false; if(blast.open.has(k)) return swSide();
-    blast.flags.has(k) ? blast.flags.delete(k) : blast.flags.add(k); heard(name,true); sfx("key"); swDraw(); return; }
-  if(blast.open.has(k)){ heard(name,false,"ALREADY SWEPT"); return; }
-  if(blast.flags.has(k)){ heard(name,false,"FLAGGED: PLUCK THE HARP, THEN PLAY IT, TO LIFT THE FLAG"); return; }
-  if(!blast.mines.size) swLay(k);                                            // the first sweep is always safe
-  if(blast.mines.has(k)) return swBoom(k, name);
-  heard(name,true); swOpen(col,row); sfx("shoot");
-  const [x,y]=swXY(col,row), pts=mulPts(10*(blast.level+1)); blast.score+=pts; popup(x,y-18,`+${pts}`);
-  // at the first levels, or with beginner mode, the chords it counted glow a moment
-  if(SW_LEVELS[blast.level].glow || saved.beginner){ blast.glow=new Set((blast.nb.get(k)||[]).map(([c,r])=>swKey(c,r)));
-    gameLater(()=>{ blast.glow=null; swDraw(); }, 1400); }
+  const pitches=voices.map(v=>v.pitch), name=chordName(pitches, devFifths()); if(!chordId(pitches)) return;
+  const m=swMineAt(...blast.cur);
+  if(!m || m.defused){ heard(name,false,"NO MINE UNDER THE CURSOR"); blast.fieldAt-=8000; sfx("miss"); return; }   // eight seconds lost
+  if(!isChord(pitches, pcOfName(m.key.tonic), m.key.minor?"m":"")) return swBoom(m, `NOT ${m.key.chord}`, name);
+  heard(name,true); m.defused=true; blast.flags.delete(swKey(m.x,m.y));
+  const [px,py]=swXY(m.x,m.y), unswept=SW_W*SW_H-blast.open.size-blast.mines.length;
+  const pts=mulPts((100+2*unswept)*(blast.level+1)); blast.score+=pts;
+  explode(px,py,30,["#7FE08A","#FFD35A","#F1E8D2"]); sfx("bonus"); popup(px,py-24,`${m.key.name} DEFUSED +${pts}`,"#7FE08A");
   swBar(); swDraw();
-  const safe=7*blast.rows-blast.mines.size; if([...blast.open].filter(x=>!blast.mines.has(x)).length>=safe) swCleared();
+  if(blast.mines.every(x=>x.defused)) swCleared();
 }
-// sweeping spreads from a chord with no mined neighbours to all its neighbours
-function swOpen(c,r){
-  const todo=[[c,r]];
-  while(todo.length){ const [a,b]=todo.pop(), k=swKey(a,b); if(blast.open.has(k) || blast.mines.has(k)) continue;
-    blast.open.add(k); blast.flags.delete(k);
-    if(swCount(a,b)===0) for(const n of (blast.nb.get(k)||[])) todo.push(n); }
-}
-function swBoom(k, name){
-  const [c,r]=k.split(",").map(Number), [x,y]=swXY(c,r);
-  heard(name,false,"A MINE!"); blast.boom=k; blast.phase="reveal"; swDraw();
-  explode(x,y,40,["#FF4B3E","#FF8A3D","#FFD35A","#F1E8D2"]); sfx("boom"); buzz(blast.field,true);
-  blast.lives--; swBar(); banner("BOOM", blast.lives>0 ? `${blast.lives} ${blast.lives===1?"LIFE":"LIVES"} LEFT` : "");
+function swBoom(m, why, label){
+  const [px,py]=swXY(m.x,m.y); m.boom=true; blast.phase="reveal"; swDraw();
+  heard(label||"SWEEP",false,why); explode(px,py,44,["#FF4B3E","#FF8A3D","#FFD35A","#F1E8D2"]); sfx("boom"); buzz(blast.field,true);
+  blast.lives--; swBar(); banner("BOOM", `IT WAS ${m.key.name}${blast.lives>0?` · ${blast.lives} ${blast.lives===1?"LIFE":"LIVES"} LEFT`:""}`);
   gameLater(()=>{
     if(blast.lives<=0){ blast.phase="over"; blast.over=true; const best=Math.max(saved.best.sweeper||0, blast.score); saved.best.sweeper=best; save(); swMenu(true); return; }
-    swField(); }, 2600);
+    swField(); }, 3000);
 }
 function swCleared(){
-  const secs=(performance.now()-blast.fieldAt)/1000, flagsRight=[...blast.flags].filter(k=>blast.mines.has(k)).length;
-  const pts=mulPts((100+Math.max(0,Math.round(60-secs))*2+15*flagsRight)*(blast.level+1)); blast.score+=pts; blast.fields++;
-  stats.streak=blast.fields; scoreboard(); swBar();
-  blast.phase="reveal"; swDraw(); sfx("level"); banner("FIELD CLEAR!", `+${pts}`);
+  const secs=(performance.now()-blast.fieldAt)/1000, pts=mulPts(Math.max(0,Math.round(90-secs))*3*(blast.level+1));
+  blast.score+=pts; blast.fields++; stats.streak=blast.fields; scoreboard(); swBar();
+  blast.phase="reveal"; swDraw(); sfx("level"); banner("FIELD CLEAR!", pts?`TIME BONUS +${pts}`:"");
   gameLater(()=>{ if(blast.fields%2===0 && blast.level<SW_LEVELS.length-1){ blast.level++; banner(`LEVEL ${blast.level+1}`, SW_LEVELS[blast.level].n.toUpperCase()); }
     swField(); }, 2400);
 }
@@ -200,28 +218,31 @@ function swDemo(){
   stopDemo(); clearTimeout(blast.attract); piano.start();
   if(blast.overlay) blast.overlay.hidden=true;
   const {el, token, say, sleep, step}=demoShell(endSwDemo);
-  blast.phase="demo"; blast.level=0; blast.rows=2; blast.nb=swNeighbours(2);
-  blast.mines=new Set([swKey(1,1), swKey(4,0), swKey(6,1)]); blast.open=new Set(); blast.flags=new Set(); blast.boom=null; blast.glow=null;
-  swLayout(); swDraw();
-  const CH={C:[48,52,55], Am:[57,60,64], G:[55,59,62], F:[53,57,60]};
+  blast.phase="demo"; blast.level=0; blast.mines=[]; blast.clue=new Map(); blast.open=new Set(); blast.flags=new Set(); blast.cur=[1,4]; blast.sweeps=0;
+  // one G major mine; the clues laid as a game would lay them
+  const L=SW_LEVELS[0], keep=L.keys; SW_LEVELS[0].keys=[["G"],[]]; blast.mines=[]; swLay(1,4); SW_LEVELS[0].keys=keep;
+  const m=blast.mines[0]; swLayout(); swDraw();
+  const at=(x,y)=>blast.clue.get(swKey(x,y));
+  const walk=async(x,y)=>{ while(blast.cur[0]!==x || blast.cur[1]!==y){ blast.cur=[blast.cur[0]+Math.sign(x-blast.cur[0]), blast.cur[1]+Math.sign(y-blast.cur[1])]; blast.phase="play"; swDraw(); blast.phase="demo"; sfx("press"); await step(180); } };
+  const sweep=async()=>{ blast.open.add(swKey(...blast.cur)); blast.phase="play"; swDraw(); blast.phase="demo"; sfx("shoot"); await step(700); };
+  const cell=(d)=>{ for(let y=0;y<SW_H;y++) for(let x=0;x<SW_W;x++) if(!swMineAt(x,y) && Math.max(Math.abs(m.x-x),Math.abs(m.y-y))===d) return [x,y]; return null; };
   sfx("attract");
   (async()=>{
-    const sweep=async(c,r,notes)=>{ demoPlay(notes); swOpen(c,r); blast.glow=new Set((blast.nb.get(swKey(c,r))||[]).map(([a,b])=>swKey(a,b))); swDraw(); sfx("shoot"); await step(1600); blast.glow=null; swDraw(); };
     try{
-      say("CHORD SWEEPER","THE AIRFIELD IS THE CHORD CHART, AND MINES LIE UNDER SOME CHORDS. PLAY ONE TO SWEEP IT."); await step(4200);
-      say("NEIGHBOURS","C MAJOR'S NEIGHBOURS ARE THE CHORDS SHARING TWO NOTES WITH IT: Cm, Am AND Em. THEY GLOW."); await sweep(1,0,CH.C);
-      say("","C SHOWS 1: ONE OF THOSE THREE HIDES A MINE."); await step(3000);
-      say("","Am IS SAFE, AND ITS OWN NEIGHBOURS ARE C, A AND F."); await sweep(4,1,CH.Am);
-      say("","F SHOWS 0, SO THE SWEEP SPREADS TO ALL OF ITS NEIGHBOURS."); await sweep(0,0,CH.F);
-      say("FLAG IT","PLUCK THE HARP, THEN PLAY A CHORD, TO FLAG WHERE YOU THINK A MINE IS: Cm."); blast.flags.add(swKey(1,1)); swDraw(); await step(3200);
-      say("READY?","SWEEP EVERY SAFE CHORD. A MINE COSTS A LIFE."); sfx("level"); await step(2600);
+      say("CHORD SWEEPER","EACH MINE IS A KEY'S HOME. EVERY SQUARE HIDES A NOTE THAT SAYS HOW CLOSE IT IS."); await step(4200);
+      const far=cell(3)||cell(4); if(far){ await walk(...far); await sweep(); say("FAR OUT", `${at(...far)}: A NOTE OUTSIDE THE KEY. THE MINE IS SOME WAY OFF.`); await step(3400); }
+      const warm=cell(2); if(warm){ await walk(...warm); await sweep(); say("WARMER", `${at(...warm)}: ONE OF THE KEY'S OTHER NOTES. TWO SQUARES AWAY.`); await step(3400); }
+      const hot=cell(1); if(hot){ await walk(...hot); await sweep(); say("HOT", `${at(...hot)}: THE KEY'S 3RD OR 5TH. THE MINE IS RIGHT BESIDE IT. B AND D POINT TO G.`); await step(3800); }
+      await walk(m.x,m.y); say("DEFUSE IT","ON THE MINE, PLAY ITS KEY'S CHORD: G MAJOR."); await step(1800);
+      demoPlay([55,59,62,67]); m.defused=true; blast.phase="play"; swDraw(); blast.phase="demo"; const [px,py]=swXY(m.x,m.y); explode(px,py,30,["#7FE08A","#FFD35A"]); sfx("bonus"); await step(2600);
+      say("READY?","SWEEP A MINE, OR PLAY THE WRONG CHORD ON IT, AND IT GOES OFF."); sfx("level"); await step(2600);
       endSwDemo(token);
     }catch(e){ /* skipped */ }
   })();
 }
 function endSwDemo(token){
   if(!blast || blast.demo!==token) return;
-  stopDemo(); blast.phase="menu"; blast.mines=new Set(); blast.open=new Set(); blast.flags=new Set(); blast.glow=null; swDraw();
+  stopDemo(); blast.phase="menu"; blast.mines=[]; blast.clue=new Map(); blast.open=new Set(); blast.flags=new Set(); swDraw();
   if(blast.overlay) blast.overlay.hidden=false;
   cabRestart();
 }

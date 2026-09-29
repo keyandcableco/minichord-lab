@@ -1,32 +1,32 @@
-// Chord Sweeper: a chord's neighbours are the chords sharing two notes with it; the first sweep is
-// always safe; numbers count mined neighbours; a zero spreads; the harp flags; a mine costs a life;
-// clearing every safe chord clears the field.
+// Chord Sweeper: every square's note says how close the nearest mine is (its key's 3rd or 5th next
+// to it, the key's other notes two away, notes outside the key further out); the first sweep is
+// safe; the harp steers, sweeps and flags; the mine's key's chord defuses it, and a wrong one sets it off.
 const t=require("./harness").load("chord-sweeper");
 (async()=>{
-  const {w, sb, sleep, chord, note, check, d}=t;
+  const {w, sleep, chord, note, key, check}=t;
   await sleep(150); t.connect(); await sleep(100);
-  const a=await t.start(0);
-  const nb=w.eval("swNeighbours(2)"), names=k=>{ const [c,r]=k.split(",").map(Number); return "FCGDAEB"[c]+["","m"][r]; };
-  check("C major's neighbours are Cm, Am and Em", nb.get("1,0").map(([c,r])=>names(c+","+r)).sort().join(" ")==="Am Cm Em", nb.get("1,0").map(([c,r])=>names(c+","+r)).join(" "));
-  check("A minor's are C, A and F", nb.get("4,1").map(([c,r])=>names(c+","+r)).sort().join(" ")==="A C F");
-  chord("C"); await sleep(100);
-  check("the first sweep is always safe", a.open.has("1,0") && a.mines.size===3 && a.lives===3);
-  const shown=d.querySelector(".swcell.open b"), n=w.eval("swCount(1,0)");
-  check("it shows how many of its neighbours are mined", n===0 || (shown && +shown.textContent===n), `count ${n}`);
-  // flag a mine with the harp, then sweep every safe chord
-  const mine=[...a.mines][0], [mc0,mr0]=mine.split(",").map(Number);
-  note(0); await sleep(30); chord("FCGDAEB"[mc0], ["","m"][mr0]); await sleep(50);
-  check("the harp, then a chord, plants a flag", a.flags.has(mine));
-  for(let r=0;r<2;r++) for(let c=0;c<7;c++){ const k=c+","+r; if(a.mines.has(k) || a.open.has(k) || a.phase!=="play") continue; chord("FCGDAEB"[c], ["","m"][r]); await sleep(40); }
-  check("sweeping every safe chord clears the field", a.fields===1 && a.score>0, `score ${a.score}`);
-  await sleep(2600);
-  // a mine costs a life
-  chord("C"); await sleep(60);
-  const m2=[...a.mines][0], [c2,r2]=m2.split(",").map(Number);
-  chord("FCGDAEB"[c2], ["","m"][r2]); await sleep(60);
-  check("a mine costs a life", a.lives===2 && /MINE/.test(t.heard()), t.heard());
-  await sleep(2700);                                   // the next field
-  chord("F♯"); await sleep(30);
-  check("a chord off the plain buttons is off the field", /OFF THE FIELD|NOT ON THE FIELD/.test(t.heard()), t.heard());
+  const a=await t.start(3);                                   // two keys, sharps and flats
+  key("Space"); await sleep(50);
+  check("the first sweep is always safe", a.open.size===1 && a.lives===3 && a.mines.length===2);
+  // the clue rule, over the whole field
+  let bad=0;
+  for(let y=0;y<6;y++) for(let x=0;x<8;x++){ if(a.mines.some(m=>m.x===x&&m.y===y)) continue;
+    const near=a.mines.map(m=>({m,d:Math.max(Math.abs(m.x-x),Math.abs(m.y-y))})).sort((p,q)=>p.d-q.d)[0], k=near.m.key, c=a.clue.get(x+","+y);
+    const ok = near.d===1 ? k.near.includes(c) : near.d===2 ? k.warm.includes(c) : k.outside.includes(c);
+    if(!ok) bad++; }
+  check("every square's note fits its distance from the nearest mine", bad===0, `${bad} wrong`);
+  const k0=a.mines[0].key;
+  check("a key's clues are its 3rd and 5th, its other notes, and the notes outside it", k0.near.length===2 && k0.warm.length===4 && k0.outside.length===5, `${k0.name}: ${k0.near.join(" ")} | ${k0.warm.join(" ")} | ${k0.outside.join(" ")}`);
+  // steer to the first mine with the harp's d-pad, defuse it with its key's chord
+  const m=a.mines[0], dirPc=d=>[...Array(12).keys()].find(pc=>w.eval(`kmControl(${pc})`)===d);
+  while(a.cur[0]<m.x){ note(dirPc("right")); await sleep(5); } while(a.cur[0]>m.x){ note(dirPc("left")); await sleep(5); }
+  while(a.cur[1]<m.y){ note(dirPc("down")); await sleep(5); } while(a.cur[1]>m.y){ note(dirPc("up")); await sleep(5); }
+  check("the harp steers the cursor onto the mine", a.cur[0]===m.x && a.cur[1]===m.y);
+  const before=a.score; chord(t.PC[m.key.tonic], m.key.minor?"m":""); await sleep(50);
+  check("its key's chord defuses it", m.defused && a.score>before, m.key.name);
+  // the other mine: the wrong chord sets it off
+  const m2=a.mines[1]; a.cur=[m2.x,m2.y];
+  chord((t.PC[m2.key.tonic]+1)%12, "m"); await sleep(50);
+  check("a wrong chord on a mine sets it off", m2.boom && a.lives===2, t.heard());
   t.done();
 })();
