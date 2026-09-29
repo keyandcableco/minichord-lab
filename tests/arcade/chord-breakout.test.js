@@ -38,6 +38,10 @@ const t=require("./harness").load("chord-breakout");
   // what bricks are worth: Chord Invaders' ladder
   const w1=t.w.eval("boPoints({q:'',root:'C'})"), w2=t.w.eval("boPoints({q:'m7',root:'C'})"), w3=t.w.eval("boPoints({q:'',root:'F♯'})");
   check("bricks are worth Chord Invaders' points: more for richer chords and the modifier", w2>w1 && w3>w1, `${w1} ${w2} ${w3}`);
+  // a preset loaded on the instrument mid-game: the game switches its knobs back on
+  const pd=[0xF0]; for(let k=0;k<256;k++){ let v=t.mc.params[k]||0; if(k>=40 && k<60) v=(v+5)%100; if(k===238) v=0; pd.push(v&127, v>>7); } pd.push(0xF7);
+  t.mc._asked=0; t.mc._dump(pd); await sleep(80);
+  check("after a preset change on the instrument, the knobs are switched back on", t.mc.params[238]===1);
   sb.restoreAll();
   check("leaving switches the knobs back off", t.mc.params[238]===0);
   t.done();

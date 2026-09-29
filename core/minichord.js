@@ -56,6 +56,10 @@ export class Minichord extends EventTarget {
   get keyIndex(){ return this.params[35] ?? null; }
   get keyName(){ return this.keyIndex==null ? null : KEY_NAMES[this.keyIndex] ?? null; }
   get keyFifths(){ return this.keyIndex==null ? 0 : (KEY_FIFTHS[this.keyIndex] ?? 0); }
+  /** the dump just in was the key change combo reporting a key picked (the test firmware sends one per pick) */
+  get comboPick(){ return !!this.unasked && [...(this.changed||[])].every(a=>a===35); }
+  /** the dump just in was a preset being loaded on the instrument (its preset buttons) */
+  get presetLoaded(){ return !!this.unasked && (this.changed||new Set()).size>3; }
   get temperament(){ const v=this.params[237]; return v==null ? null : temperIndex(v, this.params[7]??0); }   // the Lab's numbering
   /** the number to write to address 237 for a temperament in the Lab's list (null: not on this firmware) */
   temperamentValue(index){ return temperValue(index, this.params[7]??0); }
@@ -133,7 +137,11 @@ export class Minichord extends EventTarget {
     // a dump nobody asked for: the minichord reporting a change made on the instrument itself,
     // such as the key change combo (the test firmware reports every key picked that way)
     this.unasked = !(this._asked>0); if(this._asked>0) this._asked--;
+    // what changed since the last dump: an unasked one that changes only the key signature (or
+    // nothing) is the key change combo; one that changes a lot is a preset loaded on the instrument
+    const had=Object.keys(this.params).length ? [...Array(256).keys()].map(i=>this.params[i]) : null;   // nothing to compare the first time
     for(let i=0;i<256;i++) this.params[i]=d[1+2*i]+128*d[2+2*i];
+    this.changed = new Set(had ? [...Array(256).keys()].filter(i=>i!==7 && had[i]!==this.params[i]) : []);
     if(this.params[110]===1 && !this.zone.known){ this.zone={type:"lower", members:this.params[108]===1?15:4, known:true}; }
     this.dispatchEvent(new Event("device"));
   }

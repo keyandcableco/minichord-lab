@@ -59,7 +59,7 @@ function buildFretsField(box){
   const hd=document.createElement("div"); hd.className="heard"; field.appendChild(hd);
   const stage=document.createElement("div"); stage.className="frstage";
   stage.innerHTML=`<div class="frband"><span class="frplayer left">${FR_GUITARIST}</span><span class="frplayer right">${FR_DRUMMER}</span></div>
-    <div class="frboard"></div><p class="frprompt"></p><div class="frrows"></div><div class="frtime"><i></i></div>`;
+    <div class="frboard"></div><div class="frstaff"></div><p class="frprompt"></p><div class="frrows"></div><div class="frtime"><i></i></div>`;
   field.appendChild(stage);
   box.append(field);
   if(blast && blast.kind==="frets"){
@@ -78,11 +78,38 @@ function frBar(){
 function frDrawBoard(marks=[]){
   const el=blast && blast.stageEl && blast.stageEl.querySelector(".frboard"); if(!el) return;
   const W=600, x=m=>20+(m-60)/12*(W-40);
-  let h=`<svg viewBox="0 0 ${W} 70" preserveAspectRatio="none" aria-hidden="true"><rect x="10" y="18" width="${W-20}" height="34" fill="#F1E8D2"/>`;
+  let h=`<svg viewBox="0 0 ${W} 84" preserveAspectRatio="none" aria-hidden="true"><rect x="10" y="18" width="${W-20}" height="34" fill="#F1E8D2"/>`;
   for(let s=0;s<=12;s++) h+=`<rect x="${x(60+s)-1.5}" y="18" width="3" height="34" fill="#16132A"/>`;
   for(let s=0;s<12;s++) h+=`<rect x="${x(60.5+s)-.5}" y="18" width="1" height="34" fill="#16132A" opacity=".35"/>`;
   ["C","D","E","F","G","A","B","C"].forEach((l,i)=>{ const m=60+[0,2,4,5,7,9,11,12][i]; h+=`<text x="${x(m)}" y="66" text-anchor="middle" class="frlbl">${l}</text>`; });
-  marks.forEach(mk=>{ const m=60+((mk.m-60)%12+12)%12; h+=`<circle cx="${x(m)}" cy="35" r="11" fill="${mk.c}" stroke="#16132A" stroke-width="3"/>${mk.t?`<text x="${x(m)}" y="12" text-anchor="middle" class="frtag">${mk.t}</text>`:""}`; });
+  // the reference labelled above the fretboard, the test below it, so the two never collide
+  marks.forEach((mk,k)=>{ const m=60+((mk.m-60)%12+12)%12; h+=`<circle cx="${x(m)}" cy="35" r="11" fill="${mk.c}" stroke="#16132A" stroke-width="3"/>${mk.t?`<text x="${x(m)}" y="${mk.below?81:12}" text-anchor="middle" class="frtag">${mk.t}</text>`:""}`; });
+  el.innerHTML=h+"</svg>";
+}
+// The notes on a treble staff, spelled the way the questions are: a natural letter, or a letter with
+// a quarter-tone accidental (Stein–Zimmermann: the half-sharp is a sharp with one upright, the
+// half-flat a flat turned round). notes: [{m, c}], m a MIDI pitch that may end in .5.
+const FR_LETTERS=[["C",0],["D",2],["E",4],["F",5],["G",7],["A",9],["B",11]];
+function frSpell(m){
+  const oct=Math.floor(m/12)-1, pc=((m%12)+12)%12, nat=FR_LETTERS.find(([,p])=>p===pc);
+  if(nat) return {li:FR_LETTERS.indexOf(nat), oct, acc:0};
+  const up=FR_LETTERS.find(([,p])=>p===pc-.5), down=FR_LETTERS.find(([,p])=>p===pc+.5);
+  if(up) return {li:FR_LETTERS.indexOf(up), oct, acc:.5};
+  if(down) return {li:FR_LETTERS.indexOf(down), oct, acc:-.5};
+  const sh=FR_LETTERS.find(([,p])=>p===pc-1); return {li:FR_LETTERS.indexOf(sh), oct, acc:1};
+}
+function frDrawStaff(notes=[]){
+  const el=blast && blast.stageEl && blast.stageEl.querySelector(".frstaff"); if(!el) return;
+  const SPc=7, top=12, y=(li,oct)=>top+4*SPc-((li+7*oct)-(2+7*4))*SPc/2;      // E4 on the bottom line
+  const W=Math.max(170, 70+notes.length*44);
+  let h=`<svg viewBox="0 0 ${W} 58" aria-hidden="true">`;
+  for(let k=0;k<5;k++) h+=`<line x1="4" x2="${W-4}" y1="${top+k*SPc}" y2="${top+k*SPc}"/>`;
+  h+=`<text class="glyph" x="8" y="${top+3*SPc}">\uE050</text>`;
+  notes.forEach((n,i)=>{ const sp=frSpell(n.m), yy=y(sp.li,sp.oct), x=58+i*44;
+    if(sp.li+7*sp.oct<=7*4+0) h+=`<line x1="${x-8}" x2="${x+16}" y1="${top+5*SPc}" y2="${top+5*SPc}"/>`;   // middle C's ledger line
+    const acc = sp.acc===.5 ? "\uE282" : sp.acc===-.5 ? "\uE280" : sp.acc===1 ? "\uE262" : "";
+    if(acc) h+=`<text class="glyph acc" x="${x-15}" y="${yy}" style="fill:${n.c}">${acc}</text>`;
+    h+=`<text class="glyph" x="${x}" y="${yy}" style="fill:${n.c}">\uE0A2</text>`; });
   el.innerHTML=h+"</svg>";
 }
 const FRMENU_G={key:"frets", title:"BETWEEN THE FRETS",
@@ -139,7 +166,7 @@ function frAsk(){
   const legend = kind==="riff" ? ["NOTE 1: F COLUMN","NOTE 2: C","NOTE 3: G","NOTE 4: D"] : FR_ROWS[kind].map((t,i)=>`${["MAJ","MIN","7"][i]} ROW: ${t}`);
   blast.stageEl.querySelector(".frrows").innerHTML=legend.map(t=>`<span>${t}</span>`).join("");
   const say = kind==="note" ? "THE SAME, ¼ SHARP OR ¼ FLAT?" : kind==="interval" ? `${q.what} UP: IS ITS TOP NOTE IN TUNE?` : kind==="neutral" ? "MAJOR, MINOR, OR NEUTRAL: THE THIRD HALFWAY?" : "THE RIFF, THEN AGAIN: WHICH NOTE BENT?";
-  frSay(say); frDrawBoard(q.show.ref!=null ? [{m:q.show.ref, c:"#F1E8D2", t:"REF"}] : []);
+  frSay(say); frDrawBoard(q.show.ref!=null ? [{m:q.show.ref, c:"#F1E8D2", t:"REF"}] : []); frDrawStaff(frStaffNotes(q, false));
   const len=frPlay(q); q.at=performance.now()+len; q.limit=(L.fast?6000:9000)*speedMul();
 }
 function frSay(t){ const p=blast.stageEl && blast.stageEl.querySelector(".frprompt"); if(p) p.textContent=t; }
@@ -154,6 +181,25 @@ function frTick(now){
   }
   blast.raf=requestAnimationFrame(frTick);
 }
+// ---------- hearing yourself ----------
+// With the minichord's speaker off (page mode) the page sounds what's held on the chord buttons, for as
+// long as it's held, retuned: a black-key note is the modifier, so it sounds a quarter-tone from its
+// letter, up if the modifier sharpens and down if it flattens. Holding a chord and tapping the modifier
+// wobbles between the note and the one between the frets, which is what everyone does first.
+const frHeld=new Map();
+function frEcho(){
+  if(!blast || blast.kind!=="frets" || blast.instrument || !settings.sounds || !piano.ctx || blast.phase==="menu") return frSilence();
+  const ctx=piano.ctx, sharpens=(mc.params[31]??0)!==1, want=new Map();
+  for(const v of mc.voices){ const n=v.note ?? Math.round(v.pitch), pc=((n%12)+12)%12, black=[1,3,6,8,10].includes(pc);
+    want.set(`${v.ch}:${n}`, black ? n+(sharpens?-.5:.5) : n); }
+  for(const [k,o] of frHeld) if(!want.has(k)){ try{ o.g.gain.setTargetAtTime(0,ctx.currentTime,.05); o.osc.stop(ctx.currentTime+.3); }catch(e){} frHeld.delete(k); }
+  for(const [k,m] of want) if(!frHeld.has(k)){ try{
+    const g=ctx.createGain(); g.gain.value=0; g.gain.setTargetAtTime(.07,ctx.currentTime,.01); g.connect(piano.out||ctx.destination);
+    const osc=ctx.createOscillator(); osc.type="triangle"; osc.frequency.value=440*Math.pow(2,(m-69)/12); osc.connect(g); osc.start();
+    frHeld.set(k,{osc,g}); }catch(e){} }
+}
+function frSilence(){ for(const [,o] of frHeld){ try{ o.osc.stop(); }catch(e){} } frHeld.clear(); }
+mc.addEventListener("voices", frEcho);
 // ---------- answers ----------
 function fretsNote(){ if(blast && blast.kind==="frets" && blast.phase==="play" && blast.q && blast.q.step==="answer"){ const len=frPlay(blast.q); blast.q.at=performance.now()+len; } }
 function fretsChord(voices){
@@ -200,7 +246,16 @@ function frWrong(why, said){
   if(blast.lives<=0){ gameLater(()=>{ blast.phase="over"; blast.over=true; saved.best.frets=Math.max(saved.best.frets||0, blast.score); save(); frMenu(true); }, 2600); return; }
   frNext(3200);
 }
-function frReveal(q){ if(q.show.test!=null) frDrawBoard([...(q.show.ref!=null?[{m:q.show.ref, c:"#F1E8D2", t:"REF"}]:[]), {m:q.show.test, c:"#FF5AA0", t:q.off>0?"+¼":q.off<0?"−¼":q.kind==="neutral"?["MAJ","MIN","NEUTRAL"][q.answer]:"SAME"}]); }
+function frReveal(q){
+  if(q.show.test!=null) frDrawBoard([...(q.show.ref!=null?[{m:q.show.ref, c:"#F1E8D2", t:"REF"}]:[]), {m:q.show.test, c:"#FF5AA0", below:true, t:q.off>0?"+¼":q.off<0?"−¼":q.kind==="neutral"?["MAJ","MIN","NEUTRAL"][q.answer]:"SAME"}]);
+  frDrawStaff(frStaffNotes(q, true));
+}
+// what the staff shows: the reference always; the test once answered, in pink
+function frStaffNotes(q, reveal){
+  if(q.kind==="neutral"){ const r=q.ref[0][0]; return reveal ? [{m:r,c:"#F1E8D2"},{m:r+[4,3,3.5][q.answer],c:"#FF5AA0"},{m:r+7,c:"#F1E8D2"}] : [{m:r,c:"#F1E8D2"},{m:r+7,c:"#F1E8D2"}]; }
+  if(q.kind==="riff") return q.ref.map((n,i)=>({m: reveal && i===q.idx ? q.test[i][0] : n[0], c: reveal && i===q.idx ? "#FF5AA0" : "#F1E8D2"}));
+  const ref=q.show.ref; return reveal ? [{m:ref,c:"#F1E8D2"},{m:q.show.test,c:"#FF5AA0"}] : [{m:ref,c:"#F1E8D2"}];
+}
 function frNext(ms=1400){
   blast.q.step="done"; blast.q.at=0;
   if(blast.right && blast.right%6===0 && blast.level<FR_LEVELS.length-1 && blast.lives>0){ blast.level++; banner(`LEVEL ${blast.level+1}`, FR_LEVELS[blast.level].n.toUpperCase()); sfx("level"); frBar(); ms+=1200; }
@@ -208,12 +263,21 @@ function frNext(ms=1400){
 }
 // the band, in pixels: a double-necked guitarist and a drummer, in polka dots with big round heads
 const FR_DOTS=(x,y,w,h)=>{ let s=""; for(let j=y+1;j<y+h;j+=3) for(let i=x+((j-y)%6?1:2);i<x+w;i+=3) s+=`<rect x="${i}" y="${j}" width="1" height="1"/>`; return s; };
-const FR_GUITARIST=`<svg viewBox="0 0 24 34" shape-rendering="crispEdges" aria-hidden="true"><circle cx="12" cy="7" r="7" fill="#F1E8D2"/><g fill="#16132A">${FR_DOTS(6,1,12,12)}</g>
-  <rect x="7" y="14" width="10" height="12" fill="#F1E8D2"/><g fill="#16132A">${FR_DOTS(7,14,10,12)}</g><rect x="8" y="26" width="3" height="8" fill="#F1E8D2"/><rect x="13" y="26" width="3" height="8" fill="#F1E8D2"/>
-  <rect x="1" y="17" width="22" height="2" fill="#16132A"/><rect x="1" y="21" width="22" height="2" fill="#16132A"/><rect x="15" y="16" width="6" height="8" fill="#16132A"/></svg>`;
-const FR_DRUMMER=`<svg viewBox="0 0 28 34" shape-rendering="crispEdges" aria-hidden="true"><circle cx="14" cy="7" r="7" fill="#F1E8D2"/><g fill="#16132A">${FR_DOTS(8,1,12,12)}</g>
-  <rect x="9" y="14" width="10" height="10" fill="#F1E8D2"/><g fill="#16132A">${FR_DOTS(9,14,10,10)}</g>
-  <rect x="4" y="22" width="20" height="10" fill="#16132A"/><rect x="6" y="24" width="16" height="6" fill="#F1E8D2"/><rect x="0" y="16" width="7" height="2" fill="#F1E8D2"/><rect x="21" y="16" width="7" height="2" fill="#F1E8D2"/></svg>`;
+// the guitarist: a triangle head, point up, and a double neck; the drummer: a tall rectangle head,
+// behind a hi-hat, a snare and a bass drum
+const FR_GUITARIST=`<svg viewBox="0 0 26 38" shape-rendering="crispEdges" aria-hidden="true">
+  <path fill="#F1E8D2" d="M13 0L22 14H4Z"/><g fill="#16132A">${FR_DOTS(7,6,12,8)}</g>
+  <rect x="8" y="15" width="10" height="13" fill="#F1E8D2"/><g fill="#16132A">${FR_DOTS(8,15,10,13)}</g>
+  <rect x="9" y="28" width="3" height="10" fill="#F1E8D2"/><rect x="14" y="28" width="3" height="10" fill="#F1E8D2"/>
+  <rect x="0" y="18" width="24" height="2" fill="#16132A"/><rect x="0" y="23" width="24" height="2" fill="#16132A"/><rect x="17" y="17" width="7" height="10" fill="#16132A"/>
+  <rect x="0" y="17" width="2" height="9" fill="#FF5AA0"/></svg>`;
+const FR_DRUMMER=`<svg viewBox="0 0 40 38" shape-rendering="crispEdges" aria-hidden="true">
+  <rect x="15" y="0" width="8" height="15" fill="#F1E8D2"/><g fill="#16132A">${FR_DOTS(15,0,8,15)}</g>
+  <rect x="14" y="16" width="10" height="9" fill="#F1E8D2"/><g fill="#16132A">${FR_DOTS(14,16,10,9)}</g>
+  <rect x="7" y="17" width="7" height="2" fill="#F1E8D2"/><rect x="24" y="19" width="8" height="2" fill="#F1E8D2"/>
+  <rect x="0" y="13" width="10" height="2" fill="#FFD35A"/><rect x="1" y="16" width="8" height="1" fill="#FFD35A"/><rect x="4" y="15" width="2" height="23" fill="#9A93B5"/>
+  <rect x="28" y="22" width="11" height="5" fill="#F1E8D2"/><rect x="28" y="22" width="11" height="1" fill="#FF5AA0"/><rect x="33" y="27" width="1" height="11" fill="#9A93B5"/>
+  <circle cx="19" cy="31" r="7" fill="#16132A" stroke="#F1E8D2" stroke-width="2"/><circle cx="19" cy="31" r="2" fill="#FF5AA0"/></svg>`;
 
 // ---------- Between the Frets' demo ----------
 function frDemo(){
@@ -239,6 +303,7 @@ function frDemo(){
 }
 function endFrDemo(token){
   if(!blast || blast.demo!==token) return;
+  frDrawStaff();
   stopDemo(); blast.phase="menu"; frDrawBoard(); frSay(""); const r=blast.stageEl&&blast.stageEl.querySelector(".frrows"); if(r) r.innerHTML="";
   if(blast.overlay) blast.overlay.hidden=false;
   cabRestart();

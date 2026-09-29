@@ -103,7 +103,9 @@ function kfDevice(){
   // a key signature set with the key change combo calls that key (major, or its relative minor)
   // (a key the minichord was already in counts too, when the minichord reports the combo on its own:
   // that's how C major and A minor, the chart's own signature, get called)
-  const picked = mc.unasked && blast.phase==="play"; mc.unasked=false;
+  // (only the combo: a preset loaded, or a double tap, reports unasked too, and isn't a call)
+  const picked = mc.comboPick && blast.phase==="play"; mc.unasked=false;
+  if(mc.presetLoaded) return;                                                  // its key goes back to C with the game's other settings
   if(hasSetting(35) && mc.params[35]!=null && (mc.params[35]!==keyIndexOf(0) || picked)){
     const idx=mc.params[35], f=KEY_FIFTHS[idx] ?? 0, maj=mod(7*f,12), min=mod(maj+9,12), name=mc.keyName||"?";
     if(idx!==keyIndexOf(0)) borrow(35, keyIndexOf(0));                           // back to the plain buttons

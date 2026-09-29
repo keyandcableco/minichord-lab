@@ -43,6 +43,13 @@ const t=require("./harness").load("key-fleet");
   mc._asked=0; const dump=[0xF0]; for(let k=0;k<256;k++){ const v=mc.params[k]||0; dump.push(v&127, v>>7); } dump.push(0xF7); dump[71]=0; dump[72]=0;
   mc._dump(dump); await sleep(100);
   check("the combo picking C (reported unasked) calls C major", a.ships[0].sunk, t.heard());
+  // a preset loaded on the instrument reports unasked too, with lots changed (its key among them):
+  // that's no call, and the game's key goes back to C
+  a.ships=[{kind:"major", cells:[[0,0],[1,0],[2,0]], name:"G MAJOR", detail:"", tonic:"G", minor:false, hits:new Set(["1,0"]), sunk:false, misses:0}];
+  const pd=[0xF0]; for(let k=0;k<256;k++){ let v=mc.params[k]||0; if(k>=20 && k<40) v=(v+3)%100; if(k===35) v=1; pd.push(v&127, v>>7); } pd.push(0xF7);
+  const heardBefore=t.heard(); mc._asked=0; mc._dump(pd); await sleep(100);
+  check("a preset loaded on the instrument isn't a key call", !a.ships[0].sunk && t.heard()===heardBefore, t.heard());
+  check("and the game's key goes back to C after it", mc.params[35]===0);
   // the wider seas: a line of fifths, every key on it, no two keys in a fleet that sound the same
   a.level=10; let twins=0, cols=0, ok=0;
   for(let n=0;n<80;n++){ sb.kfWave(); cols=w.eval("KF_COLS.length"); const homes=a.ships.map(s=>t.PC[s.tonic]); if(new Set(homes).size<homes.length) twins++; if(a.ships.length===3) ok++; }

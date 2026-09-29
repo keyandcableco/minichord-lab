@@ -7,18 +7,21 @@
 
 // ---------- borrowing settings, and always giving them back ----------
 const borrowed={};
+// what the games have set, so it can be set again if a preset is loaded on the instrument mid-game
+const wanted={};
 // everything the current round has set, so switching games never gives back what the new
 // game just borrowed (the key signature, Barry Harris mode, slash voice…)
 const roundBorrows=new Set();
 /** set addr to value for this round: borrowed if it differs, and kept if an earlier round already set it */
 function ensure(addr,value){
   if(!canWrite()) return;
+  wanted[addr]=value;
   if((mc.params[addr]??0)!==value) borrow(addr,value);
   else if(addr in borrowed) roundBorrows.add(addr);
 }
 function borrow(addr,value){
   if(!canWrite()) return;
-  roundBorrows.add(addr);
+  roundBorrows.add(addr); wanted[addr]=value;
   if(!(addr in borrowed)) borrowed[addr]=mc.params[addr] ?? 0;
   mc.writeParam(addr,value);
   $("restore").hidden=false; mine();
@@ -38,6 +41,7 @@ function modTap(){
 function restoreAll(){
   const back=Object.entries(borrowed);
   for(const [a] of back) delete borrowed[a];            // clear first, so the panel redraws without them
+  for(const a of Object.keys(wanted)) delete wanted[a];
   for(const [a,v] of back) mc.writeParam(+a, v);
   $("restore").hidden=true; stopTones(); mine();
   if(mc.out) setTimeout(()=>mc.requestDump(),200);
@@ -805,6 +809,10 @@ function mine(){
 
 // ---------- connection ----------
 mc.addEventListener("device", ()=>{
+  // A preset loaded on the instrument mid-game (its preset buttons) sets everything anew: what the
+  // game had set goes back on, and the new preset's own values become what's given back after
+  if(mc.presetLoaded && Object.keys(wanted).length && canWrite()){
+    for(const [a,v] of Object.entries(wanted)){ if(mc.params[a]!==v){ borrowed[a]=mc.params[a]; roundBorrows.add(+a); mc.writeParam(+a, v); } } }
   if(q && settings.modTap!=="off" && canWrite() && mc.params[200]!==31) modTap();   // set it up once connected
   if(blast && blast.kind==="command") commandDevice();
   else if(blast && blast.kind==="snake") snDevice();
