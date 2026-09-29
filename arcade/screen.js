@@ -149,8 +149,11 @@ function fxDraw(now, dt){
       g.fillRect(cx-1,cy-5,2,4); g.fillRect(cx-3,cy-1,6,2); g.fillRect(cx-4,cy+1,8,2);
       if(hot){ g.fillStyle="#FF8A3D"; g.fillRect(cx-1,cy-7,2,2); } });
   } else {
-  // the ship: a little pixel cannon at the bottom centre
-  const sx=Math.floor(W/2), sy=H-6;
+  // the ship: a little pixel cannon at the bottom centre, or, in the demo, off to the left under the
+  // chords it falls through, clear of the minichord drawn at the foot of the field; it glides there
+  const want = blast.phase==="demo" && blast.demo ? DEMO_SHIP : .5;
+  blast.shipF = blast.shipF==null ? want : blast.shipF+(want-blast.shipF)*Math.min(1,dt*3);
+  const sx=Math.floor(W*blast.shipF), sy=H-6;
   g.fillStyle="#F1E8D2"; g.fillRect(sx-1,sy-4,2,3); g.fillRect(sx-3,sy-1,6,2); g.fillRect(sx-5,sy+1,10,2);
   g.fillStyle="#FF4B3E"; g.fillRect(sx-1,sy+3,2,1+Math.floor(now/80)%2);
   }

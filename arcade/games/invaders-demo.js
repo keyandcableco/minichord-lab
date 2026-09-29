@@ -11,6 +11,7 @@
 // the key change combo: both preset buttons held, the rows turning into sharp, natural and flat
 // keys, one pressed. It runs from HOW TO PLAY, and on its own after a while on the title screen.
 const DEMO_COLS=["F","C","G","D","A","E","B"];
+const DEMO_SHIP=.28;                      // where the ship sits in the demo, as a share of the field's width: under the chords
 // where the parts sit on the minichord, as percentages of its outline (from its layout drawing):
 // the 21 chord buttons row by row, the modifier, the two preset buttons and the light
 const MC_PARTS={"buttons": [[12.59, 17.03, 5.31, 9.74], [19.62, 17.03, 5.3, 9.74], [26.66, 17.03, 5.34, 9.74], [33.74, 17.03, 5.27, 9.74], [40.77, 17.03, 5.31, 9.74], [47.79, 17.03, 5.31, 9.74], [54.82, 17.03, 5.3, 9.74], [15.17, 30.28, 5.31, 9.89], [22.22, 30.28, 5.26, 9.89], [29.24, 30.28, 5.26, 9.89], [36.27, 30.28, 5.26, 9.89], [43.29, 30.28, 5.31, 9.89], [50.31, 30.28, 5.29, 9.89], [57.42, 30.28, 5.29, 9.89], [17.69, 43.6, 5.31, 9.88], [24.72, 43.6, 5.31, 9.88], [31.79, 43.6, 5.29, 9.88], [38.84, 43.6, 5.31, 9.88], [45.87, 43.6, 5.31, 9.88], [52.9, 43.6, 5.31, 9.88], [59.93, 43.6, 5.31, 9.88]], "mod": [8.34, 16.99, 2.58, 4.96], "presets": [[89.36, 64.89, 3.45, 5.98], [89.36, 72.98, 3.45, 5.97]], "led": [63.44, 63.27, 2.77, 5.27]};
@@ -94,7 +95,7 @@ function runDemo(attract){
       if(sc.title==="READY?") sfx("level");
       if(sc.chord){
         // the chord falls, the buttons light one after another, and they shoot it down
-        const ch=document.createElement("span"); ch.className="fchord democh"; ch.textContent=sc.chord; ch.style.left="24%"; ch.style.top="92px";
+        const ch=document.createElement("span"); ch.className="fchord democh"; ch.textContent=sc.chord; ch.style.left=`calc(${DEMO_SHIP*100}% - 2.2em)`; ch.style.top="92px";
         blast.field.appendChild(ch);
         requestAnimationFrame(()=>{ ch.style.transition="top 2.2s linear"; ch.style.top="210px"; });
         await sleep(700); if(!token.run){ ch.remove(); return; }
@@ -104,7 +105,7 @@ function runDemo(attract){
         playChord(sc);                                   // what those buttons play
         await sleep(450); if(!token.run){ ch.remove(); return; }
         // the ship fires, as it does in the game
-        const fld=blast.field, x0=fld.clientWidth/2, y0=fld.clientHeight-22, x1=ch.offsetLeft, y1=ch.offsetTop+ch.offsetHeight/2;
+        const fld=blast.field, x0=fld.clientWidth*(blast.shipF??DEMO_SHIP), y0=fld.clientHeight-22, x1=ch.offsetLeft+ch.offsetWidth/2, y1=ch.offsetTop+ch.offsetHeight/2;
         sfx("shoot");
         blast.fx.missiles.push({x0:x0/PX, y0:y0/PX, x1:x1/PX, y1:y1/PX, t0:performance.now(), dur:220,
           hit:()=>{ sfx("boom"); explode(x1,y1); ch.remove(); }});

@@ -27,7 +27,7 @@ key presses, checking what should happen.
 | `high-scores` | GAME OVER before the initials; input ignored at first; the board kept; beginner mode stays off it |
 | `lobby` | the arcade lobby's cabinets, best scores and ticker |
 | `bonus` | every two levels a bonus round starts; each of the five mini-games can be won; the game carries on after |
-| `fullscreen` | full screen builds the cabinet round the game, in CRT, and leaving puts it back |
+| `fullscreen` | full screen builds the cabinet round the game, in CRT, its SOUND, RESET and connection status working; leaving puts it back |
 | `timers` | a game's timers belong to its run, so none from an old game reaches the next |
 | `practice-room` | the Practice Room around the arcade: every one of its games opens and deals a round |
 

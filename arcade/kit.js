@@ -279,7 +279,7 @@ function coldBoot(){
     if(t===13){ el.innerHTML='<div class="bootlines"></div>'; }
     const box=el.querySelector(".bootlines"), i=t-13;
     if(i<lines.length){ const d=document.createElement("div"); d.innerHTML=lines[i]||"&nbsp;"; box.appendChild(d); if(/OK|FOUND/.test(lines[i])) sfx("press"); setTimeout(tick, i<2?220:320); return; }
-    setTimeout(()=>{ el.remove(); if(blast) blast.booting=false; stopBlaster(); nextQuestion(); sfx("start"); }, 700);
+    setTimeout(()=>{ el.remove(); if(blast) blast.booting=false; stopBlaster(); nextQuestion(); fsAdopt(); sfx("start"); }, 700);
   };
   tick();
 }

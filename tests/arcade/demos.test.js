@@ -12,9 +12,10 @@ if(process.argv[2]){
     const caps=new Set();
     for(let i=0;i<16;i++){ await t.sleep(250); const c=t.d.querySelector(".field .demo .democap"); if(c && c.textContent) caps.add(c.textContent); }
     const demo=!!t.d.querySelector(".field .demo");
+    const ship = process.argv[2]!=="invaders" || Math.abs((t.w.eval("blast.shipF")??.5)-t.w.eval("DEMO_SHIP"))<.05;   // Invaders' ship, off to the left
     const skip=t.d.querySelector(".field .demo .demoskip"); if(skip) skip.click(); await t.sleep(200);
     const ov=t.overlay();
-    console.log(JSON.stringify({demo, captions:caps.size, back:!!ov && !ov.hidden && !t.d.querySelector(".field .demo"), errors}));
+    console.log(JSON.stringify({demo, ship, captions:caps.size, back:!!ov && !ov.hidden && !t.d.querySelector(".field .demo"), errors}));
     process.exit(0);
   })();
 } else {
@@ -22,7 +23,7 @@ if(process.argv[2]){
   for(const s of SLUGS){
     const r=spawnSync(process.execPath,[__filename,s],{encoding:"utf8",timeout:60000});
     let j={}; try{ j=JSON.parse((r.stdout||"").trim().split("\n").pop()); }catch(e){}
-    const ok=j.demo && j.captions>=1 && j.back && !(j.errors||[]).length;
+    const ok=j.demo && j.ship && j.captions>=1 && j.back && !(j.errors||[]).length;
     if(!ok) bad++;
     console.log(`${ok?"  ✓":"  ✗"} ${s}: ${j.captions||0} caption${j.captions===1?"":"s"} in four seconds, skip back to the title${ok?"":"  "+JSON.stringify(j)+(r.stderr||"").slice(0,300)}`);
   }

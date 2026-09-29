@@ -23,7 +23,9 @@
 // waters, then the whole line, so every key's there, and C-sharp major and D-flat major (the same
 // sound) are different keys in different places, reached by sharpening C or flattening D.
 const KF_LINE=["G♭","D♭","A♭","E♭","B♭","F","C","G","D","A","E","B","F♯","C♯","G♯"];
-const KF_SPAN={plain:[5,11], flat:[0,11], sharp:[5,14], all:[0,14]};
+const KF_SPAN={plain:[5,11], near:[4,12], flat:[0,11], sharp:[5,14], all:[0,14]};
+// (near: the plain buttons and one column past each end, B-flat and F-sharp, so F major, B major and
+// their relatives, keys that need one sharp or flat off the plain buttons, sail from level 3)
 const KF_ROWS=["","m","7"];
 // the columns in play now, left to right (cells are numbered within them)
 let KF_COLS=KF_LINE.slice(5,12);
@@ -34,12 +36,12 @@ const kfSetSea=L=>{ const [lo,hi]=KF_SPAN[L.span||"plain"]; KF_COLS=KF_LINE.slic
 const KF_LEVELS=[
   {n:"Major keys", fleet:["major"], torps:7, hints:true, harp:true},
   {n:"Major and minor", fleet:["major","minor"], torps:11, hints:true, harp:true},
-  {n:"Cadences", fleet:["cadence","key"], torps:10, islands:1},
-  {n:"Three keys", fleet:["major","minor","key"], torps:12, islands:1},
-  {n:"Minor keys and their V7", fleet:["minorV","key"], torps:11, islands:2},
-  {n:"Puzzle waters", fleet:["major","minor","cadence"], torps:9, counts:true, islands:1},
-  {n:"Whole keys", fleet:["whole","any"], torps:12, islands:1},
-  {n:"Chains and puzzles", fleet:["chain","cadence","key"], torps:10, counts:true, islands:1},
+  {n:"Cadences", fleet:["cadence","key"], torps:10, islands:1, span:"near"},
+  {n:"Three keys", fleet:["major","minor","key"], torps:12, islands:1, span:"near"},
+  {n:"Minor keys and their V7", fleet:["minorV","key"], torps:11, islands:2, span:"near"},
+  {n:"Puzzle waters", fleet:["major","minor","cadence"], torps:9, counts:true, islands:1, span:"near"},
+  {n:"Whole keys", fleet:["whole","any"], torps:12, islands:1, span:"near"},
+  {n:"Chains and puzzles", fleet:["chain","cadence","key"], torps:10, counts:true, islands:1, span:"near"},
   {n:"Flat waters", fleet:["major","minor","key"], torps:12, islands:1, span:"flat"},
   {n:"Sharp waters", fleet:["major","minor","cadence"], torps:12, islands:1, span:"sharp"},
   {n:"Every key", fleet:["whole","key","key"], torps:14, islands:2, counts:true, span:"all"},
@@ -278,15 +280,19 @@ function fleetShot(voices){
   const row = ["","6"].includes(id.quality) ? 0 : ["m","m6"].includes(id.quality) ? 1 : id.quality==="7" ? 2 : -1;
   const col=KF_COLS.indexOf(root);
   if(row<0){ heard(name,false,"NOT ON THE CHART"); return; }
-  if(col<0){ heard(name,false,"OFF THE CHART"); return; }                   // the sea doesn't reach it at this level
   const k=kfKey(col,row);
-  if(row===2){                                                                   // a 7 chord: maybe the start of a cadence,
-    const fire=()=>{ if(!blast || blast.kind!=="fleet" || blast.phase!=="play") return;   // whatever its own cell holds
+  // A 7 chord may be the start of a cadence, wherever it lies, on the chart or off it (a key's V7 can
+  // be past the edge of the sea, or spelled the other way): it waits to see if its I follows, and only
+  // if not is it judged as a shot.
+  if(row===2){
+    const fire=()=>{ if(!blast || blast.kind!=="fleet" || blast.phase!=="play") return;
+      if(col<0){ heard(name,false,"OFF THE CHART"); return; }
       if(blast.islands && blast.islands.has(k)){ heard(name,false,"ROCKS: NO SHIP THERE"); return; }
       if(blast.shots.has(k)){ heard(name,false,"ALREADY FIRED THERE"); return; } heard(name,true); kfFire(col,row); };
     heard(name,true,"…"); blast.pendingDom={root:id.root, name, fire, timer:gameLater(()=>{ if(blast && blast.pendingDom){ blast.pendingDom=null; fire(); } }, KF_CADENCE_WAIT)};
     return;
   }
+  if(col<0){ heard(name,false,"OFF THE CHART"); return; }                   // the sea doesn't reach it at this level
   if(blast.islands && blast.islands.has(k)){ heard(name,false,"ROCKS: NO SHIP THERE"); return; }
   if(blast.shots.has(k)){ heard(name,false,"ALREADY FIRED THERE"); return; }
   heard(name,true); kfFire(col,row);

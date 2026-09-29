@@ -57,13 +57,30 @@ function toggleFull(field){
   if(document.querySelector(".fscab")) return fsExit();
   const cab=document.createElement("div"); cab.className="fscab";
   cab.innerHTML=`<div class="fsmarquee"><span>${TITLE_FOR[cabKind()]||"MINICHORD ARCADE"}</span></div>
-    <div class="fsbezel"><div class="fsscreen"></div><div class="fsplate"><span>THE KEY &amp; CABLE CO.</span><span class="rainbow">MINICHORD ARCADE</span><span>INSERT MINICHORD</span></div></div>`;
+    <div class="fsbezel"><div class="fsscreen"></div><div class="fsplate"><span>THE KEY &amp; CABLE CO.</span><span class="rainbow">MINICHORD ARCADE</span>
+      <span class="fsright"><span class="fsconn"></span><span class="nesbtn"><span>SOUND</span><button type="button" class="fsmute"></button></span><span class="nesbtn"><span>RESET</span><button type="button" class="fsreset" aria-label="Reset: start the game afresh"></button></span></span></div></div>`;
+  // the bezel's own SOUND and RESET, the same as the page's
+  const fm=cab.querySelector(".fsmute"), draw=()=>{ fm.innerHTML = settings.sounds ? SPEAKER_ON : SPEAKER_OFF; fm.classList.toggle("off", !settings.sounds); fm.setAttribute("aria-label", settings.sounds ? "Sound on: turn it off" : "Sound off: turn it on"); };
+  fm.onclick=()=>{ const m=document.getElementById("muteBtn"); if(m) m.click(); else { settings.sounds=!settings.sounds; save(); } draw(); }; draw();
+  cab.querySelector(".fsreset").onclick=()=>coldBoot();
+  fsConn(cab);
   fsHome={parent:field.parentNode, next:field.nextSibling, field};
   cab.querySelector(".fsscreen").appendChild(field); document.body.appendChild(cab);
   field.classList.add("crt","fscrt");
   const req=cab.requestFullscreen || cab.webkitRequestFullscreen, pseudo=()=>cab.classList.add("pseudo");
   try{ const p=req ? req.call(cab) : null; if(!req) pseudo(); else if(p && p.catch) p.catch(pseudo); }catch(e){ pseudo(); }
   field._fullLabel && field._fullLabel(); setTimeout(arcadeRelayout,60);
+}
+// the bezel says whether the minichord's there: connected, or a blinking INSERT MINICHORD
+function fsConn(cab){ cab=cab||document.querySelector(".fscab"); const c=cab && cab.querySelector(".fsconn"); if(!c) return;
+  const on=!!mc.out; c.textContent = on ? "MINICHORD CONNECTED" : "INSERT MINICHORD"; c.classList.toggle("blink", !on); c.classList.toggle("on", on); }
+mc.addEventListener("status", ()=>fsConn());
+mc.addEventListener("device", ()=>fsConn());
+// a game rebuilt while the cabinet's up (RESET does that): its new field goes into the cabinet
+function fsAdopt(){
+  const cab=document.querySelector(".fscab"), scr=cab && cab.querySelector(".fsscreen"); if(!scr || !blast || !blast.field || scr.contains(blast.field)) return;
+  const old=scr.querySelector(".field"); if(fsHome){ fsHome.parent=blast.field.parentNode; fsHome.next=blast.field.nextSibling; fsHome.field=blast.field; }
+  if(old) old.remove(); scr.appendChild(blast.field); blast.field.classList.add("crt","fscrt"); setTimeout(arcadeRelayout,60);
 }
 function fsExit(){
   if(document.fullscreenElement || document.webkitFullscreenElement) (document.exitFullscreen || document.webkitExitFullscreen).call(document);
