@@ -21,7 +21,13 @@ export const KEY_NAMES = ["C","G","D","A","E","B","F","B♭","E♭","A♭","D♭
 // each key's place on the line of fifths (sharps positive, flats negative)
 const KEY_FIFTHS = [0,1,2,3,4,5,-1,-2,-3,-4,-5,-6,6,7,8,9,10,11,12,-8,-7];
 export const TEMPERAMENTS = ["Equal","Meantone","Just","Pythagorean","Werckmeister III","Kirnberger III",
-  "Vallotti","Young","Kellner","1/6 Meantone","19-EDO","31-EDO"];
+  "Vallotti","Young","Kellner","1/6 Meantone","19-EDO","24-EDO","31-EDO"];
+// Firmware 18 put 24-EDO in between 19 and 31, moving 31-EDO from 11 to 12. The Lab numbers
+// temperaments firmware 18's way; these translate for the minichord at hand.
+/** a stored temperament number, read as a position in the Lab's list */
+export const temperIndex=(value, firmware)=> value===11 && firmware<18 ? 12 : value;
+/** the number to store for a position in the Lab's list, or null if that firmware hasn't it */
+export const temperValue=(index, firmware)=> firmware>=18 ? index : index===12 ? 11 : index===11 ? null : index;
 
 const isHarpPort = n => /minichord/i.test(n) && n.includes("2");
 const isChordPort = n => /minichord/i.test(n) && (n.includes("1") || n.trim().toLowerCase()==="minichord");
@@ -50,8 +56,10 @@ export class Minichord extends EventTarget {
   get keyIndex(){ return this.params[35] ?? null; }
   get keyName(){ return this.keyIndex==null ? null : KEY_NAMES[this.keyIndex] ?? null; }
   get keyFifths(){ return this.keyIndex==null ? 0 : (KEY_FIFTHS[this.keyIndex] ?? 0); }
-  get temperament(){ return this.params[237] ?? null; }
-  get division(){ const t=this.temperament; return t===10 ? 19 : t===11 ? 31 : t===12 ? 24 : 12; }
+  get temperament(){ const v=this.params[237]; return v==null ? null : temperIndex(v, this.params[7]??0); }   // the Lab's numbering
+  /** the number to write to address 237 for a temperament in the Lab's list (null: not on this firmware) */
+  temperamentValue(index){ return temperValue(index, this.params[7]??0); }
+  get division(){ const t=this.temperament; return t===10 ? 19 : t===11 ? 24 : t===12 ? 31 : 12; }
   /** the pitch of A4 in Hz: master tuning (address 109) is stored in tenths of a hertz; 0 means 440 */
   get aHz(){ const v=this.params[109]; return v ? v/10 : 440; }
   get masterCh(){ return this.zone.type==="lower" ? 0 : 15; }

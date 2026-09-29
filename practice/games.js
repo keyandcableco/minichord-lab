@@ -718,7 +718,7 @@ function genShades(){
   const slots=Array(7).fill(0); SHADES.forEach((sh,k)=>slots[order[k]]=sh.idx); slots[order[5]]=12; slots[order[6]]=13;   // sus4 and sus2 fill the other two
   const mode=settings.shadesMode, target = mode==="which" ? rnd(SHADES) : null;
   alt={kind:"shades", root, rootPc, slots, mode, target, pos:0};
-  const extra=[{addr:237,value:11,what:"31-EDO"},{addr:110,value:1,what:"MPE output, so the exact pitches arrive"}];
+  const extra=[{addr:237, get value(){ return mc.temperamentValue(12)??11; }, what:"31-EDO"},{addr:110,value:1,what:"MPE output, so the exact pitches arrive"}];
   const combosOf=sh=>COMBOS[slots.indexOf(sh.idx)];
   return {kind:"shades", prompt: mode==="which" ? "Which third did you hear?" : "Darkest to brightest",
     sub: mode==="which" ? `Your minichord is in 31-EDO, with five kinds of triad on ${root} hidden on its button combinations, from subminor to supermajor. Press Hear it, then find that triad on the minichord and press the spacebar (or Found it) while you hold it.`

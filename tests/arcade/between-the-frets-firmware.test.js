@@ -6,8 +6,11 @@ const t=require("./harness").load("between-the-frets");
   const {w, sb, sleep, chord, check, mc}=t;
   const NAT={C:0,D:2,E:4,F:5,G:7,A:9,B:11};
   await sleep(150); t.connect({extra:{7:18, 97:150, 237:0, 110:0}}); await sleep(100);
-  check("the minichord goes to 24-EDO and MPE, its speaker left on", mc.params[237]===12 && mc.params[110]===1 && mc.params[97]===150);
-  check("the Lab knows temperament 12 is 24 steps", w.eval("mc.division")===24 && w.eval("TEMPERAMENT_TABLE[12].division")===24);
+  check("the minichord goes to 24-EDO (temperament 11) and MPE, its speaker left on", mc.params[237]===11 && mc.params[110]===1 && mc.params[97]===150);
+  check("the Lab's list reads 19, 24, 31, as firmware 18's does", w.eval("mc.division")===24 && w.eval("TEMPERAMENT_TABLE.slice(10).map(t=>t.division).join()")==="19,24,31");
+  // firmware 17 had 31-EDO at 11 and no 24: the Lab translates, both ways
+  check("on firmware 17, a stored 11 reads as 31-EDO", w.eval("temperIndex(11,17)")===12 && w.eval("temperIndex(11,18)")===11);
+  check("and 31-EDO is written as 11 there, 24-EDO not at all", w.eval("temperValue(12,17)")===11 && w.eval("temperValue(11,17)")===null && w.eval("temperValue(12,18)")===12);
   let edges=0; for(let n=0;n<300;n++){ const q=w.eval(`frQuestion("note")`); if((q.off>0 && ["E","B"].includes(q.letter)) || (q.off<0 && ["C","F"].includes(q.letter))) edges++; }
   check("any letter can go either way now, E and B sharp, C and F flat", edges>0, `${edges} of 300`);
   const b=await t.start(0); let found=0, wrongLetter=false;

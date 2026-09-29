@@ -208,7 +208,7 @@ function temps(){
     const val=document.createElement("span"); val.className="val";
     if(rows[k]!=null){ fill.style.width=`${rows[k]/max*100}%`; val.textContent=`${fmtHz(rows[k])} Hz`; }
     bt.append(lab,bar,val);
-    bt.onclick=()=>{ if(mc.sysex && mc.out) mc.writeParam(237,k); else { pageTemp=k; retune(); } update(); };
+    bt.onclick=()=>{ const v=mc.temperamentValue(k); if(mc.sysex && mc.out && v!=null) mc.writeParam(237,v); else { pageTemp=k; retune(); } update(); };
     box.appendChild(bt);
   });
 }

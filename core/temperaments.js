@@ -6,6 +6,10 @@
  * test-allFeatures branch of keyandcableco/minichord: whole-cent offsets from
  * equal temperament for C..B, with A held fixed, exactly what the device plays.
  * Keep it in step with that file; new temperaments go at the end there too.
+ * Its order is firmware 18's, where the divisions read 19, 24, 31. Firmware 17
+ * and earlier had 31-EDO at 11 and no 24: the Minichord class translates
+ * (mc.temperament reads, mc.temperamentValue() writes), so a page only ever
+ * deals in positions in this table.
  * ========================================================================== */
 import {spell} from "./minichord.js";
 
@@ -21,8 +25,8 @@ export const TEMPERAMENT_TABLE = [
   {"label": "Kellner", "division": 12, "cents": [8, -2, 3, 2, -3, 6, -4, 5, 0, 0, 4, -1], "note": "Herbert Anton Kellner's 1977 proposal for the tuning of Bach's Well-Tempered Clavier. Five fifths (C–G, G–D, D–A, A–E and B–F#) narrowed by a fifth of the Pythagorean comma. Thirds from 2.7 cents wide in C major to 21.5 in Db, F# and Ab."},
   {"label": "1/6 Meantone", "division": 12, "cents": [5, -7, 2, 10, -2, 7, -5, 3, -8, 0, 8, -3], "note": "Meantone with fifths narrowed by a sixth of the syntonic comma. Major thirds are 7.2 cents wide instead of pure, and the wolf between G# and Eb shrinks to 16 cents, so more keys are usable. Often associated with Gottfried Silbermann's organs."},
   {"label": "19-EDO", "division": 19, "cents": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "note": "Nineteen steps to the octave. The buttons mean exactly what they did, but C# and Db are now different notes a step apart, with C# the lower. Minor thirds land within a cent of pure; fifths pay 7 cents for it."},
-  {"label": "31-EDO", "division": 31, "cents": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "note": "Thirty-one steps. Major thirds essentially exact, and the augmented sixth lands within a cent of the 7:4 harmonic seventh — the interval twelve-note tuning has no room for. Sharps and flats are two steps apart here."},
   {"label": "24-EDO", "division": 24, "cents": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "note": "Twenty-four steps: twelve, with a quarter-tone between each pair. The buttons and key signatures mean what they always did, and the modifier moves a note by a quarter-tone instead of a semitone, so it plays the notes between the frets. The neutral third, halfway between major and minor, is right there, as are 11:8 and 11:6. Over MIDI the quarter-tones round to a semitone; MPE mode sends them exactly."},
+  {"label": "31-EDO", "division": 31, "cents": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "note": "Thirty-one steps. Major thirds essentially exact, and the augmented sixth lands within a cent of the 7:4 harmonic seventh — the interval twelve-note tuning has no room for. Sharps and flats are two steps apart here."}
 ];
 
 const NATURAL = {C:0,D:2,E:4,F:5,G:7,A:9,B:11};

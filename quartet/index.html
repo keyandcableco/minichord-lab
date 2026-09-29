@@ -432,7 +432,8 @@ function renderDevice(){
   set("vlSel", ok ? Math.min(2,mc.params[111]??0) : null);
   set("vlr", ok ? Math.min(24,mc.params[112]??12) : null, "vlrOut", v=>`${v} semitones`);
   set("gl", ok ? Math.min(1500,mc.params[199]??0) : null, "glOut", v=>v ? `${v} ms` : "off");
-  set("temp", ok ? Math.min(TEMPERAMENTS.length-1, mc.params[237]??0) : null);
+  set("temp", ok ? Math.min(TEMPERAMENTS.length-1, mc.temperament??0) : null);
+  [...$("temp").options].forEach(o=>o.disabled = ok && mc.temperamentValue(+o.value)==null);   // 24-EDO needs firmware 18
   set("slashVoice", ok ? Math.min(4,mc.params[113]??0) : null);
   set("cantusSel", ok ? Math.min(5,mc.params[115]??0) : null);
   const mpe=mc.params[110]===1, rv=mc.params[114]===1;
@@ -443,7 +444,7 @@ const write=(a,v)=>{ if(canWrite()) mc.writeParam(a,v); };
 let resyncT=null; const resync=()=>{ clearTimeout(resyncT); resyncT=setTimeout(()=>mc.requestDump(),300); };
 $("mpeBtn").onclick=()=>{ write(110, mc.params[110]===1?0:1); rebow(); resync(); };
 $("vlSel").onchange=e=>{ write(111,+e.target.value); resync(); };
-$("temp").onchange=e=>{ write(237,+e.target.value); resync(); };
+$("temp").onchange=e=>{ const v=mc.temperamentValue(+e.target.value); if(v!=null) write(237,v); resync(); };
 $("slashVoice").onchange=e=>{ const v=+e.target.value; write(113,v); if(v>0 && mc.params[23]!==0) write(23,0); resync(); };
 $("revoiceBtn").onclick=()=>{ write(114, mc.params[114]===1?0:1); resync(); };
 $("cantusSel").onchange=e=>{ write(115,+e.target.value); resync(); };

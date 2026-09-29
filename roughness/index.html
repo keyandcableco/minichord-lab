@@ -205,7 +205,8 @@ function temps(){
   $("tnote").textContent = t ? `${t.label}: ${t.note}` : "";
 }
 function choose(i){
-  if(mc.sysex && mc.out) mc.writeParam(237, i); else pageTemp=i;
+  const v=mc.temperamentValue(i);
+  if(mc.sysex && mc.out && v!=null) mc.writeParam(237, v); else pageTemp=i;   // (24-EDO before firmware 18: the page plays it)
   refresh();
 }
 

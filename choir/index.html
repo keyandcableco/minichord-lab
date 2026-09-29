@@ -460,7 +460,7 @@ const NAMES = ["C","C♯","D","E♭","E","F","F♯","G","A♭","A","B♭","B"];
 let reverb=null, wet=null, reverbOn=false;
 let glottalWave=null;
 let ctx=null, master=null, noiseBuf=null, organWave=null, midi=null;
-const TEMPERAMENTS=["Equal","Meantone","Just","Pythagorean","Werckmeister III","Kirnberger III","Vallotti","Young","Kellner","1/6 Meantone","19-EDO","31-EDO"];
+const TEMPERAMENTS=["Equal","Meantone","Just","Pythagorean","Werckmeister III","Kirnberger III","Vallotti","Young","Kellner","1/6 Meantone","19-EDO","24-EDO","31-EDO"];
 const dev={7:null,23:null,35:null,110:null,111:null,112:null,113:null,114:null,115:null,199:null,237:null};
 let zoneSeen=false, out=null, sysexOK=false, deviceMpe=null, singlePort=null, zoneWatch=null;
 // the minichord's chord port (Port 1) carries the chord and the sysex; Port 2 is the harp
@@ -1098,7 +1098,7 @@ function handleDump(d){
   const p=i=>d[1+2*i]+128*d[2+2*i];
   singlePort = p(108)===1;
   const mpe = p(110)===1 ? 1 : 0;
-  dev[35]=p(35); dev[111]=Math.min(2,p(111)); dev[112]=Math.min(24,p(112)); dev[199]=Math.min(1500,p(199)); dev[237]=Math.min(11,p(237)); dev[23]=Math.min(2,p(23)); dev[7]=p(7); dev[113]=Math.min(4,p(113)); dev[114]=p(114)?1:0; dev[115]=Math.min(5,p(115));
+  dev[35]=p(35); dev[111]=Math.min(2,p(111)); dev[112]=Math.min(24,p(112)); dev[199]=Math.min(1500,p(199)); dev[237]=Math.min(12, p(237)===11 && p(7)<18 ? 12 : p(237)); dev[23]=Math.min(2,p(23)); dev[7]=p(7); dev[113]=Math.min(4,p(113)); dev[114]=p(114)?1:0; dev[115]=Math.min(5,p(115));
   if(!mpe && zone.known){ zone.known=false; zone.type="lower"; updateZoneInfo(); renderRoutes(); }
   if(mpe && !zone.known){ zone.type="lower"; zone.members = singlePort ? 15 : 4; zone.known=true; updateZoneInfo(); renderRoutes(); }
   setDeviceMpe(mpe);
@@ -1215,7 +1215,7 @@ document.getElementById("mpeBtn").onclick=()=>setMpe(deviceMpe===1 ? 0 : 1);
 document.getElementById("vlSel").onchange=e=>{ writeParam(111,+e.target.value); renderDevice(); resync(); };
 const tSel=document.getElementById("temp");
 TEMPERAMENTS.forEach((n,i)=>tSel.add(new Option(n,i)));
-tSel.onchange=()=>{ writeParam(237,+tSel.value); resync(); };
+tSel.onchange=()=>{ const i=+tSel.value, v = (dev[7]??0)>=18 ? i : i===12 ? 11 : i===11 ? null : i; if(v!=null) writeParam(237,v); resync(); };   // firmware 17 had 31-EDO at 11, and no 24
 document.getElementById("slashRep").onchange=e=>{ writeParam(23,+e.target.value); renderSlash(); resync(); };
 document.getElementById("slashVoice").onchange=e=>{
   const v=+e.target.value; writeParam(113,v);

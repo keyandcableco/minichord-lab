@@ -19,7 +19,7 @@
 // F, G and A, sharpening, and quarter-flats only on D, E, G, A and B, flattening: every letter one way
 // or the other, the modifier's way set for each.
 //
-// On firmware 18 and up, the minichord does it itself: the game sets it to 24-EDO (temperament 12),
+// On firmware 18 and up, the minichord does it itself: the game sets it to 24-EDO (temperament 11),
 // where the modifier moves a note a quarter-tone, and to MPE, where each voice's exact pitch arrives
 // as a bend, and leaves its speaker on. Then the player hears the instrument play the note between the
 // frets, and any letter can go either way.
@@ -50,7 +50,7 @@ function frDevice(){
   // the key held at C; then either the minichord in 24-EDO and MPE, playing the quarter-tones itself,
   // or its speaker silenced and the page making the sounds, retuned
   arcadeSetup(()=>{ if(hasSetting(35)) borrow(35, keyIndexOf(0)); if(hasSetting(30)) ensure(30,0); if(hasSetting(31)) borrow(31, mc.params[31]??0);
-    if(frInstrument()){ blast.instrument=true; borrow(237,12); borrow(110,1); }
+    if(frInstrument()){ blast.instrument=true; borrow(237, mc.temperamentValue(11)); borrow(110,1); }   // 24-EDO
     else if(hasSetting(97)) borrow(97,0); });
 }
 function buildFretsField(box){
