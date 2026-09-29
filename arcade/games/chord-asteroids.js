@@ -7,7 +7,8 @@
 // Asteroids for spelling chords both ways. Big chord asteroids drift in from the edges toward the
 // ship in the middle. Play a rock's chord on the buttons and it cracks into its notes, smaller rocks
 // each spelled as a note of the chord (E7 breaks into E, G♯, B and D), which scatter and then turn
-// back toward the ship. Pluck each note on the harp and the ship turns and shoots it. A rock that
+// back toward the ship. Pluck each note on the harp and the ship turns and shoots it. The ship flies
+// an orbit round the middle, swung round by the mod knob or the arrow keys, to dodge. A rock that
 // reaches the ship costs a life; a string that plays no rock jams the gun for a moment, so
 // strumming doesn't pay. Clearing every note of a chord scores a bonus.
 const AS_LEVELS=[
@@ -47,7 +48,7 @@ function startAsteroids(){
 }
 function asDevice(){
   if(!blast || blast.kind!=="asteroids" || !canWrite()) return;
-  arcadeSetup(()=>{ asHarp(); });
+  arcadeSetup(()=>{ asHarp(); if(knobsReady()) borrow(238,1); });            // the knobs sending MIDI, to fly the ship
   const sig=AS_LEVELS.map((_,i)=>asLevelOk(i)).join();
   if(blast.phase==="menu" && blast.overlay && blast.menuSig!==sig){ menuRebuild(()=>asMenu()); }
 }
@@ -65,13 +66,23 @@ function buildAsteroidsField(box){
   asBar();
   setTimeout(helperSync);
 }
-function asCentre(){ if(!blast || !blast.field) return; blast.cx=blast.field.clientWidth/2; blast.cy=blast.field.clientHeight/2+10; }
+// The ship flies an orbit round the middle of the field: the mod knob (or the arrow keys) swings it
+// round, to dodge what's coming. The rocks aim at wherever it is, and its shots fly from there.
+function asCentre(){ if(!blast || !blast.field) return; blast.hx=blast.field.clientWidth/2; blast.hy=blast.field.clientHeight/2+10;
+  blast.orbitR=Math.min(blast.field.clientWidth, blast.field.clientHeight)*.24; asPlace(); }
+function asPlace(){ const a=blast.orbitA??Math.PI/2; blast.cx=blast.hx+Math.cos(a)*blast.orbitR; blast.cy=blast.hy+Math.sin(a)*blast.orbitR; }
+function asKnob(v){ if(!blast || blast.kind!=="asteroids") return; blast.orbitWant=Math.PI/2+(v-.5)*2*Math.PI; }   // the knob's whole turn is one lap
+document.addEventListener("keydown", e=>{
+  if(!blast || blast.kind!=="asteroids" || blast.phase!=="play" || /INPUT|SELECT|TEXTAREA/.test(document.activeElement?.tagName||"")) return;
+  const d={ArrowLeft:1,ArrowRight:-1}[e.code]; if(!d) return;
+  e.preventDefault(); blast.orbitWant=(blast.orbitWant??blast.orbitA??Math.PI/2)+d*.22;
+});
 function asBar(){
   if(!blast || blast.kind!=="asteroids" || !blast.hud) return;
   blast.hud.innerHTML=`<span>SCORE ${blast.score}${multTag()}</span><span class="lvl">LEVEL ${blast.level+1}</span><span class="lives">${"♥".repeat(Math.max(0,blast.lives))||"-"}</span>`;
 }
 const ASMENU_G={key:"asteroids", title:"CHORD ASTEROIDS",
-  rules:()=>`<p>PLAY A ROCK'S CHORD TO CRACK IT INTO ITS NOTES.</p><p>PLUCK EACH NOTE ON THE HARP TO SHOOT IT DOWN.</p><p class="starline">${PIXEL_STAR}ROCKS SCORE BIG AND NEVER HURT.</p>`,
+  rules:()=>`<p>PLAY A ROCK'S CHORD TO CRACK IT INTO ITS NOTES.</p><p>PLUCK EACH NOTE ON THE HARP TO SHOOT IT DOWN.</p><p>FLY ROUND YOUR ORBIT TO DODGE: THE MOD KNOB, OR THE ARROW KEYS.</p><p class="starline">${PIXEL_STAR}ROCKS SCORE BIG AND NEVER HURT.</p>`,
   rows:row=>{
     row("SPEED", SPEEDS.map(x=>x[0].toUpperCase()), ()=>+saved.speed||0, i=>{ saved.speed=i; save(); });
     row("LABEL SIZE", SIZES.map(x=>x[0]), ()=>saved.chordSize??1, i=>{ saved.chordSize=i; save(); applyChordSize(); });
@@ -121,6 +132,8 @@ function asSpawn(){
 function asTick(now){
   if(!blast || blast.kind!=="asteroids") return;
   const dt=Math.min(.05,(now-blast.last)/1000); blast.last=now;
+  if(blast.orbitWant!=null && blast.hx!=null){ const a=blast.orbitA??Math.PI/2, d=blast.orbitWant-a;   // the ship glides round to where it's steered
+    blast.orbitA = Math.abs(d)<.002 ? blast.orbitWant : a+d*Math.min(1,dt*9); asPlace(); }
   if(blast.phase==="play" || blast.phase==="demo"){
     if(blast.phase==="play" && now>=blast.next && blast.rocks.filter(r=>!r.dead && r.kind==="chord").length<4){ asSpawn(); blast.next=now+blast.gap*(.8+Math.random()*.4); }
     for(const r of blast.rocks){
@@ -132,7 +145,7 @@ function asTick(now){
       }
       r.x+=r.vx*dt; r.y+=r.vy*dt; r.ang+=r.spin*dt;
       r.el.style.transform=`translate(${r.x}px,${r.y}px) translate(-50%,-50%)`;   // moved, not re-laid out
-      if(Math.hypot(r.x-blast.cx, r.y-blast.cy) < r.r*.6+14 && blast.phase==="play") asHitShip(r);
+      if(Math.hypot(r.x-blast.cx, r.y-blast.cy) < r.r*.6+8 && blast.phase==="play") asHitShip(r);
     }
     blast.rocks=blast.rocks.filter(r=>!r.dead || now-r.deadAt<60);
     const low=asNearest("chord"); if(blast.lowEl!==low){ blast.lowEl=low; blast.rocks.forEach(r=>r.el.classList.toggle("low", r===low && !r.star)); }
@@ -223,8 +236,10 @@ function asDraw(g, now){
   const a=blast.shipAng, pt=(d,o)=>[cx+Math.cos(a+o)*d, cy+Math.sin(a+o)*d];
   const hurt=now-(blast.shieldAt||0)<500, jam=now<blast.jamUntil;
   g.fillStyle = hurt ? "#FF4B3E" : jam ? "#7FE9FF" : "#F1E8D2";
-  g.beginPath(); const [x1,y1]=pt(10,0), [x2,y2]=pt(8,2.5), [x3,y3]=pt(8,-2.5), [x4,y4]=pt(3,Math.PI); g.moveTo(x1,y1); g.lineTo(x2,y2); g.lineTo(x4,y4); g.lineTo(x3,y3); g.closePath(); g.fill();
-  if(hurt){ g.strokeStyle="rgba(255,75,62,.7)"; g.beginPath(); g.arc(cx,cy,10,0,Math.PI*2); g.stroke(); }
+  g.beginPath(); const [x1,y1]=pt(6,0), [x2,y2]=pt(5,2.5), [x3,y3]=pt(5,-2.5), [x4,y4]=pt(2,Math.PI); g.moveTo(x1,y1); g.lineTo(x2,y2); g.lineTo(x4,y4); g.lineTo(x3,y3); g.closePath(); g.fill();
+  if(hurt){ g.strokeStyle="rgba(255,75,62,.7)"; g.beginPath(); g.arc(cx,cy,7,0,Math.PI*2); g.stroke(); }
+  // the orbit, faintly
+  if(blast.orbitR){ g.strokeStyle="rgba(157,152,201,.18)"; g.beginPath(); g.arc(blast.hx/P, blast.hy/P, blast.orbitR/P, 0, Math.PI*2); g.stroke(); }
 }
 
 // ---------- Chord Asteroids' demo ----------

@@ -7,7 +7,7 @@
 // paint, and keep it hidden until the arcade's set up, so the Practice Room never flashes up first.
 (function(){ var u=new URLSearchParams(location.search), g=u.get("game"), h=document.documentElement;
   if(!u.has("solo") || !g) return; h.classList.add("solo");
-  if(/^(invaders|chord-invaders|harp-command|harpcommand|chord-snake|chord-asteroids|chord-stack|chord-breakout|fifths-defender|chopper-rescue|key-fleet|chord-sweeper|between-the-frets)$/.test(g)){
+  if(/^(invaders|chord-invaders|harp-command|harpcommand|chord-snake|chord-asteroids|chord-stack|chord-breakout|fifths-defender|chopper-rescue|key-fleet|chord-sweeper|between-the-frets|sight-line)$/.test(g)){
     h.classList.add("arcadepage","arcadeboot"); setTimeout(function(){ h.classList.remove("arcadeboot"); }, 4000); }   // never hidden for long, whatever happens
 })();
 </script>
@@ -647,9 +647,21 @@ html.arcadepage .gamebar{align-items:flex-end}
 .frprompt{margin:0;font:400 .8rem/1.8 "Minichord Lab Accidentals","Press Start 2P",monospace;color:#F1E8D2;text-align:center;text-shadow:2px 2px 0 #000;max-width:60ch;min-height:1.8em;background:#07060C;padding:4px 10px}
 .frrows{display:flex;flex-wrap:wrap;justify-content:center;gap:8px}
 .frrows span{font:400 .5rem "Minichord Lab Accidentals","Press Start 2P",monospace;color:#16132A;background:#F1E8D2;border:2px solid #000;padding:6px 8px}
+.fragain{position:absolute;right:16px;top:58px;z-index:4;pointer-events:auto;font:400 .5rem "Press Start 2P",monospace;color:#16132A;background:#F1E8D2;border:3px solid #000;padding:6px 8px;cursor:pointer;box-shadow:3px 3px 0 #000}
+.frrows span.harp{background:#FF5AA0;color:#16132A}
 .frtime{width:min(420px,70%);height:8px;border:2px solid #F1E8D2;background:#07060C}
 .frtime i{display:block;height:100%;background:#FF5AA0;transform-origin:left}
 @media (prefers-reduced-motion:reduce){.frplayer svg{animation:none}}
+/* Sight Line: the staff, the playhead and its window, the notes */
+.slstaff{position:absolute;inset:0;width:100%;height:100%;z-index:2;pointer-events:none}
+.slstaff .sline{stroke:#C9C0A8;stroke-width:1.2}
+.slstaff .sglyph{fill:#F1E8D2;font-family:"Minichord Lab Music";font-size:40px}
+.slstaff .sglyph.clef{font-size:44px}
+.slstaff .shead{stroke:#FFD35A;stroke-width:3;filter:drop-shadow(0 0 6px rgba(255,211,90,.8))}
+.slstaff .swin{fill:rgba(255,211,90,.07)}
+.slstaff .snote.hit .sglyph{fill:#7FE08A}
+.slstaff .snote.wrong .sglyph{fill:#FF8A3D}
+.slstaff .snote.missed .sglyph{fill:#FF4B3E;opacity:.5}
 /* the demo's pixel minichord */
 .overlay button.howto{border-color:#FFD35A;color:#FFD35A}
 .demo{position:absolute;inset:0;z-index:5;display:flex;flex-direction:column;justify-content:flex-start;padding:10px 14px;pointer-events:none}
@@ -804,7 +816,8 @@ details.fold[open] .nowplaying{display:none}
     <button data-mode="fleet">Key Fleet</button>
     <button data-mode="sweeper">Chord Sweeper</button>
     <button data-mode="frets">Between the Frets</button>
-    <span class="arcadelinks"><a href="../arcade/">The arcade lobby</a> · or on their own pages: <a href="../invaders/">Chord Invaders</a> · <a href="../harp-command/">Harp Command</a> · <a href="../chord-snake/">Chord Snake</a> · <a href="../chord-asteroids/">Chord Asteroids</a> · <a href="../chord-stack/">Chord Stack</a> · <a href="../chord-breakout/">Chord Breakout</a> · <a href="../fifths-defender/">Fifths Defender</a> · <a href="../chopper-rescue/">Chopper Rescue</a> · <a href="../key-fleet/">Key Fleet</a> · <a href="../chord-sweeper/">Chord Sweeper</a> · <a href="../between-the-frets/">Between the Frets</a></span>
+    <button data-mode="sight">Sight Line</button>
+    <span class="arcadelinks"><a href="../arcade/">The arcade lobby</a> · or on their own pages: <a href="../invaders/">Chord Invaders</a> · <a href="../harp-command/">Harp Command</a> · <a href="../chord-snake/">Chord Snake</a> · <a href="../chord-asteroids/">Chord Asteroids</a> · <a href="../chord-stack/">Chord Stack</a> · <a href="../chord-breakout/">Chord Breakout</a> · <a href="../fifths-defender/">Fifths Defender</a> · <a href="../chopper-rescue/">Chopper Rescue</a> · <a href="../key-fleet/">Key Fleet</a> · <a href="../chord-sweeper/">Chord Sweeper</a> · <a href="../between-the-frets/">Between the Frets</a> · <a href="../sight-line/">Sight Line</a></span>
   </div>
   <div class="modes" role="group" aria-label="Read and play">
     <span class="grp">Read and play</span>
@@ -943,6 +956,7 @@ details.fold[open] .nowplaying{display:none}
 <script defer src="../arcade/games/key-fleet.js"></script>
 <script defer src="../arcade/games/chord-sweeper.js"></script>
 <script defer src="../arcade/games/between-the-frets.js"></script>
+<script defer src="../arcade/games/sight-line.js"></script>
 <script defer src="../arcade/sounds.js"></script>
 <script defer src="../arcade/games/invaders-demo.js"></script>
 <script defer src="../arcade/screen.js"></script>

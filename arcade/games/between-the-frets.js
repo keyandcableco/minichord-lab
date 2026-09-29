@@ -50,7 +50,7 @@ function frDevice(){
   // the key held at C; then either the minichord in 24-EDO and MPE, playing the quarter-tones itself,
   // or its speaker silenced and the page making the sounds, retuned
   arcadeSetup(()=>{ if(hasSetting(35)) borrow(35, keyIndexOf(0)); if(hasSetting(30)) ensure(30,0); if(hasSetting(31)) borrow(31, mc.params[31]??0);
-    if(frInstrument()){ blast.instrument=true; borrow(237, mc.temperamentValue(11)); borrow(110,1); }   // 24-EDO
+    if(frInstrument()){ blast.instrument=true; borrow(237, mc.temperamentValue(11)); borrow(110,1); asHarp(); }   // 24-EDO, the harp chromatic in quarter-tones
     else if(hasSetting(97)) borrow(97,0); });
 }
 function buildFretsField(box){
@@ -59,11 +59,12 @@ function buildFretsField(box){
   const hd=document.createElement("div"); hd.className="heard"; field.appendChild(hd);
   const stage=document.createElement("div"); stage.className="frstage";
   stage.innerHTML=`<div class="frband"><span class="frplayer left">${FR_GUITARIST}</span><span class="frplayer right">${FR_DRUMMER}</span></div>
-    <div class="frboard"></div><div class="frstaff"></div><p class="frprompt"></p><div class="frrows"></div><div class="frtime"><i></i></div>`;
+    <div class="frboard"></div><div class="frstaff"></div><p class="frprompt"></p><div class="frrows"></div><div class="frtime"><i></i></div><button class="fragain" type="button">▶ AGAIN</button>`;
   field.appendChild(stage);
   box.append(field);
   if(blast && blast.kind==="frets"){
     blast.field=field; blast.hud=hud; blast.heard=hd; blast.stageEl=stage; blast.fx=fxInit(field);
+    stage.querySelector(".fragain").onclick=()=>frReplay();
     if(blast.overlay) field.appendChild(blast.overlay);
     frDrawBoard();
   }
@@ -167,8 +168,18 @@ function frAsk(){
   blast.stageEl.querySelector(".frrows").innerHTML=legend.map(t=>`<span>${t}</span>`).join("");
   const say = kind==="note" ? "THE SAME, ¼ SHARP OR ¼ FLAT?" : kind==="interval" ? `${q.what} UP: IS ITS TOP NOTE IN TUNE?` : kind==="neutral" ? "MAJOR, MINOR, OR NEUTRAL: THE THIRD HALFWAY?" : "THE RIFF, THEN AGAIN: WHICH NOTE BENT?";
   frSay(say); frDrawBoard(q.show.ref!=null ? [{m:q.show.ref, c:"#F1E8D2", t:"REF"}] : []); frDrawStaff(frStaffNotes(q, false));
-  const len=frPlay(q); q.at=performance.now()+len; q.limit=(L.fast?6000:9000)*speedMul();
+  frHarpRank(q);
+  if(frHarpAnswers(q)) blast.stageEl.querySelector(".frrows").insertAdjacentHTML("beforeend", `<span class="harp">OR PLUCK IT ON THE HARP</span>`);
+  const len=frPlay(q); q.at=performance.now()+len; q.limit=(L.fast?6000:9000)*speedMul()*(frHarpAnswers(q)?1.5:1);   // finding it on the harp takes a little longer
 }
+// On firmware 18 the harp can answer a note, an interval's top note or a riff's bent note: pluck the
+// test note itself, on the chromatic harp in 24-EDO. Each harp rank there is half an octave of
+// quarter-tones, so the game sets the rank that holds the answer; which of its strings is the
+// player's to find, by ear.
+const frHarpAnswers=q=> !!(blast && blast.instrument && q && ["note","interval","riff"].includes(q.kind));
+function frHarpRank(q){ if(!frHarpAnswers(q) || !hasSetting(116)) return; const step=Math.round(mod(q.show.test,12)*2); borrow(116, step<12 ? 1 : 2); }
+function frReplay(){ if(blast && blast.kind==="frets" && blast.phase==="play" && blast.q && blast.q.step==="answer"){ const len=frPlay(blast.q); blast.q.at=performance.now()+len; } }
+document.addEventListener("keydown", e=>{ if(blast && blast.kind==="frets" && e.code==="KeyR" && !/INPUT|SELECT|TEXTAREA/.test(document.activeElement?.tagName||"")){ e.preventDefault(); frReplay(); } });
 function frSay(t){ const p=blast.stageEl && blast.stageEl.querySelector(".frprompt"); if(p) p.textContent=t; }
 function frTick(now){
   if(!blast || blast.kind!=="frets") return;
@@ -201,7 +212,19 @@ function frEcho(){
 function frSilence(){ for(const [,o] of frHeld){ try{ o.osc.stop(); }catch(e){} } frHeld.clear(); }
 mc.addEventListener("voices", frEcho);
 // ---------- answers ----------
-function fretsNote(){ if(blast && blast.kind==="frets" && blast.phase==="play" && blast.q && blast.q.step==="answer"){ const len=frPlay(blast.q); blast.q.at=performance.now()+len; } }
+function fretsNote(){
+  if(!blast || blast.kind!=="frets" || blast.phase!=="play" || !blast.q) return;
+  const q=blast.q;
+  if(frHarpAnswers(q) && (q.step==="answer" || q.step==="find") && mc.lastHarp && mc.lastHarp.pitch!=null){
+    const at=mod(mc.lastHarp.pitch,12), want=mod(q.show.test,12), off=Math.min(Math.abs(at-want),12-Math.abs(at-want));
+    if(off<.2){ if(q.step==="answer" && !q.off) frRight();                                // in tune: simply right
+      else { if(q.step==="answer") frRight(true); frFound(true); } }                      // the note between the frets, found by ear
+    else heard(frNoteName(at),false,"NOT THAT ONE: LISTEN AGAIN");                        // exploring costs nothing; the clock runs
+    return;
+  }
+  if(q.step==="answer") frReplay();
+}
+const frNoteName=m=>{ const s=frSpell(m); return FR_LETTERS[s.li][0]+(s.acc===.5?" +¼":s.acc===-.5?" −¼":s.acc===1?"♯":""); };
 function fretsChord(voices){
   if(!blast || blast.kind!=="frets") return;
   if(blast.phase==="demo" && blast.demo){ endFrDemo(blast.demo); return; }
@@ -222,8 +245,9 @@ function fretsChord(voices){
   if(said<0){ heard(chordName(pitches,0),false, q.kind==="riff"?"THE F, C, G OR D COLUMN":"THE MAJOR, MINOR OR 7 ROW"); return; }
   if(said===q.answer) frRight(); else frWrong("NOT QUITE", q.kind==="riff" ? `NOTE ${said+1}` : FR_ROWS[q.kind][said]);
 }
-function frRight(){
+function frRight(byHarp){
   const q=blast.q, pts=mulPts(20*(blast.level+1)); blast.score+=pts; blast.right++; stats.streak=blast.right; scoreboard(); frBar();
+  if(byHarp){ frReveal(q); q.step="find"; return; }                                        // found on the harp: the find follows at once
   sfx("key"); heard(q.kind==="riff"?`NOTE ${q.idx+1}`:(FR_ROWS[q.kind]||[])[q.answer]||"",true);
   frReveal(q);
   const find = q.off!==0 && q.kind!=="neutral";

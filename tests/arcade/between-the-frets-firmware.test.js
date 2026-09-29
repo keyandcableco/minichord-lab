@@ -24,6 +24,21 @@ const t=require("./harness").load("between-the-frets");
     await sleep(1800); }
   check("a semitone isn't the note between the frets", wrongLetter);
   check("the minichord's own quarter-tone, read from its bend, finds it", found>=1, `${found} found`);
+  // on the harp: pluck the test note itself, a quarter-tone found by ear; the game sets the rank that holds it
+  let harpRight=0, rankOk=true, wrongFree=true;
+  for(let n=0;n<10 && harpRight<2;n++){ for(let i=0;i<80 && !(b.q && b.q.step==="answer");i++) await sleep(50);
+    const q=b.q; if(!["note","interval","riff"].includes(q.kind) || !q.off){ chord("C", ["","m","7"][q.answer]); await sleep(40); if(q.step==="find"){ const r=NAT[q.letter], d=q.off/100; sb.answerChord([0,4,7].map((x,v)=>({note:48+r+x+Math.sign(d), pitch:48+r+x+d, voice:v}))); } await sleep(1800); continue; }
+    await sleep(Math.max(0,q.at-w.performance.now()));
+    const step=Math.round(((q.show.test%12)+12)%12*2); if(mc.params[116]!==(step<12?1:2)) rankOk=false;
+    const lives=b.lives; mc.dispatchEvent(new w.CustomEvent("harp",{detail:{note:Math.round(q.show.test)+1, ch:2, pitch:q.show.test+1}})); await sleep(30);   // a wrong string first
+    if(b.lives!==lives || q.step!=="answer") wrongFree=false;
+    await sleep(200); const s0=b.score;
+    mc.dispatchEvent(new w.CustomEvent("harp",{detail:{note:Math.round(q.show.test), ch:3, pitch:q.show.test}})); await sleep(40);
+    if(b.score>s0 && q.step!=="answer") harpRight++;
+    await sleep(1800); }
+  check("plucking the test note itself on the 24-EDO harp answers it and finds it", harpRight>=1, `${harpRight}`);
+  check("the game sets the harp rank that holds the answer", rankOk);
+  check("plucking round to find it costs nothing", wrongFree);
   sb.restoreAll();
   check("leaving gives the tuning and MPE back", mc.params[237]===0 && mc.params[110]===0);
   t.done();

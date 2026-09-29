@@ -336,6 +336,7 @@ mc.addEventListener("knob", e=>{
   h.dir=Math.sign(d); h.last=step; blast.knobAt=performance.now();
   const v=step/127;
   if(blast.kind==="stack") return stKnob(v);
+  if(blast.kind==="asteroids") return asKnob(v);
   if(blast.kind==="fifths") return fdKnob(v);
   if(blast.kind!=="breakout") return;
   const W=blast.W||blast.field.clientWidth; blast.paddle.target=v*(W-blast.paddle.w); blast.steer="knob";

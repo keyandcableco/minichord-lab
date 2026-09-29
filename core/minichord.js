@@ -166,10 +166,13 @@ export class Minichord extends EventTarget {
     return true;
   }
   _harp(d){
-    if((d[0]&0xF0)===0x90 && d[2]>0) this.dispatchEvent(new CustomEvent("harp",{detail:{note:d[1], ch:d[0]&15}}));
+    const ch=d[0]&15, t=d[0]&0xF0;
+    if(t===0xE0){ (this.harpBend||(this.harpBend=[]))[ch]=((d[2]<<7|d[1])-8192)/8192; return; }   // a string's bend, arriving before its note
+    const bend=(this.mpe && this.harpBend && this.harpBend[ch]) || 0;
+    if(t===0x90 && d[2]>0) this.dispatchEvent(new CustomEvent("harp",{detail:{note:d[1], ch, pitch:d[1]+bend*48}}));
   }
   _on(ch,note,vel){
-    if(!this._chordChannel(ch)){ this.dispatchEvent(new CustomEvent("harp",{detail:{note, ch}})); return; }
+    if(!this._chordChannel(ch)){ const c=this.chans[ch]; this.dispatchEvent(new CustomEvent("harp",{detail:{note, ch, pitch:note+(this.mpe?c.bend*c.range:0)}})); return; }
     // a voice's channel holds one note at a time
     if(this.mpe) for(const [k,n] of this.notes) if(n.ch===ch) this.notes.delete(k);
     this.notes.set(ch+":"+note,{ch,note,vel,t:performance.now()});
