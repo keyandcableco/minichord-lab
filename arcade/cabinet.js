@@ -113,7 +113,10 @@ function cabinet(ov){
   const inner=document.createElement("div"); inner.className="cabscroll";
   inner.innerHTML=`<h3>${TITLE_FOR[cabKind()]||""}</h3><p class="cabhead">HOW TO PLAY</p>`;
   rules.forEach(r=>inner.appendChild(r));
-  if(credit) inner.appendChild(credit.cloneNode(true));
+  // at the end of the roll, set apart and a line to each part, as film credits are
+  if(credit){ const c=document.createElement("p"); c.className="credit rolled";
+    c.innerHTML=`MADE BY<br><a href="https://keyandcable.com" target="_blank" rel="noopener">THE KEY &amp; CABLE CO.</a><br>FOR<br><a href="https://minichord.com" target="_blank" rel="noopener">THE MINICHORD</a>`;
+    inner.appendChild(c); }
   roll.appendChild(inner);
   const points=document.createElement("div"); points.className="cab-points";
   const board=document.createElement("div"); board.className="cab-scores";
