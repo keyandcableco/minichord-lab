@@ -71,7 +71,7 @@ function startChopper(){
 }
 function chDevice(){
   if(!blast || blast.kind!=="chopper" || !canWrite()) return;
-  arcadeSetup(()=>{ asHarp(); if(hasSetting(30)) ensure(30,0); });          // the harp chromatic: the station's note, the signal
+  arcadeSetup(()=>{ asHarp(); if(hasSetting(30)) ensure(30,0); if(knobsReady()) borrow(238,1); });   // the harp chromatic (the station's note, the signal); the knobs sending MIDI, to turn the dial
 }
 function buildChopperField(box){
   const field=document.createElement("div"); field.className="field arcade chopper"; field.setAttribute("aria-label","The landing zones");
@@ -136,12 +136,21 @@ function chDrawMap(){
     const [x,y]=chXY(e.col,e.row); h+=`<span class="chem ${e.k}" style="left:${x}px;top:${y}px">${CH_SPRITES[e.k]}</span>`; }
   if(f){ const [x,y]=chXY(f.col,f.row);
     h += f.empty ? `<span class="chnobody" style="left:${x}px;top:${y}px">?</span>`
-      : `<span class="chsurv${f.saved?" saved":""}" style="left:${x}px;top:${y}px">${CH_PEOPLE}</span>`; }
+      : `<span class="chsurv${f.saved?" saved":""}${f.ben?" ben":""}" style="left:${x}px;top:${y}px">${f.ben?CH_BEN:CH_PEOPLE}</span>`; }
   blast.mapEl.innerHTML=h;
 }
 const CH_PEOPLE=`<svg viewBox="0 0 22 12" shape-rendering="crispEdges" aria-hidden="true"><g fill="#F1E8D2"><rect x="1" y="0" width="3" height="3"/><rect x="0" y="4" width="5" height="4"/><rect x="1" y="8" width="1" height="4"/><rect x="3" y="8" width="1" height="4"/>
   <rect x="9" y="0" width="3" height="3"/><rect x="8" y="4" width="5" height="4"/><rect x="9" y="8" width="1" height="4"/><rect x="11" y="8" width="1" height="4"/><rect x="13" y="1" width="1" height="4"/></g>
   <g fill="#FF5AA0"><rect x="17" y="2" width="3" height="3"/><rect x="18" y="5" width="1" height="7"/></g></svg>`;
+// Ben, waving his minichord over his head: black and white, its buttons in rows
+const CH_BEN=`<svg viewBox="0 0 22 16" shape-rendering="crispEdges" aria-hidden="true">
+  <rect x="3" y="0" width="16" height="6" fill="#F1E8D2"/><rect x="3" y="0" width="16" height="6" fill="none" stroke="#07060C" stroke-width=".6"/>
+  <g fill="#16132A"><rect x="5" y="1" width="1" height="1"/><rect x="7" y="1" width="1" height="1"/><rect x="9" y="1" width="1" height="1"/><rect x="11" y="1" width="1" height="1"/><rect x="13" y="1" width="1" height="1"/>
+    <rect x="6" y="3" width="1" height="1"/><rect x="8" y="3" width="1" height="1"/><rect x="10" y="3" width="1" height="1"/><rect x="12" y="3" width="1" height="1"/><rect x="16" y="1" width="1" height="4"/></g>
+  <rect x="4" y="6" width="1" height="3" fill="#E8B48A"/><rect x="17" y="6" width="1" height="3" fill="#E8B48A"/>
+  <rect x="9" y="6" width="4" height="1" fill="#4A3020"/><rect x="9" y="7" width="4" height="3" fill="#E8B48A"/>
+  <rect x="8" y="10" width="6" height="4" fill="#6FA7D8"/><rect x="5" y="9" width="3" height="1" fill="#6FA7D8"/><rect x="14" y="9" width="3" height="1" fill="#6FA7D8"/>
+  <rect x="9" y="14" width="1" height="2" fill="#16132A"/><rect x="12" y="14" width="1" height="2" fill="#16132A"/></svg>`;
 const chBase=()=>[Math.max(46, blast.mx*.55), (blast.fh || 420)-44];   // bottom left, where the chopper lives
 function chPlace(instant){
   const [x,y]=blast.pos.base ? chBase() : chXY(blast.pos.col, blast.pos.row), el=blast.heliEl; if(!el) return;
@@ -187,9 +196,13 @@ function chNewCall(){
   }
   recent.push(call.text); if(recent.length>4) recent.shift();
   blast.lastAnswer=call.legs[call.legs.length-1].root+call.legs[call.legs.length-1].q;
-  const em=rnd(CH_EMERG);
+  let em=rnd(CH_EMERG);
+  // Now and then (from the fourth rescue, one call in twenty or so, once a game) the stranded hikers
+  // turn out, when the chopper gets there, to be Ben, waving a minichord: he made it.
+  const ben = !blast.benDone && (blast.benNext || (blast.rescues>=3 && Math.random()<.05));
+  if(ben){ em=CH_EMERG.find(e=>e.k==="hikers"); blast.benNext=false; }
   if(call.legs.length===1) call.text=call.text.replace(/^[A-Z ]+ AT /, em.say+" ");   // "FIRE AT vi IN G"
-  call.what=em.k.toUpperCase();
+  call.what=em.k.toUpperCase(); call.ben=ben;
   const last=call.legs[call.legs.length-1]; blast.emerg=chEmergencies(em.k, chPad(last.root,last.q));
   blast.pending=call; chTune();
 }
@@ -201,7 +214,7 @@ function chTune(){
   blast.radioEl.querySelector(".chtext").textContent="▒▒ STATIC ▒▒  TUNE IN: A KNOB, ←→, OR PLUCK THE STATION'S NOTE";
   const ctx=piano.ctx;
   if(ctx && settings.sounds){ try{
-    const g=ctx.createGain(); g.gain.value=.06; g.connect(ctx.destination);
+    const g=ctx.createGain(); g.gain.value=.09; g.connect(ctx.destination);
     const a=ctx.createOscillator(), b=ctx.createOscillator(); a.type="triangle"; b.type="triangle"; a.frequency.value=blast.tune.hz; a.connect(g); b.connect(g); a.start(); b.start();
     const n=ctx.createBufferSource(), buf=ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate), d=buf.getChannelData(0); for(let i=0;i<d.length;i++) d[i]=Math.random()*2-1;
     n.buffer=buf; n.loop=true; const ng=ctx.createGain(); ng.gain.value=.03; n.connect(ng); ng.connect(ctx.destination); n.start();
@@ -332,13 +345,15 @@ function chopperChord(voices){
   }
   const left=Math.max(0,(blast.deadline-performance.now())/(blast.deadline-blast.callAt));
   const pts=mulPts(Math.round((20+30*left)*(blast.level+1))*(blast.call.legs.length>1?2:1));
-  const what=blast.call.what; blast.call=null;                    // the clock stops: they're found
+  const what=blast.call.what; blast.lastBen=!!blast.call.ben; blast.call=null;   // the clock stops: they're found
   gameLater(()=>{ if(!blast || blast.kind!=="chopper") return;
-    blast.found={...pad}; chDrawMap(); sfx("bonus");               // there they are: answer their signal
+    const ben=l && blast.lastBen; blast.found={...pad, ben}; chDrawMap(); sfx("bonus");   // there they are: answer their signal
+    if(ben) banner("IT'S BEN!", "HE MADE THE MINICHORD. SIGNAL HIM!");
     chSignal(l, pad, sigPts=>gameLater(()=>{ if(!blast || blast.kind!=="chopper") return;
-      blast.found={...pad, saved:true}; blast.emerg=[]; chDrawMap();   // aboard, and the other alarms were false
+      blast.found={...pad, saved:true, ben}; blast.emerg=[]; chDrawMap();   // aboard, and the other alarms were false
+      let benPts=0; if(ben){ blast.benDone=true; benPts=mulPts(500); banner("MERCI, BEN!", `BEN IS SAFE · +${benPts}`); sfx("level"); }
       blast.score+=pts; blast.rescues++; stats.streak=blast.rescues; scoreboard();
-      popup(x,y-34,`${what} +${pts+sigPts}`,"#FFD35A"); chBar(); helpChord(null);
+      blast.score+=benPts; popup(x,y-34,`${ben?"BEN":what} +${pts+sigPts+benPts}`,"#FFD35A"); chBar(); helpChord(null);
       blast.pos={base:true}; chPlace(false);                      // home
       gameLater(()=>{ if(!blast || blast.kind!=="chopper") return; blast.found=null; chDrawMap(); blast.busy=false;
         const [bx,by]=chBase(); explode(bx,by-10,16,["#7FE08A","#FFD35A","#F1E8D2"]);
@@ -362,15 +377,26 @@ function chDemo(){
   sfx("attract");
   (async()=>{
     const trouble=(k,col,row)=>{ blast.emerg=chEmergencies(k,{col,row}); chDrawMap(); };
-    const fly=async(col,row,notes)=>{ play(notes); blast.pos={col,row}; chPlace(false); sfx("shoot"); await step(700); blast.emerg=[];
-      blast.found={col,row}; chDrawMap(); sfx("bonus"); await step(800); blast.found={col,row,saved:true}; chDrawMap();
+    // flying there, and, when asked, the survivors' signal plucked note by note before the winch
+    const fly=async(col,row,notes,signal)=>{ play(notes); blast.pos={col,row}; chPlace(false); sfx("shoot"); await step(700); blast.emerg=[];
+      blast.found={col,row}; chDrawMap(); sfx("bonus"); await step(800);
+      if(signal){ const [x,y]=chXY(col,row), sg=document.createElement("div"); sg.className="chsignal"; sg.style.left=`${x}px`; sg.style.top=`${y-58}px`; blast.field.appendChild(sg);
+        const draw=i=>{ sg.innerHTML=signal.map((n,k)=>`<b class="${k<i?"got":k===i?"next":""}">${k<i?n:"?"}</b>`).join(""); };
+        for(let i=0;i<=signal.length;i++){ draw(i); if(i<signal.length){ await step(700); play([60+pcOfName(signal[i])]); sfx("key"); } }
+        await step(500); sg.remove(); }
+      blast.found={col,row,saved:true}; chDrawMap();
       blast.pos={base:true}; chPlace(false); await step(700); blast.found=null; chDrawMap(); };
     try{
       say("CHOPPER RESCUE","THE RADIO CALLS COORDINATES IN THEORY. DECODE THEM INTO A CHORD."); await step(3800);
-      say("TUNE IN","EACH CALL COMES THROUGH STATIC. TURN A KNOB TILL THE BEATING STOPS, OR PLUCK THE STATION'S NOTE."); radio("▒▒ STATIC ▒▒"); await step(3600);
+      // tuning in: static, the meter climbing as the dial comes round, then the call
+      say("TUNE IN","EACH CALL COMES THROUGH STATIC. TURN A KNOB TILL THE BEATING STOPS, OR PLUCK THE STATION'S NOTE.");
+      blast.radioEl.classList.add("tuning"); radio("▒▒ STATIC ▒▒  TUNE IN: A KNOB, ←→, OR PLUCK THE STATION'S NOTE");
+      const bars=blast.radioEl.querySelectorAll(".chmeter i");
+      for(const n of [0,1,1,2,3,2,3,4,4,5]){ bars.forEach((b,i)=>b.classList.toggle("on", i<n)); await step(420); }
+      blast.radioEl.classList.remove("tuning"); sfx("key"); await step(900);
       radio("FIRE AT V IN C"); trouble("fire",2,0); say("DECODE","FIRES IN THREE PLACES, BUT THE RADIO SAYS WHICH: V IN C IS G."); await step(3800);
-      await fly(2,0,[55,59,62,67]);
-      say("SIGNAL THEM","THEY'LL ONLY COME UP WHEN YOU PLUCK THEIR CHORD ROOT UP: G, B, D."); await step(3400);
+      say("SIGNAL THEM","FOUND! THEY ONLY COME UP WHEN YOU PLUCK THEIR CHORD ON THE HARP, ROOT UP: G, B, D.");
+      await fly(2,0,[55,59,62,67],["G","B","D"]); await step(1200);
       radio("YETI ATTACK AT vi IN G"); trouble("yeti",5,1); say("","vi IN G IS E MINOR."); await step(2800); await fly(5,1,[52,55,59,64]); await step(1600);
       radio("BEAR SIGHTED AT V OF V IN C"); trouble("bear",3,2); say("LATER","SEVENTHS, SECONDARY DOMINANTS, BORROWED CHORDS AND WHOLE ROUTES. V OF V IN C IS D7."); await step(3600);
       await fly(3,2,[50,54,57,60]); await step(1600);

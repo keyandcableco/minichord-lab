@@ -509,6 +509,10 @@ html.arcadepage .gamebar{align-items:flex-end}
 .chmeter i.on{background:#7FE08A}
 .chradio.tuning .chtext{color:#9A93B5;animation:blink .35s steps(2) infinite}
 /* the survivors' signal: the chord's notes to pluck, in order */
+.field.chopper .demo{justify-content:flex-end;padding-bottom:18px}   /* the demo's caption at the foot, clear of the radio */
+.field.chopper .demo .demohead{position:absolute;top:10px;left:14px;right:14px}
+.chsurv.ben svg{width:60px;height:auto;animation:benwave .4s steps(2) infinite}
+@keyframes benwave{50%{transform:translateY(-3px)}}
 .chsignal{position:absolute;z-index:6;display:flex;gap:6px;transform:translate(-50%,-50%);pointer-events:none}
 .chsignal b{min-width:1.6em;padding:6px 6px;text-align:center;font:400 .7rem "Minichord Lab Accidentals","Press Start 2P",monospace;font-weight:400;background:#16132A;color:#9A93B5;border:3px solid #000}
 .chsignal b.next{background:#FFD35A;color:#16132A;animation:blink .5s steps(2) infinite}.chsignal b.got{background:#7FE08A;color:#16132A}

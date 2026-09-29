@@ -5,7 +5,8 @@
 const t=require("./harness").load("chopper-rescue");
 (async()=>{
   const {sleep, chord, note, knob, key, check, d, w}=t;
-  await sleep(150); t.connect({extra:{238:1, 7:17}}); await sleep(100);        // knobs sending MIDI
+  await sleep(150); t.connect({extra:{7:17}}); await sleep(100);               // firmware whose knobs can send MIDI
+  check("the game switches the knobs on, so a knob can turn the dial", t.mc.params[238]===1);
   const a=await t.start(4); await sleep(1500);
   const texts=[]; let decoysShown=true, tunedEach=true, signalOrder=true;
   const tuneIn=async how=>{ for(let k=0;k<50 && !a.tune;k++) await sleep(100); const tn=a.tune; if(!tn) return false;
@@ -27,7 +28,10 @@ const t=require("./harness").load("chopper-rescue");
     if(i===1){ note((t.PC[sg.tones[0]]+1)%12); await sleep(20); check("a wrong note isn't their signal", /NOT THEIR SIGNAL/.test(t.heard()), t.heard()); }
     // this level's signal starts from the 3rd: the first inversion
     const want=w.eval("spellChord")(c.legs[c.legs.length-1].root, c.legs[c.legs.length-1].q); if(sg.tones[0]!==want[1]) signalOrder=false;
+    const wasBen=a.lastBen;
     for(const n of sg.tones){ note(t.PC[n]); await sleep(20); }
+    if(i===3) a.benNext=true;                                                  // the next call: Ben
+    if(i===4){ await sleep(1400); check("now and then the hikers turn out to be Ben, and he's rescued", wasBen && a.benDone, `score ${a.score}`); }
     await sleep(2200);
   }
   check("every call tuned in, by the harp, the keys or a knob", tunedEach && texts.length>=8, `${texts.length} tuned`);

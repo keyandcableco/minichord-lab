@@ -21,7 +21,7 @@ key presses, checking what should happen.
 | `chord-stack` | pieces slide by keys, harp and knob; a chord clears its row; the stack rises |
 | `chord-breakout` | the knob steers (only the chosen one, without wobble or the mouse); the ball bounces true; chords break bricks |
 | `fifths-defender` | the knob's centred, endless dial; the aimed key's chord fires, another doesn't |
-| `chopper-rescue` | tuning in by harp or keys; the radio decodes right; decoys; the survivors' signal in order; no repeated calls |
+| `chopper-rescue` | the knobs switched on; tuning in by harp, keys or knob; Ben; the radio decodes right; decoys; the survivors' signal in order; no repeated calls |
 | `chord-sweeper` | every square's note fits its distance from the nearest mine; the harp steers; a key's chord defuses its mine, a wrong one sets it off |
 | `key-fleet` | fleets never touch; hits cripple; keys are called by tonic, cadence and the key change combo |
 | `high-scores` | GAME OVER before the initials; input ignored at first; the board kept; beginner mode stays off it |

@@ -19,11 +19,11 @@ const t=require("./harness").load("chord-breakout");
   a.bricks.forEach(b=>b.cracked=false); a.ball.stuck=false;
   Object.assign(a.ball,{x:k.x+k.w/2, y:k.y+k.h+40, vx:0, vy:-300, stuck:false, speed:300}); await sleep(160);
   check("the ball bounces straight back off a brick's face", a.ball.vy>0 && Math.abs(a.ball.vx)<1, `vx ${Math.round(a.ball.vx)} vy ${Math.round(a.ball.vy)}`);
+  // a cracked brick's chord breaks it: three bricks cracked, each played
   let broken=0;
-  for(let i=0;i<500 && a.phase==="play" && broken<4;i++){ await sleep(20);
-    if(a.ball) knob(Math.max(0,Math.min(127,Math.round((a.ball.x-a.paddle.w/2)/(a.W-a.paddle.w)*127))));
-    const k=a.bricks.find(b=>b.alive && b.cracked); if(k){ const n=a.bricks.filter(b=>!b.alive).length; chord(k.rootPc, k.q); await sleep(30); if(a.bricks.filter(b=>!b.alive).length>n) broken++; } }
-  check("a cracked brick's chord breaks it", broken>=2, `${broken} broken`);
+  for(let n=0;n<3;n++){ const k=a.bricks.find(b=>b.alive && !b.power); if(!k) break; k.cracked=true; k.crackedAt=performance.now(); k.el.classList.add("cracked");
+    chord(k.rootPc, k.q); await sleep(40); if(!k.alive) broken++; }
+  check("a cracked brick's chord breaks it", broken===3, `${broken} broken`);
   // the power-up: a power brick broken rains its chord's tones; the cannon, steered by the knob, shoots
   // each one when it's under it and its note is plucked; the ball waits meanwhile
   const pb=a.bricks.find(b=>b.alive); pb.power=true; pb.cracked=true; pb.el.classList.add("cracked");
