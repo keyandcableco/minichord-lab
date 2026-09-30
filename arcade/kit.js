@@ -155,7 +155,7 @@ const POINTS_FOR={
   command:[["NOTE","10"],["★ NOTE","50"]],
   snake:[["CHORD CASHED IN","15 A NOTE"],["★ NOTE","50"],["NOTE DROPPED","−5"]],
   asteroids:()=>[...BLAST_TIERS.map(([,n,sp,v])=>[n,String(v),sp]), ["NEEDS THE MODIFIER","× 1.5"], ["★ ROCK","× 3"], ["NOTE SHOT","10"], ["CHORD CLEARED","25"], ["MANUAL AIM","NOTES × 2"]],
-  stack:[["ROW CLEARED","15 A NOTE"],["ROWS AT ONCE","× ROWS"]],
+  stack:()=>[...BLAST_TIERS.map(([,n,sp,v])=>[n,`${v} A NOTE`,sp]), ["A WHOLE ROW OF ONE CHORD","× 5"], ["CHORDS AT ONCE","× CHORDS"]],
   breakout:()=>[...BLAST_TIERS.map(([,n,sp,v])=>[n,String(v),sp]), ["NEEDS THE MODIFIER","× 1.5"], ["SLASH CHORD","× 1.5"], ["★ BRICK","× 5"], ["RALLY","UP TO × 4"], ["CHORD TONE SHOT","20"], ["WHOLE CHORD SHOT","× 2"]],
   fifths:[["ENEMY","10"],["HIT FAR OUT","UP TO +10"],["★ ENEMY","50"]],
   sight:[["NOTE READ","10"],["DEAD ON THE LINE","× 2"],["STREAK","UP TO × 4"],["A TUNE READ","100"]],

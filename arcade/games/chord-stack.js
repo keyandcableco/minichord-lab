@@ -1,95 +1,104 @@
-// Chord Stack: intervals falling on twelve columns; stack chords, play them to clear rows. With its
-// demo.
+// Chord Stack: falling blocks of notes; line up a chord side by side in a row and play it to clear it.
+// With its demo.
 // Part of Minichord Lab's Practice Room page (practice/index.html), loaded there in order with the
 // others as plain scripts sharing one scope; see practice/boot.js.
 "use strict";
 
 // ---------- Chord Stack ----------
-// A falling-block game about intervals as shapes. The board is twelve columns wide, one for each
-// pitch class, C to B, and wraps round like the pitch-class clock. Each piece is a shape of notes in
-// a row, a single note, an interval, or a whole chord shape, labelled by the columns it sits over,
-// so sliding it sideways transposes it: the shape stays, the notes change. When a row's notes make
-// a chord, it glows; play that chord on the minichord and the row clears. Up (or A) flips the
-// shape, turning a major third into a minor sixth's worth of room, or a major triad into a minor
-// one; B drops it. The stack reaching the top ends the game. It steers on the harp played as a
-// d-pad, or the arrow keys.
+// Tetris, where the blocks are notes. Pieces are the seven tetrominoes, each of their four blocks a
+// note of the level's key, dealt from one of the key's chords so a chord can always be built. Move and
+// rotate a piece as it falls; when blocks side by side in a row spell a chord (three for a triad, four
+// for a seventh), that run lights up, and playing the chord on the minichord clears it: the blocks
+// above fall into the gaps, and anything that lines up as they fall can be played next. A whole row of
+// one chord clears for five times the points. A full row that spells nothing is just weight, and the
+// stack reaching the top ends the game. The harp is a d-pad (◀ ▶ move, ▼ drops a row, A rotates, B
+// drops it all the way), a knob slides the piece, and the arrow keys work too.
+const ST_W=10, ST_ROWS=18;
 const ST_LEVELS=[
-  {n:"Thirds", pieces:[[0],[0,4],[0,3]], qs:["","m"]},
-  {n:"Thirds and fifths", pieces:[[0],[0,4],[0,3],[0,7]], qs:["","m"]},
-  {n:"Diminished and augmented", pieces:[[0],[0,4],[0,3],[0,7],[0,6]], qs:["","m","°","+"]},
-  {n:"Sevenths", pieces:[[0],[0,4],[0,3],[0,7],[0,10],[0,11]], qs:["","m","7","maj7","m7"]},
-  {n:"Chord shapes", pieces:[[0],[0,4],[0,3],[0,4,7],[0,3,7],[0,10],[0,11]], qs:["","m","°","+","7","maj7","m7","m7♭5","°7"]},
+  {n:"Triads in C", keys:[0], qs:["","m"]},
+  {n:"Triads in G and F", keys:[1,-1], qs:["","m"]},
+  {n:"Sevenths", keys:[0,1,-1], qs:["","m","7","maj7","m7"]},
+  {n:"Diminished", keys:[0,1,-1,2,-2], qs:["","m","°","7","maj7","m7","m7♭5"]},
+  {n:"Every key", keys:[-4,-3,-2,-1,0,1,2,3,4], qs:["","m","°","7","maj7","m7","m7♭5"]},
 ];
-const ST_ROWS=14;
-// The stack rises: every so many pieces a row of stray notes pushes up from the bottom, sooner at
-// higher levels and faster speeds, so a stack left unplayed climbs to the top. The HUD counts down.
-const stRiseEvery=()=> Math.max(4, Math.round((9-blast.level)*(1.3-(+saved.speed||0)*.12)));
 const ST_Q_SETS={"":[0,4,7],"m":[0,3,7],"°":[0,3,6],"+":[0,4,8],"7":[0,4,7,10],"maj7":[0,4,7,11],"m7":[0,3,7,10],"m7♭5":[0,3,6,10],"°7":[0,3,6,9]};
-const ST_NAMES=["C","C♯","D","E♭","E","F","F♯","G","A♭","A","B♭","B"];
-const ST_INTERVAL={1:"m2",2:"M2",3:"m3",4:"M3",5:"P4",6:"TT",7:"P5",8:"m6",9:"M6",10:"m7",11:"M7"};
+const ST_MAJOR=[0,2,4,5,7,9,11];
+// the seven tetrominoes, as cells (x, y) from their top left
+const ST_PIECES={
+  I:[[0,1],[1,1],[2,1],[3,1]], O:[[0,0],[1,0],[0,1],[1,1]], T:[[1,0],[0,1],[1,1],[2,1]],
+  S:[[1,0],[2,0],[0,1],[1,1]], Z:[[0,0],[1,0],[1,1],[2,1]], J:[[0,0],[0,1],[1,1],[2,1]], L:[[2,0],[0,1],[1,1],[2,1]],
+};
+const stKeyTonic=f=> ((f*7)%12+12)%12;
+const stName=(pc,f)=> (f<0 ? FLAT_NAMES : SHARP_NAMES)[((pc%12)+12)%12];
+// the key's chords the level allows, triads and sevenths built on each degree
+function stKeyChords(f, qs){
+  const t=stKeyTonic(f), sc=ST_MAJOR.map(x=>(t+x)%12), out=[];
+  for(let d=0; d<7; d++){
+    const tri=[sc[d], sc[(d+2)%7], sc[(d+4)%7]], sev=[...tri, sc[(d+6)%7]];
+    for(const [pcs,n] of [[tri,3],[sev,4]]){
+      const iv=pcs.map(p=>(p-pcs[0]+12)%12).join();
+      const q=Object.keys(ST_Q_SETS).find(k=>ST_Q_SETS[k].length===n && ST_Q_SETS[k].join()===iv);
+      if(q!=null && qs.includes(q)) out.push({root:pcs[0], q, pcs});
+    }
+  }
+  return out;
+}
+// the chord a run of notes spells, if the level allows it: exactly its three (or four) notes, any order
+function stChordOf(pcs, qs){
+  const set=[...new Set(pcs)]; if(set.length!==pcs.length || (set.length!==3 && set.length!==4)) return null;
+  for(const root of set) for(const q of qs){ const want=ST_Q_SETS[q]; if(want.length!==set.length) continue;
+    const have=set.map(p=>(p-root+12)%12).sort((a,b)=>a-b).join(); if(have===[...want].sort((a,b)=>a-b).join()) return {root, q}; }
+  return null;
+}
 function genStack(){
-  return {kind:"stack", prompt:"Chord Stack", sub:"Pieces of notes fall onto a board with a column for each note, C to B. Slide a piece sideways to transpose it; when it lands, each note falls down its column. When a row holds a chord, play it to clear those notes. A inverts, B drops, up swaps sharps and flats.",
+  return {kind:"stack", prompt:"Chord Stack", sub:"Tetris, where the blocks are notes. Line up a chord side by side in a row and play it on the minichord to clear it.",
     answer:{type:"stack", get name(){ const r=stReadyRows()[0]; return r ? r.name : "a chord from a row"; }},
-    get hint(){ const r=stReadyRows()[0]; return r ? `Row ${ST_ROWS-r.y} spells ${r.name}.` : "Build a chord in a row: a root, a third above it, and a fifth."; },
+    get hint(){ const r=stReadyRows()[0]; return r ? `Row ${ST_ROWS-r.y} spells ${r.name}.` : "Build a chord side by side in a row: a root, its third and its fifth."; },
     context:0};
 }
-// the chord a set of pitch classes makes, if the level has one: its root, quality and name
-// The chord a row's notes hold, if the level has one: its notes all in the row, other notes or not,
-// the largest chord first (a row of D F♯ A C is D7 where sevenths count, D otherwise)
-function stChordOf(pcs){
-  if(pcs.length<3) return null;
-  const have=new Set(pcs), L=ST_LEVELS[blast.level];
-  let best=null;
-  for(const q of L.qs) for(let r=0;r<12;r++){
-    const want=ST_Q_SETS[q].map(x=>(r+x)%12);
-    if(!want.every(pc=>have.has(pc)) || (best && best.pcs.length>=want.length)) continue;
-    const tn=spellTones(ST_Q_SETS[q].map(x=>48+r+x),0);
-    best={root:r, q, pcs:want, name:(tn.get(r)||ST_NAMES[r])+q, tones:ST_Q_SETS[q].map(x=>tn.get((r+x)%12))};
-  }
-  return best;
-}
-// A row that makes a chord is matched by its notes, whatever they're called (C, E♭ and F♯ make C°), and
-// then takes the chord's own spelling, from its root: the F♯ turns into G♭ with a flash, so the
-// enharmonic change is seen. The root keeps the name it was dropped with.
-function stRespell(){
-  for(const r of stReadyRows()){
-    const row=blast.grid[r.y], rootName=(row[r.root] && row[r.root].name) || ST_NAMES[r.root];
-    const tones=spellChord(rootName, r.q) || r.tones;
-    ST_Q_SETS[r.q].forEach((iv,i)=>{ const x=(r.root+iv)%12, cell=row[x]; if(cell && tones[i] && cell.name!==tones[i]){ cell.was=cell.name; cell.name=tones[i]; cell.flash=performance.now(); } });
-    r.name=rootName+r.q;
-  }
-}
+// every run in the board spelling a chord: in each row, windows of four (sevenths) first, then three,
+// none overlapping; and whether a whole row is one chord
 function stReadyRows(){
-  if(!blast || blast.kind!=="stack") return [];
-  const out=[]; blast.grid.forEach((row,y)=>{ const pcs=row.map((c,x)=>c?x:-1).filter(x=>x>=0); const ch=stChordOf(pcs);
-    if(ch){ const rc=row[ch.root]; if(rc && rc.name) ch.name=rc.name+ch.q; out.push({y, ...ch}); } });
-  return out;
+  if(!blast || blast.kind!=="stack" || !blast.grid || !blast.grid.length) return [];
+  const L=ST_LEVELS[blast.level], out=[];
+  blast.grid.forEach((row,y)=>{
+    const full=row.every(c=>c);
+    if(full){ const ch=stChordOf([...new Set(row.map(c=>c.pc))], L.qs); if(ch){ out.push({y, xs:[...Array(ST_W).keys()], ...ch, whole:true, name:stName(ch.root,blast.keyF)+ch.q, tones:ST_Q_SETS[ch.q].map(i=>stName(ch.root+i,blast.keyF))}); return; } }
+    const used=new Set();
+    for(const n of [4,3]) for(let x=0; x+n<=ST_W; x++){
+      const xs=[...Array(n).keys()].map(i=>x+i); if(xs.some(i=>!row[i] || used.has(i))) continue;
+      const ch=stChordOf(xs.map(i=>row[i].pc), L.qs); if(!ch) continue;
+      xs.forEach(i=>used.add(i));
+      out.push({y, xs, ...ch, name:stName(ch.root,blast.keyF)+ch.q, tones:ST_Q_SETS[ch.q].map(i=>stName(ch.root+i,blast.keyF))});
+    }
+  });
+  return out.sort((a,b)=>b.y-a.y);
 }
 function startStack(){
   blast={kind:"stack", grid:[], piece:null, next:null, score:0, lives:1, level:0, clears:0, over:true, phase:"menu", raf:0, field:null, hud:null, fx:null,
-    noShip:true, last:performance.now(), nextFall:0};
+    noShip:true, last:performance.now(), nextFall:0, keyF:0};
+  blast.grid=stEmpty();
   stDevice();
   stats.streak=0; scoreboard(); buildSpecial();
   stMenu();
   blast.raf=requestAnimationFrame(stTick);
 }
+const stEmpty=()=>[...Array(ST_ROWS)].map(()=>Array(ST_W).fill(null));
 function stDevice(){
   if(!blast || blast.kind!=="stack" || !canWrite()) return;
   arcadeSetup(()=>{ kmHarp(); if(knobsReady()) borrow(238,1); });
-  // the title screen mentions the knob once the minichord says it has one to send
   const sig=String(knobsReady());
   if(blast.phase==="menu" && blast.overlay && blast.menuSig!==sig){ if(menuRebuild(()=>stMenu())) blast.menuSig=sig; }
 }
-// A knob is the transposition dial: turned, the falling piece slides through the twelve columns, C at
-// one end of the knob's travel and B at the other, stopping short of anything in its way.
+// a knob slides the falling piece across the well, stopping short of anything in its way
 function stKnob(v){
   const p=blast && blast.kind==="stack" && blast.phase==="play" && blast.piece; if(!p) return;
-  const want=Math.min(11, Math.floor(v*12));
-  let guard=12; while(p.x!==want && guard--){ const dx=want>p.x ? 1 : -1; const nx=p.x+dx; if(nx<0||nx>11||!stFits(p,nx,p.y)) break; p.x=nx; }
+  const w=Math.max(...p.cells.map(c=>c[0]))+1, want=Math.round(v*(ST_W-w));
+  let guard=ST_W; while(p.x!==want && guard--){ const dx=want>p.x?1:-1; if(!stFits(p.cells,p.x+dx,p.y)) break; p.x+=dx; }
   stDraw();
 }
 function buildStackField(box){
-  const field=document.createElement("div"); field.className="field arcade stack"; field.setAttribute("aria-label","The Chord Stack board");
+  const field=document.createElement("div"); field.className="field arcade stack"; field.setAttribute("aria-label","The Chord Stack well");
   const hud=document.createElement("div"); hud.className="hud"; field.appendChild(hud); fullButton(field);
   const hd=document.createElement("div"); hd.className="heard"; field.appendChild(hd);
   const board=document.createElement("div"); board.className="stboard"; field.appendChild(board);
@@ -104,135 +113,97 @@ function buildStackField(box){
   setTimeout(helperSync);
 }
 function stLayout(){
-  const f=blast.field, H=f.clientHeight-96, cell=Math.max(22, Math.min(36, Math.floor(H/ST_ROWS)));
+  const f=blast.field, H=f.clientHeight-70, cell=Math.max(16, Math.min(30, Math.floor(H/ST_ROWS)));
   blast.cell=cell;
-  const W=12*cell, left=Math.max(120, Math.floor((f.clientWidth-W)/2)-30);
-  blast.bx=left; blast.by=44;
-  blast.boardEl.style.cssText=`left:${left}px;top:${blast.by}px;width:${W}px;height:${ST_ROWS*cell+30}px`;
-  blast.nextEl.style.cssText=`left:${Math.max(10,left-110)}px;top:${blast.by}px`;
+  const W=ST_W*cell, left=Math.max(130, Math.floor((f.clientWidth-W)/2));
+  blast.bx=left; blast.by=46;
+  blast.boardEl.style.cssText=`left:${left}px;top:${blast.by}px;width:${W}px;height:${ST_ROWS*cell}px`;
+  blast.nextEl.style.cssText=`left:${Math.max(10,left-120)}px;top:${blast.by}px`;
 }
 function stBar(){
   if(!blast || blast.kind!=="stack" || !blast.hud) return;
-  blast.hud.innerHTML=`<span>SCORE ${blast.score}${multTag()}</span><span class="lvl">LEVEL ${blast.level+1} · ${ST_LEVELS[blast.level].n.toUpperCase()}</span><span>RISE IN ${Math.max(0,blast.riseIn||0)}</span>`;
+  blast.hud.innerHTML=`<span>SCORE ${blast.score}${multTag()}</span><span class="lvl">LEVEL ${blast.level+1} · ${stName(stKeyTonic(blast.keyF||0),blast.keyF||0)} MAJOR</span><span>CHORDS ${blast.clears}</span>`;
 }
 const STMENU_G={key:"stack", title:"CHORD STACK",
-  rules:()=>`<p>ONE COLUMN FOR EACH NOTE, C TO B. SLIDE A PIECE TO TRANSPOSE IT${knobsReady() ? ": TURN A KNOB ON THE MINICHORD AND IT SLIDES" : ""}.</p><p>NOTES FALL DOWN THEIR COLUMNS. WHEN A ROW HOLDS A CHORD, PLAY IT TO CLEAR IT.</p><p>EVERY FEW PIECES A ROW OF STRAY NOTES RISES FROM BELOW. DON'T LET THE STACK REACH THE TOP.</p><p>A INVERTS · B DROPS · UP SWAPS SHARPS AND FLATS</p>`,
-  stat:()=>`ROWS ${blast.clears}`,
+  rules:()=>`<p>TETRIS, WHERE THE BLOCKS ARE NOTES. MOVE AND ROTATE EACH PIECE AS IT FALLS${knobsReady()?": A KNOB SLIDES IT":""}.</p><p>WHEN BLOCKS SIDE BY SIDE IN A ROW SPELL A CHORD, THEY LIGHT UP: PLAY THAT CHORD TO CLEAR THEM. A WHOLE ROW OF ONE CHORD SCORES FIVE TIMES.</p><p>ON THE HARP: ◀ ▶ MOVE, ▼ DROPS A ROW, A ROTATES, B DROPS IT. OR THE ARROW KEYS, AND SPACE TO DROP.</p>`,
+  stat:()=>`CHORDS ${blast.clears}`,
   rows:row=>{
     row("SPEED", SPEEDS.map(x=>x[0].toUpperCase()), ()=>+saved.speed||0, i=>{ saved.speed=i; save(); });
-    row("HARP", ["STANDARD STRIP","KEYMASTER GRID"], ()=>saved.harpLayout==="keymaster"?1:0, i=>{ saved.harpLayout = i ? "keymaster" : "strip"; save();
-    kmRestrip(); });
+    row("HARP", ["STANDARD STRIP","KEYMASTER GRID"], ()=>saved.harpLayout==="keymaster"?1:0, i=>{ saved.harpLayout = i ? "keymaster" : "strip"; save(); kmRestrip(); });
     row("HARP SOUND", ["NORMAL","QUIET","OFF"], ()=>saved.harpSound??1, i=>{ saved.harpSound=i; save(); if(blast && blast.setupDone) kmHarp(); });
   },
   levels:ST_LEVELS,
   begin:i=>beginStack(i), demo:()=>stDemo(), modNote:"always"};
 function stMenu(over){ arcadeMenu(STMENU_G, over); }
-// A piece is spelled by its intervals, the way chords are built: its lowest note named for its
-// column (a black-key column as a sharp or a flat, the piece's own choice, kept as it slides), and
-// each other note the letter its interval calls for, a third two letters up, a fifth four. So a
-// minor third on E♭ is E♭ and G♭, and the same third on D♯ is D♯ and F♯.
-const ST_STEPS={1:1,2:1,3:2,4:2,5:3,6:4,7:4,8:5,9:5,10:6,11:6};   // letters above the lowest note for each interval; the tritone as a diminished fifth
-const ST_SHARPS=["C","C♯","D","D♯","E","F","F♯","G","G♯","A","A♯","B"], ST_FLATS=["C","D♭","D","E♭","E","F","G♭","G","A♭","A","B♭","B"];
-// the note d semitones above (or, if d is negative, below) a named note, a letter per step of the interval
-function stFrom(name, d){
-  if(d===0) return name;
-  const {li,acc}=parse(name), steps=Math.sign(d)*ST_STEPS[Math.abs(d)], tl=mod(li+steps,7), target=mod(NAT[li]+acc+d,12);
-  let a=mod(target-NAT[tl],12); if(a>6) a-=12;
-  return Math.abs(a)>2 ? null : LETTERS[tl]+ACC[a];
+// a new piece: a random tetromino, its four blocks a chord of the key plus a note of the key, shuffled
+function stRandPiece(){
+  const L=ST_LEVELS[blast.level], chords=stKeyChords(blast.keyF, L.qs), ch=rnd(chords);
+  const scale=ST_MAJOR.map(x=>(stKeyTonic(blast.keyF)+x)%12), notes=[...ch.pcs];
+  while(notes.length<4) notes.push(rnd(scale));
+  for(let i=notes.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [notes[i],notes[j]]=[notes[j],notes[i]]; }
+  const kind=rnd(Object.keys(ST_PIECES));
+  return {kind, cells:ST_PIECES[kind].map(c=>[...c]), notes, x:0, y:0};
 }
-// A piece is spelled from its anchor: the note it keeps when inverted (its lowest, until it's turned
-// over), named for its column as a sharp or a flat; every other note by its interval from there.
-function stSpell(p){
-  const a=p.anchor||0, anchorName=(p.flat ? ST_FLATS : ST_SHARPS)[(p.x+a)%12];
-  return p.shape.map(o=> stFrom(anchorName, o-a) || ST_NAMES[(p.x+o)%12]);
+function stLevelKey(){
+  const L=ST_LEVELS[blast.level]; blast.keyF=rnd(L.keys);
+  if(canWrite() && hasSetting(35)) borrow(35, keyIndexOf(blast.keyF));      // the key's chords are plain buttons
 }
-const stRandPiece=()=>{ const L=ST_LEVELS[blast.level], shape=rnd(L.pieces); return {shape:[...shape], x:Math.floor(Math.random()*12), y:0, flat:Math.random()<.5}; };
 function beginStack(level){
   newRun();
-  piano.start(); stopDemo(); clearTimeout(blast.attract);
+  piano.start(); stopDemo(); clearTimeout(blast.attract); clearTimeout(blast.cabT);
   if(blast.overlay){ blast.overlay.remove(); blast.overlay=null; }
-  Object.assign(blast,{grid:[...Array(ST_ROWS)].map(()=>Array(12).fill(null)), score:0, level, startLevel:level, clears:0, phase:"play", over:false, riseIn:0,
-    fallMs:760*speedMul()*Math.pow(.92,level)});
-  saved.stackStart=level; save(); blast.riseIn=stRiseEvery();
-  stats.streak=0; scoreboard(); stLayout();
+  Object.assign(blast,{grid:stEmpty(), piece:null, next:null, score:0, level, startLevel:level, clears:0, phase:"play", over:false,
+    fallMs:820*speedMul()*Math.pow(.9,level), nextFall:performance.now()+900});
+  stLevelKey();
   blast.next=stRandPiece(); stSpawn();
-  cancelAnimationFrame(blast.raf); blast.last=performance.now(); blast.nextFall=performance.now()+900; blast.raf=requestAnimationFrame(stTick);
-  banner(`LEVEL ${level+1}`, `${ST_LEVELS[level].n.toUpperCase()} · ${(SPEEDS[+saved.speed]||SPEEDS[0])[0].toUpperCase()}`);
-  sfx("start"); stBar(); stDraw();
+  saved.stackStart=level; save(); stats.streak=0; scoreboard(); stBar();
+  cancelAnimationFrame(blast.raf); blast.last=performance.now(); blast.raf=requestAnimationFrame(stTick);
+  banner(`LEVEL ${level+1}`, `${ST_LEVELS[level].n.toUpperCase()} · ${stName(stKeyTonic(blast.keyF),blast.keyF)} MAJOR`); sfx("start");
 }
-const stCols=p=>p.shape.map(o=>(p.x+o)%12);
-const stFits=(p,x,y)=>y<ST_ROWS && p.shape.every(o=>!blast.grid[y][(x+o)%12]);
+const stAbs=(cells,x,y)=>cells.map(([cx,cy])=>[x+cx,y+cy]);
+const stFits=(cells,x,y)=>stAbs(cells,x,y).every(([cx,cy])=>cx>=0 && cx<ST_W && cy<ST_ROWS && (cy<0 || !blast.grid[cy][cx]));
 function stSpawn(){
-  blast.piece=blast.next; blast.piece.y=0; blast.next=stRandPiece();
-  if(!stFits(blast.piece, blast.piece.x, 0)) return stOver();
+  const p=blast.next; blast.next=stRandPiece();
+  const w=Math.max(...p.cells.map(c=>c[0]))+1; p.x=Math.floor((ST_W-w)/2); p.y=-1;
+  if(!stFits(p.cells,p.x,p.y+1)){ blast.piece=null; stOver(); return; }
+  p.y=0; blast.piece=p; stDraw();
 }
 function stTick(now){
   if(!blast || blast.kind!=="stack") return;
   const dt=Math.min(.05,(now-blast.last)/1000); blast.last=now;
   if(blast.fx) fxDraw(now, dt);
-  if(blast.phase==="play" && now>=blast.nextFall){ stFall(); blast.nextFall=now+blast.fallMs; }
+  if(blast.phase==="play" && blast.piece && now>=blast.nextFall){ stFall(); blast.nextFall=now+blast.fallMs; }
   blast.raf=requestAnimationFrame(stTick);
 }
-function stFall(){
-  const p=blast.piece; if(!p) return;
-  if(stFits(p, p.x, p.y+1)){ p.y++; stDraw(); return; }
-  stLock();
-}
-// Where a note dropped in a column comes to rest: the lowest empty cell above whatever is stacked there
-const stRest=x=>{ let y=ST_ROWS-1; while(y>=0 && blast.grid[y][x]) y--; return y; };
-// every column settles, its notes falling until they land on another note or the floor
-function stGravity(){
-  for(let x=0;x<12;x++){ const col=[]; for(let y=ST_ROWS-1;y>=0;y--) if(blast.grid[y][x]) col.push(blast.grid[y][x]);
-    for(let y=ST_ROWS-1, k=0; y>=0; y--, k++) blast.grid[y][x]=col[k]||null; }
-}
+function stFall(){ const p=blast.piece; if(!p) return; if(stFits(p.cells,p.x,p.y+1)){ p.y++; stDraw(); } else stLock(); }
+// the piece comes to rest: its blocks become the board's, and the next one comes
 function stLock(){
-  // the piece breaks apart as it lands: each of its notes falls down its own column
-  const p=blast.piece, names=stSpell(p); let over=false;
-  stCols(p).forEach((x,i)=>{ const y=stRest(x); if(y>=0) blast.grid[y][x]={pc:x, name:names[i]}; else over=true; });
-  if(over) return stOver();
-  // the rise: a row of two or three stray notes comes up from below, and everything moves up a row
-  if(blast.phase==="play" && --blast.riseIn<=0){
-    blast.riseIn=stRiseEvery();
-    if(blast.grid[0].some(Boolean)) return stOver();                       // no room left at the top
-    const row=Array(12).fill(null), n=2+Math.floor(Math.random()*2);
-    for(let k=0;k<n;k++){ const x=Math.floor(Math.random()*12); row[x]={pc:x, name:(Math.random()<.5?ST_SHARPS:ST_FLATS)[x], stray:true}; }
-    blast.grid.shift(); blast.grid.push(row); sfx("miss");
-    if(blast.piece){ blast.piece.y=Math.max(0,blast.piece.y-1); }
-  }
-  stRespell();
-  sfx("press");
-  const ready=stReadyRows();
-  if(ready.some(r=>r.y===p.y)) sfx("key");
-  stSpawn(); stDraw(); stBar(); gameLater(()=>{ if(blast && blast.kind==="stack") stDraw(); }, 950);
+  const p=blast.piece; if(!p) return;
+  stAbs(p.cells,p.x,p.y).forEach(([x,y],i)=>{ if(y>=0) blast.grid[y][x]={pc:p.notes[i]}; });
+  blast.piece=null; sfx("press");
+  if(stReadyRows().length) sfx("key");
+  stSpawn(); stDraw(); stBar();
 }
-function stMove(dx){ const p=blast.piece; if(!p) return; const nx=(p.x+dx+12)%12; if(stFits(p,nx,p.y)){ p.x=nx; stDraw(); } }
-// flip the shape: its intervals turned upside down, as a major third's room becomes a minor sixth's
-// A inverts. An interval turns upside down, its upper note now the lower: the major third C-E
-// becomes the minor sixth E-C, the same two notes, named from E. A chord shape turns over, major into minor.
-// A turns the piece over around its anchor note, the way a melody is inverted: what went up now goes
-// down. A major third above E♭ (E♭ G) becomes a major third below it (C♭ E♭, on the B column), a
-// major triad on C (C E G) becomes the minor triad on F (F A♭ C), the anchor staying where it is.
-// On a board of pitch classes this is the inversion that moves notes; turning an interval upside
-// down in the ordinary sense (C-E into E-C) leaves the same two columns.
-function stFlip(){
-  const p=blast.piece; if(!p || p.shape.length<2) return;
-  const a=p.anchor||0, ax=(p.x+a)%12, mirrored=p.shape.map(o=>a-(o-a));           // offsets from the old x, turned over
-  const lo=Math.min(...mirrored), shape=mirrored.map(o=>o-lo).sort((x,y)=>x-y);
-  const cand={...p, shape, x:mod(p.x+lo,12), anchor:mod(ax-mod(p.x+lo,12),12)};
-  if(!stFits(cand,cand.x,p.y)){ sfx("miss"); return; }
-  const was=stSpell(p).join(" ");
-  Object.assign(p,cand); sfx("press"); stDraw();
-  popup(blast.bx+(ax+.5)*blast.cell, blast.by+p.y*blast.cell-8, `${was} → ${stSpell(p).join(" ")}`, "#FFD35A");
+function stMove(dx){ const p=blast.piece; if(!p) return; if(stFits(p.cells,p.x+dx,p.y)){ p.x+=dx; stDraw(); } }
+// rotating: a quarter turn clockwise about the piece's middle, nudged sideways or up if it's against
+// a wall or the stack (a wall kick); the notes turn with their blocks
+function stRotate(){
+  const p=blast.piece; if(!p || p.kind==="O") return;
+  const w=Math.max(...p.cells.map(c=>c[0]))+1;
+  let turned=p.cells.map(([x,y])=>[-y,x]); const mx=Math.min(...turned.map(c=>c[0])), my=Math.min(...turned.map(c=>c[1]));
+  turned=turned.map(([x,y])=>[x-mx,y-my]);
+  const shift=Math.floor((w-(Math.max(...turned.map(c=>c[0]))+1))/2);
+  for(const [kx,ky] of [[0,0],[-1,0],[1,0],[-2,0],[2,0],[0,-1]]){
+    if(stFits(turned,p.x+shift+kx,p.y+ky)){ p.cells=turned; p.x+=shift+kx; p.y+=ky; sfx("press"); stDraw(); return; } }
 }
-// up swaps the piece's spelling, sharps for flats: C♯ E♯ becomes D♭ F
-function stRespellPiece(){ const p=blast.piece; if(!p) return; p.flat=!p.flat; sfx("press"); stDraw(); }
-function stDrop(){ const p=blast.piece; if(!p) return; while(stFits(p,p.x,p.y+1)) p.y++; stLock(); blast.nextFall=performance.now()+blast.fallMs; }
+function stDrop(){ const p=blast.piece; if(!p) return; while(stFits(p.cells,p.x,p.y+1)) p.y++; stLock(); blast.nextFall=performance.now()+blast.fallMs; }
+// where the piece would land
+function stGhostY(p){ let y=p.y; while(stFits(p.cells,p.x,y+1)) y++; return y; }
 function stControl(c){
   if(!blast || blast.kind!=="stack" || blast.phase!=="play") return;
   if(c==="left") stMove(-1); else if(c==="right") stMove(1);
-  else if(c==="down") stFall();
-  else if(c==="A") stFlip();
-  else if(c==="up") stRespellPiece();
+  else if(c==="down"){ stFall(); blast.nextFall=performance.now()+blast.fallMs; }
+  else if(c==="A" || c==="up") stRotate();
   else if(c==="B") stDrop();
 }
 function stackHarp(pc){
@@ -243,26 +214,37 @@ function stackHarp(pc){
 }
 document.addEventListener("keydown", e=>{
   if(!q || q.kind!=="stack" || /INPUT|SELECT|TEXTAREA/.test(document.activeElement?.tagName||"")) return;
-  const c={ArrowLeft:"left",ArrowRight:"right",ArrowDown:"down",ArrowUp:"up",KeyA:"left",KeyD:"right",KeyS:"down",KeyW:"up",KeyZ:"A",Space:"B",KeyX:"B"}[e.code];   // Z inverts, space or X drops, up respells
+  const c={ArrowLeft:"left",ArrowRight:"right",ArrowDown:"down",ArrowUp:"up",KeyA:"left",KeyD:"right",KeyS:"down",KeyW:"up",KeyZ:"A",Space:"B",KeyX:"B"}[e.code];
   if(c){ e.preventDefault(); stControl(c); }
 });
-// a chord from the buttons: clear the lowest row that spells it
+// the blocks above a cleared run fall into its gaps, column by column
+function stGravity(){
+  for(let x=0;x<ST_W;x++){
+    const col=[]; for(let y=ST_ROWS-1;y>=0;y--) if(blast.grid[y][x]) col.push(blast.grid[y][x]);
+    for(let y=ST_ROWS-1, i=0; y>=0; y--, i++) blast.grid[y][x]=col[i]||null;
+  }
+}
+// a chord from the buttons: every lit run of that chord clears
 function stackChord(voices){
   if(!blast || blast.kind!=="stack") return;
   if(blast.phase==="demo" && blast.demo){ endStDemo(blast.demo); return; }
   if(blast.phase!=="play") return;
-  const pitches=voices.map(v=>v.pitch), name=chordName(pitches,0);
-  const rows=stReadyRows().filter(r=>isChord(pitches, r.root, r.q)).sort((a,b)=>b.y-a.y);
-  if(!rows.length){ heard(name,false,"NO ROW SPELLS IT"); if(chordId(pitches)) later(()=>{ sfx("miss"); buzz(blast && blast.field, true); }); return; }
+  const pitches=voices.map(v=>v.pitch), name=chordName(pitches, devFifths());
+  const runs=stReadyRows().filter(r=>isChord(pitches, r.root, r.q));
+  if(!runs.length){ heard(name,false,"NO ROW SPELLS IT"); if(chordId(pitches)) later(()=>{ sfx("miss"); buzz(blast && blast.field, true); }); return; }
   heard(name,true);
-  // every row holding this chord gives up its notes at once, with a bonus for more than one;
-  // other notes in those rows stay, and everything above falls into the gaps
-  rows.forEach(r=>{ r.pcs.forEach(x=>{ explode(blast.bx+(x+.5)*blast.cell, blast.by+(r.y+.5)*blast.cell, 8, ["#7FE9FF","#FFD35A","#FFFFFF"]); blast.grid[r.y][x]=null; }); });
-  stGravity(); stRespell();
-  const pts=mulPts(rows.reduce((a,r)=>a+r.tones.length*15,0)*(blast.level+1)*rows.length);
-  blast.score+=pts; blast.clears+=rows.length; stats.streak=blast.clears; scoreboard();
-  sfx("boom"); popup(blast.bx+6*blast.cell, blast.by+rows[0].y*blast.cell, `${rows[0].name}${rows.length>1?` ×${rows.length}`:""} +${pts}`, "#FFD35A");
-  if(blast.clears>=(blast.level+1)*6 && blast.level<ST_LEVELS.length-1){ blast.level++; blast.fallMs*=.9; sfx("level"); banner(`LEVEL ${blast.level+1}`, ST_LEVELS[blast.level].n.toUpperCase()); }
+  let pts=0;
+  runs.forEach(r=>{ r.xs.forEach(x=>{ explode(blast.bx+(x+.5)*blast.cell, blast.by+(r.y+.5)*blast.cell, 8, r.whole?["#FFD35A","#FFFFFF","#FF5AA0"]:["#7FE9FF","#FFD35A","#FFFFFF"]); blast.grid[r.y][x]=null; });
+    const base=(BLAST_WORTH[r.q] ?? 10)*ST_Q_SETS[r.q].length;   // the chord's worth, as in Chord Invaders, for each of its notes
+    pts += r.whole ? base*5 : base; });
+  stGravity();
+  pts=mulPts(Math.round(pts*(blast.level+1)*runs.length));
+  blast.score+=pts; blast.clears+=runs.length; stats.streak=blast.clears; scoreboard();
+  sfx(runs.some(r=>r.whole)?"level":"boom");
+  popup(blast.bx+ST_W/2*blast.cell, blast.by+runs[0].y*blast.cell, `${runs.some(r=>r.whole)?"WHOLE ROW! ":""}${runs[0].name}${runs.length>1?` ×${runs.length}`:""} +${pts}`, "#FFD35A");
+  if(blast.clears>=(blast.level+1)*8 && blast.level<ST_LEVELS.length-1){
+    blast.level++; blast.fallMs*=.88; stLevelKey(); sfx("level");
+    banner(`LEVEL ${blast.level+1}`, `${ST_LEVELS[blast.level].n.toUpperCase()} · ${stName(stKeyTonic(blast.keyF),blast.keyF)} MAJOR`); }
   stDraw(); stBar();
 }
 function stOver(){
@@ -272,63 +254,66 @@ function stOver(){
 }
 function stDraw(){
   if(!blast || blast.kind!=="stack" || !blast.boardEl) return;
-  if(blast.phase==="play"){ const r=stReadyRows().sort((a,b)=>b.y-a.y)[0]; if(r) arcadeMod(r.tones[0]); helpChord(r ? r.tones[0] : null, r ? r.q : ""); }
-  const b=blast.boardEl, c=blast.cell, ready=new Set(stReadyRows().flatMap(r=>r.pcs.map(x=>r.y+","+x)));   // just the chord's notes glow
-  const cellHtml=(x,y,cls,label)=>`<span class="stcell ${cls}" style="left:${x*c}px;top:${y*c}px;width:${c}px;height:${c}px;font-size:${Math.round(c*.36)}px">${label}</span>`;
+  const ready=stReadyRows();
+  if(blast.phase==="play"){ const r=ready[0]; if(r) arcadeMod(r.tones[0]); helpChord(r ? r.tones[0] : null, r ? r.q : ""); }
+  const b=blast.boardEl, c=blast.cell, lit=new Map(); ready.forEach(r=>r.xs.forEach(x=>lit.set(r.y+","+x, r.whole?"ready whole":"ready")));
+  const cellHtml=(x,y,cls,label)=>`<span class="stcell ${cls}" style="left:${x*c}px;top:${y*c}px;width:${c}px;height:${c}px;font-size:${Math.round(c*.4)}px">${label}</span>`;
   let h="";
-  const now=performance.now();
-  blast.grid.forEach((row,y)=>row.forEach((cell,x)=>{ if(cell) h+=cellHtml(x,y, (ready.has(y+","+x)?"ready":"")+(cell.stray?" stray":"")+(cell.flash && now-cell.flash<900?" respelled":""), cell.name||ST_NAMES[x]); }));
+  blast.grid.forEach((row,y)=>row.forEach((cell,x)=>{ if(cell) h+=cellHtml(x,y, lit.get(y+","+x)||"", stName(cell.pc,blast.keyF)); }));
   const p=blast.piece;
   if(p){
-    // a ghost where it would land, then the piece itself
-    stCols(p).forEach(x=>{ const gy=stRest(x); if(gy>p.y) h+=cellHtml(x,gy,"ghost",""); });   // where each note will come to rest
-    const names=stSpell(p); stCols(p).forEach((x,i)=>{ h+=cellHtml(x,p.y,"piece",names[i]); });
+    const gy=stGhostY(p); if(gy>p.y) stAbs(p.cells,p.x,gy).forEach(([x,y])=>{ if(y>=0) h+=cellHtml(x,y,"ghost",""); });
+    stAbs(p.cells,p.x,p.y).forEach(([x,y],i)=>{ if(y>=0) h+=cellHtml(x,y,`piece p${p.kind}`,stName(p.notes[i],blast.keyF)); });
   }
-  // the column names along the foot of the board
-  for(let x=0;x<12;x++) h+=`<span class="stcol" style="left:${x*c}px;top:${ST_ROWS*c+4}px;width:${c}px">${ST_SHARPS[x]===ST_FLATS[x] ? ST_SHARPS[x] : `${ST_SHARPS[x]}<br>${ST_FLATS[x]}`}</span>`;
   b.innerHTML=h;
-  // the next piece, with its interval named
-  if(blast.nextEl && blast.next){
-    const n=blast.next, span=Math.max(...n.shape);
-    blast.nextEl.innerHTML=`<span class="stnlabel">NEXT</span><span class="stnshape">${[...Array(span+1)].map((_,i)=>`<i class="${n.shape.includes(i)?"on":""}"></i>`).join("")}</span><span class="stnname">${n.shape.length===1?"A NOTE":n.shape.length===2?ST_INTERVAL[n.shape[1]]:({"0,4,7":"MAJOR","0,3,7":"MINOR"})[n.shape.join()]||"CHORD"}</span>`;
+  // the next piece, its shape and its notes
+  if(blast.nextEl){
+    const n=blast.next;
+    if(!n){ blast.nextEl.innerHTML=""; return; }
+    const s=Math.round(c*.8), w=Math.max(...n.cells.map(q=>q[0]))+1, hh=Math.max(...n.cells.map(q=>q[1]))+1;
+    blast.nextEl.innerHTML=`<span class="stnlabel">NEXT</span><span class="stnshape" style="width:${w*s}px;height:${hh*s}px">${n.cells.map(([x,y],i)=>`<i class="p${n.kind}" style="left:${x*s}px;top:${y*s}px;width:${s}px;height:${s}px;font-size:${Math.round(s*.4)}px">${stName(n.notes[i],blast.keyF)}</i>`).join("")}</span>`;
   }
 }
 
 // ---------- Chord Stack's demo ----------
+// A T piece of C, E, G and A falls, turns, and lands with C, E and G side by side on the floor; they
+// light up, C major clears them, and what was above drops into the gap.
 function stDemo(){
   if(!blast || blast.kind!=="stack") return;
   stopDemo(); clearTimeout(blast.attract); piano.start();
   if(blast.overlay) blast.overlay.hidden=true;
-  blast.phase="demo"; stLayout();
-  blast.grid=[...Array(ST_ROWS)].map(()=>Array(12).fill(null)); blast.level=0;
-  const {el, token, say, sleep, step}=demoShell(endStDemo), $d=s=>el.querySelector(s);
-  const play=notes=>{ if(settings.sounds && piano.ctx){ const go=()=>piano.play(notes,{when:.02,dur:1.1}); piano.ctx.state==="running"?go():piano.ctx.resume().then(go).catch(()=>{}); } };
+  blast.phase="demo"; blast.level=0; blast.keyF=0; stLayout();
+  blast.grid=stEmpty();
+  // a little stack already there: D and F on the floor at the left, B above them
+  blast.grid[ST_ROWS-1][0]={pc:2}; blast.grid[ST_ROWS-1][1]={pc:5}; blast.grid[ST_ROWS-2][0]={pc:11};
+  blast.next={kind:"L", cells:ST_PIECES.L.map(q=>[...q]), notes:[9,5,0,4]};
+  const {el, token, say, sleep, step}=demoShell(endStDemo);
   sfx("attract");
   (async()=>{
-    const fall=async n=>{ for(let k=0;k<n;k++){ if(stFits(blast.piece,blast.piece.x,blast.piece.y+1)){ blast.piece.y++; stDraw(); } await step(110); } };
     try{
-      say("CHORD STACK","TWELVE COLUMNS, ONE FOR EACH NOTE, C TO B, WRAPPING ROUND."); stDraw(); await step(3200);
-      blast.piece={shape:[0,4], x:5, y:0}; blast.next={shape:[0], x:0, y:0}; stDraw();
-      say("TRANSPOSE","A MAJOR THIRD FALLS: F AND A. SLIDE IT AND IT'S STILL A MAJOR THIRD, NOW E AND G♯, NOW C AND E."); await fall(3);
-      for(const x of [4,3,2,1,0]){ blast.piece.x=x; stDraw(); sfx("press"); await step(420); }
-      await step(600); say("DROP","B DROPS IT."); blast.piece.y=ST_ROWS-1; stCols(blast.piece).forEach((x,i)=>blast.grid[ST_ROWS-1][x]={pc:x, name:stSpell(blast.piece)[i]}); blast.piece=null; sfx("press"); stDraw(); await step(1500);
-      blast.piece={shape:[0], x:10, y:0}; blast.next={shape:[0,3], x:0, y:0}; stDraw();
-      say("FINISH THE CHORD","A SINGLE NOTE: SLIDE IT TO G AND DROP IT BESIDE C AND E."); await fall(2);
-      for(const x of [9,8,7]){ blast.piece.x=x; stDraw(); sfx("press"); await step(420); }
-      await step(500); blast.grid[ST_ROWS-1][7]={pc:7, name:"G"}; blast.piece=null; sfx("key"); stDraw();
-      say("PLAY IT","C, E AND G GLOW: THAT ROW SPELLS C MAJOR."); await step(2600);
-      say("CLEAR","PLAY C ON THE MINICHORD AND THE ROW CLEARS."); await step(900);
-      play([48,52,55,60]); for(let x=0;x<12;x++) if(blast.grid[ST_ROWS-1][x]) explode(blast.bx+(x+.5)*blast.cell, blast.by+(ST_ROWS-.5)*blast.cell, 10, ["#7FE9FF","#FFD35A","#FFFFFF"]);
-      blast.grid[ST_ROWS-1]=Array(12).fill(null); sfx("boom"); stDraw(); await step(2000);
-      say("INVERT","A TURNS A PIECE OVER ON ITS FIRST NOTE: E♭ UP TO G BECOMES E♭ DOWN TO C♭, AND A MAJOR CHORD TURNS MINOR. UP SWAPS SHARPS FOR FLATS."); await step(4200);
-      say("READY?","CHOOSE A LEVEL. DON'T LET THE STACK REACH THE TOP."); sfx("level"); await step(2600);
+      say("CHORD STACK","TETRIS, WHERE THE BLOCKS ARE NOTES."); stDraw(); await step(2800);
+      blast.piece={kind:"I", cells:ST_PIECES.I.map(q=>[...q]), notes:[0,4,7,9], x:3, y:0}; stDraw();
+      say("LINE UP A CHORD","A PIECE OF C, E, G AND A FALLS. SLIDE IT OVER, AND DROP IT: C, E AND G SIDE BY SIDE.");
+      for(let k=0;k<4;k++){ stFall(); await step(240); }
+      for(const dx of [-1]){ stMove(dx); await step(360); }
+      while(stFits(blast.piece.cells,blast.piece.x,blast.piece.y+1)){ blast.piece.y++; stDraw(); await step(70); }
+      const p=blast.piece; stAbs(p.cells,p.x,p.y).forEach(([x,y],i)=>blast.grid[y][x]={pc:p.notes[i]}); blast.piece=null; sfx("press"); stDraw(); await step(900);
+      say("IT LIGHTS UP","C, E AND G SIDE BY SIDE SPELL C MAJOR. PLAY IT ON THE MINICHORD."); sfx("key"); await step(2600);
+      demoPlay([48,52,55,60]);
+      const r=stReadyRows()[0]; if(r){ r.xs.forEach(x=>{ explode(blast.bx+(x+.5)*blast.cell, blast.by+(r.y+.5)*blast.cell, 8, ["#7FE9FF","#FFD35A","#FFFFFF"]); blast.grid[r.y][x]=null; }); }
+      stGravity(); sfx("boom"); stDraw(); await step(1800);
+      say("ROTATE","A ON THE HARP (OR UP) TURNS A PIECE; B DROPS IT. A WHOLE ROW OF ONE CHORD SCORES FIVE TIMES.");
+      blast.piece={kind:"T", cells:ST_PIECES.T.map(q=>[...q]), notes:[7,11,2,5], x:4, y:0}; stDraw(); await step(900);
+      for(let k=0;k<3;k++){ stRotate(); await step(600); }
+      await step(1200);
+      say("READY?","LATER LEVELS: OTHER KEYS, SEVENTHS ACROSS FOUR BLOCKS, AND DIMINISHED CHORDS."); sfx("level"); await step(2800);
       endStDemo(token);
     }catch(e){ /* skipped */ }
   })();
 }
 function endStDemo(token){
   if(!blast || blast.demo!==token) return;
-  stopDemo(); blast.phase="menu"; blast.piece=null; blast.grid=[...Array(ST_ROWS)].map(()=>Array(12).fill(null)); stDraw();
+  stopDemo(); blast.phase="menu"; blast.piece=null; blast.grid=stEmpty(); blast.next=null; stDraw();
   if(blast.overlay) blast.overlay.hidden=false;
   clearTimeout(blast.attract);
   blast.attract=gameLater(()=>{ if(blast && blast.kind==="stack" && blast.phase==="menu" && blast.overlay && !blast.overlay.hidden) stDemo(); }, 25000);

@@ -255,20 +255,17 @@
 .field.arcade .fchord.rock-note{font-size:calc(var(--chord-size,1.25rem)*.75)}
 
 /* Chord Stack: the board of twelve columns, its cells, and the next piece */
-.field.arcade.stack .stboard{position:absolute;z-index:2;border:2px solid rgba(241,232,210,.4);border-top:none;background:rgba(7,6,12,.55)}
-.stboard .stcell{position:absolute;box-sizing:border-box;display:flex;align-items:center;justify-content:center;font-family:"Minichord Lab Accidentals","Press Start 2P",monospace;color:#16132A;background:#F1E8D2;border:2px solid #07060C}
-.stboard .stcell.piece{background:#FFD35A}
-.stboard .stcell.stray{background:#B5AC96}
-.stboard .stcell.ghost{background:transparent;border:2px dashed rgba(255,211,90,.45)}
-.stboard .stcell.ready{background:#7FE9FF;box-shadow:0 0 10px rgba(127,233,255,.9);animation:snready .6s steps(2) infinite}
-.stboard .stcol{position:absolute;text-align:center;font:400 .45rem/1.5 "Minichord Lab Accidentals","Press Start 2P",monospace;color:#9A93B5}
-.stboard .stcell.respelled{animation:respell .9s ease-out}
-@keyframes respell{0%{background:#FFFFFF;transform:scale(1.25)}100%{transform:scale(1)}}
+.field.arcade.stack .stboard{position:absolute;z-index:2;border:3px solid rgba(241,232,210,.45);border-top:none;background:rgba(7,6,12,.72);box-sizing:content-box}
+.stboard .stcell{position:absolute;box-sizing:border-box;display:flex;align-items:center;justify-content:center;font-family:"Minichord Lab Accidentals","Press Start 2P",monospace;color:#16132A;background:#C9C0A8;border:2px solid rgba(0,0,0,.45);box-shadow:inset 2px 2px 0 rgba(255,255,255,.35)}
+.stboard .stcell.piece{border-color:rgba(0,0,0,.55)}
+.stcell.pI,.stnshape i.pI{background:#8FE3F0} .stcell.pO,.stnshape i.pO{background:#F5DE7A} .stcell.pT,.stnshape i.pT{background:#C9A2E8}
+.stcell.pS,.stnshape i.pS{background:#9BE09B} .stcell.pZ,.stnshape i.pZ{background:#F29A93} .stcell.pJ,.stnshape i.pJ{background:#93AFEF} .stcell.pL,.stnshape i.pL{background:#F4B97E}
+.stboard .stcell.ghost{background:transparent;border:2px dashed rgba(255,211,90,.5);box-shadow:none}
+.stboard .stcell.ready{background:#7FE9FF;box-shadow:0 0 12px rgba(127,233,255,.95);animation:snready .6s steps(2) infinite}
+.stboard .stcell.ready.whole{background:#FFD35A;box-shadow:0 0 14px rgba(255,211,90,.95)}
 .field.arcade.stack .stnext{position:absolute;z-index:3;display:flex;flex-direction:column;gap:8px;align-items:flex-start;font:400 .55rem "Press Start 2P",monospace;color:#9A93B5}
-.stnext .stnshape{display:flex;gap:2px}
-.stnext .stnshape i{display:block;width:10px;height:14px;border:1px solid #3D3656}
-.stnext .stnshape i.on{background:#FFD35A;border-color:#FFD35A}
-.stnext .stnname{color:#FFD35A}
+.stnshape{position:relative;display:block}
+.stnshape i{position:absolute;box-sizing:border-box;display:flex;align-items:center;justify-content:center;font-style:normal;font-family:"Minichord Lab Accidentals","Press Start 2P",monospace;color:#16132A;border:2px solid rgba(0,0,0,.45)}
 
 /* full screen: a small button in the corner, and the field filling the screen when it's on */
 .fullbtn{position:absolute;right:8px;top:30px;z-index:9;font:400 .8rem "Press Start 2P",monospace;line-height:1;background:rgba(22,19,42,.8);color:#F1E8D2;border:2px solid #5A5470;border-radius:0;padding:.3rem .4rem;cursor:pointer}
@@ -582,7 +579,19 @@ html.arcadepage .gamebar{align-items:flex-end}
 .swnext b{font:400 .8rem "Press Start 2P",monospace;color:#FFD35A}
 .swnext span{font:400 .45rem "Press Start 2P",monospace;color:#F1E8D2}
 @keyframes swnextblink{50%{border-color:#7FE9FF}}
-.km svg,.kdot svg{width:1.1em;height:1.1em;vertical-align:-.15em}.swcell b.home{color:#7FE08A}
+/* a game's pictures on the harp's zones fill them, rather than sitting at the size of a letter */
+.kmstrip .km svg{height:78%;width:auto;max-width:86%;display:block}
+.kmplate .kdot svg{height:62%;width:auto;max-width:70%;display:block}
+.helper .hbstrip span svg{height:90%;width:auto;max-width:90%;display:block;margin:auto}
+/* Chord Sweeper's lives, big, and what losing one looks like */
+.field .popup.big{font-size:1.25rem;z-index:12;text-shadow:3px 3px 0 #000;animation-duration:1.5s}
+.swlives{margin:0 0 10px;display:flex;gap:6px;font:400 1.5rem/1 "Press Start 2P",monospace}
+.swlives i{font-style:normal;color:#3A2530;text-shadow:2px 2px 0 #000}
+.swlives i.on{color:#FF4B3E}
+.swlives i.lost{animation:swheart 1.1s steps(6) 1;color:#3A2530}
+@keyframes swheart{0%{color:#FF4B3E;transform:scale(1.5)}30%{transform:translateX(-4px) scale(1.4)}45%{transform:translateX(4px) scale(1.3)}60%{transform:translateX(-3px)}100%{color:#3A2530;transform:none}}
+.field.sweeper.swhurt::after{content:"";position:absolute;inset:0;z-index:11;pointer-events:none;background:radial-gradient(ellipse at center,rgba(255,75,62,.15),rgba(255,40,30,.55));animation:swhurt .9s ease-out forwards}
+@keyframes swhurt{0%{opacity:1}100%{opacity:0}}.swcell b.home{color:#7FE08A}
 .swside{position:absolute;z-index:3;font:400 .5rem/2 "Press Start 2P",monospace;color:#F1E8D2}
 .swside b{color:#FFD35A;font-weight:400}
 .swside .swhow{color:#9A93B5;margin-top:12px}

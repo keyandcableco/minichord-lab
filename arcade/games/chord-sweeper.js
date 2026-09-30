@@ -134,7 +134,8 @@ function swSide(){
   const left=blast.mines.filter(m=>!m.defused).length, L=SW_LEVELS[blast.level||0];
   const done=k=>blast.mines.some(m=>m.key===k && m.defused);
   const find=(blast.keys||[]).map(k=>`<li class="${done(k)?"found":""}">${L.named ? `<b>${k.name}</b>` : `${swSigSvg((SW_FIFTHS[k.tonic]??0)-(k.minor?3:0))}<b>${k.minor?"MINOR":"MAJOR"}</b>`}</li>`).join("");
-  blast.sideEl.innerHTML=`<p class="swfind">FIND ${L.named?"":"THESE KEYS"}</p><ul class="swkeys">${find}</ul><p>TO DEFUSE <b>${blast.mines.length?left:(blast.keys||[]).length}</b></p><p>SWEEPS <b>${blast.sweeps}</b></p>
+  const hearts=[0,1,2].map(i=>`<i class="${i<blast.lives?"on":""}${i===blast.lives && blast.lostAt && performance.now()-blast.lostAt<1200?" lost":""}">♥</i>`).join("");
+  blast.sideEl.innerHTML=`<p class="swlives" aria-label="${blast.lives} lives">${hearts}</p><p class="swfind">FIND ${L.named?"":"THESE KEYS"}</p><ul class="swkeys">${find}</ul><p>TO DEFUSE <b>${blast.mines.length?left:(blast.keys||[]).length}</b></p><p>SWEEPS <b>${blast.sweeps}</b></p>
     <p class="swhow">NEXT TO A MINE: ITS V7. TWO AWAY: V OF V. THREE AWAY: V OF V OF V. FURTHER: CALM.</p>
     ${L.subs?`<p class="swhow">A TRITONE SUBSTITUTE RESOLVES THE SAME WAY${L.dim?"; SO DO vii°7 AND THE BARE TRITONE":""}.</p>`:""}
     <p class="swhow">TO DEFUSE A MINE, PUT THE CURSOR ON IT AND PLAY ITS KEY'S HOME CHORD.</p>`;
@@ -240,7 +241,8 @@ function sweeperChord(voices){
   if(blast.phase!=="play") return;
   const pitches=voices.map(v=>v.pitch), name=chordName(pitches, devFifths()); if(!chordId(pitches)) return;
   const m=swMineAt(...blast.cur);
-  if(!m || m.defused){ heard(name,false,"NO MINE UNDER THE CURSOR"); blast.fieldAt-=8000; sfx("miss"); return; }   // eight seconds lost
+  if(!m || m.defused){ heard(name,false,"NO MINE UNDER THE CURSOR"); blast.fieldAt-=8000; sfx("miss");   // eight seconds lost
+    const [cx,cy]=swXY(...blast.cur); popup(cx, cy-24, "−8 SEC", "#FF8A3D", true); return; }
   if(!isChord(pitches, pcOfName(m.key.tonic), m.key.minor?"m":"")) return swBoom(m, `NOT ${m.key.chord}`, name);
   heard(name,true); m.defused=true; blast.flags.delete(swKey(m.x,m.y));
   const [px,py]=swXY(m.x,m.y), unswept=SW_W*SW_H-blast.open.size-blast.mines.length;
@@ -255,7 +257,10 @@ function swBoom(m, why, label){
   for(let y=0;y<SW_H;y++) for(let x=0;x<SW_W;x++) if(!swMineAt(x,y)) blast.open.add(swKey(x,y));
   blast.showMines=true; swDraw();
   heard(label||"SWEEP",false,why); explode(px,py,44,["#FF4B3E","#FF8A3D","#FFD35A","#F1E8D2"]); sfx("boom"); buzz(blast.field,true);
-  blast.lives--; swBar(); banner("BOOM", `IT WAS ${m.key.name}${blast.lives>0?` · ${blast.lives} ${blast.lives===1?"LIFE":"LIVES"} LEFT`:""}`);
+  blast.lives--; blast.lostAt=performance.now(); swBar(); swSide();
+  blast.field.classList.remove("swhurt"); void blast.field.offsetWidth; blast.field.classList.add("swhurt");
+  popup(px, py-30, "−1 ♥", "#FF4B3E", true);
+  banner("BOOM", `IT WAS ${m.key.name}${blast.lives>0?` · ${blast.lives} ${blast.lives===1?"LIFE":"LIVES"} LEFT`:""}`);
   gameLater(()=>{
     if(blast.lives<=0){ blast.phase="over"; blast.over=true; const best=Math.max(saved.best.sweeper||0, blast.score); saved.best.sweeper=best; save(); swMenu(true); return; }
     swNextPrompt(); }, 1800);

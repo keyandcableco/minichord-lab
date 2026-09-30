@@ -181,9 +181,9 @@ function banner(big, small){
   const b=document.createElement("div"); b.className="banner"; b.innerHTML=`${big}${small?`<small>${small}</small>`:""}`;
   blast.field.appendChild(b); setTimeout(()=>b.remove(),2300);
 }
-function popup(x,y,text,colour){
-  const p=document.createElement("div"); p.className="popup"; p.textContent=text; p.style.left=`${x}px`; p.style.top=`${y}px`; if(colour) p.style.color=colour;
-  blast.field.appendChild(p); setTimeout(()=>p.remove(),950);
+function popup(x,y,text,colour,big){
+  const p=document.createElement("div"); p.className="popup"+(big?" big":""); p.textContent=text; p.style.left=`${x}px`; p.style.top=`${y}px`; if(colour) p.style.color=colour;
+  blast.field.appendChild(p); setTimeout(()=>p.remove(), big?1500:950);
 }
 // the next chord: from the key bar's key once one has fallen, otherwise any button's
 function pickBlastChord(slashNow){

@@ -33,6 +33,7 @@ const t=require("./harness").load("chord-sweeper");
   const m2=a.mines[1]; a.cur=[m2.x,m2.y];
   chord((t.PC[m2.key.tonic]+1)%12, "m"); await sleep(50);
   check("a wrong chord on a mine sets it off", m2.boom && a.lives===2, t.heard());
+  check("losing a life shows: the field flashes red, a heart empties beside it", t.d.querySelector(".field.sweeper.swhurt") && t.d.querySelectorAll(".swlives i.on").length===2 && !!t.d.querySelector(".swlives i.lost"));
   check("its mines are the keys it said to find", a.mines.every(m=>a.keys.includes(m.key)));
   // the mine went off: the whole field uncovered, the mines shown with their keys, and a prompt to go on
   await sleep(2000);
