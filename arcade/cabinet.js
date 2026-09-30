@@ -41,12 +41,18 @@ function arcadeKeys(ov){
 // (not from a chord, so a chord can't do it by accident). The field
 // itself goes full screen, title screens and demos with it, and each game lays itself out again for
 // the new size, and again on the way back.
-function fullButton(field){
-  const b=document.createElement("button"); b.className="fullbtn"; b.type="button";
-  const label=()=>{ const on=!!document.querySelector(".fscab"); b.textContent = on ? "✕" : "⛶"; b.title = on ? "Leave full screen (F)" : "Full screen (F)"; b.setAttribute("aria-label", b.title); };
-  b.onclick=()=>toggleFull(field); label(); field.appendChild(b);
-  field._fullLabel=label;
+// Full screen is a console button, SCREEN, beside SOUND and RESET (on the page's bar, and on the
+// cabinet's bezel where it leaves full screen); each game's field just says which field it is.
+const SCREEN_ON='<svg viewBox="0 0 16 14" shape-rendering="crispEdges" aria-hidden="true"><path fill="currentColor" d="M1 1h14v1H1zM1 2h1v9H1zM14 2h1v9h-1zM1 11h14v1H1zM6 12h4v1H6zM3 3h3v1H3zM3 4h1v2H3zM10 3h3v1h-3zM12 4h1v2h-1zM3 8h1v2H3zM4 9h2v1H4zM12 8h1v2h-1zM10 9h2v1h-2z"/></svg>';
+const SCREEN_OFF='<svg viewBox="0 0 16 14" shape-rendering="crispEdges" aria-hidden="true"><path fill="currentColor" d="M1 1h14v1H1zM1 2h1v9H1zM14 2h1v9h-1zM1 11h14v1H1zM6 12h4v1H6zM5 5h1v1H5zM6 6h1v1H6zM7 7h1v1H7zM8 6h1v1H8zM9 5h1v1H9zM8 8h1v1H8zM9 9h1v1H9zM6 8h1v1H6zM5 9h1v1H5z"/></svg>';
+let fullField=null;
+function fullButton(field){ fullField=field; field._fullLabel=fullLabels; fullLabels(); }
+// every SCREEN button shows the way it goes: into full screen, or out of it
+function fullLabels(){
+  const on=!!document.querySelector(".fscab");
+  document.querySelectorAll("#fullBtn, .fsfull").forEach(b=>{ b.innerHTML = on ? SCREEN_OFF : SCREEN_ON; b.title = on ? "Leave full screen (F)" : "Full screen (F)"; b.setAttribute("aria-label", b.title); });
 }
+const fullToggle=()=>{ const f=fullField || (blast && blast.field); if(f) toggleFull(f); };
 // Full screen is a cabinet: the game's screen, 4:3 as an arcade monitor is, curved and in CRT, set
 // in a bezel with its nameplate, under a lit marquee with the game's name, side art either side. The
 // game's field moves into it and back out again, so nothing about the game changes. Where the browser
@@ -58,11 +64,12 @@ function toggleFull(field){
   const cab=document.createElement("div"); cab.className="fscab";
   cab.innerHTML=`<div class="fsmarquee"><span>${TITLE_FOR[cabKind()]||"MINICHORD ARCADE"}</span></div>
     <div class="fsbezel"><div class="fsscreen"></div><div class="fsplate"><span>THE KEY &amp; CABLE CO.</span><span class="rainbow">MINICHORD ARCADE</span>
-      <span class="fsright"><span class="fsconn"></span><span class="nesbtn"><span>SOUND</span><button type="button" class="fsmute"></button></span><span class="nesbtn"><span>RESET</span><button type="button" class="fsreset" aria-label="Reset: start the game afresh"></button></span></span></div></div>`;
+      <span class="fsright"><span class="fsconn"></span><span class="nesbtn"><span>SOUND</span><button type="button" class="fsmute"></button></span><span class="nesbtn"><span>RESET</span><button type="button" class="fsreset" aria-label="Reset: start the game afresh"></button></span><span class="nesbtn"><span>SCREEN</span><button type="button" class="fsfull"></button></span></span></div></div>`;
   // the bezel's own SOUND and RESET, the same as the page's
   const fm=cab.querySelector(".fsmute"), draw=()=>{ fm.innerHTML = settings.sounds ? SPEAKER_ON : SPEAKER_OFF; fm.classList.toggle("off", !settings.sounds); fm.setAttribute("aria-label", settings.sounds ? "Sound on: turn it off" : "Sound off: turn it on"); };
   fm.onclick=()=>{ const m=document.getElementById("muteBtn"); if(m) m.click(); else { settings.sounds=!settings.sounds; save(); } draw(); }; draw();
   cab.querySelector(".fsreset").onclick=()=>coldBoot();
+  cab.querySelector(".fsfull").onclick=()=>fullToggle();
   fsConn(cab);
   fsHome={parent:field.parentNode, next:field.nextSibling, field};
   cab.querySelector(".fsscreen").appendChild(field); document.body.appendChild(cab);

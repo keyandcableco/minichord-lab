@@ -289,7 +289,8 @@ const SPEAKER_OFF='<svg viewBox="0 0 16 14" shape-rendering="crispEdges" aria-hi
 function bezelButtons(){
   const box=document.createElement("div"); box.className="bezelctl";
   box.innerHTML=`<div class="nesbtn"><span>SOUND</span><button type="button" id="muteBtn"></button></div>
-    <div class="nesbtn"><span>RESET</span><button type="button" id="resetBtn" aria-label="Reset: start the game afresh"></button></div>`;
+    <div class="nesbtn"><span>RESET</span><button type="button" id="resetBtn" aria-label="Reset: start the game afresh"></button></div>
+    <div class="nesbtn"><span>SCREEN</span><button type="button" id="fullBtn"></button></div>`;
   document.querySelector("section.game .gamebar").appendChild(box);
   const mute=box.querySelector("#muteBtn");
   const draw=()=>{ mute.innerHTML = settings.sounds ? SPEAKER_ON : SPEAKER_OFF; mute.classList.toggle("off", !settings.sounds);
@@ -297,6 +298,7 @@ function bezelButtons(){
   mute.onclick=()=>{ settings.sounds=!settings.sounds; save(); soundButton(); draw(); if(settings.sounds){ piano.start(); sfx("press"); } };
   draw();
   box.querySelector("#resetBtn").onclick=()=>coldBoot();
+  box.querySelector("#fullBtn").onclick=()=>fullToggle(); fullLabels();
 }
 function coldBoot(){
   if(!blast || !blast.field || blast.booting) return;
