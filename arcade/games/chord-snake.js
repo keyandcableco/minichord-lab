@@ -86,7 +86,7 @@ const SNMENU_G={key:"snake", title:"CHORD SNAKE",
   rules:()=>`<p>EAT NOTES. WHEN THE ONES YOU CARRY SPELL A CHORD, PLAY IT TO CASH THEM IN.</p><p>STEER ON THE HARP OR THE ARROW KEYS. B DROPS YOUR OLDEST NOTE.</p>`,
   rows:row=>{
     row("SPEED", SPEEDS.map(x=>x[0].toUpperCase()), ()=>+saved.speed||0, i=>{ saved.speed=i; save(); });
-    row("HARP", ["STANDARD STRIP","KEYMASTER GRID"], ()=>saved.harpLayout==="keymaster"?1:0, i=>{ saved.harpLayout = i ? "keymaster" : "strip"; save();
+    row("HARP", HARP_LAYOUTS.map(([t])=>t), harpLayoutIndex, i=>{ saved.harpLayout=HARP_LAYOUTS[i][1]; save();
     kmRestrip(); });
     row("HARP SOUND", ["NORMAL","QUIET","OFF"], ()=>saved.harpSound??1, i=>{ saved.harpSound=i; save(); if(blast && blast.setupDone) kmHarp(); });
   },
@@ -258,9 +258,10 @@ function snDemo(){
   sfx("attract");
   (async()=>{
     try{
-      const grid=kmLayout().cols===3;
-      say("THE HARP IS YOUR CONTROLLER", grid ? "ITS FOUR ROWS OF THREE ARE A D-PAD, WITH TWO BUTTONS IN THE MIDDLE." : "TOP TO BOTTOM, THE STRIP IS UP, LEFT, TWO BUTTONS, RIGHT AND DOWN."); await step(3200);
-      const tour = grid ? [[["up"],"THE TOP MIDDLE GOES UP"],[["down"],"THE BOTTOM MIDDLE GOES DOWN: THE CORNERS DO NOTHING"],[["left"],"THE LEFT SIDE GOES LEFT"],[["right"],"THE RIGHT SIDE GOES RIGHT"],[["A","B"],"A AND B IN THE MIDDLE: B DROPS YOUR OLDEST NOTE"]]
+      const grid=kmLayout().cols===3, pad=saved.harpLayout==="kmpad";
+      say("THE HARP IS YOUR CONTROLLER", pad ? "THE KEYMASTER AS A D-PAD, BY ITS NUMBERED CONTACTS." : grid ? "ITS FOUR ROWS OF THREE ARE A D-PAD, WITH TWO BUTTONS IN THE MIDDLE." : "TOP TO BOTTOM, THE STRIP IS UP, LEFT, TWO BUTTONS, RIGHT AND DOWN."); await step(3200);
+      const tour = pad ? [[["down"],"CONTACT 2 GOES DOWN"],[["right"],"3 GOES RIGHT"],[["left"],"4 GOES LEFT"],[["up"],"5 GOES UP"],[["A","B"],"7 IS A AND 6 IS B: B DROPS YOUR OLDEST NOTE"]]
+        : grid ? [[["up"],"THE TOP MIDDLE GOES UP"],[["down"],"THE BOTTOM MIDDLE GOES DOWN: THE CORNERS DO NOTHING"],[["left"],"THE LEFT SIDE GOES LEFT"],[["right"],"THE RIGHT SIDE GOES RIGHT"],[["A","B"],"A AND B IN THE MIDDLE: B DROPS YOUR OLDEST NOTE"]]
         : [[["up"],"THE TOP THREE GO UP"],[["left"],"THE NEXT TWO GO LEFT"],[["A","B"],"A AND B IN THE MIDDLE: B DROPS YOUR OLDEST NOTE"],[["right"],"TWO FOR RIGHT"],[["down"],"AND THE BOTTOM THREE GO DOWN"]];
       for(const [zs,t] of tour){
         litZone(...zs); say("THE HARP IS YOUR CONTROLLER", t); sfx("press"); await step(1700); }

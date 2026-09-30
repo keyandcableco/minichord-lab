@@ -265,7 +265,7 @@ function beginnerRow(opts){
     harpRow=document.createElement("div"); harpRow.className="optrow"; const hl=document.createElement("span"); hl.className="optlabel"; hl.textContent="HARP";
     const hg=document.createElement("div"); hg.className="levels";
     const hmark=b=>{ [...hg.children].forEach(x=>{ x.style.background=""; x.style.color=""; }); b.style.background="#F1E8D2"; b.style.color="#16132A"; };
-    [["STANDARD STRIP","strip"],["KEYMASTER GRID","keymaster"]].forEach(([t,v])=>{ const b=document.createElement("button"); b.textContent=t; if((saved.harpLayout||"strip")===v) hmark(b);
+    HARP_LAYOUTS.forEach(([t,v])=>{ const b=document.createElement("button"); b.textContent=t; if((saved.harpLayout||"strip")===v) hmark(b);
       b.onclick=()=>{ saved.harpLayout=v; save(); hmark(b); helperSync(true); }; hg.appendChild(b); });
     harpRow.append(hl,hg);
   }
@@ -308,7 +308,7 @@ function helperBoard(k){
     if(L.cols===3){
       const cover=document.createElement("div"); cover.className="hbcover"; place(cover, MC_HARP.slot); board.appendChild(cover);
       pad=document.createElement("div"); place(pad, MC_HARP.plate); board.appendChild(pad);
-      kmPlate(pad, sI=>kmGlyph(L.byString[sI])).forEach((d,sI)=>{ const z=L.byString[sI]; d.classList.add("km",`km-${z}`); d.dataset.zone=z; });
+      kmPlate(pad, sI=>kmGlyph(L.byString[sI])+`<i class="kmn">${sI+1}</i>`).forEach((d,sI)=>{ const z=L.byString[sI]; d.classList.add("km",`km-${z}`); d.dataset.zone=z; });
       pad.classList.add("onboard");
     } else {
       pad=document.createElement("div"); pad.className="hbstrip hbpad"; place(pad, MC_HARP.strip); board.appendChild(pad);
@@ -317,7 +317,7 @@ function helperBoard(k){
   }
   if(k==="asteroids" || k==="fifths" || k==="breakout" || k==="sight"){
     const board=el.querySelector(".board"), nameOf=i=>SHARP_NAMES[i];
-    if(saved.harpLayout==="keymaster"){
+    if(kmGrid()){
       const cover=document.createElement("div"); cover.className="hbcover"; place(cover, MC_HARP.slot); board.appendChild(cover);   // no strip under the plate
       const plate=document.createElement("div"); place(plate, MC_HARP.plate); board.appendChild(plate);
       strings=kmPlate(plate, nameOf); plate.classList.add("onboard");
@@ -360,7 +360,7 @@ function demoHarpDone(){
 }
 // the harp, drawn as the player's harp is laid out, its strings named, the one to pluck lit
 function helperHarp(k){
-  const grid=(saved.harpLayout==="keymaster");
+  const grid=kmGrid();
   const el=document.createElement("div"); el.className="helper hharp "+(grid?"plate":"line");
   let cells=[];
   if(grid) cells=kmPlate(el, ()=>"");                                           // the keymaster's own plate

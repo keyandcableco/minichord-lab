@@ -22,8 +22,15 @@ const KM_LAYOUTS={
   strip:{byString:["down","down","down","right","right","B","A","left","left","up","up","up"], drawOrder:[11,10,9,8,7,6,5,4,3,2,1,0], cols:1},
   // the keymaster's corners do nothing, so up, down, left and right are each clearly apart
   keymaster:{byString:[null,"down",null,"left","B","right","left","A","right",null,"up",null], drawOrder:[9,10,11,6,7,8,3,4,5,0,1,2], cols:3},
+  // the keymaster as a d-pad by its contact numbers: 2 down, 3 right, 4 left, 5 up, 6 B, 7 A; the
+  // rest do nothing
+  kmpad:{byString:[null,"down","right","left","up","B","A",null,null,null,null,null], drawOrder:[9,10,11,6,7,8,3,4,5,0,1,2], cols:3},
 };
-const kmLayout=()=>KM_LAYOUTS[saved.harpLayout==="keymaster" ? "keymaster" : "strip"];
+// the harp layouts a player can pick, in the order they're offered
+const HARP_LAYOUTS=[["STANDARD STRIP","strip"],["KEYMASTER GRID","keymaster"],["KEYMASTER D-PAD","kmpad"]];
+const harpLayoutIndex=()=>Math.max(0, HARP_LAYOUTS.findIndex(([,v])=>v===(saved.harpLayout||"strip")));
+const kmLayout=()=>KM_LAYOUTS[saved.harpLayout] || KM_LAYOUTS.strip;
+const kmGrid=()=>kmLayout().cols===3;          // drawn on the keymaster's plate
 const KM_GLYPH={up:"▲",left:"◀",A:"A",B:"B",right:"▶",down:"▼"};
 // what a zone shows: its arrow or letter, or for a game whose A and B have a clear meaning, a picture
 // of it (Chord Sweeper: A sweeps, a burst; B flags, a flag)
@@ -48,7 +55,7 @@ function kmStrip(field){
   const L=kmLayout(), el=document.createElement("div"); el.setAttribute("aria-label","The harp as a controller");
   if(L.cols===3){   // the keymaster: its own plate, each note marked with what it does
     el.className="kmstrip plate";
-    kmPlate(el, sI=>kmGlyph(L.byString[sI])).forEach((d,sI)=>{ const z=L.byString[sI]; d.classList.add("km",`km-${z}`); d.dataset.zone=z; });
+    kmPlate(el, sI=>kmGlyph(L.byString[sI])+`<i class="kmn">${sI+1}</i>`).forEach((d,sI)=>{ const z=L.byString[sI]; d.classList.add("km",`km-${z}`); d.dataset.zone=z; });
   } else {
     el.className="kmstrip line";
     L.drawOrder.forEach(pc=>{ const z=L.byString[pc], c=document.createElement("span"); c.className=`km km-${z}`; c.dataset.zone=z; c.dataset.pc=pc; c.innerHTML=kmGlyph(z); el.appendChild(c); });

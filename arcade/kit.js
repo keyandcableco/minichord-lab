@@ -221,7 +221,7 @@ function arcadeSettings(){
   if(["blaster","asteroids","breakout","fifths","command"].includes(k))
     choice("LETTERING", SIZES.map(x=>x[0]), ()=>saved.chordSize??1, i=>{ saved.chordSize=i; save(); applyChordSize(); });
   if(["snake","stack","command","asteroids","fifths","sweeper","sight"].includes(k))
-    choice("HARP", ["STANDARD STRIP","KEYMASTER"], ()=>saved.harpLayout==="keymaster"?1:0, i=>{ saved.harpLayout=i?"keymaster":"strip"; save(); if(["snake","stack"].includes(k)) kmRestrip(); else helperSync(true); });
+    choice("HARP", HARP_LAYOUTS.map(([t])=>t.replace("STANDARD ","")), harpLayoutIndex, i=>{ saved.harpLayout=HARP_LAYOUTS[i][1]; save(); if(["snake","stack"].includes(k)) kmRestrip(); else helperSync(true); });
   if(["snake","stack","sweeper"].includes(k))
     choice("HARP SOUND", ["NORMAL","QUIET","OFF"], ()=>saved.harpSound??1, i=>{ saved.harpSound=i; save(); if(blast && blast.setupDone) kmHarp(); });
   if(["breakout","fifths","stack"].includes(k))

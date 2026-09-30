@@ -148,7 +148,7 @@ const SWMENU_G={key:"sweeper", title:"CHORD SWEEPER",
   rules:()=>`<p>A GAME OF TENSION AND RELEASE. EACH MINE IS A KEY'S HOME. SWEPT SQUARES SHOW THE TENSION POINTING THERE: NEXT TO A MINE, ITS V7; TWO AWAY, V OF V; THREE AWAY, V OF V OF V. FURTHER OUT IT'S CALM.</p><p>LATER, TRITONE SUBSTITUTES, DIMINISHED SEVENTHS AND BARE TRITONES POINT HOME TOO.</p><p>STEER ON THE HARP OR THE ARROW KEYS. A SWEEPS, B FLAGS. WITH A MOUSE, CLICK TO SWEEP AND RIGHT-CLICK TO FLAG.</p><p>TO DEFUSE A MINE, PUT THE CURSOR ON IT AND PLAY ITS KEY'S HOME CHORD. SWEEP A MINE, OR PLAY THE WRONG CHORD ON IT, AND IT GOES OFF, AND THE WHOLE FIELD IS SHOWN.</p>`,
   stat:()=>`FIELDS ${blast.fields}`,
   rows:row=>{
-    row("HARP", ["STANDARD STRIP","KEYMASTER GRID"], ()=>saved.harpLayout==="keymaster"?1:0, i=>{ saved.harpLayout = i ? "keymaster" : "strip"; save(); kmRestrip(); });
+    row("HARP", HARP_LAYOUTS.map(([t])=>t), harpLayoutIndex, i=>{ saved.harpLayout=HARP_LAYOUTS[i][1]; save(); kmRestrip(); });
   },
   levels:SW_LEVELS, begin:i=>beginSweeper(i), demo:()=>swDemo(), modNote:false};
 function swMenu(over){ arcadeMenu(SWMENU_G, over); }
