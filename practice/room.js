@@ -454,6 +454,7 @@ function answerChord(voices){
 function answerNote(pc, pickedName){
   if(blast && blast.bonus){ bonusNote(pc); return; }                           // a bonus round
   if(blast && blast.hsEntry){ const c=kmControl(pc), h=blast.hsEntry;               // initials: the harp as a d-pad
+    if(!c) return;                                                               // a dead corner of the keymaster
     if(c==="up") h.step(1); else if(c==="down") h.step(-1); else if(c==="left"||c==="B") h.move(-1); else if(c==="right") h.move(1); else h.set(); return; }
   if(cabWaiting()){ cabWake(); return; }
   if(blast && blast.phase==="play") blast.midiIn=(blast.midiIn||0)+1;

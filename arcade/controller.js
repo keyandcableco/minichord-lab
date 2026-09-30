@@ -20,13 +20,14 @@
 //    3  2  1  ▼
 const KM_LAYOUTS={
   strip:{byString:["down","down","down","right","right","B","A","left","left","up","up","up"], drawOrder:[11,10,9,8,7,6,5,4,3,2,1,0], cols:1},
-  keymaster:{byString:["down","down","down","left","B","right","left","A","right","up","up","up"], drawOrder:[9,10,11,6,7,8,3,4,5,0,1,2], cols:3},
+  // the keymaster's corners do nothing, so up, down, left and right are each clearly apart
+  keymaster:{byString:[null,"down",null,"left","B","right","left","A","right",null,"up",null], drawOrder:[9,10,11,6,7,8,3,4,5,0,1,2], cols:3},
 };
 const kmLayout=()=>KM_LAYOUTS[saved.harpLayout==="keymaster" ? "keymaster" : "strip"];
 const KM_GLYPH={up:"▲",left:"◀",A:"A",B:"B",right:"▶",down:"▼"};
 // what a zone shows: its arrow or letter, or for a game whose A and B have a clear meaning, a picture
 // of it (Chord Sweeper: A sweeps, a burst; B flags, a flag)
-const kmGlyph=z=> (blast && blast.kind==="sweeper" && typeof SW_GLYPH!=="undefined" && SW_GLYPH[z]) || KM_GLYPH[z];
+const kmGlyph=z=> z==null ? "" : (blast && blast.kind==="sweeper" && typeof SW_GLYPH!=="undefined" && SW_GLYPH[z]) || KM_GLYPH[z];
 const kmControl=pc=>kmLayout().byString[mod(pc,12)];
 
 // The keymaster harp as it looks: a leaning black plate with its twelve white notes in four rising

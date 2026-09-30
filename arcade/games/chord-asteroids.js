@@ -173,6 +173,12 @@ function asTick(now){
         r.vx+= (ax/d*pull - r.vx)*dt*.9; r.vy+= (ay/d*pull - r.vy)*dt*.9;
       }
       r.x+=r.vx*dt; r.y+=r.vy*dt; r.ang+=r.spin*dt;
+      // a chord rock that sails off the screen wraps round, as in Asteroids, aimed again at the ship where
+      // it is now (it moves; a rock aimed where it was could miss and fly off for ever)
+      if(r.kind==="chord" && blast.fx){ const W=blast.fx.fw, H=blast.fx.fh, M=60; let wrap=false;
+        if(r.x<-M){ r.x=W+M-1; wrap=true; } else if(r.x>W+M){ r.x=-M+1; wrap=true; }
+        if(r.y<-M){ r.y=H+M-1; wrap=true; } else if(r.y>H+M){ r.y=-M+1; wrap=true; }
+        if(wrap){ const sp=Math.hypot(r.vx,r.vy), ang=Math.atan2(blast.cy-r.y, blast.cx-r.x)+(Math.random()-.5)*.4; r.vx=Math.cos(ang)*sp; r.vy=Math.sin(ang)*sp; } }
       r.el.style.transform=`translate(${r.x}px,${r.y}px) translate(-50%,-50%)`;   // moved, not re-laid out
       if(Math.hypot(r.x-blast.cx, r.y-blast.cy) < r.r*.6+8 && blast.phase==="play") asHitShip(r);
     }

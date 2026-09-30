@@ -12,6 +12,11 @@ const t=require("./harness").load("chord-stack");
   check("the arrow keys move the piece", a.piece.x===x0+1);
   const c0=JSON.stringify(a.piece.cells); key("ArrowUp");
   check("up rotates it", a.piece.kind==="O" || JSON.stringify(a.piece.cells)!==c0);
+  // the square rotates too: its outline stays, its notes turn round
+  a.piece={kind:"O", cells:[[0,0],[1,0],[0,1],[1,1]], notes:[0,4,7,9], x:4, y:3};
+  const at=()=>{ const m={}; a.piece.cells.forEach(([x,y],i)=>m[x+","+y]=a.piece.notes[i]); return JSON.stringify(m); };
+  const o0=at(); key("ArrowUp"); await sleep(10);
+  check("the square rotates: same outline, its notes turned round", at()!==o0 && a.piece.x===4, `${o0} → ${at()}`);
   // a chord side by side on the floor lights up and clears; a block above falls in
   a.piece=null; a.grid=w.eval("stEmpty()"); const F=17;
   a.grid[F][2]={pc:0}; a.grid[F][3]={pc:4}; a.grid[F][4]={pc:7}; a.grid[F-1][3]={pc:9}; sb.stackDraw();

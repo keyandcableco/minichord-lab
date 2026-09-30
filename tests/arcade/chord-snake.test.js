@@ -23,5 +23,11 @@ const t=require("./harness").load("chord-snake");
   check("the harp steers", !!d.querySelector(".kmstrip .km.hit"));
   sb.restoreAll();
   check("leaving gives back the harp's level, and the volumes", t.mc.params[97]===150 && t.mc.params[2]===0 && t.mc.params[3]===0);
+  // the keymaster's corners do nothing, so the directions stand clearly apart
+  t.w.eval("saved.harpLayout='keymaster'");
+  check("on the keymaster, the four corners do nothing", [0,2,9,11].every(pc=>t.w.eval(`kmControl(${pc})`)==null) && t.w.eval("kmControl(10)")==="up" && t.w.eval("kmControl(1)")==="down");
+  const q0=a.queue.length; t.w.eval("snTurn(kmControl(0))");
+  check("and a corner doesn't turn the snake", a.queue.length===q0);
+  t.w.eval("saved.harpLayout='strip'");
   t.done();
 })();

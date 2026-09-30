@@ -113,7 +113,7 @@ const BONUS_GAMES=[
    knob(b, v, k){ if(b.base==null || b.knobId!==k){ b.knobId=k; b.base=v; b.at=b.cents; return; } this.set(b, b.at+(v-b.base)*120); },
    key(b, code, shift){ const d={ArrowUp:1,ArrowRight:1,ArrowDown:-1,ArrowLeft:-1}[code]; if(d){ this.set(b, b.cents+d*(shift?5:1)); return; }
      if(code==="Enter"||code==="Space"){ this.lock(b); return; } return false; },
-   note(b, pc){ const c=kmControl(pc); if(c==="up"||c==="right") this.set(b,b.cents+2); else if(c==="down"||c==="left") this.set(b,b.cents-2); else this.lock(b); },
+   note(b, pc){ const c=kmControl(pc); if(!c) return; if(c==="up"||c==="right") this.set(b,b.cents+2); else if(c==="down"||c==="left") this.set(b,b.cents-2); else this.lock(b); },
    chord(b){ this.lock(b); },
    lock(b){ const off=Math.abs(b.cents); b.add(Math.max(0,160-off*6)); b.result=off<1 ? "DEAD ON: NO BEATS AT ALL" : `OFF BY ${off.toFixed(1)} CENTS`; b.finish(); },
    stop(b){ if(b.osc){ try{ b.osc[0].stop(); b.osc[1].stop(); b.osc[2].disconnect(); }catch(e){} b.osc=null; } } },

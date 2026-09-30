@@ -155,7 +155,7 @@ function snTick(now){
   blast.raf=requestAnimationFrame(snTick);
 }
 function snTurn(d){
-  if(!blast || blast.kind!=="snake" || blast.phase!=="play") return;
+  if(!blast || blast.kind!=="snake" || blast.phase!=="play" || !["up","down","left","right"].includes(d)) return;   // (a dead corner, nothing)
   const last=blast.queue.length ? blast.queue[blast.queue.length-1] : blast.dir, opp={up:"down",down:"up",left:"right",right:"left"};
   if(d===last || d===opp[last] || blast.queue.length>=2) return;
   blast.queue.push(d);
@@ -260,7 +260,7 @@ function snDemo(){
     try{
       const grid=kmLayout().cols===3;
       say("THE HARP IS YOUR CONTROLLER", grid ? "ITS FOUR ROWS OF THREE ARE A D-PAD, WITH TWO BUTTONS IN THE MIDDLE." : "TOP TO BOTTOM, THE STRIP IS UP, LEFT, TWO BUTTONS, RIGHT AND DOWN."); await step(3200);
-      const tour = grid ? [[["up"],"THE TOP ROW GOES UP"],[["down"],"THE BOTTOM ROW GOES DOWN"],[["left"],"THE LEFT SIDE GOES LEFT"],[["right"],"THE RIGHT SIDE GOES RIGHT"],[["A","B"],"A AND B IN THE MIDDLE: B DROPS YOUR OLDEST NOTE"]]
+      const tour = grid ? [[["up"],"THE TOP MIDDLE GOES UP"],[["down"],"THE BOTTOM MIDDLE GOES DOWN: THE CORNERS DO NOTHING"],[["left"],"THE LEFT SIDE GOES LEFT"],[["right"],"THE RIGHT SIDE GOES RIGHT"],[["A","B"],"A AND B IN THE MIDDLE: B DROPS YOUR OLDEST NOTE"]]
         : [[["up"],"THE TOP THREE GO UP"],[["left"],"THE NEXT TWO GO LEFT"],[["A","B"],"A AND B IN THE MIDDLE: B DROPS YOUR OLDEST NOTE"],[["right"],"TWO FOR RIGHT"],[["down"],"AND THE BOTTOM THREE GO DOWN"]];
       for(const [zs,t] of tour){
         litZone(...zs); say("THE HARP IS YOUR CONTROLLER", t); sfx("press"); await step(1700); }

@@ -188,7 +188,7 @@ function stMove(dx){ const p=blast.piece; if(!p) return; if(stFits(p.cells,p.x+d
 // rotating: a quarter turn clockwise about the piece's middle, nudged sideways or up if it's against
 // a wall or the stack (a wall kick); the notes turn with their blocks
 function stRotate(){
-  const p=blast.piece; if(!p || p.kind==="O") return;
+  const p=blast.piece; if(!p) return;                  // the square too: its outline stays, its notes turn round
   const w=Math.max(...p.cells.map(c=>c[0]))+1;
   let turned=p.cells.map(([x,y])=>[-y,x]); const mx=Math.min(...turned.map(c=>c[0])), my=Math.min(...turned.map(c=>c[1]));
   turned=turned.map(([x,y])=>[x-mx,y-my]);
