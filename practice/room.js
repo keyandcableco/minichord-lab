@@ -210,10 +210,10 @@ function modPill(){
   if(mc.params[31]===undefined || !canWrite()){ el.hidden=true; return; }
   el.hidden=false;
   const sharp=mc.params[31]!==1, set=31 in borrowed;
-  el.textContent=`Modifier ${sharp?"♯ sharpens":"♭ flattens"}${set?" · set for you":""}${q && q.usesMod && !solved?" · this one needs it":""}`;
+  el.innerHTML=`<b class="modsign">${sharp?"♯":"♭"}</b>Modifier ${sharp?"sharpens":"flattens"}${set?" · set for you":""}${q && q.usesMod && !solved?" · this one needs it":""}`;
   el.title = (set ? "The game switched the modifier this way so every answer is one button plus the modifier. It goes back when you leave." : "The modifier as your minichord has it.")
     + (settings.modTap!=="off" ? " Double-tap the modifier to flip it between sharp and flat." : "");
-  if(settings.modTap!=="off" && mc.params[200]===31) el.textContent+=" · double-tap flips";
+  if(settings.modTap!=="off" && mc.params[200]===31) el.append(" · double-tap flips");   // appended, so the big sign stays
   if(lastMod!==null && lastMod!==mc.params[31]){ el.classList.remove("pulse"); void el.offsetWidth; el.classList.add("pulse"); }
   lastMod=mc.params[31];
   // Barry Harris mode: shown whenever it's on or the game has set it either way
