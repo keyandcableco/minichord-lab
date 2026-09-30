@@ -22,7 +22,7 @@ const BLAST_LEVELS=[{q:["","m"],acc:false},{q:["","m","7"],acc:false},{q:["","m"
   {q:["","m","7","maj7","m7","°","+"],acc:true,slash:"any",barry:true}]; // 6, m6 and °7 join, mid-round
 // slash chords need the slash note in the bass: firmware 13's slash voice set to Bass
 const slashReady=()=>!canWrite() || (mc.params[7]??0)>=13;
-const levelOk=l=> !(BLAST_LEVELS[l].slash && !slashReady()) && !(BLAST_LEVELS[l].barry && (!canWrite() || settings.set==="barry"));
+const levelOk=l=> !(BLAST_LEVELS[l].slash && !slashReady()) && !(BLAST_LEVELS[l].barry && (!canWrite() || settings.set==="barry" || (typeof mxChoice==="function" && mxChoice()!=="standard")));
 function nextLevel(l){ for(let n=l+1;n<BLAST_LEVELS.length;n++) if(levelOk(n)) return n; return l; }
 // What each chord type is worth, the plain major least, each step up the ladder more, and Barry
 // Harris's sixths and diminished sevenths most; with each one's spelling, for the points screen.
@@ -51,7 +51,10 @@ function genBlaster(){
     context:0, barry: settings.set==="barry" ? "6" : ""};
 }
 const lowestBlast=()=> blast ? blast.items.filter(i=>!i.done).sort((a,b)=>a.t0-b.t0)[0] || null : null;
-const blastQuals=()=>BLAST_LEVELS[blast.level].q.map(x=> (settings.set==="barry" || blast.barry) ? (BARRY_SWAP[x]??x) : x);
+// the level's chords, as the buttons play them: with Barry Harris mode its sixths, or on the alternate
+// or a custom matrix (chosen at the start; arcade/matrix.js) whatever the same buttons play there
+const blastSwap=x=> typeof mxChoice==="function" && mxChoice()!=="standard" ? mxMap(x) : (settings.set==="barry" || blast.barry) ? (BARRY_SWAP[x]??x) : x;
+const blastQuals=()=>[...new Set(BLAST_LEVELS[blast.level].q.map(blastSwap))];
 function blastRoots(plainOnly){
   const f=canWrite() ? devFifths() : 0, out=[], lv=BLAST_LEVELS[blast.level];
   for(let li=0; li<7; li++){

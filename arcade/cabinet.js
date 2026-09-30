@@ -341,7 +341,7 @@ function helpChord(rootName, q, bass){
   h.labels(); h.el.querySelectorAll(".grid .lit,.grid .slashlit").forEach(x=>x.classList.remove("lit","slashlit")); h.mod.classList.remove("lit");   // the buttons only: the harp keeps its own light
   if(!rootName) return;
   const {li,acc}=parse(rootName), col=DEMO_COLS.indexOf(rootName[0]), f=devFifths();
-  (HELP_ROWS[q]||[0]).forEach(r=>h.cells[col] && h.cells[col][r].classList.add("lit"));
+  ((typeof mxRows==="function" && mxRows(q)) || HELP_ROWS[q] || [0]).forEach(r=>h.cells[col] && h.cells[col][r].classList.add("lit"));
   if(acc!==keyAcc(li,f)) h.mod.classList.add("lit");                        // the key doesn't give this root: the modifier too
   h.mod.textContent = mc.params[31]===1 ? "♭" : "♯";
   if(bass){ const bc=DEMO_COLS.indexOf(bass[0]); if(bc>=0) h.cells[bc][0].classList.add("slashlit"); }

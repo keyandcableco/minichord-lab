@@ -837,7 +837,7 @@ mc.addEventListener("device", ()=>{
   else if(blast && blast.kind==="sweeper") swDevice();
   else if(blast && blast.kind==="frets") frDevice();
   else if(blast && blast.kind==="sight") slDevice();
-  else if(blast){ blastSetup(); if(blast.phase!=="play") blastHomeKey(); blastKey(); }
+  else if(blast){ blastSetup(); if(blast.phase!=="play") blastHomeKey(); blastKey(); if(blast.kind==="blaster") blastDevice(); }   // Chord Invaders (and its key bars), the catch-all
   arcadeVolumeWatch();
   if(q && !solved && !rebuilding) applyNeeds();
   mine(); needs();

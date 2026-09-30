@@ -141,7 +141,7 @@ function beginBlast(level){
   if(BLAST_LEVELS[level].barry && !blast.barry){ blast.barry=true; ensure(33,1); modPill(); }
   // every game starts in C major, whatever key the last one ended in, so the first chords are the
   // plain buttons; the player's own key goes back when they leave
-  blastSetup();
+  blastSetup(); mxApply();                                   // the minichord to the chosen matrix
   // manual aim: the ship steered by a knob (or the arrow keys), a chord firing straight up from it
   blast.aimManual=!!saved.invAim; blast.shipWant=.5; blast.powers={}; blast.energy=1; blast.beamOn=false;
   if(blast.aimManual){ const inert=arcadeKnobsInert();
@@ -181,7 +181,8 @@ function blastBar(){
   if(!blast || !blast.hud) return;
   const key = blast.keyTarget ? ` · KEY ${blast.keyTarget.name}` : "";
   const pw = typeof blastPowerHud==="function" && blast.kind==="blaster" ? blastPowerHud() : "";
-  blast.hud.innerHTML=`<span>SCORE ${blast.score}${multTag()}</span><span class="lvl">LEVEL ${blast.level+1}${key}${pw}</span><span class="lives">${"♥".repeat(Math.max(0,blast.lives))||"-"}</span>`;
+  const mx = blast.kind==="blaster" && typeof mxTag==="function" ? mxTag() : "";
+  blast.hud.innerHTML=`<span>SCORE ${blast.score}${multTag()}</span><span class="lvl">LEVEL ${blast.level+1}${key}${mx}${pw}</span><span class="lives">${"♥".repeat(Math.max(0,blast.lives))||"-"}</span>`;
 }
 // a big message across the middle of the field: a new level, a key to set, Barry Harris
 function banner(big, small){
@@ -196,10 +197,10 @@ function popup(x,y,text,colour,big){
 }
 // the next chord: from the key bar's key once one has fallen, otherwise any button's
 function pickBlastChord(slashNow){
-  const lv=BLAST_LEVELS[blast.level], quals=blastQuals(), swap=x=> (settings.set==="barry"||blast.barry) ? (BARRY_SWAP[x]??x) : x;
+  const lv=BLAST_LEVELS[blast.level], quals=blastQuals(), swap=blastSwap;
   if(blast.keyTarget){
     const K=blast.keyTarget.name, d=rnd(DEGREES), root=above(K,d.st,d.se);
-    const opts=[swap(d.q), SEVENTHS[d.n]?.[1]].filter(x=>x!=null && quals.includes(x));
+    const opts=[swap(d.q), SEVENTHS[d.n]?.[1]!=null ? swap(SEVENTHS[d.n][1]) : null].filter(x=>x!=null && quals.includes(x));
     if(!root || !opts.length) return null;
     let qq=rnd(opts), bass=null;
     if(slashNow){
@@ -225,7 +226,7 @@ function pickBlastChord(slashNow){
 function spawnBlast(now){
   const lv=BLAST_LEVELS[blast.level];
   const onScreen=new Set(blast.items.filter(i=>!i.done).map(i=>i.sym));
-  const slashNow = lv.slash && Math.random()<.35;        // on the slash levels about one chord in three
+  const slashNow = lv.slash && mxChoice()==="standard" && Math.random()<.35;   // on the slash levels about one chord in three (standard chords only)
   const power = typeof blastPowerChance==="function" ? blastPowerChance() : null;   // now and then a power-up, played like a chord
   const bonus = !power && Math.random()<.13;             // a ★ chord: five times the points, and harmless if it lands
   for(let k=0;k<40;k++){

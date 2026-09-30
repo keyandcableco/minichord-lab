@@ -31,6 +31,8 @@ key presses, checking what should happen.
 | `chord-invaders-power` | the beam destroys that chord above the ship, on energy; omni beam destroys anything and sweeps in auto aim; power-ups taken by their chord; slow time; the shield |
 | `minichord-contact` | a gentle press whose contact flickers is read as its one chord, quickly; firm presses, new chords and letting go as before |
 | `pixel-minichord` | what's made from the pixel minichord's grid is up to date; Ben holds it |
+| `chord-matrix-stack` | the alternate matrix sets the layout and deals sus chords that light and clear; the helper's buttons; the custom matrix follows the preset's slots |
+| `chord-matrix-invaders` | the chords option is offered; the alternate matrix drops sus chords that shoot down |
 | `key-fleet` | fleets never touch; hits cripple; keys are called by tonic, cadence and the key change combo |
 | `high-scores` | GAME OVER before the initials; input ignored at first; the board kept; beginner mode stays off it |
 | `lobby` | the arcade lobby's cabinets, best scores and ticker |
