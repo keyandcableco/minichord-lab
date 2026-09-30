@@ -170,7 +170,7 @@ function cabinet(ov){
   beginnerRow(opts);
   crtRow(opts);
   multLine(opts);
-  if(["breakout","fifths","stack","asteroids","sight"].includes(cabKind()) && knobsReady()) knobRow(opts);
+  if(["breakout","fifths","stack","asteroids","sight","blaster"].includes(cabKind()) && knobsReady()) knobRow(opts);
   cabPages(opts, ov);
   ov.append(title, roll, points, board, opts);
   hsFetch(hsSlug());                                        // fetched now, so it's ready when its turn comes

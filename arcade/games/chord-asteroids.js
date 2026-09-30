@@ -94,11 +94,7 @@ function asEdge(now, dt){
 const asAimKnob=()=> steerKnob()===0 ? 1 : 0;
 const asManual=()=> !!(blast && blast.kind==="asteroids" && blast.aimManual);
 function asAim(v){ if(!asManual()) return; blast.aimV=v; blast.aimWant=-Math.PI/2+(v-.5)*2*Math.PI+(blast.aimOffset||0); }   // a whole turn of the knob, a whole turn of the ship
-function asKnobsInert(){
-  if(!canWrite() || !hasSetting(117) || (mc.params[7]??0)<19) return false;
-  borrow(117,1); borrow(10,213); borrow(12,214); borrow(16,215);   // knob layer on, the alternates at unused addresses
-  return true;
-}
+const asKnobsInert=()=>arcadeKnobsInert();
 document.addEventListener("keydown", e=>{
   if(!blast || blast.kind!=="asteroids" || blast.phase!=="play" || /INPUT|SELECT|TEXTAREA/.test(document.activeElement?.tagName||"")) return;
   const d={ArrowLeft:1,ArrowRight:-1}[e.code];
@@ -236,7 +232,6 @@ function asChordPoints(hit){
   let p=BLAST_WORTH[hit.q] ?? 10;
   const {li,acc}=parse(hit.root); if(acc!==keyAcc(li, devFifths())) p*=1.5;
   if(hit.star) p*=3;
-  if(blast.aimManual) p*=2;                              // manual aim: aimed, so double
   return mulPts(Math.round(p)*(blast.level+1));
 }
 function asCrack(hit){
@@ -269,13 +264,13 @@ function asteroidsNote(pc){
   heard(nm,true);
   r.dead=true;                                        // spoken for: no second shot at it
   asFire(r, ()=>{ r.deadAt=performance.now(); r.el.remove(); explode(r.x, r.y, 16);
-    const pts=mulPts(10*(blast.level+1)*(blast.aimManual?2:1)); blast.score+=pts; popup(r.x, r.y-14, `+${pts}`);
+    const pts=mulPts(10*(blast.level+1)); blast.score+=pts; popup(r.x, r.y-14, `+${pts}`);
     sfx("boom");
     if(--r.group.left===0) asCleared(r.group, r.x, r.y);
     asBar(); });
 }
 function asCleared(group, x, y){
-  const pts=mulPts(25*(blast.level+1)*(blast.aimManual?2:1)); blast.score+=pts; blast.clears++; stats.streak=blast.clears; scoreboard();
+  const pts=mulPts(25*(blast.level+1)); blast.score+=pts; blast.clears++; stats.streak=blast.clears; scoreboard();
   popup(x, y-34, `${group.label} CLEARED +${pts}`, "#FFD35A");
   if(blast.clears%6===0){
     const was=blast.level;
@@ -287,19 +282,24 @@ function asCleared(group, x, y){
   asBar();
 }
 // the ship, and the rocks' outlines, on the starfield's canvas
-function asDraw(g, now){
-  const P=PX, cx=blast.cx/P, cy=blast.cy/P;
+// The rocks, the ship and its orbit, drawn sharp on their own canvas over the pixel starfield, at
+// the sizes they always had: U is one of the shared canvas's pixels.
+function asDraw(_g, now){
+  if(!blast.sharp) blast.sharp=sharpLayer(blast.fx);
+  const g=sharpBegin(blast.sharp), U=PX, cx=blast.cx, cy=blast.cy;
   for(const r of blast.rocks){ if(r.dead) continue;
-    g.strokeStyle = r.star ? "#7FE9FF" : r.kind==="chord" ? "#C9C0A8" : "#F1E8D2"; g.lineWidth=1;
-    g.beginPath(); r.shape.forEach((p,i)=>{ const x=r.x/P+Math.cos(p.a+r.ang)*p.d/P, y=r.y/P+Math.sin(p.a+r.ang)*p.d/P; i?g.lineTo(x,y):g.moveTo(x,y); }); g.closePath(); g.stroke(); }
-  // the ship: a pixel triangle turned toward its last shot, with a shield flash when hit
-  const a=blast.shipAng, pt=(d,o)=>[cx+Math.cos(a+o)*d, cy+Math.sin(a+o)*d];
+    g.strokeStyle = r.star ? "#7FE9FF" : r.kind==="chord" ? "#C9C0A8" : "#F1E8D2"; g.lineWidth=U*.7;
+    g.beginPath(); r.shape.forEach((p,i)=>{ const x=r.x+Math.cos(p.a+r.ang)*p.d, y=r.y+Math.sin(p.a+r.ang)*p.d; i?g.lineTo(x,y):g.moveTo(x,y); }); g.closePath(); g.stroke(); }
+  // the ship: a triangle turned toward its aim or its last shot, with a shield flash when hit
+  const a=blast.shipAng, pt=(d,o)=>[cx+Math.cos(a+o)*d*U, cy+Math.sin(a+o)*d*U];
   const hurt=now-(blast.shieldAt||0)<500, jam=now<blast.jamUntil;
   g.fillStyle = hurt ? "#FF4B3E" : jam ? "#7FE9FF" : "#F1E8D2";
   g.beginPath(); const [x1,y1]=pt(6,0), [x2,y2]=pt(5,2.5), [x3,y3]=pt(5,-2.5), [x4,y4]=pt(2,Math.PI); g.moveTo(x1,y1); g.lineTo(x2,y2); g.lineTo(x4,y4); g.lineTo(x3,y3); g.closePath(); g.fill();
-  if(hurt){ g.strokeStyle="rgba(255,75,62,.7)"; g.beginPath(); g.arc(cx,cy,7,0,Math.PI*2); g.stroke(); }
+  if(hurt){ g.strokeStyle="rgba(255,75,62,.7)"; g.lineWidth=U*.7; g.beginPath(); g.arc(cx,cy,7*U,0,Math.PI*2); g.stroke(); }
+  // manual aim: a faint line where a shot would go
+  if(asManual()){ g.strokeStyle="rgba(255,211,90,.22)"; g.lineWidth=U*.5; g.setLineDash([U*2,U*3]); g.beginPath(); g.moveTo(cx,cy); g.lineTo(cx+Math.cos(a)*U*120, cy+Math.sin(a)*U*120); g.stroke(); g.setLineDash([]); }
   // the orbit, faintly
-  if(blast.orbitR){ g.strokeStyle="rgba(157,152,201,.18)"; g.beginPath(); g.arc(blast.hx/P, blast.hy/P, blast.orbitR/P, 0, Math.PI*2); g.stroke(); }
+  if(blast.orbitR){ g.strokeStyle="rgba(157,152,201,.18)"; g.lineWidth=U*.6; g.beginPath(); g.arc(blast.hx, blast.hy, blast.orbitR, 0, Math.PI*2); g.stroke(); }
 }
 
 // ---------- Chord Asteroids' demo ----------

@@ -31,6 +31,7 @@ const DEMO_SCENES=[
   {key:true, title:"SETTING THE KEY", text:"HOLD BOTH PRESET BUTTONS. THE LIGHT BLINKS.", hold:3200},
   {key:true, keyPress:[3,1], text:"THE ROWS ARE NOW SHARP, NATURAL AND FLAT KEYS. PRESS ONE.", hold:3400},
   {key:false, keyDone:"D", text:"LET GO: YOU'RE IN D MAJOR. ITS F AND C BUTTONS NOW PLAY F♯ AND C♯.", hold:3800},
+  {title:"MANUAL AIM ×2", text:"AN OPTION: STEER THE SHIP WITH A KNOB, AND A CHORD FIRES STRAIGHT UP. GET UNDER THE CHORD, THEN PLAY IT, FOR DOUBLE.", hold:4200},
   {title:"SCORING", text:"RICHER CHORDS SCORE MORE: A MAJOR CHORD 10, A MINOR 15, SEVENTHS 20 TO 30, UP TO 50 FOR SIXTHS AND DIMINISHED SEVENTHS. HALF AGAIN WITH THE MODIFIER, AND HALF AGAIN AS A SLASH CHORD.", hold:5200},
   {title:"READY?", text:"CHOOSE A LEVEL. PLAY EACH CHORD BEFORE IT LANDS.", hold:2800},
 ];
@@ -139,6 +140,10 @@ function beginBlast(level){
   // every game starts in C major, whatever key the last one ended in, so the first chords are the
   // plain buttons; the player's own key goes back when they leave
   blastSetup();
+  // manual aim: the ship steered by a knob (or the arrow keys), a chord firing straight up from it
+  blast.aimManual=!!saved.invAim; blast.shipWant=.5;
+  if(blast.aimManual){ const inert=arcadeKnobsInert();
+    gameLater(()=>banner("MANUAL AIM ×2", inert ? `STEER THE SHIP WITH THE ${KNOB_NAMES[steerKnob()]} KNOB` : "STEER THE SHIP WITH ← →"), 1300); }
   if(canWrite() && hasSetting(35)){ borrow(35, keyIndexOf(0)); blast.dir = Math.random()<.5 ? 1 : -1; ensure(31, blast.dir>0 ? 0 : 1); modPill(); }   // written every time, whatever the page last read
   settings.blastStart=String(level+1); save();
   stats.streak=0; scoreboard(); blastBar();
@@ -156,6 +161,7 @@ function blastSetup(){
   if(!(35 in borrowed)) borrow(35, mc.params[35]);           // the key you change it to goes back when you leave
   ensure(31, blast.dir>0 ? 0 : 1);
   if(slashReady()) ensure(113,1);                             // for the slash levels, the slash note in the bass
+  if(hasSetting(39)) ensure(39,0);                            // the standard chord layout: the chords it drops
   if(hasSetting(30)) ensure(30,0);                            // untransposed, so the buttons play the chords they name
   poll(true);
   modPill();
@@ -262,3 +268,10 @@ function blastKey(){
     banner(`KEY SET +${pts}`, `${t.name} MAJOR, A LITTLE LATE`); blastBar();
   }
 }
+
+// manual aim: the arrow keys steer Chord Invaders' ship too
+document.addEventListener("keydown", e=>{
+  if(!blast || blast.kind!=="blaster" || !blast.aimManual || blast.phase!=="play" || /INPUT|SELECT|TEXTAREA/.test(document.activeElement?.tagName||"")) return;
+  const d={ArrowLeft:-1,ArrowRight:1}[e.code]; if(!d) return;
+  e.preventDefault(); blast.shipWant=Math.max(.06, Math.min(.94, (blast.shipWant??.5)+d*.06));
+});

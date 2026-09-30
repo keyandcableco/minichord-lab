@@ -5,7 +5,7 @@
 const t=require("./harness").load("chord-asteroids");
 (async()=>{
   const {w, sleep, note, check, knob, mc}=t;
-  await sleep(150); t.connect({extra:{7:19, 117:0, 10:30, 12:40, 16:50, 238:1}}); await sleep(100);
+  await sleep(150); t.connect({extra:{7:19, 117:0, 10:30, 12:40, 16:50, 238:1, 200:0, 209:39, 210:1, 211:117, 212:1}}); await sleep(100);
   // chord rocks by type (key C, level 1)
   const P=o=>w.eval(`asChordPoints(${JSON.stringify(o)})`);
   w.eval("blast.level=0");
@@ -14,6 +14,7 @@ const t=require("./harness").load("chord-asteroids");
   check("half again when it needs the modifier, three times a star rock", P({q:"",root:"B♭"})===15 && P({q:"",root:"C",star:true})===30);
   // manual aim
   w.eval("saved.asAim=1"); const a=await t.start(0, {speed:4});
+  check("the arcade's double tap does one job: a preset's other pairs are set aside", mc.params[209]===0 && mc.params[211]===0, `${mc.params[209]} ${mc.params[211]}`);
   check("manual aim puts the knobs on their alternates, pointed at unused addresses", mc.params[117]===1 && mc.params[10]===213 && mc.params[12]===214 && mc.params[16]===215);
   const ang0=a.shipAng; knob(0,20); await sleep(300);
   check("the other knob spins the ship", Math.abs(a.shipAng-ang0)>1, `${ang0.toFixed(2)} → ${a.shipAng.toFixed(2)}`);
@@ -26,13 +27,17 @@ const t=require("./harness").load("chord-asteroids");
   await sleep(500);
   const ahead=place(0, 0), s0=a.score; await sleep(30);
   note(0); await sleep(400);
-  check("a note where the ship points is hit, for double", a.rocks.find(r=>r.id===ahead)?.dead!==false && a.score-s0===w.eval("mulPts(20)"), `+${a.score-s0}, 10 × 2 × the speed multiplier ${a.mult||1}`);
+  check("a note where the ship points is hit, for double", a.rocks.find(r=>r.id===ahead)?.dead!==false && a.score-s0===w.eval("mulPts(10)") && a.mult===w.eval("MULT_SPEED[+saved.speed||0]")*2, `+${a.score-s0}, 10 × the multiplier ${a.mult} (speed × 2 for manual aim)`);
   // chords are aimed too: a chord rock off to the side isn't cracked, one in line is, for double
   await sleep(500); const rock=(off,root,q)=>w.eval(`(()=>{ const a=blast.shipAng+${off}, d=190; const r=asRock("chord", blast.cx+Math.cos(a)*d, blast.cy+Math.sin(a)*d, "${root}${q}", {root:"${root}", q:"${q}", tones:spellChord("${root}","${q}"), rootPc:pcOfName("${root}")}); return r.id; })()`);
   const sideRock=rock(Math.PI/2,"F",""); await sleep(30); t.chord("F"); await sleep(300);
   check("a chord rock off to the side isn't cracked: the chord goes wide", !a.rocks.find(r=>r.id===sideRock).dead && /WIDE/.test(t.heard()), t.heard());
   const aheadRock=rock(0,"G",""), s1=a.score; await sleep(30); t.chord("G"); await sleep(400);
-  check("a chord rock where the ship points is cracked, for double", a.rocks.find(r=>r.id===aheadRock)?.dead!==false && a.score-s1===w.eval("mulPts(10*2)"), `+${a.score-s1}`);
+  check("a chord rock where the ship points is cracked, for double", a.rocks.find(r=>r.id===aheadRock)?.dead!==false && a.score-s1===w.eval("mulPts(10)"), `+${a.score-s1}`);
+  // a double tap mid-game that switches the chord layout (a B side) is put straight back
+  const pd=[0xF0]; for(let k=0;k<256;k++){ let v=mc.params[k]||0; if(k===39) v=1; pd.push(v&127, v>>7); } pd.push(0xF7);
+  mc._asked=0; mc._dump(pd); await sleep(60);
+  check("a double tap that switches to the alternate chord layout mid-game is put back", mc.params[39]===0);
   // endless knobs: held at a stop, the orbit keeps going round (and the aim keeps spinning); turned
   // back, each carries on from where it got to rather than jumping back
   knob(127,22); await sleep(80); const o0=a.orbitWant; await sleep(1600);

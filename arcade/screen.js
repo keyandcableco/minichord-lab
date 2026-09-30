@@ -11,6 +11,16 @@
 // canvas pixels per screen pixel: 3 in the page, more as the field grows (full screen), so the canvas
 // stays about the same size to draw however big it's shown
 let PX=3;
+// A canvas at the screen's own resolution, over the shared pixel canvas: for a game whose lines and
+// shapes should be sharp (the shared canvas is deliberately low-resolution, right for the stars).
+function sharpLayer(fx){ const cv=document.createElement("canvas"); cv.className="fxsharp"; fx.cv.after(cv); return cv; }
+// ready to draw in the field's own pixels: sized to it (and the screen's density), cleared
+function sharpBegin(cv){
+  const dpr=window.devicePixelRatio||1, W=blast.fx.fw, H=blast.fx.fh;
+  if(cv.width!==Math.round(W*dpr) || cv.height!==Math.round(H*dpr)){ cv.width=Math.round(W*dpr); cv.height=Math.round(H*dpr); }
+  const g=cv.getContext("2d"); g.setTransform(dpr,0,0,dpr,0,0); g.clearRect(0,0,W,H); g.lineJoin="round"; g.lineCap="round";
+  return g;
+}
 function fxInit(field){
   const cv=document.createElement("canvas"); cv.className="fx"; field.prepend(cv);
   const fx={cv, g:cv.getContext("2d"), stars:[], missiles:[], sparks:[], w:0, h:0};
@@ -159,7 +169,7 @@ function fxDraw(now, dt){
   } else {
   // the ship: a little pixel cannon at the bottom centre, or, in the demo, off to the left under the
   // chords it falls through, clear of the minichord drawn at the foot of the field; it glides there
-  const want = blast.phase==="demo" && blast.demo ? DEMO_SHIP : .5;
+  const want = blast.phase==="demo" && blast.demo ? DEMO_SHIP : blast.aimManual && blast.shipWant!=null ? blast.shipWant : .5;
   blast.shipF = blast.shipF==null ? want : blast.shipF+(want-blast.shipF)*Math.min(1,dt*3);
   const sx=Math.floor(W*blast.shipF), sy=H-6;
   g.fillStyle="#F1E8D2"; g.fillRect(sx-1,sy-4,2,3); g.fillRect(sx-3,sy-1,6,2); g.fillRect(sx-5,sy+1,10,2);
@@ -239,16 +249,21 @@ function blasterChord(voices){
     return mod(Math.round(Math.min(...pitches)),12)===i.bassPc && pcs.every(p=>p===i.bassPc || tones.includes(p)) && pcs.includes(tones[1]);
   };
   const name=chordName(pitches,devFifths());
-  // the lowest matching chord, ★ chords only if nothing ordinary matches
-  const hit=blast.items.filter(i=>!i.done && matches(i)).sort((a,b)=>(a.bonus-b.bonus)||(a.t0-b.t0))[0];
+  // the lowest matching chord, ★ chords only if nothing ordinary matches; in manual aim, only one above the ship
+  const fr=blast.field, shipX=fr.clientWidth*(blast.shipF??.5);
+  const above=i=>Math.abs(i.el.offsetLeft-shipX) <= i.el.offsetWidth/2+14;
+  const pool=blast.items.filter(i=>!i.done && matches(i));
+  const hit=(blast.aimManual ? pool.filter(above) : pool).sort((a,b)=>(a.bonus-b.bonus)||(a.t0-b.t0))[0];
+  if(!hit && blast.aimManual && pool.length){ heard(name,false,"WIDE: GET UNDER IT"); sfx("shoot");     // it's up there, but not above the ship
+    blast.fx.missiles.push({x0:shipX/PX, y0:(fr.clientHeight-22)/PX, x1:shipX/PX, y1:0, t0:performance.now(), dur:260, hit:()=>{}}); return; }
   if(!hit){ heard(name,false); if(chordId(pitches)) later(()=>{ buzz(blast && blast.field, true); sfx("miss"); }); return; }
   heard(name,true);
   hit.done=true; hit.el.classList.remove("low");
   // a missile from the ship to the chord; the chord explodes when it arrives
-  const fr=blast.field, x=hit.el.offsetLeft, y=(hit.y||0)+hit.el.offsetHeight/2;
+  const x=hit.el.offsetLeft, y=(hit.y||0)+hit.el.offsetHeight/2;
   const {pts, tags}=blastPoints(hit);                           // by its chord type, the modifier and a slash
   sfx("shoot");
-  blast.fx.missiles.push({x0:fr.clientWidth/2/PX, y0:(fr.clientHeight-22)/PX, x1:x/PX, y1:y/PX, t0:performance.now(), dur:170,
+  blast.fx.missiles.push({x0:shipX/PX, y0:(fr.clientHeight-22)/PX, x1:x/PX, y1:y/PX, t0:performance.now(), dur:170,
     hit:()=>{ sfx(hit.bonus?"bonus":"boom"); hit.el.classList.add("gone"); setTimeout(()=>hit.el.remove(),50); explode(x,y, hit.bonus?44:26, hit.bonus?["#7FE9FF","#FFFFFF","#B9F3FF","#FFD35A"]:undefined); popup(x,y-10,`+${pts}${tags.length?" "+tags.join(" · "):""}`, hit.bonus?"#7FE9FF":tags.length?"#FFD35A":undefined); }});
   blast.hits++; blast.score+=pts; stats.streak=blast.hits; scoreboard();
   if(blast.hits%8===0){

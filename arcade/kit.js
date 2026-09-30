@@ -95,7 +95,19 @@ function menuRebuild(build){
   return true;
 }
 // setting up for the minichord, once per game: its settings read regularly, and whatever it borrows
-function arcadeSetup(fn){ if(blast.setupDone) return; blast.setupDone=true; poll(true); arcadeVolumes(); if(fn) fn(); }
+function arcadeSetup(fn){ if(blast.setupDone) return; blast.setupDone=true; poll(true); arcadeVolumes();
+  if(hasSetting(39)) ensure(39,0);      // the standard chord layout: every game asks for its chords
+  if(fn) fn(); }
+// Manual aim needs knobs that change nothing on the instrument: the chord and harp knobs always move
+// their volumes, and the mod knob's main function is a setting of the preset. On firmware with knob
+// layer (19), a game puts the knobs on their alternates and points those at unused addresses, so
+// turning them changes nothing while "knobs send MIDI" still reports where they are. False without it.
+function arcadeKnobsInert(){
+  if(!canWrite() || !hasSetting(117) || (mc.params[7]??0)<19) return false;
+  if(knobsReady()) borrow(238,1);
+  borrow(117,1); borrow(10,213); borrow(12,214); borrow(16,215);
+  return true;
+}
 // The minichord's chord and harp volumes (addresses 3 and 2, on the knobs by default) are also its MIDI
 // velocities: turned right down, it sends notes a game can't hear. So a game turns up whichever it
 // listens to, if it's down, for as long as it plays, and says so; and if one goes down mid-game, it says that.
@@ -145,6 +157,7 @@ function diffMult(kind=cabKind()){
   let m = kind==="sweeper" ? 1 : MULT_SPEED[+saved.speed||0]||1;            // Chord Sweeper has no speed
   if(kind==="command") m*=MULT_DENSITY[saved.hcDensity??1]??1;
   if(kind==="breakout") m*=MULT_PADDLE[saved.boPaddle??1]??1;
+  if((kind==="asteroids" && saved.asAim) || (kind==="blaster" && saved.invAim)) m*=2;   // manual aim: harder, so double
   return Math.round(m*100)/100;
 }
 const mulPts=p=>Math.round(p*(blast.mult||1));
@@ -154,7 +167,7 @@ const POINTS_FOR={
   blaster:()=>[...BLAST_TIERS.map(([,n,sp,v])=>[n,String(v),sp]), ["NEEDS THE MODIFIER","× 1.5"], ["SLASH CHORD","× 1.5"], ["★ CHORD","× 5"], ["KEY SET","25"]],
   command:[["NOTE","10"],["★ NOTE","50"]],
   snake:[["CHORD CASHED IN","15 A NOTE"],["★ NOTE","50"],["NOTE DROPPED","−5"]],
-  asteroids:()=>[...BLAST_TIERS.map(([,n,sp,v])=>[n,String(v),sp]), ["NEEDS THE MODIFIER","× 1.5"], ["★ ROCK","× 3"], ["NOTE SHOT","10"], ["CHORD CLEARED","25"], ["MANUAL AIM","NOTES × 2"]],
+  asteroids:()=>[...BLAST_TIERS.map(([,n,sp,v])=>[n,String(v),sp]), ["NEEDS THE MODIFIER","× 1.5"], ["★ ROCK","× 3"], ["NOTE SHOT","10"], ["CHORD CLEARED","25"], ["MANUAL AIM","EVERYTHING × 2"]],
   stack:()=>[...BLAST_TIERS.map(([,n,sp,v])=>[n,`${v} A NOTE`,sp]), ["A WHOLE ROW OF ONE CHORD","× 5"], ["CHORDS AT ONCE","× CHORDS"]],
   breakout:()=>[...BLAST_TIERS.map(([,n,sp,v])=>[n,String(v),sp]), ["NEEDS THE MODIFIER","× 1.5"], ["SLASH CHORD","× 1.5"], ["★ BRICK","× 5"], ["RALLY","UP TO × 4"], ["CHORD TONE SHOT","20"], ["WHOLE CHORD SHOT","× 2"]],
   fifths:[["ENEMY","10"],["HIT FAR OUT","UP TO +10"],["★ ENEMY","50"]],

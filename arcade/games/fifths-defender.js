@@ -59,7 +59,7 @@ function buildFifthsField(box){
   if(blast && blast.kind==="fifths"){
     blast.field=field; blast.hud=hud; blast.heard=hd; blast.rimEl=rim; blast.fx=fxInit(field);
     // the wheel is drawn sharp, at the screen's own resolution, over the pixel starfield
-    const sharp=document.createElement("canvas"); sharp.className="fdsharp"; blast.fx.cv.after(sharp); blast.sharp=sharp;
+    blast.sharp=sharpLayer(blast.fx);
     FD_KEYS.forEach((k,i)=>{ const l=document.createElement("span"); l.className="fdkey"; rim.appendChild(l); });
     setTimeout(()=>{ fdLayout(); fdLabels(); });
     if(blast.overlay) field.appendChild(blast.overlay);
@@ -216,10 +216,8 @@ document.addEventListener("keydown", e=>{
 // full resolution (the arcade's shared canvas is deliberately low-resolution, right for the stars but
 // blocky for thin lines), in the same sizes as before: U is one of the shared canvas's pixels.
 function fdDraw(_g, now){
-  const cv=blast.sharp; if(!cv || !blast.fx) return;
-  const dpr=window.devicePixelRatio||1, W=blast.fx.fw, H=blast.fx.fh;
-  if(cv.width!==Math.round(W*dpr) || cv.height!==Math.round(H*dpr)){ cv.width=Math.round(W*dpr); cv.height=Math.round(H*dpr); }
-  const g=cv.getContext("2d"); g.setTransform(dpr,0,0,dpr,0,0); g.clearRect(0,0,W,H); g.lineJoin="round"; g.lineCap="round";
+  if(!blast.sharp || !blast.fx) return;
+  const g=sharpBegin(blast.sharp);
   const U=PX, cx=blast.cx, cy=blast.cy, R=blast.R, hub=blast.hub, L=FD_LEVELS[blast.level||0];
   for(let i=0;i<12;i++){
     const a=i*Math.PI/6, used=!L.spokes || L.spokes.includes(i), aimed=i===blast.aim;

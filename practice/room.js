@@ -37,6 +37,9 @@ function modTap(){
   if(mc.params[200]!==31) borrow(200,31);
   const flip=mc.params[31]===1 ? 0 : 1;
   if(mc.params[201]!==flip) borrow(201,flip);
+  // the double tap does this one job here: a preset's other pairs (firmware 19) would switch its B side
+  // too, the alternate chord layout among it, and then no chord a game asks for could be played
+  for(const a of [209,211]) if(hasSetting(a) && mc.params[a]) borrow(a,0);
 }
 function restoreAll(){
   const back=Object.entries(borrowed);
@@ -816,8 +819,11 @@ function mine(){
 mc.addEventListener("device", ()=>{
   // A preset loaded on the instrument mid-game (its preset buttons) sets everything anew: what the
   // game had set goes back on, and the new preset's own values become what's given back after
-  if(mc.presetLoaded && Object.keys(wanted).length && canWrite()){
-    for(const [a,v] of Object.entries(wanted)){ if(mc.params[a]!==v){ borrowed[a]=mc.params[a]; roundBorrows.add(+a); mc.writeParam(+a, v); } } }
+  // So can a double tap: anything unasked (but the key change combo, whose key a game reads) that
+  // changes what the game holds is put straight back.
+  if(mc.unasked && !mc.comboPick && Object.keys(wanted).length && canWrite()){
+    const preset=mc.presetLoaded;
+    for(const [a,v] of Object.entries(wanted)){ if(mc.params[a]!==v){ if(preset){ borrowed[a]=mc.params[a]; roundBorrows.add(+a); } mc.writeParam(+a, v); } } }
   if(q && settings.modTap!=="off" && canWrite() && mc.params[200]!==31) modTap();   // set it up once connected
   if(blast && blast.kind==="command") commandDevice();
   else if(blast && blast.kind==="snake") snDevice();

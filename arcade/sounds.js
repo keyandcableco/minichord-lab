@@ -74,8 +74,9 @@ function startBlaster(){
 }
 // the cabinet's menu, and its game over: choose a level to start from
 const BLASTMENU_G={key:"blaster", title:"CHORD INVADERS",
-  rules:()=>`<p>PLAY EACH CHORD BEFORE IT LANDS.</p><p class="starline">${PIXEL_STAR}CHORDS SCORE BIG AND NEVER HURT.</p>${keyComboReady() ? "<p>SET THE KEY WHEN A KEY BAR FALLS.</p>" : ""}`,
+  rules:()=>`<p>PLAY EACH CHORD BEFORE IT LANDS.</p><p>MANUAL AIM SCORES DOUBLE: STEER THE SHIP WITH A KNOB (OR ← →), AND A CHORD FIRES STRAIGHT UP. GET UNDER IT, THEN PLAY IT.</p><p class="starline">${PIXEL_STAR}CHORDS SCORE BIG AND NEVER HURT.</p>${keyComboReady() ? "<p>SET THE KEY WHEN A KEY BAR FALLS.</p>" : ""}`,
   rows:row=>{
+    row("AIM", ["AUTO","MANUAL ×2"], ()=>saved.invAim?1:0, i=>{ saved.invAim=i; save(); });
     row("SPEED", SPEEDS.map(x=>x[0].toUpperCase()), ()=>+saved.speed||0, i=>{ saved.speed=i; save(); });
     row("CHORD SIZE", SIZES.map(x=>x[0]), ()=>saved.chordSize??1, i=>{ saved.chordSize=i; save(); applyChordSize(); });
   },

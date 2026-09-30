@@ -80,7 +80,7 @@ function bonusEnd(b){
 // input, while a bonus plays: it goes to the mini-game, not the game underneath
 function bonusChord(voices){ const b=blast.bonus; if(!b || b.over || !b.ready || !b.g.chord) return; b.g.chord(b, voices.map(v=>v.pitch)); }
 function bonusNote(pc){ const b=blast.bonus; if(!b || b.over || !b.ready || !b.g.note) return; b.g.note(b, mod(pc,12)); }
-function bonusKnob(v){ const b=blast.bonus; if(!b || b.over || !b.ready || !b.g.knob) return; b.g.knob(b, v); }
+function bonusKnob(v, knob){ const b=blast.bonus; if(!b || b.over || !b.ready || !b.g.knob) return; b.g.knob(b, v, knob); }
 document.addEventListener("keydown", e=>{
   const b=blast && blast.bonus; if(!b || b.over || /INPUT|SELECT|TEXTAREA/.test(document.activeElement?.tagName||"")) return;
   if(!b.ready){ e.preventDefault(); e.stopImmediatePropagation(); return; }     // the warning: keys wait
@@ -96,7 +96,10 @@ const BONUS_GAMES=[
    start(b){
      b.cents=(Math.random()<.5?-1:1)*(18+Math.random()*27); b.base=null; b.startCents=b.cents;
      b.stage.innerHTML=`<div class="bobeat"><i></i></div><p class="bosmall">THE RING PULSES WITH THE BEATS</p>`;
+     // any knob tunes it: the minichord has to be sending them, which a game without knobs may not have asked for
+     if(canWrite() && knobsReady() && mc.params[238]!==1) borrow(238,1);
      const ctx=piano.ctx;
+     if(ctx && ctx.state!=="running") ctx.resume().catch(()=>{});   // a suspended context makes no sound at all
      if(ctx && settings.sounds){ try{
        const g=ctx.createGain(); g.gain.value=.07; g.connect(ctx.destination);
        const o1=ctx.createOscillator(), o2=ctx.createOscillator(); o1.type=o2.type="sine"; o1.frequency.value=440; o2.frequency.value=440;
@@ -106,7 +109,8 @@ const BONUS_GAMES=[
    set(b, c){ b.cents=Math.max(-60,Math.min(60,c)); const f=440*Math.pow(2,b.cents/1200), beats=Math.abs(f-440);
      if(b.osc) b.osc[1].frequency.value=f;
      const ring=b.stage.querySelector(".bobeat i"); if(ring) ring.style.animationDuration = beats<.05 ? "0s" : `${Math.min(8,1/beats)}s`; },
-   knob(b, v){ if(b.base==null){ b.base=v; b.at=b.cents; return; } this.set(b, b.at+(v-b.base)*120); },
+   // whichever knob turns: where it rests when first touched is where the tuning starts from
+   knob(b, v, k){ if(b.base==null || b.knobId!==k){ b.knobId=k; b.base=v; b.at=b.cents; return; } this.set(b, b.at+(v-b.base)*120); },
    key(b, code, shift){ const d={ArrowUp:1,ArrowRight:1,ArrowDown:-1,ArrowLeft:-1}[code]; if(d){ this.set(b, b.cents+d*(shift?5:1)); return; }
      if(code==="Enter"||code==="Space"){ this.lock(b); return; } return false; },
    note(b, pc){ const c=kmControl(pc); if(c==="up"||c==="right") this.set(b,b.cents+2); else if(c==="down"||c==="left") this.set(b,b.cents-2); else this.lock(b); },
