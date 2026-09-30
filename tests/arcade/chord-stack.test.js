@@ -48,6 +48,13 @@ const t=require("./harness").load("chord-stack");
   const s4=a.score; play([57,60,64,67]); await sleep(40);
   check("a row of C E G A clears with Am7: the same notes, whatever they're called", a.score>s4 && !a.grid[F][0] && !a.grid[F][3]);
   a.level=0;
+  // the demo teaches the standard game, whatever the player has chosen: on its floor of D F C E G A,
+  // C major lights, C E and G, and nothing else
+  t.mc.params[33]=1; w.eval("saved.chordMatrix='alternate'");
+  const ph=a.phase; a.phase="demo"; a.grid=w.eval("stEmpty()"); [2,5,0,4,7,9].forEach((pc,x)=>a.grid[F][x]={pc});
+  const lit=sb.stackReady[0];
+  check("the demo lights C major, C E and G side by side, even on another matrix", lit && lit.name==="C" && lit.xs.join()==="2,3,4", lit && `${lit.name}: ${lit.xs}`);
+  a.phase=ph; t.mc.params[33]=0; w.eval("saved.chordMatrix='standard'");
   // the harp and a knob steer
   a.grid=w.eval("stEmpty()"); a.next=w.eval("stRandPiece()"); w.eval("stSpawn()"); await sleep(20);
   const dirPc=d=>[...Array(12).keys()].find(pc=>w.eval(`kmControl(${pc})`)===d);

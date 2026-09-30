@@ -28,7 +28,8 @@ const ST_Q_SETS=MX_TONES;       // the notes each chord type sounds (arcade/matr
 const stBarry=()=> typeof mc!=="undefined" && mc.params && mc.params[33]===1;
 // and on the alternate or a custom matrix (chosen at the start), whatever the same buttons play there
 const stLevelName=i=>mxLevelName(ST_LEVELS[i].n, j=>ST_LEVELS[j].qs, i, ST_LEVELS[i]);
-const stQs=()=>[...new Set(ST_LEVELS[blast.level].qs.map(mxMap))];
+// (the demo teaches the standard game: its own chords, whatever the player has chosen or switched on)
+const stQs=()=> blast.phase==="demo" ? ST_LEVELS[0].qs : [...new Set(ST_LEVELS[blast.level].qs.map(mxMap))];
 const ST_MAJOR=[0,2,4,5,7,9,11];
 // the seven tetrominoes, as cells (x, y) from their top left
 const ST_PIECES={
@@ -316,7 +317,9 @@ function stDemo(){
       const p=blast.piece; stAbs(p.cells,p.x,p.y).forEach(([x,y],i)=>blast.grid[y][x]={pc:p.notes[i]}); blast.piece=null; sfx("press"); stDraw(); await step(900);
       say("IT LIGHTS UP","THE ROW HOLDS C, E AND G: C MAJOR. SIDE BY SIDE LIKE THIS, IT SCORES DOUBLE. PLAY IT ON THE MINICHORD."); sfx("key"); await step(3000);
       demoPlay([48,52,55,60]);
-      const r=stReadyRows()[0]; if(r){ r.xs.forEach(x=>{ explode(blast.bx+(x+.5)*blast.cell, blast.by+(r.y+.5)*blast.cell, 8, ["#7FE9FF","#FFD35A","#FFFFFF"]); blast.grid[r.y][x]=null; }); }
+      // C major, as the caption says: C, E and G, and nothing else
+      const F=ST_ROWS-1, r=stRowChord(blast.grid[F], 0, "");
+      if(r) r.xs.forEach(x=>{ explode(blast.bx+(x+.5)*blast.cell, blast.by+(F+.5)*blast.cell, 8, ["#7FE9FF","#FFD35A","#FFFFFF"]); blast.grid[F][x]=null; });
       stGravity(); sfx("boom"); stDraw(); await step(1800);
       say("ROTATE","A ON THE HARP (OR UP) TURNS A PIECE; B DROPS IT. A WHOLE ROW OF ONE CHORD SCORES FIVE TIMES.");
       blast.piece={kind:"T", cells:ST_PIECES.T.map(q=>[...q]), notes:[7,11,2,5], x:4, y:0}; stDraw(); await step(900);
