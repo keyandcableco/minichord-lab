@@ -34,10 +34,16 @@ const bonusDue=()=> !!(blast && blast.phase==="play" && bonusOn() && !blast.bonu
 const BONUS_KEYS_MAJ=["C","G","D","F","A","B♭","E"];
 const bonusDiatonic=key=>[[0,""],[1,"m"],[2,"m"],[3,""],[4,""],[5,"m"]].map(([deg,q])=>({root:above(key,deg,[0,2,4,5,7,9][deg]), q}));
 const bSym=c=>c.root+c.q;
+// A game's own bonus rounds, which come before the shared ones: they use that game's controls and
+// get harder as the game does, so a player who reaches level nine meets a harder round than one who
+// reached level three.
+const BONUS_OWN={blaster:["oddout"]};
 function arcadeBonus(id){
   if(!blast || blast.bonus) return;
   blast.bonusAt=blast.level+BONUS_EVERY;
-  const pool=BONUS_GAMES.filter(g=>!g.harp || BONUS_HARP_OK.has(blast.kind));
+  const mine=(BONUS_OWN[blast.kind]||[]).map(x=>BONUS_GAMES.find(g=>g.id===x)).filter(Boolean);
+  const owned=new Set(Object.values(BONUS_OWN).flat());              // a game's own round is that game's alone
+  const pool=(mine.length ? mine : BONUS_GAMES.filter(g=>!owned.has(g.id))).filter(g=>!g.harp || BONUS_HARP_OK.has(blast.kind));
   const g = BONUS_GAMES.find(x=>x.id===id) || rnd(pool.filter(x=>x.id!==blast.lastBonus)) || rnd(pool);
   blast.lastBonus=g.id; blast.bonusPhase=blast.phase; blast.phase="bonus"; blast.bonusStart=performance.now();
   helpChord(null);
@@ -65,7 +71,13 @@ const BONUS_WARN=4200;
 function bonusEnd(b){
   if(b.over) return; b.over=true; clearInterval(b.timer); clearInterval(b.countT); if(b.g.stop) b.g.stop(b);
   const pts=mulPts(b.score*(blast.level+1));
-  b.el.querySelector(".bostage").innerHTML=`<p class="boresult">${b.result||""}</p><p class="bototal">BONUS <b>+${pts}</b></p>`;
+  // the tally: what was caught, what it scored and what the level multiplied it by, held long enough to read
+  const lines=(b.tally||[]).map(([what,n])=>`<span>${what}</span><b>${n}</b>`).join("");
+  b.el.classList.add("over");
+  b.el.querySelector(".bostage").innerHTML=`<p class="boresult">${b.result||(b.score?"TIME!":"NO LUCK THIS TIME")}</p>
+    ${lines?`<div class="botally">${lines}</div>`:""}
+    <p class="bototal">BONUS ${b.score} × LEVEL ${blast.level+1} = <b>+${pts}</b></p>
+    <p class="boback">THE GAME CARRIES ON…</p>`;
   blast.score+=pts; sfx("level");
   setTimeout(()=>{
     b.el.remove();
@@ -75,7 +87,7 @@ function bonusEnd(b){
     const bar=window[({blaster:"blastBar", command:"commandBar", snake:"snBar", asteroids:"asBar", stack:"stBar", breakout:"boBar", fifths:"fdBar", chopper:"chBar", fleet:"kfBar", sweeper:"swBar"})[blast.kind]];
     if(typeof bar==="function") bar();                        // the score, with the bonus in it
     stats.streak=stats.streak; scoreboard();
-  }, 1800);
+  }, b.tally && b.tally.length ? 3400 : 1800);
 }
 // input, while a bonus plays: it goes to the mini-game, not the game underneath
 function bonusChord(voices){ const b=blast.bonus; if(!b || b.over || !b.ready || !b.g.chord) return; b.g.chord(b, voices.map(v=>v.pitch)); }
@@ -141,6 +153,47 @@ const BONUS_GAMES=[
      else { sfx("miss"); buzz(b.stage,true); } } },
 
   // four chords, three from one major key: play the one that doesn't belong
+  // Chord Invaders' own: the odd chord out, from harder company as the game goes on. The chords are
+  // the ones the game is dropping at this level, so a player who has reached the sevenths meets
+  // sevenths here. Each one caught is worth more than the last, and every wrong shot costs a little.
+  {id:"oddout", name:"ODD ONE OUT", secs:22,
+   instr:"THREE OF THESE BELONG TO ONE KEY. SHOOT THE ONE THAT DOESN'T.",
+   start(b){
+     b.n=0; b.hits=0; b.misses=0; b.tally=[];
+     const lv=Math.min(4, Math.floor((blast.level||0)/2));            // how far the game has got
+     b.tier=[{n:4, qs:[""],        say:"MAJOR CHORDS"},
+             {n:4, qs:["","m"],    say:"MAJOR AND MINOR"},
+             {n:5, qs:["","m"],    say:"FIVE TO CHOOSE FROM"},
+             {n:5, qs:["","m","7"],say:"SEVENTHS IN THE MIX"},
+             {n:6, qs:["","m","7","maj7","m7"], say:"EVERY CHORD THE GAME DROPS"}][lv];
+     b.say(`${this.instr} · ${b.tier.say}`);
+     this.next(b);
+   },
+   next(b){
+     const T=b.tier, key=rnd(BONUS_KEYS_MAJ), dia=bonusDiatonic(key).filter(c=>T.qs.includes(c.q));
+     const inKey=new Set(dia.map(c=>pcOfName(c.root)+c.q));
+     const belong=[...dia].sort(()=>Math.random()-.5).slice(0, T.n-1);
+     let odd; for(let k=0;k<60;k++){ const c={root:rnd(ROOTS), q:rnd(T.qs)};
+       if(!inKey.has(pcOfName(c.root)+c.q) && spellChord(c.root,c.q) && !belong.some(x=>pcOfName(x.root)===pcOfName(c.root) && x.q===c.q)){ odd=c; break; } }
+     if(!odd) return this.next(b);
+     b.ans=odd; b.key=key;
+     const cards=[...belong, odd].sort(()=>Math.random()-.5);
+     b.stage.innerHTML=`<div class="bocards big">${cards.map(c=>bCard(bSym(c))).join("")}</div>`;
+   },
+   chord(b, pitches){
+     if(isChord(pitches, pcOfName(b.ans.root), b.ans.q)){
+       b.hits++; b.add(60+b.hits*20);                                  // each one worth more than the last
+       [...b.stage.querySelectorAll(".bocard")].forEach(c=>{ if(c.textContent===bSym(b.ans)) c.classList.add("done"); });
+       b.say(`${bSym(b.ans)} ISN'T IN ${b.key} MAJOR`);
+       if(b.hits>=4){ b.result="EVERY INTRUDER CAUGHT"; b.finish(); return; }
+       setTimeout(()=>{ if(!b.over) this.next(b); }, 700);
+     } else if(chordId(pitches)){
+       b.misses++; b.score=Math.max(0, b.score-15); b.el.querySelector(".boscore b").textContent=b.score;
+       sfx("miss"); buzz(b.stage,true); b.say("THAT ONE BELONGS: TRY ANOTHER");
+     }
+   },
+   stop(b){ b.tally=[["INTRUDERS CAUGHT", b.hits], ...(b.misses?[["WRONG SHOTS", `−${b.misses*15}`]]:[])];
+     if(!b.result) b.result = b.hits ? `${b.hits} OF 4 CAUGHT` : "NONE CAUGHT"; } },
   {id:"odd", name:"ODD ONE OUT", secs:20,
    instr:"THREE OF THESE CHORDS ARE FROM ONE KEY. PLAY THE ONE THAT DOESN'T BELONG.",
    start(b){ b.n=0; this.next(b); },

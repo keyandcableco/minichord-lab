@@ -676,6 +676,11 @@ html.arcadepage .gamebar{align-items:flex-end}
 .botime{width:min(420px,80%);height:10px;border:2px solid #3A2D4E;background:#0E0A16}
 .botime i{display:block;height:100%;background:#FFD35A;transform-origin:left}
 .boscore b,.bototal b{color:#FFD35A;font-weight:400}.bototal{font-size:1.1rem}
+/* the tally at the end of a bonus round: what was caught, then the total, held to be read */
+.botally{display:grid;grid-template-columns:auto auto;gap:6px 20px;justify-content:center;margin:10px 0;font:400 .6rem/1.9 "Press Start 2P",monospace;color:#F1E8D2}
+.botally b{color:#FFD35A;font-weight:400;text-align:right}
+.boback{font:400 .5rem "Press Start 2P",monospace;color:#8A83A8;margin-top:12px;animation:blink 1s steps(2) infinite}
+.bonusround.over .botime{opacity:.25}
 .boresult{color:#7FE08A;margin:0}
 .bonusround.intro .bohead{font-size:1.3rem;animation:blink .5s steps(2) infinite}
 .bonusround.intro .bohead b{font-size:1.8rem}

@@ -296,37 +296,31 @@ function frNext(ms=1400){
 }
 // the band, in pixels: a double-necked guitarist and a drummer, in polka dots with big round heads
 const FR_DOTS=(x,y,w,h)=>{ let s=""; for(let j=y+1;j<y+h;j+=3) for(let i=x+((j-y)%6?1:2);i<x+w;i+=3) s+=`<rect x="${i}" y="${j}" width="1" height="1"/>`; return s; };
-// the guitarist: a triangle head, point up, and a double neck; the drummer: a tall rectangle head,
-// behind a hi-hat, a snare and a bass drum
-const FR_GUITARIST=`<svg viewBox="0 0 38 40" shape-rendering="crispEdges" aria-hidden="true">
-  <path fill="#F1E8D2" d="M9 0h2v1H9zM8 1h4v1H8zM7 2h6v1H7zM6 3h8v1H6zM5 4h10v1H5zM4 5h12v1H4zM3 6h14v1H3z"/>
-  <path fill="#F1E8D2" d="M8 7h4v3H8z"/>
-  <path fill="#F1E8D2" d="M6 10h8v8H6z"/>
-  <path fill="#F1E8D2" d="M7 31h3v9H7zM11 31h3v9h-3z"/>
-  <path fill="#C9A06A" d="M5 19h12v11H5zM3 21h2v7H3zM17 21h2v7h-2z"/>
-  <path fill="#16132A" d="M9 23h4v4H9z"/>
-  <path fill="#FF5AA0" d="M5 20h12v1H5zM5 28h12v1H5z"/>
-  <path fill="#6B4226" d="M19 15h16v3H19zM19 24h16v3H19z"/>
-  <path fill="#C9C0A8" d="M19 16h16v1H19zM19 25h16v1H19z"/>
-  <path fill="#F1E8D2" d="M22 15h1v3h-1zM26 15h1v3h-1zM30 15h1v3h-1zM22 24h1v3h-1zM26 24h1v3h-1zM30 24h1v3h-1z"/>
-  <path fill="#C9C0A8" d="M35 13h3v7h-3zM35 22h3v7h-3z"/>
-  <path fill="#16132A" d="M36 14h1v1h-1zM36 18h1v1h-1zM36 23h1v1h-1zM36 27h1v1h-1z"/>
-  <path fill="#E8B48A" d="M17 13h3v4h-3zM17 23h3v4h-3z"/>
+// the guitarist: a triangle head, point up, and a double neck with a soundhole and frets; the drummer:
+// a tall rectangle head, sticks in hand, behind a hi-hat, a snare and a bass drum
+const FR_GUITARIST=`<svg viewBox="0 0 26 38" shape-rendering="crispEdges" aria-hidden="true">
+  <path fill="#F1E8D2" d="M13 0L22 14H4Z"/><g fill="#16132A">${FR_DOTS(7,6,12,8)}</g>
+  <rect x="8" y="15" width="10" height="13" fill="#F1E8D2"/><g fill="#16132A">${FR_DOTS(8,15,10,13)}</g>
+  <rect x="9" y="28" width="3" height="10" fill="#F1E8D2"/><rect x="14" y="28" width="3" height="10" fill="#F1E8D2"/>
+  <rect x="0" y="18" width="24" height="2" fill="#16132A"/><rect x="0" y="23" width="24" height="2" fill="#16132A"/>
+  <rect x="17" y="17" width="7" height="10" fill="#16132A"/>
+  <rect x="19" y="20" width="3" height="3" fill="#C9C0A8"/>
+  <rect x="3" y="18" width="1" height="2" fill="#9A93B5"/><rect x="7" y="18" width="1" height="2" fill="#9A93B5"/><rect x="11" y="18" width="1" height="2" fill="#9A93B5"/>
+  <rect x="3" y="23" width="1" height="2" fill="#9A93B5"/><rect x="7" y="23" width="1" height="2" fill="#9A93B5"/><rect x="11" y="23" width="1" height="2" fill="#9A93B5"/>
+  <rect x="14" y="22" width="2" height="4" fill="#E8B48A"/>
+  <rect x="0" y="17" width="2" height="9" fill="#FF5AA0"/>
 </svg>`;
 const FR_DRUMMER=`<svg viewBox="0 0 40 38" shape-rendering="crispEdges" aria-hidden="true">
-  <path fill="#F1E8D2" d="M13 2h10v6H13z"/>
-  <path fill="#16132A" d="M15 4h2v2h-2zM19 4h2v2h-2z"/>
-  <path fill="#F1E8D2" d="M14 9h8v6h-8zM8 11h6v2H8zM22 11h6v2h-6z"/>
-  <path fill="#F1E8D2" d="M11 16h14v14H11z"/>
-  <path fill="#16132A" d="M13 18h10v10H13z"/>
-  <path fill="#FF5AA0" d="M16 21h4v4h-4z"/>
-  <path fill="#F1E8D2" d="M9 30h18v2H9z"/>
-  <path fill="#FFD35A" d="M1 12h10v2H1zM3 15h6v1H3z"/>
-  <path fill="#9A93B5" d="M5 14h2v16H5z"/>
-  <path fill="#F1E8D2" d="M28 20h10v4H28z"/>
-  <path fill="#FF5AA0" d="M28 20h10v1H28z"/>
-  <path fill="#9A93B5" d="M32 24h2v8h-2z"/>
-  <path fill="#C9A06A" d="M9 8h1v1H9zM10 9h1v1h-1zM11 10h1v1h-1zM27 8h1v1h-1zM26 9h1v1h-1zM25 10h1v1h-1z"/>
+  <rect x="15" y="0" width="8" height="15" fill="#F1E8D2"/><g fill="#16132A">${FR_DOTS(15,0,8,15)}</g>
+  <rect x="16" y="10" width="2" height="2" fill="#16132A"/><rect x="20" y="10" width="2" height="2" fill="#16132A"/>
+  <rect x="14" y="16" width="10" height="9" fill="#F1E8D2"/><g fill="#16132A">${FR_DOTS(14,16,10,9)}</g>
+  <rect x="7" y="17" width="7" height="2" fill="#F1E8D2"/><rect x="24" y="19" width="8" height="2" fill="#F1E8D2"/>
+  <rect x="4" y="14" width="1" height="1" fill="#C9A06A"/><rect x="5" y="15" width="1" height="1" fill="#C9A06A"/><rect x="6" y="16" width="1" height="1" fill="#C9A06A"/>
+  <rect x="32" y="17" width="1" height="1" fill="#C9A06A"/><rect x="33" y="18" width="1" height="1" fill="#C9A06A"/><rect x="31" y="16" width="1" height="1" fill="#C9A06A"/>
+  <rect x="0" y="13" width="10" height="2" fill="#FFD35A"/><rect x="1" y="16" width="8" height="1" fill="#FFD35A"/><rect x="4" y="15" width="2" height="23" fill="#9A93B5"/>
+  <rect x="28" y="22" width="11" height="5" fill="#F1E8D2"/><rect x="28" y="22" width="11" height="1" fill="#FF5AA0"/><rect x="33" y="27" width="1" height="11" fill="#9A93B5"/>
+  <circle cx="19" cy="31" r="7" fill="#16132A" stroke="#F1E8D2" stroke-width="2"/><circle cx="19" cy="31" r="2" fill="#FF5AA0"/>
+  <rect x="12" y="37" width="14" height="1" fill="#F1E8D2"/>
 </svg>`;
 
 // ---------- Between the Frets' demo ----------
