@@ -50,7 +50,8 @@ function fullButton(field){ fullField=field; field._fullLabel=fullLabels; fullLa
 // every SCREEN button shows the way it goes: into full screen, or out of it
 function fullLabels(){
   const on=!!document.querySelector(".fscab");
-  document.querySelectorAll("#fullBtn, .fsfull").forEach(b=>{ b.innerHTML = on ? SCREEN_OFF : SCREEN_ON; b.title = on ? "Leave full screen (F)" : "Full screen (F)"; b.setAttribute("aria-label", b.title); });
+  const how = (typeof kbOn==="function" && kbOn()) ? "F2" : "F or F2";
+  document.querySelectorAll("#fullBtn, .fsfull").forEach(b=>{ b.innerHTML = on ? SCREEN_OFF : SCREEN_ON; b.title = on ? `Leave full screen (${how})` : `Full screen (${how})`; b.setAttribute("aria-label", b.title); });
 }
 const fullToggle=()=>{ const f=fullField || (blast && blast.field); if(f) toggleFull(f); };
 // Full screen is a cabinet: the game's screen, 4:3 as an arcade monitor is, curved and in CRT, set

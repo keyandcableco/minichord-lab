@@ -3,7 +3,7 @@
 // and leaving puts the field back where it was, the CRT as the player had it.
 const t=require("./harness").load("chord-snake");
 (async()=>{
-  const {d, sleep, check}=t;
+  const {d, w, sleep, check}=t;
   await sleep(150); t.connect(); await sleep(100);
   const field=d.querySelector(".field.arcade"), home=field.parentNode;
   const btn=d.querySelector("#fullBtn");
@@ -22,5 +22,15 @@ const t=require("./harness").load("chord-snake");
   check("the bezel has SCREEN too", !!d.querySelector(".fscab .fsfull"));
   d.querySelector(".fscab .fsfull").click(); await sleep(100);
   check("leaving by the bezel's SCREEN puts the game back where the page keeps it", !d.querySelector(".fscab") && nf.parentNode===home && !nf.classList.contains("crt"));
+  // F2 always works; F only when the keyboard isn't the instrument, where F is its D minor button
+  w.eval("keyboardMinichord(false)"); await sleep(40); w.eval("fullLabels()");
+  const how=()=>d.querySelector("#fullBtn").title;
+  check("with a minichord, full screen is on F or F2", /F or F2/.test(how()), how());
+  w.eval("keyboardMinichord(true)"); await sleep(60);
+  check("with the keyboard as the instrument, only F2, since F is a chord button", /\(F2\)/.test(how()) && !/F or/.test(how()), how());
+  const before=w.eval("(window.__kbHeardF=0, mc.addEventListener('chord',()=>window.__kbHeardF++), 0)");
+  t.key("KeyF"); await sleep(80);
+  check("and F plays that chord", w.eval("window.__kbHeardF")>0);
+  w.eval("keyboardMinichord(false)"); await sleep(40);
   t.done();
 })();

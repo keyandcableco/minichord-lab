@@ -36,7 +36,9 @@ function kbDefaults(){
 }
 function keyboardMinichord(on=true){
   if(!on){ mc.virtual=false; mc.out=null; mc.sysex=false; mc.params.length=0; kbHeld.clear(); kbShift=false; kbSounding=null;
-    document.body.classList.remove("kbplay"); kbCard(); mc.dispatchEvent(new Event("device")); return; }
+    document.body.classList.remove("kbplay"); kbCard();
+    if(typeof fullLabels==="function") fullLabels();
+    mc.dispatchEvent(new Event("device")); return; }
   mc.virtual=true; mc.sysex=true;
   mc.out={id:"keyboard", send(){}};                            // nothing leaves the page
   mc.writeParam=(a,v)=>{ mc.params[a]=v; mc.dispatchEvent(new Event("device")); return true; };
@@ -47,6 +49,7 @@ function keyboardMinichord(on=true){
   mc.statusText="Playing with the keyboard";
   document.body.classList.add("kbplay");
   mc.dispatchEvent(new Event("device"));
+  if(typeof fullLabels==="function") fullLabels();          // the SCREEN button's key changes with the mode
   kbCard();
 }
 // the chord the held keys make, as this minichord would play it: the column's letter, sharpened or
@@ -114,6 +117,6 @@ function kbCard(){
       const label=(f<0?FLAT_NAMES:SHARP_NAMES)[pc]+["", "m", "7"][r];
       return `<span class="${kbHeld.has(code)?"on":""}"><i>${code.replace("Key","")}</i>${label}</span>`;
     }).join("")).join("")}</div>
-    <p>HOLD TWO IN A COLUMN FOR maj7, m7 OR dim · SHIFT ${kbShift?"(ON)":""} IS THE MODIFIER · 1…= PLUCK THE HARP</p>
+    <p>HOLD TWO IN A COLUMN FOR maj7, m7 OR dim · SHIFT ${kbShift?"(ON)":""} IS THE MODIFIER · 1…= PLUCK THE HARP · F2 FOR FULL SCREEN</p>
     <p class="kbnow">${name||"&nbsp;"}</p>`;
 }
