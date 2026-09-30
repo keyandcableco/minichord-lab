@@ -55,6 +55,10 @@ const t=require("./harness").load("chord-stack");
   const lit=sb.stackReady[0];
   check("the demo lights C major, C E and G side by side, even on another matrix", lit && lit.name==="C" && lit.xs.join()==="2,3,4", lit && `${lit.name}: ${lit.xs}`);
   a.phase=ph; t.mc.params[33]=0; w.eval("saved.chordMatrix='standard'");
+  // the harp's A and B are pictures: a rotate arrow and an arrow slamming a floor
+  const strip=t.d.querySelector(".kmstrip");
+  const A=strip.querySelector('[data-zone="A"]'), B=strip.querySelector('[data-zone="B"]');
+  check("the harp's A and B show a rotate arrow and a slam", !!(A && A.querySelector("svg") && B && B.querySelector("svg")) && A.innerHTML!==B.innerHTML);
   // the harp and a knob steer
   a.grid=w.eval("stEmpty()"); a.next=w.eval("stRandPiece()"); w.eval("stSpawn()"); await sleep(20);
   const dirPc=d=>[...Array(12).keys()].find(pc=>w.eval(`kmControl(${pc})`)===d);

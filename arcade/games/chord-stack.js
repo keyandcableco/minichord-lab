@@ -292,6 +292,11 @@ function stDraw(){
   }
 }
 
+// the harp's A and B, as pictures: A turns the piece, B slams it down (see kmGlyph)
+const ST_ROTATE=`<svg viewBox="0 0 16 16" shape-rendering="crispEdges" aria-hidden="true"><path fill="#7FE9FF" d="M5 2h4v2H5zM3 3h2v2H3zM2 5h2v6H2zM3 11h2v2H3zM5 12h6v2H5zM11 10h2v2h-2zM12 7h2v3h-2z"/><path fill="#FFD35A" d="M9 0h2v1H9zM9 1h3v1H9zM9 2h4v1H9zM9 3h3v1H9zM9 4h2v1H9z"/></svg>`;
+const ST_SLAM=`<svg viewBox="0 0 16 16" shape-rendering="crispEdges" aria-hidden="true"><path fill="#FFD35A" d="M6 1h4v6H6zM3 7h10v2H3zM5 9h6v2H5zM7 11h2v1H7z"/><path fill="#F1E8D2" d="M1 13h14v2H1z"/><path fill="#FF8A3D" d="M2 12h2v1H2zM12 12h2v1h-2z"/></svg>`;
+const ST_GLYPH={A:ST_ROTATE, B:ST_SLAM};
+
 // ---------- Chord Stack's demo ----------
 // A T piece of C, E, G and A falls, turns, and lands with C, E and G side by side on the floor; they
 // light up, C major clears them, and what was above drops into the gap.

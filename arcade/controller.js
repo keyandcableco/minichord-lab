@@ -34,7 +34,12 @@ const kmGrid=()=>kmLayout().cols===3;          // drawn on the keymaster's plate
 const KM_GLYPH={up:"▲",left:"◀",A:"A",B:"B",right:"▶",down:"▼"};
 // what a zone shows: its arrow or letter, or for a game whose A and B have a clear meaning, a picture
 // of it (Chord Sweeper: A sweeps, a burst; B flags, a flag)
-const kmGlyph=z=> z==null ? "" : (blast && blast.kind==="sweeper" && typeof SW_GLYPH!=="undefined" && SW_GLYPH[z]) || KM_GLYPH[z];
+// a game whose A and B have a clear meaning shows them as pictures (Chord Sweeper's burst and flag,
+// Chord Stack's rotate and slam); everything else shows the letter
+const KM_PICTURES={sweeper:()=>typeof SW_GLYPH!=="undefined" && SW_GLYPH, stack:()=>typeof ST_GLYPH!=="undefined" && ST_GLYPH};
+const kmGlyph=z=>{ if(z==null) return "";
+  const pics=blast && KM_PICTURES[blast.kind] && KM_PICTURES[blast.kind]();
+  return (pics && pics[z]) || KM_GLYPH[z]; };
 const kmControl=pc=>kmLayout().byString[mod(pc,12)];
 
 // The keymaster harp as it looks: a leaning black plate with its twelve white notes in four rising
