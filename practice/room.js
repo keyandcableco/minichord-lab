@@ -12,6 +12,19 @@ const wanted={};
 // everything the current round has set, so switching games never gives back what the new
 // game just borrowed (the key signature, Barry Harris mode, slash voice…)
 const roundBorrows=new Set();
+// Push and pop (firmware command 5 and 6, where the minichord has them): before anything is borrowed
+// the instrument is asked to remember its settings, and giving them back is one message that puts
+// back everything, including what a game couldn't know it changed. The borrowing below carries on
+// either way, since it's what the panel shows and what a partial give-back between games needs; on a
+// minichord without push and pop it's also what gives them back, one address at a time.
+let pushHeld=false;
+function maybePush(){
+  if(pushHeld || !mc.pushPop || !canWrite()) return;
+  mc.control(5); pushHeld=true;
+}
+// the probe pushes as it finishes, so what the instrument remembers is itself before this page
+// touched it, however early a game borrowed
+function pushAfterProbe(ok){ if(ok) pushHeld=true; }
 /** set addr to value for this round: borrowed if it differs, and kept if an earlier round already set it */
 function ensure(addr,value){
   if(!canWrite()) return;
@@ -21,6 +34,7 @@ function ensure(addr,value){
 }
 function borrow(addr,value){
   if(!canWrite()) return;
+  maybePush();                                          // the instrument remembers, before anything changes
   roundBorrows.add(addr); wanted[addr]=value;
   if(!(addr in borrowed)) borrowed[addr]=mc.params[addr] ?? 0;
   mc.writeParam(addr,value);
@@ -45,9 +59,10 @@ function restoreAll(){
   const back=Object.entries(borrowed);
   for(const [a] of back) delete borrowed[a];            // clear first, so the panel redraws without them
   for(const a of Object.keys(wanted)) delete wanted[a];
-  for(const [a,v] of back) mc.writeParam(+a, v);
+  if(pushHeld){ mc._asked=(mc._asked||0)+1; mc.control(6); pushHeld=false; }   // one message: everything as it was, and a dump
+  else for(const [a,v] of back) mc.writeParam(+a, v);
   $("restore").hidden=true; stopTones(); mine();
-  if(mc.out) setTimeout(()=>mc.requestDump(),200);
+  if(mc.out && !mc.pushPop) setTimeout(()=>mc.requestDump(),200);
 }
 function restoreExcept(keep){
   const back=Object.entries(borrowed).filter(([a])=>!keep.has(+a));
@@ -818,6 +833,10 @@ function mine(){
 
 // ---------- connection ----------
 mc.addEventListener("device", ()=>{
+  // a preset loaded on the instrument makes the firmware forget what was pushed (it belonged to the
+  // last preset), so the next thing borrowed pushes the new one
+  if(mc.presetLoaded) pushHeld=false;
+  if(mc.pushPop===undefined && canWrite() && mc.params[35]!==undefined) mc.probePushPop().then(pushAfterProbe);
   // A preset loaded on the instrument mid-game (its preset buttons) sets everything anew: what the
   // game had set goes back on, and the new preset's own values become what's given back after
   // So can a double tap: anything unasked (but the key change combo, whose key a game reads) that

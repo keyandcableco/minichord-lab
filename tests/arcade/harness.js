@@ -55,8 +55,16 @@ function load(slug, {storage}={}){
   const sleep=ms=>new Promise(r=>setTimeout(r,ms));
   const writes=[];
   // a minichord on the other end: remembers what's written, answers a request for its settings
-  function connect({firmware=17, key=0, extra={}}={}){
-    mc.sysex=true; mc.out={id:"test", send(){}};
+  // pushPop: a minichord whose firmware has the push and pop commands (5 and 6), which the real one
+  // answers by remembering every parameter and putting them all back, a dump with them
+  function connect({firmware=17, key=0, extra={}, pushPop=false}={}){
+    mc.sysex=true;
+    let held=null;
+    mc.out={id:"test", send(m){
+      if(!pushPop || m[1]!==0 || m[2]!==0) return;                       // a control command: F0 0 0 cmd param F7
+      if(m[3]===5){ if(!held) held={...mc.params}; return; }
+      if(m[3]===6 && held){ Object.assign(mc.params, held); held=null; setTimeout(()=>mc.dispatchEvent(new w.Event("device")),5); }
+    }};
     mc.writeParam=(a,v)=>{ writes.push([a,v]); mc.params[a]=v; };
     mc.requestDump=()=>{ mc._asked=(mc._asked||0)+1; setTimeout(()=>{ mc._asked--; mc.dispatchEvent(new w.Event("device")); },5); };
     for(let a=0;a<256;a++) mc.params[a]=0;

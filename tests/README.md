@@ -38,6 +38,7 @@ key presses, checking what should happen.
 | `demo-lights` | demos light what they press on the on-screen minichord: Fifths Defender's knob, Chord Stack's chord, Chord Sweeper's d-pad, Between the Frets' modifier; Snake's demo glows its chord on any matrix |
 | `title-cycle` | every game's title screen moves on by itself after its demo |
 | `invaders-demo-acts` | Chord Invaders' demo shows the beam burning every minor chord and leaving the major, and the omni power-up |
+| `push-pop` | with firmware push and pop, one message gives everything back, even what the Lab never touched; without it, every borrowed setting is written back |
 | `key-fleet` | fleets never touch; hits cripple; keys are called by tonic, cadence and the key change combo |
 | `high-scores` | GAME OVER before the initials; input ignored at first; the board kept; beginner mode stays off it |
 | `lobby` | the arcade lobby's cabinets, best scores and ticker |

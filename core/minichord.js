@@ -128,6 +128,35 @@ export class Minichord extends EventTarget {
       else this._status(`${this.statusText||""} The minichord didn't answer a request for its settings, so they can't be read or changed. Unplug it, plug it back in, and reload.`);
     },1500);
   }
+  /** a control command (address 0): 0 asks for the settings, 2 saves a bank, 4 loads one, 5 pushes, 6 pops */
+  control(cmd, param=0){ if(!this.out || !this.sysex) return false; this.out.send([0xF0,0,0,cmd&127,param&127,0xF7]); return true; }
+  /**
+   * Whether this minichord can push and pop its live settings (firmware command 5 and 6): a page can
+   * then change what it likes and have everything put back exactly, rather than writing back every
+   * address it remembers touching. Asked once, by trying it: a push and an immediate pop change
+   * nothing at all (the settings are put back as they were), and a minichord that has them answers
+   * the pop with a dump, while one that hasn't ignores both and says nothing. The version number
+   * can't be used: the test firmware and the released one number themselves separately.
+   * A push goes out again straight afterwards, so the instrument remembers itself as it is now,
+   * before any page has changed anything: waiting for the answer would be too late.
+   */
+  probePushPop(){
+    if(this._pushPop) return this._pushPop;
+    if(!this.out || !this.sysex) return Promise.resolve(false);
+    return this._pushPop=new Promise(done=>{
+      let got=false; const saw=()=>{ got=true; };
+      this.addEventListener("device", saw);
+      this._asked=(this._asked||0)+1;           // the dump a pop sends is one we asked for
+      this.control(5); this.control(6);
+      setTimeout(()=>{
+        this.removeEventListener("device", saw);
+        if(!got && this._asked>0) this._asked--;
+        this.pushPop=got;
+        if(got) this.control(5);                  // it remembers itself, untouched, from here
+        done(got);
+      }, 700);
+    });
+  }
   writeParam(a,v){
     if(!this.out || !this.sysex) return false;
     this.out.send([0xF0,a&127,a>>7,v&127,(v>>7)&127,0xF7]); this.params[a]=v;

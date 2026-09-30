@@ -25,8 +25,9 @@ const t=require("./harness").load("chord-snake", {storage:{saved:{bonus:true}}})
   r=await play("tune", async b=>{ const c0=b.cents; t.knob(40,20); await t.sleep(20); t.knob(90,20); await t.sleep(20);
     check("TUNE IT: the knobs are switched on, and the chord knob retunes it", t.mc.params[238]===1 && Math.abs(b.cents-c0)>5, `${c0.toFixed(1)} → ${b.cents.toFixed(1)} cents`);
     // held against its stop, the knob keeps tuning that way
-    // (toward whichever side has room: the tuning goes no further than 60 cents either way)
-    const up=b.cents<0; t.knob(up?127:0,20); await t.sleep(30); const c1=b.cents; await t.sleep(1400);
+    // from the middle, so there's room either way (the tuning stops at 60 cents)
+    w.eval("blast.bonus.g.set(blast.bonus, 0); blast.bonus.base=null"); await t.sleep(30);
+    t.knob(127,20); await t.sleep(30); const c1=b.cents; await t.sleep(1400);
     check("TUNE IT: a knob held at its stop keeps tuning, as Fifths Defender's does", Math.abs(b.cents-c1)>3, `${c1.toFixed(1)} → ${b.cents.toFixed(1)} cents`); chord("C"); });
   r=await play("missing", async b=>{ for(let i=0;i<4;i++){ note(t.PC[b.ans]); await sleep(20); } });
   check("MISSING NOTE: four notes found", r.gained>0 && r.back, r.result);
