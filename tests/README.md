@@ -18,7 +18,7 @@ key presses, checking what should happen.
 | `harp-command` | falling notes are shot by their strings; a wrong string freezes; settings given back |
 | `chord-snake` | the snake eats notes and cashes chords in; the harp steers |
 | `chord-asteroids` | rocks crack by their chords and notes are shot on the harp |
-| `chord-stack` | pieces move and rotate; a chord side by side lights up and clears, the blocks above falling in; scattered notes don't count; a whole row scores five times; the harp and a knob steer; topping out ends it |
+| `chord-stack` | pieces move and rotate, the square too; a row holding a chord lights and clears its notes, the blocks above falling in; side by side scores double, a whole row five times; the harp and a knob steer; topping out ends it |
 | `chord-breakout` | the knob steers (only the chosen one, without wobble or the mouse); the ball bounces true; chords break bricks |
 | `fifths-defender` | the knob's centred, endless dial; the aimed key's chord fires, another doesn't |
 | `chopper-rescue` | the knobs switched on; tuning in by harp, keys or knob; Ben; the radio decodes right; decoys; the survivors' signal in order; no repeated calls |

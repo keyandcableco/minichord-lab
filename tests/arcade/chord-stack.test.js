@@ -1,7 +1,6 @@
-// Chord Stack: Tetris, where the blocks are notes. Pieces move and rotate; blocks side by side in a
-// row spelling a chord light up, and playing it clears them, the blocks above falling in; a whole row
-// of one chord scores five times; notes scattered across a row don't count; the stack reaching the
-// top ends it.
+// Chord Stack: Tetris, where the blocks are notes. Pieces move and rotate; a row holding a chord's
+// notes lights them up, and playing it clears them, the blocks above falling in; side by side scores
+// double, a whole row of one chord five times; the stack reaching the top ends it.
 const t=require("./harness").load("chord-stack");
 (async()=>{
   const {w, sb, sleep, key, chord, note, knob, check}=t;
@@ -20,12 +19,15 @@ const t=require("./harness").load("chord-stack");
   // a chord side by side on the floor lights up and clears; a block above falls in
   a.piece=null; a.grid=w.eval("stEmpty()"); const F=17;
   a.grid[F][2]={pc:0}; a.grid[F][3]={pc:4}; a.grid[F][4]={pc:7}; a.grid[F-1][3]={pc:9}; sb.stackDraw();
-  check("C, E and G side by side light up as C major", sb.stackReady.some(r=>r.name==="C" && r.xs.join()==="2,3,4"));
+  check("C, E and G side by side light up as C major, side by side", sb.stackReady.some(r=>r.name==="C" && r.xs.join()==="2,3,4" && r.tight));
   const before=a.score; chord("C"); await sleep(40);
-  check("playing C clears them, and the block above falls in", a.score>before && !a.grid[F][2] && a.grid[F][3] && a.grid[F][3].pc===9, `score ${before} → ${a.score}`);
-  // scattered across a row, it doesn't count
-  a.grid=w.eval("stEmpty()"); a.grid[F][0]={pc:0}; a.grid[F][4]={pc:4}; a.grid[F][8]={pc:7}; sb.stackDraw();
-  check("C, E and G scattered across a row don't count", !sb.stackReady.length);
+  check("playing C clears them for double, and the block above falls in", a.score-before===w.eval("mulPts(10*3*2)") && !a.grid[F][2] && a.grid[F][3] && a.grid[F][3].pc===9, `+${a.score-before}`);
+  // scattered across a row, it counts too, for the plain score
+  a.grid=w.eval("stEmpty()"); a.grid[F][0]={pc:0}; a.grid[F][1]={pc:2}; a.grid[F][4]={pc:4}; a.grid[F][8]={pc:7}; sb.stackDraw();
+  const sc=sb.stackReady.find(r=>r.name==="C");
+  check("C, E and G scattered across a row light up too, not as side by side", !!sc && !sc.tight && sc.xs.join()==="0,4,8");
+  const s2=a.score; chord("C"); await sleep(40);
+  check("playing C clears just those notes, for the plain score", a.score-s2===w.eval("mulPts(10*3)") && !a.grid[F][0] && a.grid[F][1] && a.grid[F][1].pc===2 && !a.grid[F][4], `+${a.score-s2}`);
   // a whole row of one chord: five times
   a.grid=w.eval("stEmpty()"); [0,4,7,0,4,7,0,4,7,0].forEach((pc,x)=>a.grid[F][x]={pc}); sb.stackDraw();
   const whole=sb.stackReady.find(r=>r.whole), s1=a.score; chord("C"); await sleep(40);
