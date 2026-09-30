@@ -32,6 +32,22 @@ const t=require("./harness").load("chord-stack");
   a.grid=w.eval("stEmpty()"); [0,4,7,0,4,7,0,4,7,0].forEach((pc,x)=>a.grid[F][x]={pc}); sb.stackDraw();
   const whole=sb.stackReady.find(r=>r.whole), s1=a.score; chord("C"); await sleep(40);
   check("a whole row of C major clears for five times", !!whole && a.score-s1===w.eval("mulPts(10*3*5)"), `+${a.score-s1}`);
+  // the chords follow the minichord: Barry Harris mode off, A C E F♯ lights as its A minor triad (never the
+  // half-diminished no button makes); switched on, it lights as Am6, and Am6 clears it
+  const play=ps=>sb.answerChord(ps.map((p,i)=>({pitch:p, voice:i})));
+  const row=pcs=>{ a.grid=w.eval("stEmpty()"); pcs.forEach((pc,x)=>a.grid[F][x]={pc}); sb.stackDraw(); };
+  t.mc.params[33]=0; w.eval("stDevice()"); row([9,0,4,6]);
+  check("with Barry Harris mode off, A C E F♯ lights as A minor", sb.stackReady.map(r=>r.name).join()==="Am", sb.stackReady.map(r=>r.name).join());
+  t.mc.params[33]=1; w.eval("stDevice()");
+  check("switched on, the same notes light as Am6, and the HUD says so", sb.stackReady.map(r=>r.name).join()==="Am6" && /BARRY HARRIS/.test(a.hud.textContent), sb.stackReady.map(r=>r.name).join());
+  const s3=a.score; play([57,60,64,66]); await sleep(40);
+  check("and Am6 clears them", a.score>s3 && !a.grid[F][0]);
+  check("in Barry Harris mode the pieces are dealt from sixths", w.eval("stKeyChords(0, stQs()).every(c=>['6','m6'].includes(c.q))"));
+  // C6 and Am7 are the same four notes: a row spelling one clears with the other
+  t.mc.params[33]=0; w.eval("stDevice()"); a.level=2; row([0,4,7,9]);
+  const s4=a.score; play([57,60,64,67]); await sleep(40);
+  check("a row of C E G A clears with Am7: the same notes, whatever they're called", a.score>s4 && !a.grid[F][0] && !a.grid[F][3]);
+  a.level=0;
   // the harp and a knob steer
   a.grid=w.eval("stEmpty()"); a.next=w.eval("stRandPiece()"); w.eval("stSpawn()"); await sleep(20);
   const dirPc=d=>[...Array(12).keys()].find(pc=>w.eval(`kmControl(${pc})`)===d);

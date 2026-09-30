@@ -18,10 +18,15 @@ const ST_LEVELS=[
   {n:"Triads in C", keys:[0], qs:["","m"]},
   {n:"Triads in G and F", keys:[1,-1], qs:["","m"]},
   {n:"Sevenths", keys:[0,1,-1], qs:["","m","7","maj7","m7"]},
-  {n:"Diminished", keys:[0,1,-1,2,-2], qs:["","m","°","7","maj7","m7","m7♭5"]},
-  {n:"Every key", keys:[-4,-3,-2,-1,0,1,2,3,4], qs:["","m","°","7","maj7","m7","m7♭5"]},
+  {n:"Diminished", keys:[0,1,-1,2,-2], qs:["","m","°","7","maj7","m7"]},
+  {n:"Every key", keys:[-4,-3,-2,-1,0,1,2,3,4], qs:["","m","°","7","maj7","m7"]},
 ];
-const ST_Q_SETS={"":[0,4,7],"m":[0,3,7],"°":[0,3,6],"+":[0,4,8],"7":[0,4,7,10],"maj7":[0,4,7,11],"m7":[0,3,7,10],"m7♭5":[0,3,6,10],"°7":[0,3,6,9]};
+const ST_Q_SETS={"":[0,4,7],"m":[0,3,7],"°":[0,3,6],"+":[0,4,8],"7":[0,4,7,10],"maj7":[0,4,7,11],"m7":[0,3,7,10],"6":[0,4,7,9],"m6":[0,3,7,9],"°7":[0,3,6,9]};
+// The chords the level asks for, as the minichord's buttons make them right now: with Barry Harris mode
+// on, major plays 6, minor m6 and diminished °7 (the sevenths stay as they are), so those are what light
+// up and what the pieces are dealt from. Read live, so switching the mode mid-game switches them too.
+const stBarry=()=> typeof mc!=="undefined" && mc.params && mc.params[33]===1;
+const stQs=()=>[...new Set(ST_LEVELS[blast.level].qs.map(q=> stBarry() ? (BARRY_SWAP[q]??q) : q))];
 const ST_MAJOR=[0,2,4,5,7,9,11];
 // the seven tetrominoes, as cells (x, y) from their top left
 const ST_PIECES={
@@ -34,8 +39,8 @@ const stName=(pc,f)=> (f<0 ? FLAT_NAMES : SHARP_NAMES)[((pc%12)+12)%12];
 function stKeyChords(f, qs){
   const t=stKeyTonic(f), sc=ST_MAJOR.map(x=>(t+x)%12), out=[];
   for(let d=0; d<7; d++){
-    const tri=[sc[d], sc[(d+2)%7], sc[(d+4)%7]], sev=[...tri, sc[(d+6)%7]];
-    for(const [pcs,n] of [[tri,3],[sev,4]]){
+    const tri=[sc[d], sc[(d+2)%7], sc[(d+4)%7]], sev=[...tri, sc[(d+6)%7]], six=[...tri, sc[(d+5)%7]];
+    for(const [pcs,n] of [[tri,3],[sev,4],[six,4]]){
       const iv=pcs.map(p=>(p-pcs[0]+12)%12).join();
       const q=Object.keys(ST_Q_SETS).find(k=>ST_Q_SETS[k].length===n && ST_Q_SETS[k].join()===iv);
       if(q!=null && qs.includes(q)) out.push({root:pcs[0], q, pcs});
@@ -72,11 +77,11 @@ function stRowChord(row, root, q){
 // triad, side by side before scattered
 function stReadyRows(){
   if(!blast || blast.kind!=="stack" || !blast.grid || !blast.grid.length) return [];
-  const L=ST_LEVELS[blast.level], out=[];
+  const qs=stQs(), out=[];
   blast.grid.forEach((row,y)=>{
     if(row.filter(c=>c).length<3) return;
     let best=null;
-    for(let root=0; root<12; root++) for(const q of L.qs){ const r=stRowChord(row, root, q); if(!r) continue;
+    for(let root=0; root<12; root++) for(const q of qs){ const r=stRowChord(row, root, q); if(!r) continue;
       const score=(r.whole?100:0)+(r.tight?10:0)+ST_Q_SETS[q].length;
       if(!best || score>best.score) best={y, root, q, ...r, score}; }
     if(best) out.push({...best, name:stName(best.root,blast.keyF)+best.q, tones:ST_Q_SETS[best.q].map(i=>stName(best.root+i,blast.keyF))});
@@ -98,6 +103,7 @@ function stDevice(){
   arcadeSetup(()=>{ kmHarp(); if(knobsReady()) borrow(238,1); });
   const sig=String(knobsReady());
   if(blast.phase==="menu" && blast.overlay && blast.menuSig!==sig){ if(menuRebuild(()=>stMenu())) blast.menuSig=sig; }
+  if(blast.barryWas!==stBarry()){ blast.barryWas=stBarry(); stDraw(); stBar(); }   // Barry Harris mode changed: what lights up follows
 }
 // a knob slides the falling piece across the well, stopping short of anything in its way
 function stKnob(v){
@@ -131,10 +137,10 @@ function stLayout(){
 }
 function stBar(){
   if(!blast || blast.kind!=="stack" || !blast.hud) return;
-  blast.hud.innerHTML=`<span>SCORE ${blast.score}${multTag()}</span><span class="lvl">LEVEL ${blast.level+1} · ${stName(stKeyTonic(blast.keyF||0),blast.keyF||0)} MAJOR</span><span>CHORDS ${blast.clears}</span>`;
+  blast.hud.innerHTML=`<span>SCORE ${blast.score}${multTag()}</span><span class="lvl">LEVEL ${blast.level+1} · ${stName(stKeyTonic(blast.keyF||0),blast.keyF||0)} MAJOR${stBarry()?" · BARRY HARRIS":""}</span><span>CHORDS ${blast.clears}</span>`;
 }
 const STMENU_G={key:"stack", title:"CHORD STACK",
-  rules:()=>`<p>TETRIS, WHERE THE BLOCKS ARE NOTES. MOVE AND ROTATE EACH PIECE AS IT FALLS${knobsReady()?": A KNOB SLIDES IT":""}.</p><p>WHEN A ROW HOLDS ALL OF A CHORD'S NOTES, ANYWHERE IN IT, THEY LIGHT UP: PLAY THAT CHORD TO CLEAR THEM. SIDE BY SIDE SCORES DOUBLE; A WHOLE ROW OF ONE CHORD, FIVE TIMES.</p><p>ON THE HARP: ◀ ▶ MOVE, ▼ DROPS A ROW, A ROTATES, B DROPS IT. OR THE ARROW KEYS, AND SPACE TO DROP.</p>`,
+  rules:()=>`<p>TETRIS, WHERE THE BLOCKS ARE NOTES. MOVE AND ROTATE EACH PIECE AS IT FALLS${knobsReady()?": A KNOB SLIDES IT":""}.</p><p>WHEN A ROW HOLDS ALL OF A CHORD'S NOTES, ANYWHERE IN IT, THEY LIGHT UP: PLAY THAT CHORD TO CLEAR THEM. SIDE BY SIDE SCORES DOUBLE; A WHOLE ROW OF ONE CHORD, FIVE TIMES.</p><p>ON THE HARP: ◀ ▶ MOVE, ▼ DROPS A ROW, A ROTATES, B DROPS IT. OR THE ARROW KEYS, AND SPACE TO DROP.</p><p>THE CHORDS FOLLOW YOUR MINICHORD: WITH BARRY HARRIS MODE ON, SIXTHS AND DIMINISHED SEVENTHS LIGHT UP INSTEAD OF TRIADS.</p>`,
   stat:()=>`CHORDS ${blast.clears}`,
   rows:row=>{
     row("SPEED", SPEEDS.map(x=>x[0].toUpperCase()), ()=>+saved.speed||0, i=>{ saved.speed=i; save(); });
@@ -146,7 +152,7 @@ const STMENU_G={key:"stack", title:"CHORD STACK",
 function stMenu(over){ arcadeMenu(STMENU_G, over); }
 // a new piece: a random tetromino, its four blocks a chord of the key plus a note of the key, shuffled
 function stRandPiece(){
-  const L=ST_LEVELS[blast.level], chords=stKeyChords(blast.keyF, L.qs), ch=rnd(chords);
+  const chords=stKeyChords(blast.keyF, stQs()), ch=rnd(chords);
   const scale=ST_MAJOR.map(x=>(stKeyTonic(blast.keyF)+x)%12), notes=[...ch.pcs];
   while(notes.length<4) notes.push(rnd(scale));
   for(let i=notes.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [notes[i],notes[j]]=[notes[j],notes[i]]; }
@@ -239,8 +245,10 @@ function stackChord(voices){
   if(blast.phase==="demo" && blast.demo){ endStDemo(blast.demo); return; }
   if(blast.phase!=="play") return;
   const pitches=voices.map(v=>v.pitch), name=chordName(pitches, devFifths());
-  const id=chordId(pitches), L=ST_LEVELS[blast.level];
-  const runs = id && L.qs.includes(id.quality) ? blast.grid.map((row,y)=>{ const r=stRowChord(row, id.root, id.quality); return r && {y, root:id.root, q:id.quality, ...r, name:stName(id.root,blast.keyF)+id.quality}; }).filter(Boolean) : [];
+  // any row holding all of the played chord's notes, whatever that row's chord is called: C6 and Am7
+  // are the same four notes, and either clears them
+  const id=chordId(pitches);
+  const runs = id && ST_Q_SETS[id.quality] ? blast.grid.map((row,y)=>{ const r=stRowChord(row, id.root, id.quality); return r && {y, root:id.root, q:id.quality, ...r, name:stName(id.root,blast.keyF)+id.quality}; }).filter(Boolean) : [];
   if(!runs.length){ heard(name,false,"NO ROW SPELLS IT"); if(chordId(pitches)) later(()=>{ sfx("miss"); buzz(blast && blast.field, true); }); return; }
   heard(name,true);
   let pts=0;
