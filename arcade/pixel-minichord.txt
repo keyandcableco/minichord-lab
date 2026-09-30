@@ -1,0 +1,26 @@
+// The arcade's pixel minichord: on the lobby's INSERT MINICHORD sign, in Ben's hands in Chopper
+// Rescue, and (turned 45 degrees) the arcade's favicon. This grid is the one place it's drawn: edit
+// it here, then run `python3 arcade/make-pixel-minichord.py` from the repository to make the rest.
+//
+//   .  nothing        #  the gold body        x  dark (buttons, harp strip, dots)        o  the red light
+//
+// 36 columns by 19 rows. Lines starting // are notes and are skipped.
+.................#############......
+......##########################....
+..###############################...
+.##########################xx#####..
+####x##x#x#x#x#x#x#x#######xx######.
+###########################xx###x##.
+########x#x#x#x#x#x#x######xx#######
+###########################xx#######
+#########x#x#x#x#x#x#x#####xx###x###
+.##########################xx#######
+...########################xx#######
+......#####################xx###x###
+..............#########o###xx#######
+.................##########xx######.
+..................#########xx######.
+...................########xx#####..
+....................#############...
+.....................###########....
+.......................#######......
