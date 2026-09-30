@@ -58,6 +58,8 @@ function buildFifthsField(box){
   box.append(field);
   if(blast && blast.kind==="fifths"){
     blast.field=field; blast.hud=hud; blast.heard=hd; blast.rimEl=rim; blast.fx=fxInit(field);
+    // the wheel is drawn sharp, at the screen's own resolution, over the pixel starfield
+    const sharp=document.createElement("canvas"); sharp.className="fdsharp"; blast.fx.cv.after(sharp); blast.sharp=sharp;
     FD_KEYS.forEach((k,i)=>{ const l=document.createElement("span"); l.className="fdkey"; rim.appendChild(l); });
     setTimeout(()=>{ fdLayout(); fdLabels(); });
     if(blast.overlay) field.appendChild(blast.overlay);
@@ -210,23 +212,30 @@ document.addEventListener("keydown", e=>{
   const d={ArrowLeft:-1,KeyA:-1,ArrowRight:1,KeyD:1}[e.code]; if(d){ e.preventDefault(); fdAimAt(blast.aim+d); }
 });
 // the circle drawn on the canvas: spokes, the aimed one lit, the enemies crawling in, the hub
-function fdDraw(g, now){
-  const P=PX, cx=blast.cx/P, cy=blast.cy/P, R=blast.R/P, hub=blast.hub/P, L=FD_LEVELS[blast.level||0];
+// The wheel: spokes, rim, enemies and the hub's claw. Drawn on a canvas of its own at the screen's
+// full resolution (the arcade's shared canvas is deliberately low-resolution, right for the stars but
+// blocky for thin lines), in the same sizes as before: U is one of the shared canvas's pixels.
+function fdDraw(_g, now){
+  const cv=blast.sharp; if(!cv || !blast.fx) return;
+  const dpr=window.devicePixelRatio||1, W=blast.fx.fw, H=blast.fx.fh;
+  if(cv.width!==Math.round(W*dpr) || cv.height!==Math.round(H*dpr)){ cv.width=Math.round(W*dpr); cv.height=Math.round(H*dpr); }
+  const g=cv.getContext("2d"); g.setTransform(dpr,0,0,dpr,0,0); g.clearRect(0,0,W,H); g.lineJoin="round"; g.lineCap="round";
+  const U=PX, cx=blast.cx, cy=blast.cy, R=blast.R, hub=blast.hub, L=FD_LEVELS[blast.level||0];
   for(let i=0;i<12;i++){
     const a=i*Math.PI/6, used=!L.spokes || L.spokes.includes(i), aimed=i===blast.aim;
     const danger=blast.foes.some(f=>!f.dead && f.spoke===i && f.r<blast.R*.45);
-    g.strokeStyle = aimed ? "#FFD35A" : danger ? "#FF4B3E" : used ? "#3F4A8A" : "#1E2240"; g.lineWidth = aimed ? 1.6 : 1;
+    g.strokeStyle = aimed ? "#FFD35A" : danger ? "#FF4B3E" : used ? "#3F4A8A" : "#1E2240"; g.lineWidth = (aimed ? 1.6 : 1)*U*.75;
     g.beginPath(); g.moveTo(cx+Math.sin(a)*hub, cy-Math.cos(a)*hub); g.lineTo(cx+Math.sin(a)*R, cy-Math.cos(a)*R); g.stroke();
   }
   // the rim, a twelve-sided ring joining the spokes
-  g.strokeStyle="#3F4A8A"; g.lineWidth=1; g.beginPath();
+  g.strokeStyle="#3F4A8A"; g.lineWidth=U*.75; g.beginPath();
   for(let i=0;i<=12;i++){ const a=i*Math.PI/6; const x=cx+Math.sin(a)*R, y=cy-Math.cos(a)*R; i?g.lineTo(x,y):g.moveTo(x,y); } g.stroke();
   // enemies: little bow-ties across their spokes, wobbling as they come
   for(const f of blast.foes){ if(f.dead) continue;
-    const a=f.spoke*Math.PI/6, r=f.r/P, x=cx+Math.sin(a)*r, y=cy-Math.cos(a)*r, s=3+ (f.r/blast.R)*3, t=a+Math.PI/2+Math.sin(now/180+f.wob)*.3;
-    g.strokeStyle = f.star ? "#7FE9FF" : "#FF5AA0"; g.lineWidth=1.2; g.beginPath();
-    g.moveTo(x+Math.cos(t)*s, y+Math.sin(t)*s); g.lineTo(x-Math.cos(t)*s*.4+Math.sin(t)*s*.6, y-Math.sin(t)*s*.4-Math.cos(t)*s*.6);
-    g.lineTo(x-Math.cos(t)*s, y-Math.sin(t)*s); g.lineTo(x+Math.cos(t)*s*.4-Math.sin(t)*s*.6, y+Math.sin(t)*s*.4+Math.cos(t)*s*.6); g.closePath(); g.stroke(); }
+    const a=f.spoke*Math.PI/6, r=f.r, x=cx+Math.sin(a)*r, y=cy-Math.cos(a)*r, sz=(3+(f.r/blast.R)*3)*U, t=a+Math.PI/2+Math.sin(now/180+f.wob)*.3;
+    g.strokeStyle = f.star ? "#7FE9FF" : "#FF5AA0"; g.lineWidth=1.2*U*.75; g.beginPath();
+    g.moveTo(x+Math.cos(t)*sz, y+Math.sin(t)*sz); g.lineTo(x-Math.cos(t)*sz*.4+Math.sin(t)*sz*.6, y-Math.sin(t)*sz*.4-Math.cos(t)*sz*.6);
+    g.lineTo(x-Math.cos(t)*sz, y-Math.sin(t)*sz); g.lineTo(x+Math.cos(t)*sz*.4-Math.sin(t)*sz*.6, y+Math.sin(t)*sz*.4+Math.cos(t)*sz*.6); g.closePath(); g.stroke(); }
   // the hub: the player's claw, pointing down the aimed spoke
   const a=blast.aim*Math.PI/6, hurt=now-(blast.hurtAt||0)<500;
   g.fillStyle = hurt ? "#FF4B3E" : now<(blast.jamUntil||0) ? "#7FE9FF" : "#FFD35A";

@@ -110,7 +110,7 @@ function asBar(){
   blast.hud.innerHTML=`<span>SCORE ${blast.score}${multTag()}</span><span class="lvl">LEVEL ${blast.level+1}</span><span class="lives">${"♥".repeat(Math.max(0,blast.lives))||"-"}</span>`;
 }
 const ASMENU_G={key:"asteroids", title:"CHORD ASTEROIDS",
-  rules:()=>`<p>PLAY A ROCK'S CHORD TO CRACK IT INTO ITS NOTES.</p><p>PLUCK EACH NOTE ON THE HARP TO SHOOT IT DOWN.</p><p>FLY ROUND YOUR ORBIT TO DODGE: THE MOD KNOB, OR THE ARROW KEYS. HOLD A KNOB AT ITS END AND IT KEEPS GOING ROUND.</p><p>MANUAL AIM SCORES DOUBLE: SPIN THE SHIP WITH ANOTHER KNOB (OR ↑ ↓), AND A PLUCK FIRES WHERE IT POINTS.</p><p class="starline">${PIXEL_STAR}ROCKS SCORE BIG AND NEVER HURT.</p>`,
+  rules:()=>`<p>PLAY A ROCK'S CHORD TO CRACK IT INTO ITS NOTES.</p><p>PLUCK EACH NOTE ON THE HARP TO SHOOT IT DOWN.</p><p>FLY ROUND YOUR ORBIT TO DODGE: THE MOD KNOB, OR THE ARROW KEYS. HOLD A KNOB AT ITS END AND IT KEEPS GOING ROUND.</p><p>MANUAL AIM SCORES DOUBLE: SPIN THE SHIP WITH ANOTHER KNOB (OR ↑ ↓). A CHORD OR A PLUCK FIRES WHERE IT POINTS.</p><p class="starline">${PIXEL_STAR}ROCKS SCORE BIG AND NEVER HURT.</p>`,
   rows:row=>{
     row("AIM", ["AUTO","MANUAL ×2"], ()=>saved.asAim?1:0, i=>{ saved.asAim=i; save(); });
     row("SPEED", SPEEDS.map(x=>x[0].toUpperCase()), ()=>+saved.speed||0, i=>{ saved.speed=i; save(); });
@@ -200,6 +200,17 @@ function asHitShip(r){
   }
 }
 // the ship turns to a target and fires a laser at it
+// manual aim: whether a rock is roughly where the ship points (within about 12 degrees, or the shot's
+// line passing through the rock itself, which matters for a big chord rock close by)
+function asInLine(x){
+  const a=Math.atan2(x.y-blast.cy, x.x-blast.cx), d=Math.abs(((a-blast.shipAng)%(2*Math.PI)+3*Math.PI)%(2*Math.PI)-Math.PI);
+  return d<.21 || (d<Math.PI/2 && Math.hypot(x.x-blast.cx,x.y-blast.cy)*Math.sin(d)<x.r*.8);
+}
+// a shot along the ship's heading that meets nothing: it flies off the screen
+function asWide(now){
+  const far=Math.max(blast.field.clientWidth, blast.field.clientHeight);
+  blast.fx.missiles.push({x0:blast.cx/PX, y0:blast.cy/PX, x1:(blast.cx+Math.cos(blast.shipAng)*far)/PX, y1:(blast.cy+Math.sin(blast.shipAng)*far)/PX, t0:now, dur:260, hit:()=>{}});
+}
 function asFire(r, then){
   if(!asManual()) blast.shipAng=Math.atan2(r.y-blast.cy, r.x-blast.cx);
   sfx("shoot");
@@ -211,9 +222,12 @@ function asteroidsChord(voices){
   if(blast.phase==="demo" && blast.demo){ endAsDemo(blast.demo); return; }
   if(blast.phase!=="play") return;
   const pitches=voices.map(v=>v.pitch), name=chordName(pitches,0);
-  const hit=blast.rocks.filter(r=>!r.dead && r.kind==="chord" && isChord(pitches, r.rootPc, r.q)).sort((a,b)=>Math.hypot(a.x-blast.cx,a.y-blast.cy)-Math.hypot(b.x-blast.cx,b.y-blast.cy))[0];
+  const pool=blast.rocks.filter(r=>!r.dead && r.kind==="chord" && isChord(pitches, r.rootPc, r.q));
+  const hit=(asManual() ? pool.filter(asInLine) : pool).sort((a,b)=>Math.hypot(a.x-blast.cx,a.y-blast.cy)-Math.hypot(b.x-blast.cx,b.y-blast.cy))[0];
+  if(!hit && asManual() && pool.length){ heard(name,false,"WIDE"); sfx("shoot"); asWide(performance.now()); return; }   // that rock's there, but not where the ship points
   if(!hit){ heard(name,false,"NO SUCH ROCK"); if(chordId(pitches)) later(()=>{ sfx("miss"); buzz(blast && blast.field, true); }); return; }
   heard(name,true);
+  if(asManual()){ hit.dead=true; asFire(hit, ()=>{ hit.deadAt=performance.now(); hit.el.remove(); asCrack(hit); }); return; }   // the shot flies to it, then it cracks
   asKill(hit); asCrack(hit);
 }
 // a chord rock is worth what the chord is, as in Chord Invaders: major 10 up to 50 for the sixths and
@@ -222,6 +236,7 @@ function asChordPoints(hit){
   let p=BLAST_WORTH[hit.q] ?? 10;
   const {li,acc}=parse(hit.root); if(acc!==keyAcc(li, devFifths())) p*=1.5;
   if(hit.star) p*=3;
+  if(blast.aimManual) p*=2;                              // manual aim: aimed, so double
   return mulPts(Math.round(p)*(blast.level+1));
 }
 function asCrack(hit){
@@ -245,14 +260,10 @@ function asteroidsNote(pc){
   const now=performance.now();
   if(now<blast.jamUntil){ heard("",false,"JAMMED"); return; }
   const pool=blast.rocks.filter(x=>!x.dead && x.kind==="note" && x.pc===pc);
-  // manual aim: only a note roughly where the ship points (within about 12 degrees)
-  const inLine=x=>{ const a=Math.atan2(x.y-blast.cy, x.x-blast.cx), d=Math.abs(((a-blast.shipAng)%(2*Math.PI)+3*Math.PI)%(2*Math.PI)-Math.PI); return d<.21 || Math.hypot(x.x-blast.cx,x.y-blast.cy)*Math.sin(d)<x.r*.8; };
-  const r=(asManual() ? pool.filter(inLine) : pool).sort((a,b)=>Math.hypot(a.x-blast.cx,a.y-blast.cy)-Math.hypot(b.x-blast.cx,b.y-blast.cy))[0];
+  const r=(asManual() ? pool.filter(asInLine) : pool).sort((a,b)=>Math.hypot(a.x-blast.cx,a.y-blast.cy)-Math.hypot(b.x-blast.cx,b.y-blast.cy))[0];
   const nm=(r && r.name) || SHARP_NAMES[pc];
   if(!r && asManual() && pool.length){                    // there is such a note, but not where the ship points: the shot goes wide
-    heard(nm,false,"WIDE"); sfx("shoot"); blast.jamUntil=now+450;
-    const far=Math.max(blast.field.clientWidth, blast.field.clientHeight);
-    blast.fx.missiles.push({x0:blast.cx/PX, y0:blast.cy/PX, x1:(blast.cx+Math.cos(blast.shipAng)*far)/PX, y1:(blast.cy+Math.sin(blast.shipAng)*far)/PX, t0:now, dur:260, hit:()=>{}});
+    heard(nm,false,"WIDE"); sfx("shoot"); blast.jamUntil=now+450; asWide(now);
     return; }
   if(!r){ heard(nm,false,"NO SUCH ROCK"); sfx("freeze"); blast.jamUntil=now+1100+120*blast.level; popup(blast.cx, blast.cy+40, "JAMMED", "#7FE9FF"); return; }
   heard(nm,true);

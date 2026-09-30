@@ -13,6 +13,9 @@ const t=require("./harness").load("sight-line");
   for(let k=0;k<4;k++){ const n=await atLine(); if(!n) break; const s0=a.score; note(n.pc); await sleep(20); if(a.score>s0 && n.done) hits++; }
   check("notes plucked at the playhead score", hits===4, `${hits} of 4`);
   const n=await atLine(); const wrong=(n.pc+1)%12; const st=a.streak; note(wrong); await sleep(20);
+  // the harp follows the register: middle C, the C in the third space, and two ledger lines up
+  check("the harp's octave follows the staff: C4, C5 and C6 on three settings", w.eval("[60,72,84,43].map(slHarpOctave).join()")==="1,2,3,0");
+  { const m=await atLine(); check("as a note becomes next, the harp is set to its octave", t.mc.params[99]===w.eval(`slHarpOctave(${m.midi})`), `note ${m.name}${m.midi}, octave ${t.mc.params[99]}`); }
   check("a wrong string breaks the streak", a.streak===0 && st>0 && /THAT'S/.test(t.heard()), t.heard());
   const lives=a.lives; for(let i=0;i<150 && a.lives===lives;i++) await sleep(20);
   check("a note that slips past costs a life", a.lives===lives-1);

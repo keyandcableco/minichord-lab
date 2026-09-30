@@ -1,7 +1,7 @@
 // Chord Asteroids, scoring and manual aim: a chord rock is worth what its chord is (as in Invaders,
 // half again with the modifier, three times a star rock); manual aim puts the knobs on inert
 // alternates (firmware 19), a second knob spins the ship, a pluck fires where it points, a note off
-// line isn't hit, and a note shot scores double; both knobs turn endlessly at their stops.
+// line isn't hit, and a note shot scores double; chords are aimed too; both knobs turn endlessly at their stops.
 const t=require("./harness").load("chord-asteroids");
 (async()=>{
   const {w, sleep, note, check, knob, mc}=t;
@@ -27,6 +27,12 @@ const t=require("./harness").load("chord-asteroids");
   const ahead=place(0, 0), s0=a.score; await sleep(30);
   note(0); await sleep(400);
   check("a note where the ship points is hit, for double", a.rocks.find(r=>r.id===ahead)?.dead!==false && a.score-s0===w.eval("mulPts(20)"), `+${a.score-s0}, 10 × 2 × the speed multiplier ${a.mult||1}`);
+  // chords are aimed too: a chord rock off to the side isn't cracked, one in line is, for double
+  await sleep(500); const rock=(off,root,q)=>w.eval(`(()=>{ const a=blast.shipAng+${off}, d=190; const r=asRock("chord", blast.cx+Math.cos(a)*d, blast.cy+Math.sin(a)*d, "${root}${q}", {root:"${root}", q:"${q}", tones:spellChord("${root}","${q}"), rootPc:pcOfName("${root}")}); return r.id; })()`);
+  const sideRock=rock(Math.PI/2,"F",""); await sleep(30); t.chord("F"); await sleep(300);
+  check("a chord rock off to the side isn't cracked: the chord goes wide", !a.rocks.find(r=>r.id===sideRock).dead && /WIDE/.test(t.heard()), t.heard());
+  const aheadRock=rock(0,"G",""), s1=a.score; await sleep(30); t.chord("G"); await sleep(400);
+  check("a chord rock where the ship points is cracked, for double", a.rocks.find(r=>r.id===aheadRock)?.dead!==false && a.score-s1===w.eval("mulPts(10*2)"), `+${a.score-s1}`);
   // endless knobs: held at a stop, the orbit keeps going round (and the aim keeps spinning); turned
   // back, each carries on from where it got to rather than jumping back
   knob(127,22); await sleep(80); const o0=a.orbitWant; await sleep(1600);

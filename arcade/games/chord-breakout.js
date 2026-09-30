@@ -13,9 +13,10 @@
 // while it plays; any knob steers, whichever moved last.
 // The bricks carry every chord type Chord Invaders drops, worth what they're worth there (major least,
 // Barry Harris's sixths and diminished sevenths most), half as much again for the modifier or a slash.
-// Some bricks carry a power-up: broken, they rain their chord's tones, the ball waits, and the paddle
-// turns into a cannon, still steered by the knob, that fires at a tone when it's under it and that
-// note is plucked on the harp. Shoot the whole chord for double.
+// Some bricks carry a power-up: broken, they rain their chord's tones and the paddle turns into a
+// cannon, still steered by the knob, that fires at a tone when it's under it and that note is plucked
+// on the harp. The ball keeps going the whole time, and the tones are only a bonus: one that reaches
+// the paddle is simply gone. Shoot the whole chord for double.
 const BO_LEVELS=[
   {n:"Major and minor", qs:["","m"], roots:"natural"},
   {n:"Sevenths", qs:["","m","7"], roots:"natural"},
@@ -147,7 +148,8 @@ function boTick(now){
     if(blast.keyDir) p.target=(p.target??p.x)+blast.keyDir*520*dt;
     if(p.target!=null){ p.target=Math.max(0,Math.min(W-p.w,p.target)); p.x+=(p.target-p.x)*Math.min(1,dt*18); }
     blast.padEl.style.transform=`translateX(${p.x}px)`;
-    if(blast.power) boPowerTick(now, dt); else boBall(now, dt);
+    if(blast.power) boPowerTick(now, dt);
+    if(blast.ball) boBall(now, dt);                                  // the ball never waits: keeping it going is the game
   }
   blast.raf=requestAnimationFrame(boTick);
 }
@@ -245,12 +247,11 @@ function boPowerUp(k){
   const cx=k.x+k.w/2, spread=Math.min(blast.W*.8, 90*tones.length);
   blast.power={chord:k.sym, total:tones.length, shot:0, tones:tones.map((n,i)=>{ const el=document.createElement("div"); el.className="botone"; el.textContent=n; blast.field.appendChild(el);
     return {name:n, pc:pcOfName(n), x:Math.max(30,Math.min(blast.W-30, cx+(i-(tones.length-1)/2)*spread/Math.max(1,tones.length-1||1))), y:k.y+k.h, vy:(38+Math.random()*16)/speedMul(), el}; })};
-  blast.padEl.classList.add("cannon"); blast.ballEl.classList.add("held");
-  banner("POWER UP!", `SHOOT ${k.sym}'S TONES ON THE HARP`); sfx("bonus");
+  blast.padEl.classList.add("cannon");
+  banner("POWER UP!", `SHOOT ${k.sym}'S TONES FOR A BONUS, AND KEEP THE BALL GOING`); sfx("bonus");
 }
 function boPowerTick(now, dt){
-  const pw=blast.power, p=blast.paddle, R=BO_R;
-  if(blast.ball) blast.ballEl.style.transform=`translate(${blast.ball.x-R}px,${blast.ball.y-R}px)`;   // the ball waits where it was
+  const pw=blast.power, p=blast.paddle;
   for(const t of pw.tones){ if(t.gone) continue;
     t.y+=t.vy*dt; t.el.style.transform=`translate(${t.x}px,${t.y}px) translate(-50%,-50%)`;
     const under=Math.abs(t.x-(p.x+p.w/2))<p.w*.35; t.el.classList.toggle("aimed", under);
@@ -293,11 +294,11 @@ function boLost(){
   }
   banner(`${blast.lives} ${blast.lives===1?"LIFE":"LIVES"} LEFT`); boServe();
 }
-// a chord from the buttons: every cracked brick of that chord breaks (not while the cannon's out)
+// a chord from the buttons: every cracked brick of that chord breaks, cannon or not
 function breakoutChord(voices){
   if(!blast || blast.kind!=="breakout") return;
   if(blast.phase==="demo" && blast.demo){ endBoDemo(blast.demo); return; }
-  if(blast.phase!=="play" || blast.power) return;
+  if(blast.phase!=="play") return;
   const pitches=voices.map(v=>v.pitch), name=chordName(pitches,devFifths());
   const matches=i=>{
     if(i.bassPc==null) return isChord(pitches,i.rootPc,i.q);
@@ -382,8 +383,8 @@ function boDemo(){
       // the power-up: a brick's chord rains its tones and the paddle turns cannon, sliding under each to shoot it
       const pk=blast.bricks.find(b=>b.alive && !b.cracked);
       if(pk){ pk.alive=false; pk.el && pk.el.remove(); explode(pk.x+pk.w/2, pk.y+pk.h/2, 22, ["#FFD35A","#F1E8D2","#7FE9FF"]); boPowerUp(pk);
-        say("POWER UP","BREAK A POWER BRICK AND ITS CHORD'S TONES RAIN DOWN. THE PADDLE BECOMES A CANNON."); await step(2400);
-        say("SHOOT THE TONES","SLIDE UNDER EACH TONE AND PLUCK IT ON THE HARP. SHOOT THEM ALL FOR THE WHOLE CHORD.");
+        say("POWER UP","BREAK A POWER BRICK AND ITS CHORD'S TONES RAIN DOWN, AND THE PADDLE BECOMES A CANNON. THE BALL KEEPS GOING."); await step(2400);
+        say("SHOOT THE TONES","SLIDE UNDER EACH TONE AND PLUCK IT ON THE HARP, FOR A BONUS. SHOOT THEM ALL FOR THE WHOLE CHORD.");
         for(const t of [...(blast.power?blast.power.tones:[])]){ if(t.gone) continue; blast.demoAim=t.x; await step(650); boDemoShoot(t); await step(450); }
         blast.demoAim=null; await step(1600); }
       say("READY?","CLEAR THE WALL. DON'T LET THE BALL PAST."); sfx("level"); await step(3200);

@@ -132,7 +132,7 @@ function slBar(){
   blast.hud.innerHTML=`<span>SCORE ${blast.score}${multTag()}</span><span class="lvl">LEVEL ${blast.level+1} · ${SL_LEVELS[blast.level].n.toUpperCase()}${mult>1?` · STREAK ×${mult}`:""}</span><span class="lives">${"♥".repeat(Math.max(0,blast.lives))||"-"}</span>`;
 }
 const SLMENU_G={key:"sight", title:"SIGHT LINE",
-  rules:()=>`<p>NOTES SCROLL ALONG THE STAFF TO THE PLAYHEAD. PLUCK EACH ONE ON THE HARP, AND PLAY EACH CHORD ON THE BUTTONS, AS IT REACHES THE LINE: DEAD ON SCORES DOUBLE.</p><p>A KEY SIGNATURE'S SHARPS AND FLATS APPLY TO EVERY NOTE ON THEIR LETTER. WHEN THE KEY CHANGES, SET THE MINICHORD TO IT.</p><p>A CHORD WITH ITS 3RD OR 5TH IN THE BASS IS AN INVERSION: SWING THE VOICING WITH A KNOB, OR ↑ ↓.</p>`,
+  rules:()=>`<p>NOTES SCROLL ALONG THE STAFF TO THE PLAYHEAD. PLUCK EACH ONE ON THE HARP, AND PLAY EACH CHORD ON THE BUTTONS, AS IT REACHES THE LINE: DEAD ON SCORES DOUBLE.</p><p>THE HARP FOLLOWS THE STAFF: A NOTE WRITTEN HIGH OR LOW SOUNDS IN ITS OWN OCTAVE.</p><p>A KEY SIGNATURE'S SHARPS AND FLATS APPLY TO EVERY NOTE ON THEIR LETTER. WHEN THE KEY CHANGES, SET THE MINICHORD TO IT.</p><p>A CHORD WITH ITS 3RD OR 5TH IN THE BASS IS AN INVERSION: SWING THE VOICING WITH A KNOB, OR ↑ ↓.</p>`,
   stat:()=>`NOTES ${blast.hits}`,
   rows:row=>{ row("SPEED", SPEEDS.map(x=>x[0].toUpperCase()), ()=>+saved.speed||0, i=>{ saved.speed=i; save(); }); },
   levels:SL_LEVELS, begin:i=>beginSight(i), demo:()=>slDemo(), modNote:false};
@@ -141,7 +141,7 @@ function beginSight(level){
   newRun();
   piano.start(); stopDemo(); clearTimeout(blast.attract); clearTimeout(blast.cabT);
   if(blast.overlay){ blast.overlay.remove(); blast.overlay=null; }
-  Object.assign(blast,{score:0, lives:3, level, startLevel:level, hits:0, streak:0, phase:"play", over:false, notes:[], tune:null, modFor:null});
+  Object.assign(blast,{score:0, lives:3, level, startLevel:level, hits:0, streak:0, phase:"play", over:false, notes:[], tune:null, modFor:null, harpOct:null});
   saved.sightStart=level; save(); stats.streak=0; scoreboard();
   slLevelStart();
   cancelAnimationFrame(blast.raf); blast.last=performance.now(); blast.raf=requestAnimationFrame(slTick);
@@ -203,9 +203,21 @@ function slTick(now){
       if(n.x < -40){ n.gone=true; n.el && n.el.remove(); } }
     blast.notes=blast.notes.filter(n=>!n.gone);
     const next=blast.notes.find(n=>!n.done && !n.change);
-    if(next && next!==blast.helped){ blast.helped=next; if(next.chord) helpChord(SHARP_NAMES[next.rootPc], next.q); else helpString(next.pc); }
+    if(next && next!==blast.helped){ blast.helped=next; if(next.chord) helpChord(SHARP_NAMES[next.rootPc], next.q); else helpString(next.pc);
+      if(blast.phase==="play") slHarpFor(next); }
   }
   blast.raf=requestAnimationFrame(slTick);
+}
+// The harp plays the register the note is written in: its octave change (address 99) moves the
+// chromatic strings a whole octave at a time, the C string sounding C3 at 0, C4 (middle C) at 1, C5 at
+// 2, C6 at 3 and C7 at 4. So the treble staff's middle C, the C in its third space and the C two
+// ledger lines up are three different Cs on the harp, as written. The bass staff's lowest notes, below
+// C3, sound an octave up: the harp goes no lower.
+const slHarpOctave=midi=> Math.max(0, Math.min(4, Math.floor((midi-48)/12)));
+function slHarpFor(n){
+  if(!n || n.chord || n.midi==null || !canWrite() || !hasSetting(99)) return;
+  const o=slHarpOctave(n.midi); if(o===blast.harpOct) return;
+  blast.harpOct=o; borrow(99,o);
 }
 // the key change reaching the line: the staff's in the new key, and the minichord's to be set to it
 function slKeyChange(f, n){
