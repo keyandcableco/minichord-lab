@@ -425,7 +425,7 @@ function chDemo(){
       say("TUNE IN","EACH CALL COMES THROUGH STATIC. TURN A KNOB TILL THE BEATING STOPS, OR PLUCK THE STATION'S NOTE.");
       blast.radioEl.classList.add("tuning"); radio("▒▒ STATIC ▒▒  TUNE IN: A KNOB, ←→, OR PLUCK THE STATION'S NOTE");
       const bars=blast.radioEl.querySelectorAll(".chmeter i");
-      for(const n of [0,1,1,2,3,2,3,4,4,5]){ bars.forEach((b,i)=>b.classList.toggle("on", i<n)); await step(420); }
+      for(const [j,n] of [0,1,1,2,3,2,3,4,4,5].entries()){ bars.forEach((b,i)=>b.classList.toggle("on", i<n)); helpKnob(steerKnob(), .2+j*.05); await step(420); }   // the dial coming round on a knob
       blast.radioEl.classList.remove("tuning"); sfx("key"); await step(900);
       radio("FIRE AT V IN C"); trouble("fire",2,0); say("DECODE","FIRES IN THREE PLACES, BUT THE RADIO SAYS WHICH: V IN C IS G."); await step(3800);
       say("SIGNAL THEM","FOUND! THEY ONLY COME UP WHEN YOU PLUCK THEIR CHORD ON THE HARP, ROOT UP: G, B, D.");

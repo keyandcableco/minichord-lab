@@ -31,13 +31,15 @@ const DEMO_SCENES=[
   {key:true, title:"SETTING THE KEY", text:"HOLD BOTH PRESET BUTTONS. THE LIGHT BLINKS.", hold:3200},
   {key:true, keyPress:[3,1], text:"THE ROWS ARE NOW SHARP, NATURAL AND FLAT KEYS. PRESS ONE.", hold:3400},
   {key:false, keyDone:"D", text:"LET GO: YOU'RE IN D MAJOR. ITS F AND C BUTTONS NOW PLAY F♯ AND C♯.", hold:3800},
-  {title:"MANUAL AIM ×2", text:"AN OPTION: STEER THE SHIP WITH A KNOB, AND A CHORD FIRES STRAIGHT UP. GET UNDER THE CHORD, THEN PLAY IT, FOR DOUBLE.", hold:4200},
-  {title:"THE BEAM", text:"IN MANUAL AIM, KEEP A CHORD SOUNDING (THE HOLD BUTTON LATCHES IT) AND A BEAM FIRES: SWEEP IT UNDER EVERY CHORD LIKE IT. IT RUNS ON ENERGY.", hold:4600},
+  {knob:true, title:"MANUAL AIM ×2", text:"AN OPTION: STEER THE SHIP WITH A KNOB, AND A CHORD FIRES STRAIGHT UP. GET UNDER THE CHORD, THEN PLAY IT, FOR DOUBLE.", hold:4200},
+  {knob:true, title:"THE BEAM", text:"IN MANUAL AIM, KEEP A CHORD SOUNDING (THE HOLD BUTTON LATCHES IT) AND A BEAM FIRES: SWEEP IT UNDER EVERY CHORD LIKE IT. IT RUNS ON ENERGY.", hold:4600},
   {title:"POWER-UPS", text:"PLAY A POWER-UP'S CHORD TO TAKE IT. OMNI BEAM BLASTS ANY CHORD IT TOUCHES; SLOW TIME HALVES THE SPEED; A SHIELD SAVES A LIFE.", hold:4600},
   {title:"SCORING", text:"RICHER CHORDS SCORE MORE: A MAJOR CHORD 10, A MINOR 15, SEVENTHS 20 TO 30, UP TO 50 FOR SIXTHS AND DIMINISHED SEVENTHS. HALF AGAIN WITH THE MODIFIER, AND HALF AGAIN AS A SLASH CHORD.", hold:5200},
   {title:"READY?", text:"CHOOSE A LEVEL. PLAY EACH CHORD BEFORE IT LANDS.", hold:2800},
 ];
-function stopDemo(){ if(blast && blast.demo){ blast.demo.run=false; blast.demo.el.remove(); blast.demo=null; } if(blast && blast.field) blast.field.classList.remove("demoing"); }
+function stopDemo(){ const was=!!(blast && blast.demo);
+  if(blast && blast.demo){ blast.demo.run=false; blast.demo.el.remove(); blast.demo=null; } if(blast && blast.field) blast.field.classList.remove("demoing");
+  if(was && blast){ blast.demoBoard=null; blast.demoShip=null; helperSync(true); } }   // the demo's minichord goes, unless beginner mode keeps one
 function runDemo(attract){
   if(!blast) return;
   newRun(); stopDemo(); clearTimeout(blast.attract);
@@ -62,6 +64,7 @@ function runDemo(attract){
   place(el.querySelector(".mod"), MOD_UP);
   el.querySelectorAll(".pre").forEach((p,i)=>place(p, MC_PARTS.presets[i]));
   place(el.querySelector(".led"), MC_PARTS.led);
+  blast.demoBoard={knobs:mcKnobs(el.querySelector(".board"), place)};
   DEMO_ROWS.forEach(([tag],r)=>{ const t=document.createElement("span"); t.className="rowtag"; t.textContent=tag;
     const first=MC_PARTS.buttons[r*7];
     if(r===0){ t.classList.add("undermod"); t.style.left=(MOD_UP[0]+MOD_UP[2]/2)+"%"; t.style.top=(MOD_UP[1]+MOD_UP[3]+1.4)+"%"; }   // the top row's tag sits under the modifier
@@ -97,6 +100,10 @@ function runDemo(attract){
       if(sc.keyPress){ await sleep(900); if(!token.run) return; cells[sc.keyPress[0]][sc.keyPress[1]].classList.add("lit"); sfx("press"); setTimeout(()=>token.run && sfx("key"), 120); }
       if(sc.keyDone){ label(false); sfx("letgo"); banner(`KEY OF ${sc.keyDone}`, "D MAJOR: F♯ AND C♯"); }
       if(sc.title==="READY?") sfx("level");
+      if(sc.knob){   // the steering knob turned one way and the other, the ship sliding under it
+        const t0=performance.now();
+        while(performance.now()-t0<sc.hold-300){ if(!token.run) return; const v=.5+.42*Math.sin((performance.now()-t0)/700); blast.demoShip=.08+.84*v; helpKnob(steerKnob(), v); await sleep(60); }
+        blast.demoShip=null; continue; }
       if(sc.chord){
         // the chord falls, the buttons light one after another, and they shoot it down
         const ch=document.createElement("span"); ch.className="fchord democh"; ch.textContent=sc.chord; ch.style.left=`calc(${DEMO_SHIP*100}% - 2.2em)`; ch.style.top="92px";

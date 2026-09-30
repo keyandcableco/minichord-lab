@@ -312,7 +312,7 @@ function stDemo(){
       blast.piece={kind:"I", cells:ST_PIECES.I.map(q=>[...q]), notes:[0,4,7,9], x:3, y:0}; stDraw();
       say("SPELL A CHORD","A PIECE OF C, E, G AND A FALLS. SLIDE IT OVER AND DROP IT: A CHORD'S NOTES ANYWHERE IN A ROW LIGHT UP.");
       for(let k=0;k<4;k++){ stFall(); await step(240); }
-      for(const dx of [-1]){ stMove(dx); await step(360); }
+      for(const dx of [-1]){ helpZone(dx<0?"left":"right"); stMove(dx); await step(360); }
       while(stFits(blast.piece.cells,blast.piece.x,blast.piece.y+1)){ blast.piece.y++; stDraw(); await step(70); }
       const p=blast.piece; stAbs(p.cells,p.x,p.y).forEach(([x,y],i)=>blast.grid[y][x]={pc:p.notes[i]}); blast.piece=null; sfx("press"); stDraw(); await step(900);
       say("IT LIGHTS UP","THE ROW HOLDS C, E AND G: C MAJOR. SIDE BY SIDE LIKE THIS, IT SCORES DOUBLE. PLAY IT ON THE MINICHORD."); sfx("key"); await step(3000);
@@ -323,7 +323,7 @@ function stDemo(){
       stGravity(); sfx("boom"); stDraw(); await step(1800);
       say("ROTATE","A ON THE HARP (OR UP) TURNS A PIECE; B DROPS IT. A WHOLE ROW OF ONE CHORD SCORES FIVE TIMES.");
       blast.piece={kind:"T", cells:ST_PIECES.T.map(q=>[...q]), notes:[7,11,2,5], x:4, y:0}; stDraw(); await step(900);
-      for(let k=0;k<3;k++){ stRotate(); await step(600); }
+      for(let k=0;k<3;k++){ helpZone("A"); stRotate(); await step(600); }
       await step(1200);
       say("READY?","LATER LEVELS: OTHER KEYS, SEVENTHS ACROSS FOUR BLOCKS, AND DIMINISHED CHORDS."); sfx("level"); await step(2800);
       endStDemo(token);

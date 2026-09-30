@@ -67,6 +67,7 @@ function demoShell(end){
   newRun();
   const el=document.createElement("div"); el.className="demo"; blast.field.appendChild(el); blast.field.classList.add("demoing");
   const token={run:true, el}; blast.demo=token;
+  gameLater(()=>{ if(blast.demo===token) helperSync(true); }, 0);         // the on-screen minichord, to show what's pressed
   el.innerHTML=`<div class="demohead"><span class="demotag blink">DEMO</span><span class="demotitle"></span><button class="demoskip">SKIP ▶</button></div><p class="democap"></p>`;
   el.querySelector(".demoskip").onclick=()=>end(token);
   const say=(t,c)=>{ el.querySelector(".demotitle").textContent=t||""; el.querySelector(".democap").textContent=c; };
@@ -74,7 +75,14 @@ function demoShell(end){
   return {el, token, say, sleep, step};
 }
 // a demo's chord, heard on the page's piano
-function demoPlay(notes){ if(settings.sounds && piano.ctx){ const go=()=>piano.play(notes,{when:.02,dur:1}); piano.ctx.state==="running"?go():piano.ctx.resume().then(go).catch(()=>{}); } }
+// what a demo plays, lit on the on-screen minichord: one note its harp string, a chord its buttons
+function demoLight(notes){
+  if(!blast || blast.phase!=="demo") return;
+  if(notes.length===1){ if(Number.isInteger(notes[0])) helpString(mod(notes[0],12)); return; }
+  const id=chordId(notes); if(!id) return;
+  helpChord((devFifths()<0 ? FLAT_NAMES : SHARP_NAMES)[id.root], id.quality);
+}
+function demoPlay(notes){ demoLight(notes); if(settings.sounds && piano.ctx){ const go=()=>piano.play(notes,{when:.02,dur:1}); piano.ctx.state==="running"?go():piano.ctx.resume().then(go).catch(()=>{}); } }
 // Every stretch of a game, a play from level start to game over, a demo, a title screen, is a run
 // of its own. A timer set with gameLater belongs to the run that set it, and only fires if that run is
 // still going: a timer from a game that's over can't reach into the next one (Play Again pressed at

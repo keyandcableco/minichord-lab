@@ -304,8 +304,10 @@ function swDemo(){
   blast.keys=[swKeyOf("G",false)]; blast.mines=[]; swLay(1,4);
   const m=blast.mines[0]; swLayout(); swDraw();
   const at=(x,y)=>blast.clue.get(swKey(x,y));
-  const walk=async(x,y)=>{ while(blast.cur[0]!==x || blast.cur[1]!==y){ blast.cur=[blast.cur[0]+Math.sign(x-blast.cur[0]), blast.cur[1]+Math.sign(y-blast.cur[1])]; blast.phase="play"; swDraw(); blast.phase="demo"; sfx("press"); await step(180); } };
-  const sweep=async()=>{ blast.open.add(swKey(...blast.cur)); blast.phase="play"; swDraw(); blast.phase="demo"; sfx("shoot"); await step(700); };
+  const walk=async(x,y)=>{ while(blast.cur[0]!==x || blast.cur[1]!==y){ const dx=Math.sign(x-blast.cur[0]), dy=Math.sign(y-blast.cur[1]);
+      helpZone(dx>0?"right":dx<0?"left":dy>0?"down":"up");                     // the harp as a d-pad, pressed
+      blast.cur=[blast.cur[0]+dx, blast.cur[1]+dy]; blast.phase="play"; swDraw(); blast.phase="demo"; sfx("press"); await step(180); } };
+  const sweep=async()=>{ helpZone("A"); blast.open.add(swKey(...blast.cur)); blast.phase="play"; swDraw(); blast.phase="demo"; sfx("shoot"); await step(700); };
   const cell=(d)=>{ for(let y=0;y<SW_H;y++) for(let x=0;x<SW_W;x++) if(!swMineAt(x,y) && Math.max(Math.abs(m.x-x),Math.abs(m.y-y))===d) return [x,y]; return null; };
   sfx("attract");
   (async()=>{

@@ -326,7 +326,7 @@ function slDemoHit(n){
   const d=blast.demo; if(!d) return;
   const [t,c]=n.say||["",""]; if(d.el) { const tt=d.el.querySelector(".demotitle"), cc=d.el.querySelector(".democap"); if(tt) tt.textContent=t; if(cc) cc.textContent=c; }
   n.done=true; n.el && n.el.classList.add("hit"); sfx("shoot");
-  if(n.chord){ if(n.inv){ blast.inv=n.inv; if(blast.invEl) blast.invEl.textContent=`VOICING: ${SL_INV[n.inv]}`; }
+  if(n.chord){ if(n.inv){ blast.inv=n.inv; if(blast.invEl) blast.invEl.textContent=`VOICING: ${SL_INV[n.inv]}`; if(blast.phase==="demo") helpKnob(steerKnob(), (n.inv+.5)/3); }
     helpChord(SHARP_NAMES[n.rootPc], n.q); demoPlay(n.dns.map(d=>slMidi(d,0,blast.keyF))); }
   else { helpString(n.pc); demoPlay([n.midi]); }
   if(--blast.demoLeft<=0) gameLater(()=>{ if(blast.demo===d) endSlDemo(d); }, 3800);

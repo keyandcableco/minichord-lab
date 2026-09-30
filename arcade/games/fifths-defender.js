@@ -251,7 +251,7 @@ function fdDemo(){
   const play=demoPlay;
   sfx("attract");
   (async()=>{
-    const turnTo=async i=>{ while(blast.aim!==i){ const d=mod(i-blast.aim,12)<=6?1:-1; blast.aim=mod(blast.aim+d,12); sfx("press"); fdLabels(); await step(260); } };
+    const turnTo=async i=>{ while(blast.aim!==i){ const d=mod(i-blast.aim,12)<=6?1:-1; blast.aim=mod(blast.aim+d,12); helpKnob(steerKnob(), blast.aim/12); sfx("press"); fdLabels(); await step(260); } };
     try{
       say("FIFTHS DEFENDER","THE TWELVE KEYS STAND ROUND YOU IN FIFTHS. C AT THE TOP, G ONE STEP ROUND."); await step(4000);
       blast.foes.push({spoke:1, r:blast.R, wob:0},{spoke:11, r:blast.R*1.15, wob:2});

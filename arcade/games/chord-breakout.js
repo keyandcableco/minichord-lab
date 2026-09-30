@@ -149,6 +149,7 @@ function boTick(now){
     const p=blast.paddle, W=blast.W||blast.field.clientWidth;
     // the paddle: toward the knob's or the mouse's position, or pushed by the arrow keys
     if(blast.phase==="demo" && blast.ball) p.target = blast.demoAim!=null ? blast.demoAim-p.w/2 : blast.ball.x-p.w/2+Math.sin(now/300)*p.w*.2;
+    if(blast.phase==="demo" && blast.demo && typeof helpKnobFollow==="function") helpKnobFollow(steerKnob(), Math.max(0,Math.min(1,p.x/Math.max(1,blast.W-p.w))));   // the paddle, on the on-screen knob
     if(blast.keyDir) p.target=(p.target??p.x)+blast.keyDir*520*dt;
     if(p.target!=null){ p.target=Math.max(0,Math.min(W-p.w,p.target)); p.x+=(p.target-p.x)*Math.min(1,dt*18); }
     blast.padEl.style.transform=`translateX(${p.x}px)`;
@@ -209,7 +210,7 @@ function boStep(now, h){
     boKeepAngle(b);
     if(!k.cracked){ k.cracked=true; k.crackedAt=now; k.el.classList.add("cracked"); sfx("key"); boHelp(); }
     else sfx("press");
-    if(blast.phase==="demo" && blast.demoAuto) gameLater(()=>{ if(blast && k.alive && k.cracked) boBreak(k, true); }, 650);
+    if(blast.phase==="demo" && blast.demoAuto) gameLater(()=>{ if(blast && k.alive && k.cracked){ helpChord(k.root, k.q); boBreak(k, true); } }, 650);
     break;
   }
   if(b.y>H+R){ if(blast.phase==="demo"){ boServe(); return false; } boLost(); return false; }
@@ -340,6 +341,7 @@ mc.addEventListener("knob", e=>{
     return;
   }
   if(blast.knobBase) blast.knobBase={};
+  if(blast.helpBoard && typeof helpKnob==="function") helpKnob(knob, value);   // the on-screen minichord's knob turns too
   if(blast.kind==="chopper"){ chopperKnob(value); return; }                   // any knob tunes the radio
   if(blast.kind==="asteroids" && blast.aimManual && knob===asAimKnob()){ asAim(value); return; }   // manual aim: the other knob spins the ship
   if(knob!==steerKnob()) return;

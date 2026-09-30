@@ -277,7 +277,7 @@ function snDemo(){
       say("SPELL A CHORD","E, G♯ AND B GLOW: THEY SPELL E MAJOR."); await step(2600);
       say("CASH IN","PLAY E MAJOR ON THE MINICHORD AND THEY BURST. BIGGER CHORDS SCORE MORE.");
       await step(900);
-      if(settings.sounds && piano.ctx){ const go=()=>piano.play([52,56,59,64],{when:.02,dur:1.2}); piano.ctx.state==="running"?go():piano.ctx.resume().then(go).catch(()=>{}); }
+      demoPlay([52,56,59,64]);                                                   // E major, heard and lit on the buttons
       snDemoCash(); await step(2600);
       say("WATCH YOUR LOAD","WALLS, YOUR OWN TAIL AND CARRYING TOO MUCH COST A LIFE."); await step(3200);
       say("READY?","CHOOSE A LEVEL. STEER ON THE HARP OR THE ARROW KEYS."); sfx("level"); await step(2800);

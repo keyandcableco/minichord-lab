@@ -165,6 +165,10 @@ function asTick(now){
   if(blast.orbitWant!=null && blast.hx!=null){ const a=blast.orbitA??Math.PI/2, d=blast.orbitWant-a;   // the ship glides round to where it's steered
     blast.orbitA = Math.abs(d)<.002 ? blast.orbitWant : a+d*Math.min(1,dt*9); asPlace(); }
   asEdge(now, dt);
+  if(blast.phase==="demo" && blast.demo && typeof helpKnobFollow==="function"){   // the demo's steering and aiming, on the on-screen knobs
+    const lap=a=>mod((a/(2*Math.PI))+.5, 1);
+    if(blast.orbitWant!=null) helpKnobFollow(steerKnob(), lap(blast.orbitWant-Math.PI/2));
+    if(blast.aimManual && blast.aimWant!=null) helpKnobFollow(asAimKnob(), lap(blast.aimWant+Math.PI/2)); }
   if(asManual() && blast.aimWant!=null){ const d=blast.aimWant-blast.shipAng; blast.shipAng += Math.abs(d)<.002 ? d : d*Math.min(1,dt*12); }
   if(blast.phase==="play" || blast.phase==="demo"){
     if(blast.phase==="play" && now>=blast.next && blast.rocks.filter(r=>!r.dead && r.kind==="chord").length<4){ asSpawn(); blast.next=now+blast.gap*(.8+Math.random()*.4); }

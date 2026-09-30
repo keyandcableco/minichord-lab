@@ -170,7 +170,7 @@ function fxDraw(now, dt){
   // the ship: a little pixel cannon at the bottom centre, or, in the demo, off to the left under the
   // chords it falls through, clear of the minichord drawn at the foot of the field; it glides there
   const steered = blast.aimManual || (typeof powerOn==="function" && powerOn("omni"));
-  const want = blast.phase==="demo" && blast.demo ? DEMO_SHIP : steered && blast.shipWant!=null ? blast.shipWant : .5;
+  const want = blast.phase==="demo" && blast.demo ? (blast.demoShip ?? DEMO_SHIP) : steered && blast.shipWant!=null ? blast.shipWant : .5;
   blast.shipF = blast.shipF==null ? want : blast.shipF+(want-blast.shipF)*Math.min(1,dt*3);
   const sx=Math.floor(W*blast.shipF), sy=H-6;
   g.fillStyle="#F1E8D2"; g.fillRect(sx-1,sy-4,2,3); g.fillRect(sx-3,sy-1,6,2); g.fillRect(sx-5,sy+1,10,2);

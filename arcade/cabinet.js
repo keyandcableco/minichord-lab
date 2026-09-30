@@ -254,7 +254,26 @@ const helpUsesChords=k=>["blaster","snake","asteroids","stack","breakout","fifth
 const helpUsesHarp=k=>["command","asteroids","fifths","breakout","sight","chopper"].includes(k);
 // the games whose on-screen minichord carries the harp too, as the strip or the keymaster plate, its
 // strings named: they ask for chords on the buttons and notes on the harp (Chopper Rescue's signal)
-const helpBoardHarp=k=>["asteroids","fifths","breakout","sight","chopper"].includes(k);
+const helpBoardHarp=k=>["asteroids","fifths","breakout","sight","chopper","fleet","frets"].includes(k);
+// A demo shows the on-screen minichord whether beginner mode is on or not, so everything the demo
+// plays is seen being pressed: the buttons, the harp, the knobs. Chord Invaders' demo has its own.
+const helpDemoing=()=> !!(blast && blast.phase==="demo" && blast.demo && blast.kind!=="blaster");
+// where the three knobs sit on the case, as percentages of its outline: chord, harp and mod, top to bottom
+const MC_KNOBS=[[88.75,20.9,3.5,6.4],[88.75,36.9,3.5,6.4],[88.75,52.9,3.5,6.4]];
+function mcKnobs(board, place){
+  return MC_KNOBS.map((pos,k)=>{ const e=document.createElement("div"); e.className="knob"; e.innerHTML=`<i></i><b>${KNOB_NAMES[k]}</b>`; place(e,pos); board.appendChild(e); return e; });
+}
+// a knob turned: its pointer round to the value (a quarter-turn short of either end, as a pot turns),
+// lit with its name while it moves
+function helpKnob(k, v){
+  const h=blast && (blast.helpBoard || blast.demoBoard), kn=h && h.knobs && h.knobs[k]; if(!kn) return;
+  kn.style.setProperty("--turn", `${-135+Math.max(0,Math.min(1,v))*270}deg`);
+  kn.classList.add("lit"); clearTimeout(kn._t); kn._t=setTimeout(()=>kn.classList.remove("lit"), 900);
+}
+// following a value a demo moves every frame: only when it has moved
+function helpKnobFollow(k, v){ const was=(blast.knobShown||(blast.knobShown=[]))[k]; if(was!=null && Math.abs(was-v)<.004) return; blast.knobShown[k]=v; helpKnob(k, v); }
+// a direction or button on the harp as a d-pad, flashed as a demo presses it
+function helpZone(z){ const i=kmLayout().byString.indexOf(z); if(i>=0) kmFlash(blast.strip, i); }
 function beginnerRow(opts){
   const r=document.createElement("div"); r.className="optrow"; const l=document.createElement("span"); l.className="optlabel"; l.textContent="BEGINNER";
   const g=document.createElement("div"); g.className="levels";
@@ -277,13 +296,13 @@ function beginnerRow(opts){
 }
 function helperSync(rebuild){
   if(!blast || !blast.field) return;
-  const k=cabKind(), want=!!saved.beginner;
+  const k=cabKind(), demo=helpDemoing(), want=!!saved.beginner || demo;
   if(rebuild || !want){
     if(blast.stripOrig){ blast.stripOrig.style.display=""; blast.strip=blast.stripOrig; blast.stripOrig=null; }   // the controller beside the field comes back
     blast.helpBoard?.el.remove(); blast.helpHarp?.el.remove(); blast.helpBoard=null; blast.helpHarp=null; blast.helpKey=null;
   }
   if(!want) return;
-  if(helpUsesChords(k) && !blast.helpBoard){ blast.helpBoard=helperBoard(k); blast.field.appendChild(blast.helpBoard.el); }
+  if((helpUsesChords(k) || demo) && k!=="command" && !blast.helpBoard){ blast.helpBoard=helperBoard(k); blast.field.appendChild(blast.helpBoard.el); }
   if(blast.helpBoard && blast.helpBoard.pad && blast.strip && blast.strip!==blast.helpBoard.pad){   // the minichord's harp is the controller now
     blast.stripOrig=blast.strip; blast.stripOrig.style.display="none"; blast.strip=blast.helpBoard.pad;
   }
@@ -296,6 +315,7 @@ function helperBoard(k){
   el.innerHTML=`<div class="board"><div class="mod">♯</div><div class="pre">▲</div><div class="pre">▼</div><span class="led"></span><div class="grid"></div></div>`;
   const place=(e,[x,y,w,h])=>{ e.style.left=x+"%"; e.style.top=y+"%"; e.style.width=w+"%"; e.style.height=h+"%"; };
   place(el.querySelector(".mod"), MC_PARTS.mod); el.querySelectorAll(".pre").forEach((p,i)=>place(p, MC_PARTS.presets[i])); place(el.querySelector(".led"), MC_PARTS.led);
+  const knobs=mcKnobs(el.querySelector(".board"), place);
   const grid=el.querySelector(".grid"), cells=[];
   DEMO_ROWS.forEach((_,r)=>DEMO_COLS.forEach((c,ci)=>{ const b=document.createElement("div"); b.className="cell"; place(b, MC_PARTS.buttons[r*7+ci]); (cells[ci]||=[])[r]=b; grid.appendChild(b); }));
   const labels=()=>{ const f=devFifths(); DEMO_ROWS.forEach(([,suf],r)=>DEMO_COLS.forEach((c,ci)=>{ const li=LETTERS.indexOf(c); cells[ci][r].textContent=c+ACC[keyAcc(li,f)]+suf; })); };
@@ -306,7 +326,7 @@ function helperBoard(k){
   // Chord Snake and Chord Stack steer on the harp: their minichord's harp is the controller itself,
   // each note marked with what it does and flashing as it's touched, in place of the one beside the field
   let pad=null;
-  if(k==="snake" || k==="stack"){
+  if(k==="snake" || k==="stack" || k==="sweeper"){
     const board=el.querySelector(".board"), L=kmLayout();
     if(L.cols===3){
       const cover=document.createElement("div"); cover.className="hbcover"; place(cover, MC_HARP.slot); board.appendChild(cover);
@@ -330,7 +350,7 @@ function helperBoard(k){
     }
     names=()=>{};
   }
-  return {el, cells, mod:el.querySelector(".mod"), labels, strings, names, pad};
+  return {el, cells, mod:el.querySelector(".mod"), labels, strings, names, pad, knobs};
 }
 // where the harp sits on the case, as percentages of its outline: the strip in its slot; and the
 // keymaster plate, centred over the slot, clear of the light on its left and the pots on its right,
