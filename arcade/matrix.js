@@ -55,10 +55,26 @@ function mxApply(){
   ensure(39,1);
   if(c==="alternate" && hasSetting(202)) for(let i=0;i<7;i++) ensure(202+i,0);
 }
-// the option row, for a game's menu
-function mxRow(row){
+// the option row, for a game's menu; picking redraws the menu, so the level names follow
+function mxRow(row, redraw){
   const av=mxAvailable(); if(av.length<2) return;
-  row("CHORDS", av.map(([t])=>t), ()=>Math.max(0, av.findIndex(([,v])=>v===mxChoice())), i=>{ saved.chordMatrix=av[i][1]; save(); });
+  row("CHORDS", av.map(([t])=>t), ()=>Math.max(0, av.findIndex(([,v])=>v===mxChoice())), i=>{ saved.chordMatrix=av[i][1]; save(); if(redraw) redraw(); });
+}
+const mxStandard=()=>mxChoice()==="standard";
+// a chord type as a game names it, dealt on the chosen matrix (on the standard one it stays as it is)
+const mxQ=q=> mxStandard() ? q : mxMap(q);
+// A level's name on another matrix: "Major and minor" means the major and minor buttons, which play
+// sus4 and sus2 on the alternate one, so a level that brings in chord types is named after the chords
+// it brings, as the matrix plays them; one that only changes roots or keys keeps its name (or an
+// alternative given for it, where the name would talk about chords, "Triads in G and F").
+const MX_Q_NAME={"":"major","m":"minor","°":"dim","+":"aug","°7":"dim7"};
+function mxList(qs){ const n=qs.map(q=>MX_Q_NAME[q]??q); return n.length<2 ? n.join("") : n.slice(0,-1).join(", ")+" and "+n[n.length-1]; }
+function mxLevelName(name, qsOf, i, opt={}){
+  if(mxStandard()) return name;
+  const now=[...new Set(qsOf(i).map(mxMap))], before=new Set(i>0 ? qsOf(i-1).map(mxMap) : []);
+  const added=now.filter(q=>!before.has(q));
+  if(!added.length) return opt.alt || name;
+  const s=mxList(added); return s[0].toUpperCase()+s.slice(1)+(opt.suffix||"");
 }
 // a tag for the HUD while a matrix other than the standard one plays
 const mxTag=()=> ({alternate:" · ALTERNATE", custom:" · CUSTOM"})[mxChoice()] || "";

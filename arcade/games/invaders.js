@@ -22,7 +22,9 @@ const BLAST_LEVELS=[{q:["","m"],acc:false},{q:["","m","7"],acc:false},{q:["","m"
   {q:["","m","7","maj7","m7","°","+"],acc:true,slash:"any",barry:true}]; // 6, m6 and °7 join, mid-round
 // slash chords need the slash note in the bass: firmware 13's slash voice set to Bass
 const slashReady=()=>!canWrite() || (mc.params[7]??0)>=13;
-const levelOk=l=> !(BLAST_LEVELS[l].slash && !slashReady()) && !(BLAST_LEVELS[l].barry && (!canWrite() || settings.set==="barry" || (typeof mxChoice==="function" && mxChoice()!=="standard")));
+const levelOk=l=> !(BLAST_LEVELS[l].slash && !slashReady()) && !(BLAST_LEVELS[l].barry && (!canWrite() || settings.set==="barry"))
+  && !((BLAST_LEVELS[l].slash || BLAST_LEVELS[l].barry) && typeof mxChoice==="function" && mxChoice()!=="standard");   // standard-matrix lessons
+const blastLevelName=i=> typeof mxLevelName==="function" ? mxLevelName(LEVEL_NAMES[i], j=>BLAST_LEVELS[j].q, i) : LEVEL_NAMES[i];
 function nextLevel(l){ for(let n=l+1;n<BLAST_LEVELS.length;n++) if(levelOk(n)) return n; return l; }
 // What each chord type is worth, the plain major least, each step up the ladder more, and Barry
 // Harris's sixths and diminished sevenths most; with each one's spelling, for the points screen.

@@ -18,7 +18,8 @@ const AS_LEVELS=[
   {n:"Diminished and augmented", qs:["","m","7","maj7","m7","°","+"], roots:"all"},
   {n:"Barry Harris", qs:["6","m6","7","maj7","m7","°7"], roots:"all", barry:true},
 ];
-const asLevelOk=i=> !AS_LEVELS[i].barry || canWrite();
+const asLevelOk=i=> !AS_LEVELS[i].barry || (canWrite() && mxStandard());     // Barry Harris is a standard-matrix lesson
+const asLevelName=i=>mxLevelName(AS_LEVELS[i].n, j=>AS_LEVELS[j].qs, i);
 function genAsteroids(){
   return {kind:"asteroids", prompt:"Chord Asteroids", sub:"Chord asteroids drift toward your ship. Play a rock's chord on the buttons to crack it into its notes, then pluck each note on the harp to shoot it down. A rock that reaches you costs a life.",
     answer:{type:"asteroids", get name(){ const r=asNearest("chord"); return r ? r.label : "the nearest rock"; }},
@@ -49,7 +50,7 @@ function startAsteroids(){
 function asDevice(){
   if(!blast || blast.kind!=="asteroids" || !canWrite()) return;
   arcadeSetup(()=>{ asHarp(); if(knobsReady()) borrow(238,1); });            // the knobs sending MIDI, to fly the ship
-  const sig=AS_LEVELS.map((_,i)=>asLevelOk(i)).join();
+  const sig=AS_LEVELS.map((_,i)=>asLevelOk(i)).join()+mxAvailable().length;
   if(blast.phase==="menu" && blast.overlay && blast.menuSig!==sig){ menuRebuild(()=>asMenu()); }
 }
 function buildAsteroidsField(box){
@@ -103,16 +104,17 @@ document.addEventListener("keydown", e=>{
 });
 function asBar(){
   if(!blast || blast.kind!=="asteroids" || !blast.hud) return;
-  blast.hud.innerHTML=`<span>SCORE ${blast.score}${multTag()}</span><span class="lvl">LEVEL ${blast.level+1}</span><span class="lives">${"♥".repeat(Math.max(0,blast.lives))||"-"}</span>`;
+  blast.hud.innerHTML=`<span>SCORE ${blast.score}${multTag()}</span><span class="lvl">LEVEL ${blast.level+1}${mxTag()}</span><span class="lives">${"♥".repeat(Math.max(0,blast.lives))||"-"}</span>`;
 }
 const ASMENU_G={key:"asteroids", title:"CHORD ASTEROIDS",
   rules:()=>`<p>PLAY A ROCK'S CHORD TO CRACK IT INTO ITS NOTES.</p><p>PLUCK EACH NOTE ON THE HARP TO SHOOT IT DOWN.</p><p>FLY ROUND YOUR ORBIT TO DODGE: THE MOD KNOB, OR THE ARROW KEYS. HOLD A KNOB AT ITS END AND IT KEEPS GOING ROUND.</p><p>MANUAL AIM SCORES DOUBLE: SPIN THE SHIP WITH ANOTHER KNOB (OR ↑ ↓). A CHORD OR A PLUCK FIRES WHERE IT POINTS.</p><p class="starline">${PIXEL_STAR}ROCKS SCORE BIG AND NEVER HURT.</p>`,
   rows:row=>{
+    mxRow(row, ()=>menuRebuild(()=>asMenu()));
     row("AIM", ["AUTO","MANUAL ×2"], ()=>saved.asAim?1:0, i=>{ saved.asAim=i; save(); });
     row("SPEED", SPEEDS.map(x=>x[0].toUpperCase()), ()=>+saved.speed||0, i=>{ saved.speed=i; save(); });
     row("LABEL SIZE", SIZES.map(x=>x[0]), ()=>saved.chordSize??1, i=>{ saved.chordSize=i; save(); applyChordSize(); });
   },
-  levels:AS_LEVELS, ok:asLevelOk, needs:"NEEDS A MINICHORD",
+  levels:AS_LEVELS, ok:asLevelOk, levelName:asLevelName, needs:"NEEDS A MINICHORD",
   begin:i=>beginAsteroids(i), demo:()=>asDemo(), modNote:"always"};
 function asMenu(over){ arcadeMenu(ASMENU_G, over); }
 function beginAsteroids(level){
@@ -123,12 +125,13 @@ function beginAsteroids(level){
   Object.assign(blast,{rocks:[], score:0, lives:3, level, startLevel:level, clears:0, phase:"play", over:false, jamUntil:0, aimManual:!!saved.asAim, aimWant:null, orbitOffset:0, aimOffset:0, orbitV:null, aimV:null,
     next:performance.now()+1200, gap:5200*speedMul()*Math.pow(.94,level), drift:34/speedMul()*Math.pow(1.05,level)});
   if(AS_LEVELS[level].barry && canWrite()) borrow(33,1); else if(canWrite() && hasSetting(33)) ensure(33,0);
+  mxApply();                                    // the minichord to the chosen matrix
   saved.asteroidsStart=level; save();
   if(blast.aimManual){ const inert=asKnobsInert(); blast.aimWant=blast.shipAng;
     banner("MANUAL AIM ×2", inert ? `SPIN THE SHIP WITH THE ${KNOB_NAMES[asAimKnob()]} KNOB` : "SPIN THE SHIP WITH ↑ ↓"); }
   stats.streak=0; scoreboard(); asCentre();
   cancelAnimationFrame(blast.raf); blast.last=performance.now(); blast.raf=requestAnimationFrame(asTick);
-  banner(`LEVEL ${level+1}`, `${AS_LEVELS[level].n.toUpperCase()} · ${(SPEEDS[+saved.speed]||SPEEDS[0])[0].toUpperCase()}`);
+  banner(`LEVEL ${level+1}`, `${asLevelName(level).toUpperCase()} · ${(SPEEDS[+saved.speed]||SPEEDS[0])[0].toUpperCase()}`);
   sfx("start"); asBar();
 }
 // a rock: a jagged outline, its label, and where it's heading
@@ -143,7 +146,7 @@ function asRock(kind, x, y, label, extra={}){
 function asSpawn(){
   const L=AS_LEVELS[blast.level], W=blast.field.clientWidth, H=blast.field.clientHeight;
   for(let k=0;k<40;k++){
-    const root=rnd(L.roots==="natural" ? ["C","D","E","F","G","A","B"] : ROOTS), q=rnd(L.qs), tones=spellChord(root,q);
+    const root=rnd(L.roots==="natural" ? ["C","D","E","F","G","A","B"] : ROOTS), q=mxQ(rnd(L.qs)), tones=spellChord(root,q);
     if(!tones) continue;
     if(blast.rocks.some(r=>!r.dead && r.kind==="chord" && r.label===root+q)) continue;
     // from a random point on the edge, toward the ship, a little off line
@@ -282,7 +285,7 @@ function asCleared(group, x, y){
     const was=blast.level;
     for(let n=blast.level+1;n<AS_LEVELS.length;n++) if(asLevelOk(n)){ blast.level=n; break; }
     blast.gap=Math.max(1800*speedMul(), blast.gap*.9); blast.drift*=1.06; sfx("level");
-    if(blast.level!==was){ banner(`LEVEL ${blast.level+1}`, AS_LEVELS[blast.level].n.toUpperCase()); if(AS_LEVELS[blast.level].barry && canWrite()) borrow(33,1); }
+    if(blast.level!==was){ banner(`LEVEL ${blast.level+1}`, asLevelName(blast.level).toUpperCase()); if(AS_LEVELS[blast.level].barry && canWrite()) borrow(33,1); }
     else banner("FASTER!");
   }
   asBar();

@@ -48,7 +48,7 @@ function arcadeMenu(g, over){
   if(g.rows) g.rows((...a)=>arcadeRow(ov,...a));
   const lp=document.createElement("p"); lp.className = over ? "" : "blink"; lp.textContent = over ? "OR START FROM" : "CHOOSE A LEVEL"; ov.appendChild(lp);
   const lv=document.createElement("div"); lv.className="levels";
-  g.levels.forEach((L,i)=>{ const b=document.createElement("button"), ok=g.ok ? g.ok(i) : true, n=typeof L==="string" ? L : L.n;
+  g.levels.forEach((L,i)=>{ const b=document.createElement("button"), ok=g.ok ? g.ok(i) : true, n=g.levelName ? g.levelName(i) : typeof L==="string" ? L : L.n;
     b.innerHTML=`${i+1}<small>${n}${ok?"":`<br>${g.needs}`}</small>`; b.disabled=!ok; b.onclick=()=>g.begin(i); lv.appendChild(b); });
   ov.appendChild(lv);
   if(g.ok) blast.menuSig=g.levels.map((_,i)=>g.ok(i)).join()+(g.sig ? g.sig() : "");

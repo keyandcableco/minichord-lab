@@ -15,8 +15,8 @@
 // drops it all the way), a knob slides the piece, and the arrow keys work too.
 const ST_W=10, ST_ROWS=18;
 const ST_LEVELS=[
-  {n:"Triads in C", keys:[0], qs:["","m"]},
-  {n:"Triads in G and F", keys:[1,-1], qs:["","m"]},
+  {n:"Triads in C", keys:[0], qs:["","m"], suffix:" in C"},
+  {n:"Triads in G and F", keys:[1,-1], qs:["","m"], alt:"In G and F"},
   {n:"Sevenths", keys:[0,1,-1], qs:["","m","7","maj7","m7"]},
   {n:"Diminished", keys:[0,1,-1,2,-2], qs:["","m","°","7","maj7","m7"]},
   {n:"Every key", keys:[-4,-3,-2,-1,0,1,2,3,4], qs:["","m","°","7","maj7","m7"]},
@@ -27,6 +27,7 @@ const ST_Q_SETS=MX_TONES;       // the notes each chord type sounds (arcade/matr
 // up and what the pieces are dealt from. Read live, so switching the mode mid-game switches them too.
 const stBarry=()=> typeof mc!=="undefined" && mc.params && mc.params[33]===1;
 // and on the alternate or a custom matrix (chosen at the start), whatever the same buttons play there
+const stLevelName=i=>mxLevelName(ST_LEVELS[i].n, j=>ST_LEVELS[j].qs, i, ST_LEVELS[i]);
 const stQs=()=>[...new Set(ST_LEVELS[blast.level].qs.map(mxMap))];
 const ST_MAJOR=[0,2,4,5,7,9,11];
 // the seven tetrominoes, as cells (x, y) from their top left
@@ -138,12 +139,12 @@ const STMENU_G={key:"stack", title:"CHORD STACK",
   rules:()=>`<p>TETRIS, WHERE THE BLOCKS ARE NOTES. MOVE AND ROTATE EACH PIECE AS IT FALLS${knobsReady()?": A KNOB SLIDES IT":""}.</p><p>WHEN A ROW HOLDS ALL OF A CHORD'S NOTES, ANYWHERE IN IT, THEY LIGHT UP: PLAY THAT CHORD TO CLEAR THEM. SIDE BY SIDE SCORES DOUBLE; A WHOLE ROW OF ONE CHORD, FIVE TIMES.</p><p>ON THE HARP: ◀ ▶ MOVE, ▼ DROPS A ROW, A ROTATES, B DROPS IT. OR THE ARROW KEYS, AND SPACE TO DROP.</p><p>THE CHORDS FOLLOW YOUR MINICHORD: WITH BARRY HARRIS MODE ON, SIXTHS AND DIMINISHED SEVENTHS LIGHT UP INSTEAD OF TRIADS. CHOOSE THE ALTERNATE CHORDS, OR YOUR PRESET'S OWN, UNDER CHORDS.</p>`,
   stat:()=>`CHORDS ${blast.clears}`,
   rows:row=>{
-    mxRow(row);
+    mxRow(row, ()=>menuRebuild(()=>stMenu()));
     row("SPEED", SPEEDS.map(x=>x[0].toUpperCase()), ()=>+saved.speed||0, i=>{ saved.speed=i; save(); });
     row("HARP", HARP_LAYOUTS.map(([t])=>t), harpLayoutIndex, i=>{ saved.harpLayout=HARP_LAYOUTS[i][1]; save(); kmRestrip(); });
     row("HARP SOUND", ["NORMAL","QUIET","OFF"], ()=>saved.harpSound??1, i=>{ saved.harpSound=i; save(); if(blast && blast.setupDone) kmHarp(); });
   },
-  levels:ST_LEVELS,
+  levels:ST_LEVELS, levelName:i=>stLevelName(i),
   begin:i=>beginStack(i), demo:()=>stDemo(), modNote:"always"};
 function stMenu(over){ arcadeMenu(STMENU_G, over); }
 // a new piece: a random tetromino, its four blocks a chord of the key plus a note of the key, shuffled
@@ -169,7 +170,7 @@ function beginStack(level){
   blast.next=stRandPiece(); stSpawn();
   saved.stackStart=level; save(); stats.streak=0; scoreboard(); stBar();
   cancelAnimationFrame(blast.raf); blast.last=performance.now(); blast.raf=requestAnimationFrame(stTick);
-  banner(`LEVEL ${level+1}`, `${ST_LEVELS[level].n.toUpperCase()} · ${stName(stKeyTonic(blast.keyF),blast.keyF)} MAJOR`); sfx("start");
+  banner(`LEVEL ${level+1}`, `${stLevelName(level).toUpperCase()} · ${stName(stKeyTonic(blast.keyF),blast.keyF)} MAJOR`); sfx("start");
 }
 const stAbs=(cells,x,y)=>cells.map(([cx,cy])=>[x+cx,y+cy]);
 const stFits=(cells,x,y)=>stAbs(cells,x,y).every(([cx,cy])=>cx>=0 && cx<ST_W && cy<ST_ROWS && (cy<0 || !blast.grid[cy][cx]));
@@ -259,7 +260,7 @@ function stackChord(voices){
   popup(blast.bx+ST_W/2*blast.cell, blast.by+runs[0].y*blast.cell, `${how}${runs[0].name}${runs.length>1?` ×${runs.length}`:""} +${pts}`, "#FFD35A");
   if(blast.clears>=(blast.level+1)*8 && blast.level<ST_LEVELS.length-1){
     blast.level++; blast.fallMs*=.88; stLevelKey(); sfx("level");
-    banner(`LEVEL ${blast.level+1}`, `${ST_LEVELS[blast.level].n.toUpperCase()} · ${stName(stKeyTonic(blast.keyF),blast.keyF)} MAJOR`); }
+    banner(`LEVEL ${blast.level+1}`, `${stLevelName(blast.level).toUpperCase()} · ${stName(stKeyTonic(blast.keyF),blast.keyF)} MAJOR`); }
   stDraw(); stBar();
 }
 function stOver(){

@@ -283,7 +283,7 @@ function blastKill(hit, how){
     blast.fall=Math.max(3500*speedMul(), blast.fall*.88); blast.gap=Math.max(900*speedMul(), blast.gap*.88);
     const lv=BLAST_LEVELS[blast.level];
     if(blast.level!==was){
-      banner(`LEVEL ${blast.level+1}`, lv.barry ? "BARRY HARRIS MODE COMES ON ONCE THE FIELD IS CLEAR" : lv.slash && !BLAST_LEVELS[was].slash ? "SLASH CHORDS: HOLD THE CHORD, THEN THE BASS NOTE'S BUTTON" : LEVEL_NAMES[blast.level].toUpperCase());
+      banner(`LEVEL ${blast.level+1}`, lv.barry ? "BARRY HARRIS MODE COMES ON ONCE THE FIELD IS CLEAR" : lv.slash && !BLAST_LEVELS[was].slash ? "SLASH CHORDS: HOLD THE CHORD, THEN THE BASS NOTE'S BUTTON" : blastLevelName(blast.level).toUpperCase());
     } else banner("FASTER!");
     if(lv.barry && !blast.barry) blast.pauseForBarry=true;
     sfx("level");

@@ -149,7 +149,7 @@ function beginBlast(level){
   if(canWrite() && hasSetting(35)){ borrow(35, keyIndexOf(0)); blast.dir = Math.random()<.5 ? 1 : -1; ensure(31, blast.dir>0 ? 0 : 1); modPill(); }   // written every time, whatever the page last read
   settings.blastStart=String(level+1); save();
   stats.streak=0; scoreboard(); blastBar();
-  banner(`LEVEL ${level+1}`, `${LEVEL_NAMES[level].toUpperCase()} · ${(SPEEDS[+saved.speed]||SPEEDS[0])[0].toUpperCase()}`);
+  banner(`LEVEL ${level+1}`, `${blastLevelName(level).toUpperCase()} · ${(SPEEDS[+saved.speed]||SPEEDS[0])[0].toUpperCase()}`);
   sfx("start");
   if(canWrite()) poll(true);
 }

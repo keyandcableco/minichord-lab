@@ -31,7 +31,7 @@ const snRoots=L=> L.roots==="natural" ? ["C","D","E","F","G","A","B"] : ROOTS;
 function snReady(){
   if(!blast || blast.kind!=="snake") return [];
   const L=SN_LEVELS[blast.level], names=new Set(blast.tail.map(t=>t.name)), out=[];
-  for(const root of names) for(const q of L.qs){
+  for(const root of names) for(const q of L.qs.map(mxQ)){
     const tones=spellChord(root,q); if(!tones) continue;
     if(tones.every(t=>names.has(t))) out.push({root, q, tones});
   }
@@ -59,10 +59,11 @@ function startSnake(){
 function snDevice(){
   if(!blast || blast.kind!=="snake" || !canWrite()) return;
   arcadeSetup(()=>{ kmHarp(); });
-  const sig=SN_LEVELS.map((_,i)=>snLevelOk(i)).join();
+  const sig=SN_LEVELS.map((_,i)=>snLevelOk(i)).join()+mxAvailable().length;
   if(blast.phase==="menu" && blast.overlay && blast.menuSig!==sig){ menuRebuild(()=>snMenu()); }
 }
-const snLevelOk=i=> !SN_LEVELS[i].barry || canWrite();
+const snLevelOk=i=> !SN_LEVELS[i].barry || (canWrite() && mxStandard());     // Barry Harris is a standard-matrix lesson
+const snLevelName=i=>mxLevelName(SN_LEVELS[i].n, j=>SN_LEVELS[j].qs, i);
 function buildSnakeField(box){
   const field=document.createElement("div"); field.className="field arcade snake"; field.setAttribute("aria-label","The Chord Snake board");
   const hud=document.createElement("div"); hud.className="hud"; field.appendChild(hud); fullButton(field);
@@ -80,17 +81,18 @@ function buildSnakeField(box){
 function snBar(){
   if(!blast || blast.kind!=="snake" || !blast.hud) return;
   const max=SN_MAX[blast.level]||6, load=blast.tail.length;
-  blast.hud.innerHTML=`<span>SCORE ${blast.score}${multTag()}</span><span class="lvl">LEVEL ${blast.level+1} · LOAD ${load}/${max}</span><span class="lives">${"♥".repeat(Math.max(0,blast.lives))||"-"}</span>`;
+  blast.hud.innerHTML=`<span>SCORE ${blast.score}${multTag()}</span><span class="lvl">LEVEL ${blast.level+1} · LOAD ${load}/${max}${mxTag()}</span><span class="lives">${"♥".repeat(Math.max(0,blast.lives))||"-"}</span>`;
 }
 const SNMENU_G={key:"snake", title:"CHORD SNAKE",
   rules:()=>`<p>EAT NOTES. WHEN THE ONES YOU CARRY SPELL A CHORD, PLAY IT TO CASH THEM IN.</p><p>STEER ON THE HARP OR THE ARROW KEYS. B DROPS YOUR OLDEST NOTE.</p>`,
   rows:row=>{
+    mxRow(row, ()=>menuRebuild(()=>snMenu()));
     row("SPEED", SPEEDS.map(x=>x[0].toUpperCase()), ()=>+saved.speed||0, i=>{ saved.speed=i; save(); });
     row("HARP", HARP_LAYOUTS.map(([t])=>t), harpLayoutIndex, i=>{ saved.harpLayout=HARP_LAYOUTS[i][1]; save();
     kmRestrip(); });
     row("HARP SOUND", ["NORMAL","QUIET","OFF"], ()=>saved.harpSound??1, i=>{ saved.harpSound=i; save(); if(blast && blast.setupDone) kmHarp(); });
   },
-  levels:SN_LEVELS, ok:snLevelOk, needs:"NEEDS A MINICHORD",
+  levels:SN_LEVELS, ok:snLevelOk, levelName:snLevelName, needs:"NEEDS A MINICHORD",
   begin:i=>beginSnake(i), demo:()=>snDemo(), modNote:"always"};
 function snMenu(over){ arcadeMenu(SNMENU_G, over); }
 // a fresh snake in the middle, pointing right, carrying nothing
@@ -107,7 +109,8 @@ function beginSnake(level){
   saved.snakeStart=level; save();
   stats.streak=0; scoreboard(); snLayout(); snReset(); snFill();
   cancelAnimationFrame(blast.raf); blast.last=performance.now(); blast.nextMove=performance.now()+900; blast.raf=requestAnimationFrame(snTick);
-  banner(`LEVEL ${level+1}`, `${SN_LEVELS[level].n.toUpperCase()} · ${(SPEEDS[+saved.speed]||SPEEDS[0])[0].toUpperCase()}`);
+  mxApply();                                  // the minichord to the chosen matrix
+  banner(`LEVEL ${level+1}`, `${snLevelName(level).toUpperCase()} · ${(SPEEDS[+saved.speed]||SPEEDS[0])[0].toUpperCase()}`);
   sfx("start"); snBar(); snDraw();
 }
 // keep the board stocked: the notes of a chord or two the level uses, and a stray or two
@@ -125,7 +128,7 @@ function snFill(){
     const carried=new Set(blast.tail.map(t=>t.name)), onBoard=new Set(blast.tiles.map(t=>t.name));
     let pool=[];
     for(let k=0;k<40 && !pool.length;k++){
-      const root = carried.size && Math.random()<.6 ? rnd([...carried]) : rnd(snRoots(L)), q=rnd(L.qs), tones=spellChord(root,q);
+      const root = carried.size && Math.random()<.6 ? rnd([...carried]) : rnd(snRoots(L)), q=mxQ(rnd(L.qs)), tones=spellChord(root,q);
       if(tones) pool=tones.filter(t=>!carried.has(t) && !onBoard.has(t));
     }
     const name = pool.length && Math.random()<.8 ? rnd(pool) : rnd(snRoots(L));
@@ -215,7 +218,7 @@ function snakeChord(voices){
     const was=blast.level;
     for(let n=blast.level+1;n<SN_LEVELS.length;n++) if(snLevelOk(n)){ blast.level=n; break; }
     blast.stepMs=Math.max(90, blast.stepMs*.92); sfx("level");
-    if(blast.level!==was){ banner(`LEVEL ${blast.level+1}`, SN_LEVELS[blast.level].n.toUpperCase()); if(SN_LEVELS[blast.level].barry && canWrite()) borrow(33,1); }
+    if(blast.level!==was){ banner(`LEVEL ${blast.level+1}`, snLevelName(blast.level).toUpperCase()); if(SN_LEVELS[blast.level].barry && canWrite()) borrow(33,1); }
     else banner("FASTER!");
   }
   snFill(); snBar(); snDraw();

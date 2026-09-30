@@ -76,12 +76,12 @@ function startBlaster(){
 const BLASTMENU_G={key:"blaster", title:"CHORD INVADERS",
   rules:()=>`<p>PLAY EACH CHORD BEFORE IT LANDS.</p><p>MANUAL AIM SCORES DOUBLE: STEER THE SHIP WITH A KNOB (OR ← →), AND A CHORD FIRES STRAIGHT UP. GET UNDER IT, THEN PLAY IT. KEEP A CHORD SOUNDING (THE HOLD BUTTON LATCHES IT) FOR A BEAM.</p><p>POWER-UPS FALL NOW AND THEN: PLAY THEIR CHORD TO TAKE THEM.</p><p class="starline">${PIXEL_STAR}CHORDS SCORE BIG AND NEVER HURT.</p>${keyComboReady() ? "<p>SET THE KEY WHEN A KEY BAR FALLS.</p>" : ""}`,
   rows:row=>{
-    mxRow(row);
+    mxRow(row, ()=>menuRebuild(()=>blastMenu()));
     row("AIM", ["AUTO","MANUAL ×2"], ()=>saved.invAim?1:0, i=>{ saved.invAim=i; save(); });
     row("SPEED", SPEEDS.map(x=>x[0].toUpperCase()), ()=>+saved.speed||0, i=>{ saved.speed=i; save(); });
     row("CHORD SIZE", SIZES.map(x=>x[0]), ()=>saved.chordSize??1, i=>{ saved.chordSize=i; save(); applyChordSize(); });
   },
-  levels:LEVEL_NAMES, ok:levelOk, needs:"NEEDS THE TEST FIRMWARE",
+  levels:LEVEL_NAMES, ok:levelOk, levelName:blastLevelName, needs:"NEEDS THE TEST FIRMWARE",
   begin:i=>beginBlast(i), demo:()=>runDemo(), modNote:"always"};
 function blastMenu(over){ arcadeMenu(BLASTMENU_G, over); }
 // the settings arrived: the menu's CHORDS row offers what this firmware can play, so rebuild it once they're known

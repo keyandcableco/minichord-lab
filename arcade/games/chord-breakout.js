@@ -26,7 +26,9 @@ const BO_LEVELS=[
   {n:"Slash chords", qs:["","m"], roots:"natural", slash:true},
   {n:"Barry Harris", qs:["","m","7","maj7","m7","°","+"], roots:"all", barry:true},
 ];
-const boLevelOk=i=> !(BO_LEVELS[i].slash && !slashReady()) && !(BO_LEVELS[i].barry && (!canWrite() || settings.set==="barry"));
+const boLevelOk=i=> !(BO_LEVELS[i].slash && !slashReady()) && !(BO_LEVELS[i].barry && (!canWrite() || settings.set==="barry"))
+  && !((BO_LEVELS[i].slash || BO_LEVELS[i].barry) && !mxStandard());      // slash chords and Barry Harris are standard-matrix lessons
+const boLevelName=i=>mxLevelName(BO_LEVELS[i].n, j=>BO_LEVELS[j].qs, i);
 // what a brick is worth before the rally and the level: Chord Invaders' ladder
 function boPoints(k){
   let p=BLAST_WORTH[k.q] ?? 10;
@@ -55,7 +57,7 @@ function startBreakout(){
 function boDevice(){
   if(!blast || blast.kind!=="breakout" || !canWrite()) return;
   arcadeSetup(()=>{ asHarp(); if(hasSetting(30)) ensure(30,0); if(slashReady()) ensure(113,1); if(knobsReady()) borrow(238,1); });   // the harp chromatic, for the cannon
-  const sig=BO_LEVELS.map((_,i)=>boLevelOk(i)).join()+knobsReady();
+  const sig=BO_LEVELS.map((_,i)=>boLevelOk(i)).join()+knobsReady()+mxAvailable().length;
   if(blast.phase==="menu" && blast.overlay && blast.menuSig!==sig){ menuRebuild(()=>boMenu()); }
 }
 function buildBreakoutField(box){
@@ -77,16 +79,17 @@ function buildBreakoutField(box){
 }
 function boBar(){
   if(!blast || blast.kind!=="breakout" || !blast.hud) return;
-  blast.hud.innerHTML=`<span>SCORE ${blast.score}${multTag()}</span><span class="lvl">LEVEL ${blast.level+1}</span><span class="lives">${"♥".repeat(Math.max(0,blast.lives))||"-"}</span>`;
+  blast.hud.innerHTML=`<span>SCORE ${blast.score}${multTag()}</span><span class="lvl">LEVEL ${blast.level+1}${mxTag()}</span><span class="lives">${"♥".repeat(Math.max(0,blast.lives))||"-"}</span>`;
 }
 const BOMENU_G={key:"breakout", title:"CHORD BREAKOUT",
   rules:()=>`<p>${knobsReady() ? "TURN A KNOB ON THE MINICHORD TO MOVE THE PADDLE (THE MOD KNOB, OR CHOOSE ANOTHER)." : "MOVE THE PADDLE WITH THE MOUSE OR THE ARROW KEYS. WITH FIRMWARE 17, A KNOB ON THE MINICHORD DOES IT."}</p><p>THE BALL CRACKS A CHORD BRICK. PLAY ITS CHORD BEFORE THE BALL COMES BACK AND IT BREAKS.</p><p>MISS IT AND THE BRICK HEALS. LET THE BALL PAST AND IT COSTS A LIFE.</p><p class="starline">${PIXEL_STAR}BRICKS SCORE FIVE TIMES AS MUCH.</p>`,
   rows:row=>{
+    mxRow(row, ()=>menuRebuild(()=>boMenu()));
     row("SPEED", SPEEDS.map(x=>x[0].toUpperCase()), ()=>+saved.speed||0, i=>{ saved.speed=i; save(); });
     row("LABEL SIZE", SIZES.map(x=>x[0]), ()=>saved.chordSize??1, i=>{ saved.chordSize=i; save(); applyChordSize(); });
     row("PADDLE", ["NARROW","NORMAL","WIDE"], ()=>saved.boPaddle??1, i=>{ saved.boPaddle=i; save(); });
   },
-  levels:BO_LEVELS, ok:boLevelOk, needs:"NEEDS THE TEST FIRMWARE", sig:()=>String(knobsReady()),
+  levels:BO_LEVELS, ok:boLevelOk, levelName:boLevelName, needs:"NEEDS THE TEST FIRMWARE", sig:()=>String(knobsReady())+mxAvailable().length,
   begin:i=>beginBreakout(i), demo:()=>boDemo(), modNote:"title"};
 function boMenu(over){ arcadeMenu(BOMENU_G, over); }
 // the wall: rows of chord bricks across the top, sized to the field
@@ -102,7 +105,7 @@ function boLayout(){
 }
 function boPick(L){
   for(let k=0;k<40;k++){
-    const q0=rnd(L.qs), q=blast.barry ? (BARRY_SWAP[q0]??q0) : q0;
+    const q0=rnd(L.qs), q=!mxStandard() ? mxMap(q0) : blast.barry ? (BARRY_SWAP[q0]??q0) : q0;
     const root=rnd(L.roots==="natural" ? ["C","D","E","F","G","A","B"] : ROOTS), t=spellChord(root,q); if(!t) continue;
     let bass=null; if(L.slash && Math.random()<.6){ bass=rnd([t[1],t[2]]); }
     return {root, q, bass, sym:root+q+(bass?"/"+bass:""), rootPc:pcOfName(root), bassPc:bass?pcOfName(bass):null};
@@ -134,7 +137,8 @@ function beginBreakout(level){
   saved.breakoutStart=level; save();
   stats.streak=0; scoreboard(); boLayout(); boWall(); boServe();
   cancelAnimationFrame(blast.raf); blast.last=performance.now(); blast.raf=requestAnimationFrame(boTick);
-  banner(`LEVEL ${level+1}`, `${BO_LEVELS[level].n.toUpperCase()} · ${(SPEEDS[+saved.speed]||SPEEDS[0])[0].toUpperCase()}`);
+  mxApply();                                  // the minichord to the chosen matrix
+  banner(`LEVEL ${level+1}`, `${boLevelName(level).toUpperCase()} · ${(SPEEDS[+saved.speed]||SPEEDS[0])[0].toUpperCase()}`);
   sfx("start"); boBar();
 }
 function boTick(now){
@@ -236,7 +240,7 @@ function boBreak(k, quiet){
     if(blast.phase==="demo"){ boWall(); return; }
     // a clear wall: the next level, a new wall, a little faster
     const was=blast.level; for(let n=blast.level+1;n<BO_LEVELS.length;n++) if(boLevelOk(n)){ blast.level=n; break; }
-    sfx("level"); banner(blast.level!==was ? `LEVEL ${blast.level+1}` : "WALL CLEAR!", blast.level!==was ? BO_LEVELS[blast.level].n.toUpperCase() : "FASTER");
+    sfx("level"); banner(blast.level!==was ? `LEVEL ${blast.level+1}` : "WALL CLEAR!", blast.level!==was ? boLevelName(blast.level).toUpperCase() : "FASTER");
     if(blast.level===was) blast.ball.speed*=1.08;
     gameLater(()=>{ if(blast && blast.kind==="breakout" && blast.phase==="play"){ boWall(); boServe(); boBar(); } }, 900);
   }
