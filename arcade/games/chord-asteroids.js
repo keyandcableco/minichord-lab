@@ -114,7 +114,7 @@ const ASMENU_G={key:"asteroids", title:"CHORD ASTEROIDS",
     row("SPEED", SPEEDS.map(x=>x[0].toUpperCase()), ()=>+saved.speed||0, i=>{ saved.speed=i; save(); });
     row("LABEL SIZE", SIZES.map(x=>x[0]), ()=>saved.chordSize??1, i=>{ saved.chordSize=i; save(); applyChordSize(); });
   },
-  levels:AS_LEVELS, ok:asLevelOk, levelName:asLevelName, needs:"NEEDS A MINICHORD",
+  levels:AS_LEVELS, ok:asLevelOk, levelName:asLevelName, sig:()=>String(mxAvailable().length), needs:"NEEDS A MINICHORD",
   begin:i=>beginAsteroids(i), demo:()=>asDemo(), modNote:"always"};
 function asMenu(over){ arcadeMenu(ASMENU_G, over); }
 function beginAsteroids(level){

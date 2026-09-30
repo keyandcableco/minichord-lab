@@ -34,13 +34,15 @@ if(!FORM["m7♭5"]) FORM["m7♭5"]=[[0,0],[2,3],[4,6],[6,10]];
 const MX_CHOICES=[["STANDARD","standard"],["ALTERNATE","alternate"],["CUSTOM","custom"]];
 // which the connected firmware can do: the alternate layout (39), and slots to load it from (202 to 208)
 function mxAvailable(){ return MX_CHOICES.filter(([,v])=> v==="standard" || (v==="alternate" && hasSetting(39)) || (v==="custom" && hasSetting(202))); }
-const mxChoice=()=> mxAvailable().some(([,v])=>v===saved.chordMatrix) ? saved.chordMatrix : "standard";
+// (a demo teaches the standard game: its chords, whatever the player has chosen or switched on)
+const mxDemo=()=> !!(blast && blast.phase==="demo");
+const mxChoice=()=> !mxDemo() && mxAvailable().some(([,v])=>v===saved.chordMatrix) ? saved.chordMatrix : "standard";
 // the seven chords the buttons play now, in slot order
 function mxNow(){
   const c=mxChoice();
   if(c==="alternate") return MX_ALTERNATE;
   if(c==="custom") return MX_SLOT_DEFAULT.map((d,i)=>{ const v=mc.params[202+i]|0; return MX_CATALOGUE[(v<=0 || v>MX_CATALOGUE.length) ? d : v-1]; });
-  return mc.params && mc.params[33]===1 ? MX_BARRY : MX_STANDARD;
+  return !mxDemo() && mc.params && mc.params[33]===1 ? MX_BARRY : MX_STANDARD;
 }
 // a chord type as a game names it (standard, or Barry Harris's), as the same buttons play it now
 function mxMap(q){ let i=MX_STANDARD.indexOf(q); if(i<0) i=MX_BARRY.indexOf(q); return i<0 ? q : mxNow()[i]; }

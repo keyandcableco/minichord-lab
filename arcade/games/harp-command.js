@@ -293,7 +293,8 @@ function commandDemo(){
       if(sc.staff) ch.innerHTML=hcStaffSvg(x.name, sc.note); else ch.textContent = sc.degrees ? String(x.deg) : sc.solfa ? SOLFA[x.deg-1] : x.name;
       ch.style.left=`${blast.cannons[sc.note].x}px`; ch.style.top="96px"; blast.field.appendChild(ch);
       helpString(sc.note);                                              // the string to pluck lights on the harp
-      requestAnimationFrame(()=>{ ch.style.transition="top 2s linear"; ch.style.top="200px"; });
+      void ch.offsetWidth;                                               // its starting place drawn first, so the fall animates
+      ch.style.transition="top 2s linear"; ch.style.top="200px";
       await sleep(1300); if(!token.run){ ch.remove(); return; }
       // the string lights and fires, and the note plays
       const c=blast.cannons[sc.note]; c.fired=performance.now(); sfx("press");

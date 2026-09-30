@@ -26,15 +26,14 @@ const DEMO_SCENES=[
   {chord:"B°",    col:6, rows:[0,1], text:"DIMINISHED: MAJOR AND MINOR TOGETHER"},
   {chord:"C+",    col:1, rows:[0,1,2], text:"AUGMENTED: ALL THREE"},
   {chord:"F♯m",   col:0, rows:[1], mod:true, text:"SHARPS AND FLATS: HOLD THE MODIFIER TOO"},
-  {flip:true, title:"SHARP OR FLAT?", text:"THE GAME SETS THE MODIFIER FOR THE NEXT CHORD. DOUBLE-TAP IT TO FLIP IT YOURSELF.", hold:4200},
-  {chord:"C/E",   col:1, rows:[0], slash:5, text:"SLASH CHORDS: HOLD THE CHORD, THEN ANY BUTTON IN THE BASS NOTE'S COLUMN"},
+  {flip:true, title:"SHARP OR FLAT?", text:"DOUBLE-TAP THE MODIFIER: SHARP BECOMES FLAT.", hold:4200},
+  {chord:"C/E",   col:1, rows:[0], slash:5, text:"SLASH CHORDS: THE CHORD, THEN THE BASS NOTE'S COLUMN"},
   {key:true, title:"SETTING THE KEY", text:"HOLD BOTH PRESET BUTTONS. THE LIGHT BLINKS.", hold:3200},
-  {key:true, keyPress:[3,1], text:"THE ROWS ARE NOW SHARP, NATURAL AND FLAT KEYS. PRESS ONE.", hold:3400},
-  {key:false, keyDone:"D", text:"LET GO: YOU'RE IN D MAJOR. ITS F AND C BUTTONS NOW PLAY F♯ AND C♯.", hold:3800},
-  {knob:true, title:"MANUAL AIM ×2", text:"AN OPTION: STEER THE SHIP WITH A KNOB, AND A CHORD FIRES STRAIGHT UP. GET UNDER THE CHORD, THEN PLAY IT, FOR DOUBLE.", hold:4200},
-  {knob:true, title:"THE BEAM", text:"IN MANUAL AIM, KEEP A CHORD SOUNDING (THE HOLD BUTTON LATCHES IT) AND A BEAM FIRES: IT DESTROYS EVERY CHORD OF THAT TYPE, ANY ROOT. IT RUNS ON ENERGY.", hold:4600},
-  {title:"POWER-UPS", text:"PLAY A POWER-UP'S CHORD TO TAKE IT. OMNI BEAM BLASTS ANY CHORD IT TOUCHES; SLOW TIME HALVES THE SPEED; A SHIELD SAVES A LIFE.", hold:4600},
-  {title:"SCORING", text:"RICHER CHORDS SCORE MORE: A MAJOR CHORD 10, A MINOR 15, SEVENTHS 20 TO 30, UP TO 50 FOR SIXTHS AND DIMINISHED SEVENTHS. HALF AGAIN WITH THE MODIFIER, AND HALF AGAIN AS A SLASH CHORD.", hold:5200},
+  {key:true, keyPress:[3,1], text:"THE ROWS ARE SHARP, NATURAL AND FLAT KEYS. PRESS ONE.", hold:3400},
+  {key:false, keyDone:"D", text:"LET GO: D MAJOR.", hold:3000},
+  {act:"aim", title:"MANUAL AIM ×2", text:"STEER UNDER IT WITH A KNOB, THEN PLAY IT."},
+  {act:"beam", title:"THE BEAM", text:"HOLD A CHORD AND SWEEP: EVERY CHORD OF ITS TYPE GOES."},
+  {act:"omni", title:"POWER-UPS", text:"SHOOT ONE TO TAKE IT."},
   {title:"READY?", text:"CHOOSE A LEVEL. PLAY EACH CHORD BEFORE IT LANDS.", hold:2800},
 ];
 function stopDemo(){ const was=!!(blast && blast.demo);
@@ -100,6 +99,7 @@ function runDemo(attract){
       if(sc.keyPress){ await sleep(900); if(!token.run) return; cells[sc.keyPress[0]][sc.keyPress[1]].classList.add("lit"); sfx("press"); setTimeout(()=>token.run && sfx("key"), 120); }
       if(sc.keyDone){ label(false); sfx("letgo"); banner(`KEY OF ${sc.keyDone}`, "D MAJOR: F♯ AND C♯"); }
       if(sc.title==="READY?") sfx("level");
+      if(sc.act){ await demoAct(sc.act, {token, el, cells, clear, sleep, playChord, $d}); if(!token.run) return; continue; }
       if(sc.knob){   // the steering knob turned one way and the other, the ship sliding under it
         const t0=performance.now();
         while(performance.now()-t0<sc.hold-300){ if(!token.run) return; const v=.5+.42*Math.sin((performance.now()-t0)/700); blast.demoShip=.08+.84*v; helpKnob(steerKnob(), v); await sleep(60); }
@@ -287,3 +287,48 @@ document.addEventListener("keydown", e=>{
   const d={ArrowLeft:-1,ArrowRight:1}[e.code]; if(!d) return;
   e.preventDefault(); blast.shipWant=Math.max(.06, Math.min(.94, (blast.shipWant??.5)+d*.06));
 });
+
+// ---------- the demo's shown moves: manual aim, the beam, a power-up ----------
+// Chords dropped where the scene wants them, the ship steered under them by the knob (turning on the
+// demo's minichord), the buttons lit as they're played, and what the game does with them.
+async function demoAct(act, {token, el, cells, clear, sleep, playChord, $d}){
+  const fld=blast.field, W=()=>fld.clientWidth||900, live=()=>token.run, dropped=[];
+  const drop=(sym, frac, extra="", html="")=>{ const ch=document.createElement("span"); ch.className="fchord democh "+extra; ch.innerHTML=html; ch.append(sym);
+    ch.style.left=`${frac*100}%`; ch.style.top="88px"; fld.appendChild(ch); void ch.offsetWidth; ch.style.transition="top 5s linear"; ch.style.top="250px"; dropped.push(ch); return ch; };
+  const boom=ch=>{ if(!ch.isConnected) return; const x=ch.offsetLeft, y=ch.offsetTop+ch.offsetHeight/2; sfx("boom"); explode(x,y); ch.remove(); };
+  const tidy=()=>{ dropped.forEach(c=>c.remove()); blast.beamOn=false; blast.powers={}; blast.demoShip=null; clear(); };
+  // the ship to a place, the knob turning to match
+  const steer=async(to, ms)=>{ const from=blast.demoShip ?? DEMO_SHIP, t0=performance.now();
+    while(performance.now()-t0<ms){ if(!live()) return; const k=Math.min(1,(performance.now()-t0)/ms), f=from+(to-from)*k; blast.demoShip=f; helpKnob(steerKnob(), (f-.08)/.84); await sleep(40); } blast.demoShip=to; };
+  const press=(col,rows)=>rows.forEach(r=>cells[col][r].classList.add("lit"));
+  const fire=ch=>{ const x=W()*(blast.shipF??.5), y0=fld.clientHeight-22, x1=ch.offsetLeft, y1=ch.offsetTop+ch.offsetHeight/2; sfx("shoot");
+    blast.fx.missiles.push({x0:x/PX, y0:y0/PX, x1:x1/PX, y1:y1/PX, t0:performance.now(), dur:200, hit:()=>boom(ch)}); };
+  // the beam swept from one side to the other, burning what it should
+  const sweep=async(from, to, ms, burns)=>{ blast.beamOn=true; sfx("press"); const t0=performance.now();
+    while(performance.now()-t0<ms){ if(!live()) return; const f=from+(to-from)*Math.min(1,(performance.now()-t0)/ms); blast.demoShip=f; helpKnob(steerKnob(), (f-.08)/.84);
+      const sx=W()*(blast.shipF??f); dropped.forEach(c=>{ if(c.isConnected && burns(c) && Math.abs(c.offsetLeft-sx)<c.offsetWidth/2+8) boom(c); }); await sleep(40); }
+    blast.beamOn=false; };
+  try{
+    if(act==="aim"){
+      const g=drop("G", .72); await sleep(900); if(!live()) return;
+      await steer(.72, 1300); if(!live()) return;
+      press(2,[0]); playChord({chord:"G"}); await sleep(350); fire(g); await sleep(1500);
+    }
+    if(act==="beam"){
+      const minors=[["Am",.2],["Dm",.46],["Em",.8]].map(([s,f])=>drop(s,f,"minor")); drop("C",.62);
+      await steer(.1, 900); if(!live()) return;
+      press(4,[1]); playChord({chord:"Am"}); await sleep(450);
+      await sweep(.1, .9, 2600, c=>c.classList.contains("minor")); if(!live()) return;
+      $d(".democap").textContent="THE C MAJOR STAYS: IT'S ANOTHER TYPE."; await sleep(1800);
+    }
+    if(act==="omni"){
+      const cap=drop("C", .5, "power pu-omni", `<i class="puicon">⚡</i>`); await steer(.5, 900); if(!live()) return;
+      await sleep(500); press(1,[0]); playChord({chord:"C"}); await sleep(300); fire(cap); await sleep(500); if(!live()) return;
+      clear(); banner("OMNI BEAM!", "WHATEVER THE BEAM TOUCHES"); sfx("level"); blast.powers={omni:performance.now()+9000};
+      $d(".democap").textContent="OMNI BEAM: HOLD ANY CHORD, AND IT BLASTS EVERYTHING.";
+      [["F",.18],["Bm",.42],["E7",.66],["Am",.86]].forEach(([s,f])=>drop(s,f)); await steer(.1, 700); if(!live()) return;
+      press(3,[1]); playChord({chord:"Dm"}); await sleep(400);
+      await sweep(.1, .92, 2400, ()=>true); await sleep(1200);
+    }
+  } finally { tidy(); }
+}

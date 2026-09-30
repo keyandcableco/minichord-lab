@@ -92,7 +92,7 @@ const SNMENU_G={key:"snake", title:"CHORD SNAKE",
     kmRestrip(); });
     row("HARP SOUND", ["NORMAL","QUIET","OFF"], ()=>saved.harpSound??1, i=>{ saved.harpSound=i; save(); if(blast && blast.setupDone) kmHarp(); });
   },
-  levels:SN_LEVELS, ok:snLevelOk, levelName:snLevelName, needs:"NEEDS A MINICHORD",
+  levels:SN_LEVELS, ok:snLevelOk, levelName:snLevelName, sig:()=>String(mxAvailable().length), needs:"NEEDS A MINICHORD",
   begin:i=>beginSnake(i), demo:()=>snDemo(), modNote:"always"};
 function snMenu(over){ arcadeMenu(SNMENU_G, over); }
 // a fresh snake in the middle, pointing right, carrying nothing
@@ -285,7 +285,7 @@ function snDemo(){
     }catch(e){ /* skipped */ }
   })();
 }
-function snDemoStep(){ const saveLives=blast.lives; blast.phase="play"; snStep(); blast.phase="demo"; blast.lives=saveLives; }
+function snDemoStep(){ const saveLives=blast.lives; blast.phase="play"; snStep(); blast.phase="demo"; blast.lives=saveLives; snDraw(); }   // drawn again as the demo: what glows is the standard game's
 function snDemoCash(){
   const gone=new Set(["E","G♯","B"]);
   blast.body.slice(1,blast.tail.length+1).forEach(([x,y],i)=>{ if(gone.has(blast.tail[i].name)) explode(blast.ox+(x+.5)*blast.cell, blast.oy+(y+.5)*blast.cell, 18, ["#7FE9FF","#FFD35A","#FFFFFF"]); });

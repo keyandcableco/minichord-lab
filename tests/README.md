@@ -35,7 +35,9 @@ key presses, checking what should happen.
 | `chord-matrix-invaders` | the chords option is offered; the alternate matrix drops sus chords that shoot down |
 | `chord-matrix-games` | level names follow the chosen matrix in all five games; Barry Harris and slash levels step aside; Asteroids plays the alternate chords |
 | `chopper-helper` | beginner mode's minichord carries the harp, strip or keymaster plate, lighting each string of the signal in turn |
-| `demo-lights` | demos light what they press on the on-screen minichord: Fifths Defender's knob, Chord Stack's chord, Chord Sweeper's d-pad |
+| `demo-lights` | demos light what they press on the on-screen minichord: Fifths Defender's knob, Chord Stack's chord, Chord Sweeper's d-pad, Between the Frets' modifier; Snake's demo glows its chord on any matrix |
+| `title-cycle` | every game's title screen moves on by itself after its demo |
+| `invaders-demo-acts` | Chord Invaders' demo shows the beam burning every minor chord and leaving the major, and the omni power-up |
 | `key-fleet` | fleets never touch; hits cripple; keys are called by tonic, cadence and the key change combo |
 | `high-scores` | GAME OVER before the initials; input ignored at first; the board kept; beginner mode stays off it |
 | `lobby` | the arcade lobby's cabinets, best scores and ticker |

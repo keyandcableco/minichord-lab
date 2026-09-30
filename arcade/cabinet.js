@@ -278,6 +278,8 @@ function helpKnob(k, v){
 // following a value a demo moves every frame: only when it has moved
 function helpKnobFollow(k, v){ const was=(blast.knobShown||(blast.knobShown=[]))[k]; if(was!=null && Math.abs(was-v)<.004) return; blast.knobShown[k]=v; helpKnob(k, v); }
 // a direction or button on the harp as a d-pad, flashed as a demo presses it
+// the modifier, lit or not, by itself (Between the Frets' quarter-tone: a chord and the modifier)
+function helpMod(on){ const m=blast && blast.helpBoard && blast.helpBoard.mod; if(m) m.classList.toggle("lit", !!on); }
 function helpZone(z){ const i=kmLayout().byString.indexOf(z); if(i>=0) kmFlash(blast.strip, i); }
 function beginnerRow(opts){
   const r=document.createElement("div"); r.className="optrow"; const l=document.createElement("span"); l.className="optlabel"; l.textContent="BEGINNER";
