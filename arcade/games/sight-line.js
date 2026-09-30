@@ -129,7 +129,7 @@ function slNoteEl(n){
 function slBar(){
   if(!blast || blast.kind!=="sight" || !blast.hud) return;
   const mult=Math.min(4,1+Math.floor(blast.streak/8));
-  blast.hud.innerHTML=`<span>SCORE ${blast.score}${multTag()}</span><span class="lvl">LEVEL ${blast.level+1} · ${SL_LEVELS[blast.level].n.toUpperCase()}${mult>1?` · STREAK ×${mult}`:""}</span><span class="lives">${"♥".repeat(Math.max(0,blast.lives))||"-"}</span>`;
+  blast.hud.innerHTML=`<span>SCORE ${blast.score}${multTag()}</span><span class="lvl">LEVEL ${blast.level+1} · ${SL_LEVELS[blast.level].n.toUpperCase()}${mult>1?` · STREAK ×${mult}`:""}</span><span class="lives">${livesHtml()}</span>`;
 }
 const SLMENU_G={key:"sight", title:"SIGHT LINE",
   rules:()=>`<p>NOTES SCROLL ALONG THE STAFF TO THE PLAYHEAD. PLUCK EACH ONE ON THE HARP, AND PLAY EACH CHORD ON THE BUTTONS, AS IT REACHES THE LINE: DEAD ON SCORES DOUBLE.</p><p>THE HARP FOLLOWS THE STAFF: A NOTE WRITTEN HIGH OR LOW SOUNDS IN ITS OWN OCTAVE.</p><p>A KEY SIGNATURE'S SHARPS AND FLATS APPLY TO EVERY NOTE ON THEIR LETTER. WHEN THE KEY CHANGES, SET THE MINICHORD TO IT.</p><p>A CHORD WITH ITS 3RD OR 5TH IN THE BASS IS AN INVERSION: SWING THE VOICING WITH A KNOB, OR ↑ ↓.</p>`,

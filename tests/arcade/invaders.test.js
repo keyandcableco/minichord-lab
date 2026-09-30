@@ -31,5 +31,7 @@ const t=require("./harness").load("invaders");
   check("the points screen spells each chord", rows.some(r=>/MIN7.*1 ♭3 5 ♭7/.test(r)) && rows.some(r=>/DIM7.*𝄫7/.test(r)), rows.slice(0,3).join(" | "));
   const wrongBefore=sb.arcade.score; chord("C♯","+"); await sleep(200);
   check("a chord that isn't falling scores nothing", sb.arcade.score===wrongBefore);
+  // the lives are pixel hearts, one full for each life, lost ones dark and empty
+  check("the HUD's lives are pixel hearts", t.d.querySelectorAll(".hud .lives svg.heart").length>=1 && t.d.querySelectorAll(".hud .lives .heart:not(.gone)").length===sb.arcade.lives, `${t.d.querySelectorAll(".hud .lives .heart:not(.gone)").length} full`);
   t.done();
 })();

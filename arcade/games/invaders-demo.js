@@ -189,7 +189,7 @@ function blastBar(){
   const key = blast.keyTarget ? ` · KEY ${blast.keyTarget.name}` : "";
   const pw = typeof blastPowerHud==="function" && blast.kind==="blaster" ? blastPowerHud() : "";
   const mx = blast.kind==="blaster" && typeof mxTag==="function" ? mxTag() : "";
-  blast.hud.innerHTML=`<span>SCORE ${blast.score}${multTag()}</span><span class="lvl">LEVEL ${blast.level+1}${key}${mx}${pw}</span><span class="lives">${"♥".repeat(Math.max(0,blast.lives))||"-"}</span>`;
+  blast.hud.innerHTML=`<span>SCORE ${blast.score}${multTag()}</span><span class="lvl">LEVEL ${blast.level+1}${key}${mx}${pw}</span><span class="lives">${livesHtml()}</span>`;
 }
 // a big message across the middle of the field: a new level, a key to set, Barry Harris
 function banner(big, small){

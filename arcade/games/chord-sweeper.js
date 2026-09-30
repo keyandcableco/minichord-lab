@@ -134,15 +134,14 @@ function swSide(){
   const left=blast.mines.filter(m=>!m.defused).length, L=SW_LEVELS[blast.level||0];
   const done=k=>blast.mines.some(m=>m.key===k && m.defused);
   const find=(blast.keys||[]).map(k=>`<li class="${done(k)?"found":""}">${L.named ? `<b>${k.name}</b>` : `${swSigSvg((SW_FIFTHS[k.tonic]??0)-(k.minor?3:0))}<b>${k.minor?"MINOR":"MAJOR"}</b>`}</li>`).join("");
-  const hearts=[0,1,2].map(i=>`<i class="${i<blast.lives?"on":""}${i===blast.lives && blast.lostAt && performance.now()-blast.lostAt<1200?" lost":""}">♥</i>`).join("");
-  blast.sideEl.innerHTML=`<p class="swlives" aria-label="${blast.lives} lives">${hearts}</p><p class="swfind">FIND ${L.named?"":"THESE KEYS"}</p><ul class="swkeys">${find}</ul><p>TO DEFUSE <b>${blast.mines.length?left:(blast.keys||[]).length}</b></p><p>SWEEPS <b>${blast.sweeps}</b></p>
+  blast.sideEl.innerHTML=`<p class="swfind">FIND ${L.named?"":"THESE KEYS"}</p><ul class="swkeys">${find}</ul><p>TO DEFUSE <b>${blast.mines.length?left:(blast.keys||[]).length}</b></p><p>SWEEPS <b>${blast.sweeps}</b></p>
     <p class="swhow">NEXT TO A MINE: ITS V7. TWO AWAY: V OF V. THREE AWAY: V OF V OF V. FURTHER: CALM.</p>
     ${L.subs?`<p class="swhow">A TRITONE SUBSTITUTE RESOLVES THE SAME WAY${L.dim?"; SO DO vii°7 AND THE BARE TRITONE":""}.</p>`:""}
     <p class="swhow">TO DEFUSE A MINE, PUT THE CURSOR ON IT AND PLAY ITS KEY'S HOME CHORD.</p>`;
 }
 function swBar(){
   if(!blast || blast.kind!=="sweeper" || !blast.hud) return;
-  blast.hud.innerHTML=`<span>SCORE ${blast.score}${multTag()}</span><span class="lvl">LEVEL ${blast.level+1} · FIELD ${blast.fields+1}</span><span class="lives">${"♥".repeat(Math.max(0,blast.lives))||"-"}</span>`;
+  blast.hud.innerHTML=`<span>SCORE ${blast.score}${multTag()}</span><span class="lvl">LEVEL ${blast.level+1} · FIELD ${blast.fields+1}</span><span class="lives">${livesHtml()}</span>`;
 }
 const SWMENU_G={key:"sweeper", title:"CHORD SWEEPER",
   rules:()=>`<p>A GAME OF TENSION AND RELEASE. EACH MINE IS A KEY'S HOME. SWEPT SQUARES SHOW THE TENSION POINTING THERE: NEXT TO A MINE, ITS V7; TWO AWAY, V OF V; THREE AWAY, V OF V OF V. FURTHER OUT IT'S CALM.</p><p>LATER, TRITONE SUBSTITUTES, DIMINISHED SEVENTHS AND BARE TRITONES POINT HOME TOO.</p><p>STEER ON THE HARP OR THE ARROW KEYS. A SWEEPS, B FLAGS. WITH A MOUSE, CLICK TO SWEEP AND RIGHT-CLICK TO FLAG.</p><p>TO DEFUSE A MINE, PUT THE CURSOR ON IT AND PLAY ITS KEY'S HOME CHORD. SWEEP A MINE, OR PLAY THE WRONG CHORD ON IT, AND IT GOES OFF, AND THE WHOLE FIELD IS SHOWN.</p>`,
@@ -257,7 +256,7 @@ function swBoom(m, why, label){
   for(let y=0;y<SW_H;y++) for(let x=0;x<SW_W;x++) if(!swMineAt(x,y)) blast.open.add(swKey(x,y));
   blast.showMines=true; swDraw();
   heard(label||"SWEEP",false,why); explode(px,py,44,["#FF4B3E","#FF8A3D","#FFD35A","#F1E8D2"]); sfx("boom"); buzz(blast.field,true);
-  blast.lives--; blast.lostAt=performance.now(); swBar(); swSide();
+  blast.lives--; swBar(); swSide();
   blast.field.classList.remove("swhurt"); void blast.field.offsetWidth; blast.field.classList.add("swhurt");
   popup(px, py-30, "−1 ♥", "#FF4B3E", true);
   banner("BOOM", `IT WAS ${m.key.name}${blast.lives>0?` · ${blast.lives} ${blast.lives===1?"LIFE":"LIVES"} LEFT`:""}`);

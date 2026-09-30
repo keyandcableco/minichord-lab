@@ -83,7 +83,7 @@ function buildSnakeField(box){
 function snBar(){
   if(!blast || blast.kind!=="snake" || !blast.hud) return;
   const max=SN_MAX[blast.level]||6, load=blast.tail.length;
-  blast.hud.innerHTML=`<span>SCORE ${blast.score}${multTag()}</span><span class="lvl">LEVEL ${blast.level+1} · LOAD ${load}/${max}${mxTag()}</span><span class="lives">${"♥".repeat(Math.max(0,blast.lives))||"-"}</span>`;
+  blast.hud.innerHTML=`<span>SCORE ${blast.score}${multTag()}</span><span class="lvl">LEVEL ${blast.level+1} · LOAD ${load}/${max}${mxTag()}</span><span class="lives">${livesHtml()}</span>`;
 }
 const SNMENU_G={key:"snake", title:"CHORD SNAKE",
   rules:()=>`<p>EAT NOTES. WHEN THE ONES YOU CARRY SPELL A CHORD, PLAY IT TO CASH THEM IN.</p><p>STEER ON THE HARP OR THE ARROW KEYS. B DROPS YOUR OLDEST NOTE.</p>`,

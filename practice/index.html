@@ -169,7 +169,15 @@
 .field.arcade .fkey small{font:400 .55rem "Press Start 2P",monospace;color:#B9C7E6;margin-top:4px}
 .field.arcade .ground{z-index:1;background:#FF4B3E;opacity:.7;height:2px}
 .hud{position:absolute;top:8px;left:10px;right:10px;display:flex;justify-content:space-between;align-items:center;z-index:3;font:400 .62rem "Press Start 2P",monospace;color:#F1E8D2;pointer-events:none}
-.hud .lives{color:#FF4B3E;letter-spacing:.15em;font-size:1.35rem;line-height:1;text-shadow:0 0 8px rgba(255,75,62,.6)}
+/* the lives: pixel hearts, larger than the HUD's text; lost ones dark and empty; the one just lost shakes as it drains */
+.hud .lives{display:inline-flex;align-items:center;gap:.3rem;color:#FF4B3E;line-height:1}
+.hud .lives .heart{width:1.75rem;height:1.62rem;display:block;filter:drop-shadow(0 0 6px rgba(255,75,62,.55))}
+.hud .lives .heart .out{fill:#5A1410}.hud .lives .heart .fill{fill:#FF4B3E}.hud .lives .heart .shine{fill:#FFB0A8}
+.hud .lives .heart.gone{filter:none}.hud .lives .heart.gone .out{fill:#3A3040}.hud .lives .heart.gone .fill{fill:#1A1524}
+.hud .lives .heart.lost{animation:heartlost 1.1s steps(6) 1}
+.hud .lives .heart.lost .fill{animation:heartdrain 1.1s steps(4) forwards}
+@keyframes heartlost{0%{transform:scale(1.5)}30%{transform:translateX(-4px) scale(1.4)}45%{transform:translateX(4px) scale(1.3)}60%{transform:translateX(-3px)}100%{transform:none}}
+@keyframes heartdrain{0%{fill:#FF4B3E}100%{fill:#1A1524}}
 .hud .lvl{color:#FFD35A}
 .heard{position:absolute;left:10px;bottom:10px;z-index:3;font:400 .55rem "Minichord Lab Accidentals","Press Start 2P",monospace;color:#9A93B5;pointer-events:none}
 .heard b{color:#F1E8D2;font-weight:400}
@@ -633,11 +641,6 @@ html.arcadepage .gamebar{align-items:flex-end}
 .helper .hbstrip span svg{height:90%;width:auto;max-width:90%;display:block;margin:auto}
 /* Chord Sweeper's lives, big, and what losing one looks like */
 .field .popup.big{font-size:1.25rem;z-index:12;text-shadow:3px 3px 0 #000;animation-duration:1.5s}
-.swlives{margin:0 0 10px;display:flex;gap:6px;font:400 1.5rem/1 "Press Start 2P",monospace}
-.swlives i{font-style:normal;color:#3A2530;text-shadow:2px 2px 0 #000}
-.swlives i.on{color:#FF4B3E}
-.swlives i.lost{animation:swheart 1.1s steps(6) 1;color:#3A2530}
-@keyframes swheart{0%{color:#FF4B3E;transform:scale(1.5)}30%{transform:translateX(-4px) scale(1.4)}45%{transform:translateX(4px) scale(1.3)}60%{transform:translateX(-3px)}100%{color:#3A2530;transform:none}}
 .field.sweeper.swhurt::after{content:"";position:absolute;inset:0;z-index:11;pointer-events:none;background:radial-gradient(ellipse at center,rgba(255,75,62,.15),rgba(255,40,30,.55));animation:swhurt .9s ease-out forwards}
 @keyframes swhurt{0%{opacity:1}100%{opacity:0}}.swcell b.home{color:#7FE08A}
 .swside{position:absolute;z-index:3;font:400 .5rem/2 "Press Start 2P",monospace;color:#F1E8D2}

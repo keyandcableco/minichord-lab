@@ -79,7 +79,7 @@ function buildBreakoutField(box){
 }
 function boBar(){
   if(!blast || blast.kind!=="breakout" || !blast.hud) return;
-  blast.hud.innerHTML=`<span>SCORE ${blast.score}${multTag()}</span><span class="lvl">LEVEL ${blast.level+1}${mxTag()}</span><span class="lives">${"♥".repeat(Math.max(0,blast.lives))||"-"}</span>`;
+  blast.hud.innerHTML=`<span>SCORE ${blast.score}${multTag()}</span><span class="lvl">LEVEL ${blast.level+1}${mxTag()}</span><span class="lives">${livesHtml()}</span>`;
 }
 const BOMENU_G={key:"breakout", title:"CHORD BREAKOUT",
   rules:()=>`<p>${knobsReady() ? "TURN A KNOB ON THE MINICHORD TO MOVE THE PADDLE (THE MOD KNOB, OR CHOOSE ANOTHER)." : "MOVE THE PADDLE WITH THE MOUSE OR THE ARROW KEYS. WITH FIRMWARE 17, A KNOB ON THE MINICHORD DOES IT."}</p><p>THE BALL CRACKS A CHORD BRICK. PLAY ITS CHORD BEFORE THE BALL COMES BACK AND IT BREAKS.</p><p>MISS IT AND THE BRICK HEALS. LET THE BALL PAST AND IT COSTS A LIFE.</p><p class="starline">${PIXEL_STAR}BRICKS SCORE FIVE TIMES AS MUCH.</p>`,

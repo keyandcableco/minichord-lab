@@ -84,7 +84,7 @@ function fdLabels(){
 function fdBar(){
   if(!blast || blast.kind!=="fifths" || !blast.hud) return;
   const L=FD_LEVELS[blast.level];
-  blast.hud.innerHTML=`<span>SCORE ${blast.score}${multTag()}</span><span class="lvl">LEVEL ${blast.level+1} · ${L.n.toUpperCase()}</span><span class="lives">${"♥".repeat(Math.max(0,blast.lives))||"-"}</span>`;
+  blast.hud.innerHTML=`<span>SCORE ${blast.score}${multTag()}</span><span class="lvl">LEVEL ${blast.level+1} · ${L.n.toUpperCase()}</span><span class="lives">${livesHtml()}</span>`;
 }
 const FDMENU_G={key:"fifths", title:"FIFTHS DEFENDER",
   rules:()=>`<p>THE TWELVE KEYS STAND ROUND YOU IN FIFTHS: C AT THE TOP, G ONE STEP ROUND, F ONE STEP BACK.</p><p>${knobsReady() ? "TURN A KNOB ON THE MINICHORD TO AIM DOWN A KEY: C IN THE MIDDLE, SHARPS TO THE RIGHT, FLATS TO THE LEFT. HOLD IT AT EITHER END TO KEEP TURNING." : "AIM DOWN A KEY WITH THE MOUSE OR THE ARROW KEYS. WITH FIRMWARE 17, A KNOB DOES IT."}</p><p>PLAY THAT KEY'S CHORD TO FIRE. LATER, ITS RELATIVE MINOR, ITS DOMINANT SEVENTH, OR ITS NOTE ON THE HARP.</p><p>AN ENEMY THAT REACHES THE MIDDLE COSTS A LIFE.</p>`,

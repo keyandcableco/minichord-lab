@@ -123,7 +123,7 @@ function blastBarCommand(){
   if(!blast || blast.kind!=="command" || !blast.hud) return;
   const w=blast.wave, key = w && w.kind==="scale" ? ` · ${w.tonic} ${w.scale.toUpperCase()}` : "";
   const toGo = blast.phase==="play" ? ` · NEXT ${Math.max(0,hcHitsToLevel(blast.level)-(blast.levelHits||0))}` : "";
-  blast.hud.innerHTML=`<span>SCORE ${blast.score}${multTag()}</span><span class="lvl">LEVEL ${blast.level+1}${key}${toGo}</span><span class="lives">${"♥".repeat(Math.max(0,blast.lives))||"-"}</span>`;
+  blast.hud.innerHTML=`<span>SCORE ${blast.score}${multTag()}</span><span class="lvl">LEVEL ${blast.level+1}${key}${toGo}</span><span class="lives">${livesHtml()}</span>`;
 }
 const COMMANDMENU_G={key:"command", title:"HARP COMMAND",
   rules:()=>`<p>NOTES FALL TOWARD YOUR CANNONS.</p><p>PLUCK THE STRING THAT PLAYS ONE AND ITS CANNON FIRES.</p><p class="starline">${PIXEL_STAR}NOTES SCORE BIG AND NEVER HURT.</p><p>A WRONG STRING FREEZES YOUR CANNONS.</p>`,

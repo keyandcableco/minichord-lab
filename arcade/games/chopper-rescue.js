@@ -180,7 +180,7 @@ function chPlace(instant){
 }
 function chBar(){
   if(!blast || blast.kind!=="chopper" || !blast.hud) return;
-  blast.hud.innerHTML=`<span>SCORE ${blast.score}${multTag()}</span><span class="lvl">LEVEL ${blast.level+1} · RESCUES ${blast.rescues}</span><span class="lives">${"♥".repeat(Math.max(0,blast.lives))||"-"}</span>`;
+  blast.hud.innerHTML=`<span>SCORE ${blast.score}${multTag()}</span><span class="lvl">LEVEL ${blast.level+1} · RESCUES ${blast.rescues}</span><span class="lives">${livesHtml()}</span>`;
 }
 const CHMENU_G={key:"chopper", title:"CHOPPER RESCUE",
   rules:()=>`<p>THE RADIO CALLS COORDINATES IN THEORY. DECODE THEM: "SURVIVORS AT vi IN G" IS Em.</p><p>TROUBLE BREAKS OUT IN MORE THAN ONE PLACE, AND ONLY THE RADIO SAYS WHICH. PLAY THE CHORD AND THE CHOPPER FLIES THERE.</p><p>A WRONG CHORD FLIES SOMEWHERE EMPTY AND BURNS TIME. DON'T LET THE FLARE BURN OUT.</p>`,

@@ -72,7 +72,7 @@ function buildFretsField(box){
 }
 function frBar(){
   if(!blast || blast.kind!=="frets" || !blast.hud) return;
-  blast.hud.innerHTML=`<span>SCORE ${blast.score}${multTag()}</span><span class="lvl">LEVEL ${blast.level+1} · ${FR_LEVELS[blast.level].n.toUpperCase()}</span><span class="lives">${"♥".repeat(Math.max(0,blast.lives))||"-"}</span>`;
+  blast.hud.innerHTML=`<span>SCORE ${blast.score}${multTag()}</span><span class="lvl">LEVEL ${blast.level+1} · ${FR_LEVELS[blast.level].n.toUpperCase()}</span><span class="lives">${livesHtml()}</span>`;
 }
 // the fretboard: an octave from C, a fret for each semitone and a dotted one between each pair, with
 // where the notes fall on it

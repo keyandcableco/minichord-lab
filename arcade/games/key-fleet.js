@@ -209,7 +209,7 @@ const kfWide=()=> !!KF_LEVELS[blast.level||0].span;
 const kfHarpOk=()=> !kfWide() && !!(KF_LEVELS[blast.level||0].harp || saved.beginner);
 function kfBar(){
   if(!blast || blast.kind!=="fleet" || !blast.hud) return;
-  blast.hud.innerHTML=`<span>SCORE ${blast.score}${multTag()}</span><span class="lvl">LEVEL ${blast.level+1} · ${KF_LEVELS[blast.level].n.toUpperCase()}</span><span class="lives">${"♥".repeat(Math.max(0,blast.lives))||"-"}</span>`;
+  blast.hud.innerHTML=`<span>SCORE ${blast.score}${multTag()}</span><span class="lvl">LEVEL ${blast.level+1} · ${KF_LEVELS[blast.level].n.toUpperCase()}</span><span class="lives">${livesHtml()}</span>`;
 }
 const KFMENU_G={key:"fleet", title:"KEY FLEET",
   rules:()=>`<p>THE ENEMY'S SHIPS ARE KEYS, HIDDEN ON THE CHORD CHART. THREE CHORDS SIDE BY SIDE IN A ROW ARE A KEY'S IV, I AND V: F C G IS C MAJOR.</p><p>FIRE BY PLAYING CHORDS. HITS CRIPPLE A SHIP; TO SINK IT, CALL ITS KEY: PLUCK ITS TONIC ON THE HARP, OR PLAY ITS V7 THEN I.</p><p>ONCE YOU'VE HIT ONE OF A SHIP'S CHORDS, CALL ITS KEY EARLY FOR A BONUS. A WRONG OR BLIND CALL COSTS A TORPEDO.</p>`,
