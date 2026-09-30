@@ -347,6 +347,7 @@ function overTimeout(ov, toTitle){
 
 // ---------- high scores ----------
 // Every arcade game keeps a board of the ten best, shown in the title loop after the rules, and
+const HS_SECONDS=20;        // the countdown on the initials, as a cabinet has
 // entered arcade-style at game over: three initials picked with the arrow keys, the harp's d-pad or
 // the steering knob, confirmed with a chord or Enter. Scores count only when a minichord was
 // connected and played through the game. They go to the shared board (arcade-scores on the
@@ -398,16 +399,30 @@ function hsEntry(slug, score, next){
   const ov=document.createElement("div"); ov.className="overlay hsentry";
   const letters=(saved.hsInitials||"AAA").split("");
   ov.innerHTML=`<h3>NEW HIGH SCORE!</h3><p class="hsscore">${score.toLocaleString("en-US")}</p><p>ENTER YOUR INITIALS</p><div class="hsletters">${letters.map(()=>"<span></span>").join("")}</div>
-    <p class="padhint">▲▼, A KNOB OR THE HARP PICKS A LETTER · ◀▶ MOVES · A CHORD OR ENTER SETS IT</p>`;
+    <p class="hscount"><i>${HS_SECONDS}</i></p>
+    <p class="padhint">▲▼, A KNOB OR THE HARP PICKS A LETTER · ◀▶ MOVES · A CHORD OR ENTER SETS IT · ESC SKIPS</p>`;
   blast.field.appendChild(ov);
   const st={letters, pos:0, ov, done:false};
+  // A cabinet's countdown: the entry takes itself away if nobody types, keeping whatever letters are
+  // showing, and anything the player does puts the full time back. Escape gives up on it entirely.
+  let left=HS_SECONDS;
+  const num=ov.querySelector(".hscount i");
+  const tick=()=>{
+    if(st.done) return;
+    left--; num.textContent=Math.max(0,left);
+    ov.querySelector(".hscount").classList.toggle("low", left<=5);
+    if(left<=5 && left>0) sfx("press");
+    if(left<=0){ clearInterval(st.timer); finish(); }
+  };
+  st.timer=setInterval(tick, 1000);
+  const keepAlive=()=>{ left=HS_SECONDS; num.textContent=left; ov.querySelector(".hscount").classList.remove("low"); };
   const draw=()=>{ [...ov.querySelectorAll(".hsletters span")].forEach((e,i)=>{ e.textContent=st.letters[i]; e.classList.toggle("on", i===st.pos); }); };
-  const step=d=>{ if(!settled()) return; const i=HS_CHARS.indexOf(st.letters[st.pos]); st.letters[st.pos]=HS_CHARS[mod(i+d, HS_CHARS.length)]; sfx("press"); draw(); };
-  const move=d=>{ if(!settled()) return; st.pos=Math.max(0,Math.min(2,st.pos+d)); draw(); };
+  const step=d=>{ if(!settled()) return; keepAlive(); const i=HS_CHARS.indexOf(st.letters[st.pos]); st.letters[st.pos]=HS_CHARS[mod(i+d, HS_CHARS.length)]; sfx("press"); draw(); };
+  const move=d=>{ if(!settled()) return; keepAlive(); st.pos=Math.max(0,Math.min(2,st.pos+d)); draw(); };
   const opened=performance.now(), settled=()=>performance.now()-opened>700;   // a moment's grace before input counts
-  const set=()=>{ if(!settled()) return; sfx("key"); if(st.pos<2){ st.pos++; draw(); } else finish(); };
+  const set=()=>{ if(!settled()) return; keepAlive(); sfx("key"); if(st.pos<2){ st.pos++; draw(); } else finish(); };
   const finish=async()=>{
-    if(st.done) return; st.done=true; blast.hsEntry=null;
+    if(st.done) return; st.done=true; blast.hsEntry=null; clearInterval(st.timer);
     const initials=st.letters.join(""); saved.hsInitials=initials;
     const entry={initials, score, level:blast.level+1, speed:+saved.speed||0, created:Date.now()/1000};
     // this browser's board
@@ -427,11 +442,14 @@ function hsEntry(slug, score, next){
     blast.hsResult=`${initials} · #${rank} ON ${shared?"THE BOARD":"THIS COMPUTER'S BOARD"}`;
     sfx("level"); ov.remove(); next();
   };
-  blast.hsEntry={step, move, set, finish, back:()=>move(-1), knob:v=>{   // relative: where the knob rests when a letter comes up is that letter; a sixth of a turn either way is six letters
-    if(!settled()) return;
+  // skipped: nothing is sent or kept, and the game over screen says so
+  const skip=()=>{ if(st.done) return; st.done=true; blast.hsEntry=null; clearInterval(st.timer);
+    blast.hsNote="SCORE NOT ENTERED"; sfx("miss"); ov.remove(); next(); };
+  blast.hsEntry={step, move, set, finish, skip, back:()=>move(-1), knob:v=>{   // relative: where the knob rests when a letter comes up is that letter; a sixth of a turn either way is six letters
+    if(!settled()) return; keepAlive();
     if(st.knobBase==null || st.knobPos!==st.pos){ st.knobBase=v; st.knobPos=st.pos; st.knobFrom=HS_CHARS.indexOf(st.letters[st.pos]); return; }
     const d=Math.round((v-st.knobBase)*36); if(!d) return;
-    st.letters[st.pos]=HS_CHARS[mod(st.knobFrom+d, HS_CHARS.length)]; draw(); }, type:ch=>{ if(!settled()) return; st.letters[st.pos]=ch; draw(); set(); }};
+    st.letters[st.pos]=HS_CHARS[mod(st.knobFrom+d, HS_CHARS.length)]; draw(); }, type:ch=>{ if(!settled()) return; keepAlive(); st.letters[st.pos]=ch; draw(); set(); }};
   draw(); sfx("bonus");
 }
 // the game over screen says what became of the score
@@ -446,6 +464,7 @@ document.addEventListener("keydown", e=>{
   if(e.code==="ArrowUp") h.step(1); else if(e.code==="ArrowDown") h.step(-1);
   else if(e.code==="ArrowLeft" || e.code==="Backspace") h.move(-1); else if(e.code==="ArrowRight") h.move(1);
   else if(e.code==="Enter" || e.code==="Space") h.set();
+  else if(e.code==="Escape") h.skip();
   else if(/^Key[A-Z]$|^Digit[0-9]$/.test(e.code)) h.type(e.code.slice(-1));
 }, true);
 // the board, drawn for the title loop

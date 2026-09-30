@@ -409,6 +409,11 @@
 .hssplash .hsnext{color:#7FE9FF!important;min-height:1.4em}
 .overlay.hsentry{z-index:8;background:rgba(7,6,12,.92)}
 .hsentry .hsscore{font-size:1.4rem!important;color:#FFD35A!important}
+/* the countdown: seconds left before the initials take themselves away, red at the last five */
+.hscount{margin:2px 0 0!important;font:400 .7rem "Press Start 2P",monospace;color:#9A93B5}
+.hscount i{font-style:normal;font-size:1.5em;color:#FFD35A}
+.hscount.low i{color:#FF4B3E;animation:hscount .5s steps(2) infinite}
+@keyframes hscount{50%{opacity:.35}}
 .hsletters{display:flex;gap:14px;margin:6px 0 4px}
 .hsletters span{display:flex;align-items:center;justify-content:center;width:1.6em;height:1.9em;font:400 2rem "Press Start 2P",monospace;color:#F1E8D2;border-bottom:4px solid #3D3656}
 .hsletters span.on{color:#FFD35A;border-bottom-color:#FFD35A;animation:blink .8s steps(2) infinite}
