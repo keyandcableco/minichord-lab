@@ -624,7 +624,12 @@ html.arcadepage .gamebar{align-items:flex-end}
 @keyframes swnextblink{50%{border-color:#7FE9FF}}
 /* a game's pictures on the harp's zones fill them, rather than sitting at the size of a letter */
 .kmstrip .km svg{height:78%;width:auto;max-width:86%;display:block}
-.kmplate .kdot svg{height:62%;width:auto;max-width:70%;display:block}
+/* a dot that holds a picture (Chord Sweeper's burst and flag) is the picture: no circle behind it, drawn
+   larger than the dot, shadowed so it reads on the plate; lit, it glows gold instead of filling */
+.kmplate .kdot:has(svg){background:none;border-color:transparent;box-shadow:none;width:30%}
+.kmplate .kdot svg{height:100%;width:100%;display:block;filter:drop-shadow(0 0 2px #000) drop-shadow(1px 1px 0 #000)}
+.kmstrip.plate .kdot.lit:has(svg),.helper .board .kmplate .kdot.lit:has(svg),.helper .board .kmplate .kdot.demo-on:has(svg){background:none;box-shadow:none}
+.kmstrip.plate .kdot.lit:has(svg) svg,.helper .board .kmplate .kdot.lit:has(svg) svg,.helper .board .kmplate .kdot.demo-on:has(svg) svg{filter:drop-shadow(0 0 5px #FFD35A) drop-shadow(0 0 2px #FFD35A)}
 .helper .hbstrip span svg{height:90%;width:auto;max-width:90%;display:block;margin:auto}
 /* Chord Sweeper's lives, big, and what losing one looks like */
 .field .popup.big{font-size:1.25rem;z-index:12;text-shadow:3px 3px 0 #000;animation-duration:1.5s}
