@@ -193,6 +193,18 @@ function multRows(kind){
 }
 // the points screen in the title loop: the table filling in line by line, then the multipliers
 const pointsFor=k=>{ const p=POINTS_FOR[k]; return typeof p==="function" ? p() : (p||[]); };
+// The power-ups a game has, for the title screen's POWER-UPS page: each drawn as it looks in the game,
+// its name and what it does. A game without any skips the page.
+const POWERS_FOR={
+  blaster:()=>Object.entries(POWERS).map(([k,P])=>({look:`<span class="fchord power pu-${k}"><i class="puicon">${P.icon}</i>C</span>`, name:P.name, text:P.page})),
+  breakout:()=>[{look:`<span class="bobrick power row1 pwbrick">G</span>`, name:"POWER BRICK", text:"BREAK ONE AND ITS CHORD'S TONES RAIN DOWN, THE PADDLE A CANNON: PLUCK EACH TONE ON THE HARP FOR A BONUS, ALL OF THEM FOR THE WHOLE CHORD."}],
+};
+const powersFor=k=> POWERS_FOR[k] ? POWERS_FOR[k]() : [];
+function powersRender(el){
+  let i=0; const d=()=>`style="animation-delay:${(i++)*.6}s"`;
+  el.innerHTML=`<h3>POWER-UPS</h3><p class="ptsub">${cabKind()==="blaster" ? "PLAY A POWER-UP'S CHORD TO TAKE IT" : "THEY TURN UP NOW AND THEN"}</p>
+    <ul class="pwtable">${powersFor(cabKind()).map(p=>`<li ${d()}><span class="pwlook">${p.look}</span><div><b>${p.name}</b><em>${p.text}</em></div></li>`).join("")}</ul>`;
+}
 function pointsRender(el){
   const k=cabKind(), pts=pointsFor(k), long=pts.length>6;
   let i=0; const d=()=>`style="animation-delay:${(i++)*(long?.28:.45)}s"`;

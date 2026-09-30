@@ -58,7 +58,7 @@ function arcadeBonus(id){
     el.classList.remove("intro"); b.ready=true; b.t0=performance.now(); sfx("start");
     b.timer=setInterval(()=>{ const left=1-(performance.now()-b.t0)/(b.secs*1000);
       el.querySelector(".botime i").style.transform=`scaleX(${Math.max(0,left)})`;
-      if(left<=0) bonusEnd(b); }, 100);
+      if(left<=0) bonusEnd(b); else if(b.g.tick) b.g.tick(b, .1); }, 100);
     g.start(b); }, BONUS_WARN/3);
 }
 const BONUS_WARN=4200;
@@ -110,7 +110,16 @@ const BONUS_GAMES=[
      if(b.osc) b.osc[1].frequency.value=f;
      const ring=b.stage.querySelector(".bobeat i"); if(ring) ring.style.animationDuration = beats<.05 ? "0s" : `${Math.min(8,1/beats)}s`; },
    // whichever knob turns: where it rests when first touched is where the tuning starts from
-   knob(b, v, k){ if(b.base==null || b.knobId!==k){ b.knobId=k; b.base=v; b.at=b.cents; return; } this.set(b, b.at+(v-b.base)*120); },
+   knob(b, v, k){ b.kv=v; if(b.base==null || b.knobId!==k){ b.knobId=k; b.base=v; b.at=b.cents; return; } this.set(b, b.at+(v-b.base)*120); },
+   // endless, as Fifths Defender's knob is: held against a stop, the tuning keeps going that way (after
+   // a moment), and the knob's reckoning moves with it, so turning back carries on from there
+   tick(b, dt){
+     const v=b.kv; if(v==null || b.base==null){ b.edgeAt=null; return; }
+     const dir = v<=.025 ? -1 : v>=.975 ? 1 : 0;
+     if(!dir){ b.edgeAt=null; return; }
+     const now=performance.now(); if(b.edgeAt==null){ b.edgeAt=now+420; return; } if(now<b.edgeAt) return;
+     this.set(b, b.cents+dir*9*dt); b.at=b.cents; b.base=v;
+   },
    key(b, code, shift){ const d={ArrowUp:1,ArrowRight:1,ArrowDown:-1,ArrowLeft:-1}[code]; if(d){ this.set(b, b.cents+d*(shift?5:1)); return; }
      if(code==="Enter"||code==="Space"){ this.lock(b); return; } return false; },
    note(b, pc){ const c=kmControl(pc); if(!c) return; if(c==="up"||c==="right") this.set(b,b.cents+2); else if(c==="down"||c==="left") this.set(b,b.cents-2); else this.lock(b); },

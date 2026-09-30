@@ -163,6 +163,7 @@ function cabinet(ov){
     inner.appendChild(c); }
   roll.appendChild(inner);
   const points=document.createElement("div"); points.className="cab-points";
+  const powers=document.createElement("div"); powers.className="cab-powers";
   const board=document.createElement("div"); board.className="cab-scores";
   const opts=document.createElement("div"); opts.className="cab-options";
   [...ov.children].forEach(c=>opts.appendChild(c));
@@ -172,7 +173,7 @@ function cabinet(ov){
   multLine(opts);
   if(["breakout","fifths","stack","asteroids","sight","blaster"].includes(cabKind()) && knobsReady()) knobRow(opts);
   cabPages(opts, ov);
-  ov.append(title, roll, points, board, opts);
+  ov.append(title, roll, points, powers, board, opts);
   hsFetch(hsSlug());                                        // fetched now, so it's ready when its turn comes
   ov.addEventListener("click", e=>{ if(ov.dataset.stage!=="options"){ e.stopPropagation(); cabWake(); } }, true);
   // The roll stops with the credit in the middle of the screen. The credit stays there, lifted off
@@ -203,7 +204,11 @@ function cabStage(ov, stage){
   if(stage==="options") blast.cabT=gameLater(()=>{ if(blast && blast.overlay===ov && ov.dataset.stage==="options" && blast.phase==="menu") cabStage(ov,"title"); }, 45000);
   if(stage==="points"){                                        // what things are worth, then the board
     pointsRender(ov.querySelector(".cab-points"));
-    blast.cabT=gameLater(()=>{ if(blast && blast.overlay===ov && ov.dataset.stage==="points" && blast.phase==="menu") cabStage(ov,"scores"); }, pointsFor(cabKind()).length>6 ? 12500 : 9500);   // a longer table stays longer
+    blast.cabT=gameLater(()=>{ if(blast && blast.overlay===ov && ov.dataset.stage==="points" && blast.phase==="menu") cabStage(ov, powersFor(cabKind()).length ? "powers" : "scores"); }, pointsFor(cabKind()).length>6 ? 12500 : 9500);   // a longer table stays longer
+  }
+  if(stage==="powers"){                                        // the power-ups, for a game that has them, then the board
+    powersRender(ov.querySelector(".cab-powers"));
+    blast.cabT=gameLater(()=>{ if(blast && blast.overlay===ov && ov.dataset.stage==="powers" && blast.phase==="menu") cabStage(ov,"scores"); }, 4000+powersFor(cabKind()).length*2600);
   }
   if(stage==="scores"){                                        // the board, then the demo
     const el=ov.querySelector(".cab-scores"); el.innerHTML="<h3>HIGH SCORES</h3>";

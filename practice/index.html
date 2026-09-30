@@ -442,6 +442,22 @@
 /* the points screen, Pac-Man style: each line appears in turn, a dotted leader to its value */
 .cab-points{display:flex;flex-direction:column;align-items:center;gap:10px;width:100%}
 .overlay:not([data-stage="points"]) .cab-points{display:none!important}
+/* the POWER-UPS page: each power-up as it looks in the game, its name, what it does */
+.cab-powers{display:flex;flex-direction:column;align-items:center;gap:12px;width:100%}
+.overlay:not([data-stage="powers"]) .cab-powers{display:none!important}
+.overlay[data-stage="powers"] .cab-title,.overlay[data-stage="powers"] .cab-rules,.overlay[data-stage="powers"] .cab-options,.overlay[data-stage="powers"] .cab-scores,.overlay[data-stage="powers"] .cab-points{display:none!important}
+.pwtable{list-style:none;margin:0;padding:0;display:grid;gap:18px;width:min(560px,92%)}
+.pwtable li{display:grid;grid-template-columns:6.5rem 1fr;align-items:center;gap:16px;opacity:0;animation:ptin .01s steps(1) forwards}
+.pwtable .pwlook{display:flex;justify-content:center}
+.pwtable li>div{text-align:left}
+/* the power-ups' own looks, as in the games (the games draw them inside their fields; these are standalone copies) */
+.pwtable .fchord{display:inline-flex;align-items:center;font:400 1.05rem "Minichord Lab Accidentals","Press Start 2P",monospace;color:#F1E8D2;text-shadow:0 0 6px rgba(255,255,255,.35);padding:.15em .45em;border:2px solid #FF5AA0;border-radius:999px;background:rgba(255,90,160,.18);box-shadow:0 0 12px rgba(255,90,160,.6)}
+.pwtable .fchord.pu-slow{border-color:#7FE9FF;background:rgba(127,233,255,.16);box-shadow:0 0 12px rgba(127,233,255,.6)}
+.pwtable .fchord.pu-shield{border-color:#7FE08A;background:rgba(127,224,138,.16);box-shadow:0 0 12px rgba(127,224,138,.6)}
+.pwtable .fchord .puicon{font-style:normal;margin-right:.3em;font-family:system-ui,sans-serif}
+.pwtable .pwlook .pwbrick{position:static;width:5.5rem;height:1.9rem;font-size:.7rem}
+.pwtable li b{display:block;font:400 .72rem "Press Start 2P",monospace;color:#FFD35A;margin-bottom:6px}
+.pwtable li em{display:block;font:400 .5rem/1.8 "Press Start 2P",monospace;font-style:normal;color:#F1E8D2}
 .overlay[data-stage="points"] .cab-title,.overlay[data-stage="points"] .cab-rules,.overlay[data-stage="points"] .cab-options,.overlay[data-stage="points"] .cab-scores{display:none!important}
 .overlay[data-stage="points"]{background:rgba(7,6,12,.7);cursor:pointer}
 .ptable{list-style:none;margin:0;padding:0;display:grid;gap:10px;min-width:min(460px,88%)}

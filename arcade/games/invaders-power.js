@@ -5,8 +5,9 @@
 
 // ---------- the beam ----------
 // In manual aim, a chord kept sounding (held down, or latched with the minichord's hold button) fires
-// a beam straight up from the ship after a moment, and every falling chord of that chord the beam
-// touches is destroyed: sweep the ship with the knob to rake the sky. The beam runs on an energy bar
+// a beam straight up from the ship after a moment, and every falling chord of that chord's type the
+// beam touches is destroyed, whatever its root: hold any minor chord and the beam takes every minor
+// chord it crosses. Sweep the ship with the knob to rake the sky. The beam runs on an energy bar
 // that drains while it fires and fills again when it rests.
 // ---------- power-ups ----------
 // Now and then a power-up falls: a chord in a coloured capsule, collected by playing it like any
@@ -17,9 +18,9 @@
 //   SHIELD     the next chord that lands costs no life
 const BEAM_WAIT=350, BEAM_DRAIN=.25, BEAM_FILL=.12, BEAM_HALF=7;   // ms held before it fires; energy a second out and in; px either side of the ship
 const POWERS={
-  omni:  {name:"OMNI BEAM", icon:"⚡", secs:8,  say:"HOLD ANY CHORD: THE BEAM BLASTS WHATEVER IT TOUCHES"},
-  slow:  {name:"SLOW TIME", icon:"⏳", secs:10, say:"EVERYTHING FALLS AT HALF SPEED"},
-  shield:{name:"SHIELD",    icon:"🛡", secs:0,  say:"THE NEXT CHORD THAT LANDS COSTS NOTHING"},
+  omni:  {name:"OMNI BEAM", icon:"⚡", secs:8,  say:"HOLD ANY CHORD: THE BEAM BLASTS WHATEVER IT TOUCHES", page:"FOR 8 SECONDS, ANY CHORD YOU HOLD FIRES A BEAM THAT BLASTS EVERY CHORD IT TOUCHES, WHATEVER IT IS."},
+  slow:  {name:"SLOW TIME", icon:"⏳", secs:10, say:"EVERYTHING FALLS AT HALF SPEED", page:"FOR 10 SECONDS, EVERYTHING FALLS AT HALF SPEED."},
+  shield:{name:"SHIELD",    icon:"🛡", secs:0,  say:"THE NEXT CHORD THAT LANDS COSTS NOTHING", page:"THE NEXT CHORD THAT LANDS COSTS NO LIFE."},
 };
 const powerOn=k=> !!(blast && blast.powers && blast.powers[k] && (POWERS[k].secs===0 || performance.now()<blast.powers[k]));
 // a power-up to drop now and then, one at a time, never while one runs
@@ -60,11 +61,11 @@ function blastPowerTick(now, dt){
   else if(!can) blast.energy=Math.min(1, blast.energy+BEAM_FILL*dt);
   if(blast.aimManual && Math.floor(now/250)!==blast.barTick){ blast.barTick=Math.floor(now/250); blastBar(); }
   if(!can) return;
-  // what's in the beam: above the ship, and (unless omni) that very chord
-  const shipX=blast.field.clientWidth*(blast.shipF??.5);
+  // what's in the beam: above the ship, and (unless omni) of the held chord's type, any root
+  const shipX=blast.field.clientWidth*(blast.shipF??.5), heldQ=(chordId(pitches)||{}).quality;
   for(const it of blast.items){
     if(it.done || Math.abs(it.el.offsetLeft-shipX) > it.el.offsetWidth/2+BEAM_HALF) continue;
-    if(!omni && !blastMatches(it, pitches)) continue;
+    if(!omni && it.q!==heldQ) continue;
     blastKill(it, "beam");
   }
 }

@@ -1,7 +1,7 @@
 // Chord Invaders' beam and power-ups: in manual aim a chord kept sounding fires a beam that destroys
-// that chord wherever the beam crosses it (not other chords, not away from the ship), on energy that
+// every chord of its type the beam crosses (not other types, not away from the ship), on energy that
 // drains and refills; OMNI BEAM destroys anything, sweeping by itself in auto aim; a power-up is taken
-// by playing its chord; SLOW TIME halves the fall; a SHIELD saves a life.
+// by playing its chord; SLOW TIME halves the fall; a SHIELD saves a life; the title screen's POWER-UPS page.
 const t=require("./harness").load("invaders");
 (async()=>{
   const {w, sleep, check, mc, d}=t;
@@ -16,10 +16,11 @@ const t=require("./harness").load("invaders");
   let sounding=[]; Object.defineProperty(mc,"voices",{get:()=>sounding.map((p,i)=>({note:p, pitch:p, voice:i})), configurable:true});
   const hold=(root,q)=>{ const r=48+t.PC[root], iv={"":[0,4,7],"m":[0,3,7],"7":[0,4,7,10]}[q]; sounding=iv.map(x=>r+x); };
   reset(); a.shipWant=.5; a.shipF=.5;
-  const cUnder=place("C","C","",450), aUnder=place("Am","A","m",455), cFar=place("C","C","",100);
+  const cUnder=place("C","C","",450), aUnder=place("Am","A","m",455), gUnder=place("G","G","",445), cFar=place("C","C","",100);
   hold("C",""); await sleep(700);
   check("a chord kept sounding fires the beam, and C major above the ship is destroyed", a.beamOn && cUnder.done);
-  check("but not a different chord in the beam, nor the same chord away from the ship", !aUnder.done && !cFar.done);
+  check("and so is every chord of its type in the beam, G major too, whatever the root", gUnder.done);
+  check("but not a chord of another type in the beam, nor one away from the ship", !aUnder.done && !cFar.done);
   const e1=a.energy; check("the beam spends energy", e1<1, `${e1.toFixed(2)}`);
   sounding=[]; await sleep(600);
   check("and it refills when the chord stops", a.energy>e1 && !a.beamOn, `${e1.toFixed(2)} → ${a.energy.toFixed(2)}`);
@@ -41,5 +42,8 @@ const t=require("./harness").load("invaders");
   a.powers={shield:true}; const lives=a.lives, landing=place("E","E","",300);
   w.eval("blastMiss(blast.items[blast.items.length-1])");
   check("SHIELD: the next chord that lands costs no life, and the shield is spent", a.lives===lives && !w.eval("powerOn('shield')"));
+  w.eval("blast.phase='menu'; blast.items.forEach(i=>i.el.remove()); blast.items=[]; blastMenu(); cabStage(blast.overlay,'powers')"); await sleep(50);
+  check("the title screen has a POWER-UPS page: each power-up as it looks, its name, what it does", d.querySelectorAll(".cab-powers .pwtable li").length===3 && /OMNI BEAM/.test(d.querySelector(".cab-powers").textContent) && !!d.querySelector(".cab-powers .fchord.pu-slow"));
+  check("a game without power-ups skips it", w.eval("powersFor('snake').length")===0 && w.eval("powersFor('breakout').length")===1);
   t.done();
 })();
