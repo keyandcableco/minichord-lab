@@ -571,7 +571,12 @@ html.arcadepage .gamebar{align-items:flex-end}
 .swcell.boom{background:#8B0000}
 .swcell.shown .mk{position:absolute;bottom:3px;font:400 .45rem "Minichord Lab Accidentals","Press Start 2P",monospace;color:#FFD35A}
 .swcell.defused{background:#1E3A24}
-.swcell.calm b{color:#4A4E58}.swcell b.home{color:#7FE08A}
+.swcell.calm b{color:#4A4E58}
+.swnext{position:absolute;left:50%;bottom:18px;transform:translateX(-50%);z-index:12;display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px 18px;background:rgba(7,6,12,.9);border:3px solid #FFD35A;box-shadow:0 0 0 3px #000;cursor:pointer;animation:swnextblink 1s steps(2) infinite}
+.swnext b{font:400 .8rem "Press Start 2P",monospace;color:#FFD35A}
+.swnext span{font:400 .45rem "Press Start 2P",monospace;color:#F1E8D2}
+@keyframes swnextblink{50%{border-color:#7FE9FF}}
+.km svg,.kdot svg{width:1.1em;height:1.1em;vertical-align:-.15em}.swcell b.home{color:#7FE08A}
 .swside{position:absolute;z-index:3;font:400 .5rem/2 "Press Start 2P",monospace;color:#F1E8D2}
 .swside b{color:#FFD35A;font-weight:400}
 .swside .swhow{color:#9A93B5;margin-top:12px}

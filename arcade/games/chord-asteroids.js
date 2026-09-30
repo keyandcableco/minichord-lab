@@ -71,10 +71,38 @@ function buildAsteroidsField(box){
 function asCentre(){ if(!blast || !blast.field) return; blast.hx=blast.field.clientWidth/2; blast.hy=blast.field.clientHeight/2+10;
   blast.orbitR=Math.min(blast.field.clientWidth, blast.field.clientHeight)*.24; asPlace(); }
 function asPlace(){ const a=blast.orbitA??Math.PI/2; blast.cx=blast.hx+Math.cos(a)*blast.orbitR; blast.cy=blast.hy+Math.sin(a)*blast.orbitR; }
-function asKnob(v){ if(!blast || blast.kind!=="asteroids") return; blast.orbitWant=Math.PI/2+(v-.5)*2*Math.PI; }   // the knob's whole turn is one lap
+// Both knobs turn endlessly, as Fifths Defender's does: a knob has end stops, so held against either
+// one, the orbit (or the ship's aim) keeps turning that way, and the whole mapping turns with it, so
+// the knob never jumps back when it's turned away from the stop.
+const AS_EDGE=.025, AS_EDGE_WAIT=420, AS_EDGE_RATE=1.25;   // how close to a stop counts, how long before it starts, radians a second
+function asKnob(v){ if(!blast || blast.kind!=="asteroids") return; blast.orbitV=v; blast.orbitWant=Math.PI/2+(v-.5)*2*Math.PI+(blast.orbitOffset||0); }   // the knob's whole turn is one lap
+function asEdge(now, dt){
+  for(const [V, off, apply] of [["orbitV","orbitOffset",asKnob], ["aimV","aimOffset",asAim]]){
+    const v=blast[V], at=V+"EdgeAt"; if(v==null || blast.phase!=="play"){ blast[at]=null; continue; }
+    const dir = v<=AS_EDGE ? -1 : v>=1-AS_EDGE ? 1 : 0;
+    if(!dir){ blast[at]=null; continue; }
+    if(blast[at]==null){ blast[at]=now+AS_EDGE_WAIT; continue; }
+    if(now<blast[at]) continue;
+    blast[off]=(blast[off]||0)+dir*AS_EDGE_RATE*dt; apply(v);
+  }
+}
+// Manual aim (an option, worth double): a second knob spins the ship, and a harp pluck fires where it
+// points. The aim knob is whichever of the chord and harp knobs isn't steering. Those two always move
+// their volumes, so on firmware with knob layer the game puts the knobs on their alternates and points
+// those at unused addresses: turning them then changes nothing on the minichord while "knobs send
+// MIDI" still reports where they are. Without knob layer, the up and down arrows aim instead.
+const asAimKnob=()=> steerKnob()===0 ? 1 : 0;
+const asManual=()=> !!(blast && blast.kind==="asteroids" && blast.aimManual);
+function asAim(v){ if(!asManual()) return; blast.aimV=v; blast.aimWant=-Math.PI/2+(v-.5)*2*Math.PI+(blast.aimOffset||0); }   // a whole turn of the knob, a whole turn of the ship
+function asKnobsInert(){
+  if(!canWrite() || !hasSetting(117) || (mc.params[7]??0)<19) return false;
+  borrow(117,1); borrow(10,213); borrow(12,214); borrow(16,215);   // knob layer on, the alternates at unused addresses
+  return true;
+}
 document.addEventListener("keydown", e=>{
   if(!blast || blast.kind!=="asteroids" || blast.phase!=="play" || /INPUT|SELECT|TEXTAREA/.test(document.activeElement?.tagName||"")) return;
-  const d={ArrowLeft:1,ArrowRight:-1}[e.code]; if(!d) return;
+  const d={ArrowLeft:1,ArrowRight:-1}[e.code];
+  if(!d){ const a={ArrowUp:-1,ArrowDown:1}[e.code]; if(a && asManual()){ e.preventDefault(); blast.aimWant=(blast.aimWant??blast.shipAng)+a*.2; } return; }
   e.preventDefault(); blast.orbitWant=(blast.orbitWant??blast.orbitA??Math.PI/2)+d*.22;
 });
 function asBar(){
@@ -82,8 +110,9 @@ function asBar(){
   blast.hud.innerHTML=`<span>SCORE ${blast.score}${multTag()}</span><span class="lvl">LEVEL ${blast.level+1}</span><span class="lives">${"♥".repeat(Math.max(0,blast.lives))||"-"}</span>`;
 }
 const ASMENU_G={key:"asteroids", title:"CHORD ASTEROIDS",
-  rules:()=>`<p>PLAY A ROCK'S CHORD TO CRACK IT INTO ITS NOTES.</p><p>PLUCK EACH NOTE ON THE HARP TO SHOOT IT DOWN.</p><p>FLY ROUND YOUR ORBIT TO DODGE: THE MOD KNOB, OR THE ARROW KEYS.</p><p class="starline">${PIXEL_STAR}ROCKS SCORE BIG AND NEVER HURT.</p>`,
+  rules:()=>`<p>PLAY A ROCK'S CHORD TO CRACK IT INTO ITS NOTES.</p><p>PLUCK EACH NOTE ON THE HARP TO SHOOT IT DOWN.</p><p>FLY ROUND YOUR ORBIT TO DODGE: THE MOD KNOB, OR THE ARROW KEYS. HOLD A KNOB AT ITS END AND IT KEEPS GOING ROUND.</p><p>MANUAL AIM SCORES DOUBLE: SPIN THE SHIP WITH ANOTHER KNOB (OR ↑ ↓), AND A PLUCK FIRES WHERE IT POINTS.</p><p class="starline">${PIXEL_STAR}ROCKS SCORE BIG AND NEVER HURT.</p>`,
   rows:row=>{
+    row("AIM", ["AUTO","MANUAL ×2"], ()=>saved.asAim?1:0, i=>{ saved.asAim=i; save(); });
     row("SPEED", SPEEDS.map(x=>x[0].toUpperCase()), ()=>+saved.speed||0, i=>{ saved.speed=i; save(); });
     row("LABEL SIZE", SIZES.map(x=>x[0]), ()=>saved.chordSize??1, i=>{ saved.chordSize=i; save(); applyChordSize(); });
   },
@@ -95,10 +124,12 @@ function beginAsteroids(level){
   piano.start(); stopDemo(); clearTimeout(blast.attract);
   if(blast.overlay){ blast.overlay.remove(); blast.overlay=null; }
   blast.rocks.forEach(r=>r.el.remove());
-  Object.assign(blast,{rocks:[], score:0, lives:3, level, startLevel:level, clears:0, phase:"play", over:false, jamUntil:0,
+  Object.assign(blast,{rocks:[], score:0, lives:3, level, startLevel:level, clears:0, phase:"play", over:false, jamUntil:0, aimManual:!!saved.asAim, aimWant:null, orbitOffset:0, aimOffset:0, orbitV:null, aimV:null,
     next:performance.now()+1200, gap:5200*speedMul()*Math.pow(.94,level), drift:34/speedMul()*Math.pow(1.05,level)});
   if(AS_LEVELS[level].barry && canWrite()) borrow(33,1); else if(canWrite() && hasSetting(33)) ensure(33,0);
   saved.asteroidsStart=level; save();
+  if(blast.aimManual){ const inert=asKnobsInert(); blast.aimWant=blast.shipAng;
+    banner("MANUAL AIM ×2", inert ? `SPIN THE SHIP WITH THE ${KNOB_NAMES[asAimKnob()]} KNOB` : "SPIN THE SHIP WITH ↑ ↓"); }
   stats.streak=0; scoreboard(); asCentre();
   cancelAnimationFrame(blast.raf); blast.last=performance.now(); blast.raf=requestAnimationFrame(asTick);
   banner(`LEVEL ${level+1}`, `${AS_LEVELS[level].n.toUpperCase()} · ${(SPEEDS[+saved.speed]||SPEEDS[0])[0].toUpperCase()}`);
@@ -134,6 +165,8 @@ function asTick(now){
   const dt=Math.min(.05,(now-blast.last)/1000); blast.last=now;
   if(blast.orbitWant!=null && blast.hx!=null){ const a=blast.orbitA??Math.PI/2, d=blast.orbitWant-a;   // the ship glides round to where it's steered
     blast.orbitA = Math.abs(d)<.002 ? blast.orbitWant : a+d*Math.min(1,dt*9); asPlace(); }
+  asEdge(now, dt);
+  if(asManual() && blast.aimWant!=null){ const d=blast.aimWant-blast.shipAng; blast.shipAng += Math.abs(d)<.002 ? d : d*Math.min(1,dt*12); }
   if(blast.phase==="play" || blast.phase==="demo"){
     if(blast.phase==="play" && now>=blast.next && blast.rocks.filter(r=>!r.dead && r.kind==="chord").length<4){ asSpawn(); blast.next=now+blast.gap*(.8+Math.random()*.4); }
     for(const r of blast.rocks){
@@ -168,7 +201,7 @@ function asHitShip(r){
 }
 // the ship turns to a target and fires a laser at it
 function asFire(r, then){
-  blast.shipAng=Math.atan2(r.y-blast.cy, r.x-blast.cx);
+  if(!asManual()) blast.shipAng=Math.atan2(r.y-blast.cy, r.x-blast.cx);
   sfx("shoot");
   blast.fx.missiles.push({x0:blast.cx/PX, y0:blast.cy/PX, x1:r.x/PX, y1:r.y/PX, t0:performance.now(), dur:140, hit:then});
 }
@@ -183,10 +216,18 @@ function asteroidsChord(voices){
   heard(name,true);
   asKill(hit); asCrack(hit);
 }
+// a chord rock is worth what the chord is, as in Chord Invaders: major 10 up to 50 for the sixths and
+// diminished sevenths, half again when it needs the modifier, three times for a star rock
+function asChordPoints(hit){
+  let p=BLAST_WORTH[hit.q] ?? 10;
+  const {li,acc}=parse(hit.root); if(acc!==keyAcc(li, devFifths())) p*=1.5;
+  if(hit.star) p*=3;
+  return mulPts(Math.round(p)*(blast.level+1));
+}
 function asCrack(hit){
   explode(hit.x, hit.y, hit.star?46:34, hit.star?["#7FE9FF","#FFFFFF","#FFD35A"]:["#C9C0A8","#FFD35A","#F1E8D2"]);
   sfx(hit.star?"bonus":"boom");
-  const pts=mulPts((hit.star?60:20)*(blast.level+1)); blast.score+=pts; popup(hit.x, hit.y-30, `+${pts}`, hit.star?"#7FE9FF":undefined);
+  const pts=asChordPoints(hit); blast.score+=pts; popup(hit.x, hit.y-30, `+${pts}`, hit.star?"#7FE9FF":undefined);
   // its notes fly out in a ring, each spelled as the chord's own
   const group={id:hit.id, left:hit.tones.length, label:hit.label};
   hit.tones.forEach((t,i)=>{
@@ -203,19 +244,27 @@ function asteroidsNote(pc){
   if(blast.phase!=="play") return;
   const now=performance.now();
   if(now<blast.jamUntil){ heard("",false,"JAMMED"); return; }
-  const r=blast.rocks.filter(x=>!x.dead && x.kind==="note" && x.pc===pc).sort((a,b)=>Math.hypot(a.x-blast.cx,a.y-blast.cy)-Math.hypot(b.x-blast.cx,b.y-blast.cy))[0];
+  const pool=blast.rocks.filter(x=>!x.dead && x.kind==="note" && x.pc===pc);
+  // manual aim: only a note roughly where the ship points (within about 12 degrees)
+  const inLine=x=>{ const a=Math.atan2(x.y-blast.cy, x.x-blast.cx), d=Math.abs(((a-blast.shipAng)%(2*Math.PI)+3*Math.PI)%(2*Math.PI)-Math.PI); return d<.21 || Math.hypot(x.x-blast.cx,x.y-blast.cy)*Math.sin(d)<x.r*.8; };
+  const r=(asManual() ? pool.filter(inLine) : pool).sort((a,b)=>Math.hypot(a.x-blast.cx,a.y-blast.cy)-Math.hypot(b.x-blast.cx,b.y-blast.cy))[0];
   const nm=(r && r.name) || SHARP_NAMES[pc];
+  if(!r && asManual() && pool.length){                    // there is such a note, but not where the ship points: the shot goes wide
+    heard(nm,false,"WIDE"); sfx("shoot"); blast.jamUntil=now+450;
+    const far=Math.max(blast.field.clientWidth, blast.field.clientHeight);
+    blast.fx.missiles.push({x0:blast.cx/PX, y0:blast.cy/PX, x1:(blast.cx+Math.cos(blast.shipAng)*far)/PX, y1:(blast.cy+Math.sin(blast.shipAng)*far)/PX, t0:now, dur:260, hit:()=>{}});
+    return; }
   if(!r){ heard(nm,false,"NO SUCH ROCK"); sfx("freeze"); blast.jamUntil=now+1100+120*blast.level; popup(blast.cx, blast.cy+40, "JAMMED", "#7FE9FF"); return; }
   heard(nm,true);
   r.dead=true;                                        // spoken for: no second shot at it
   asFire(r, ()=>{ r.deadAt=performance.now(); r.el.remove(); explode(r.x, r.y, 16);
-    const pts=mulPts(10*(blast.level+1)); blast.score+=pts; popup(r.x, r.y-14, `+${pts}`);
+    const pts=mulPts(10*(blast.level+1)*(blast.aimManual?2:1)); blast.score+=pts; popup(r.x, r.y-14, `+${pts}`);
     sfx("boom");
     if(--r.group.left===0) asCleared(r.group, r.x, r.y);
     asBar(); });
 }
 function asCleared(group, x, y){
-  const pts=mulPts(25*(blast.level+1)); blast.score+=pts; blast.clears++; stats.streak=blast.clears; scoreboard();
+  const pts=mulPts(25*(blast.level+1)*(blast.aimManual?2:1)); blast.score+=pts; blast.clears++; stats.streak=blast.clears; scoreboard();
   popup(x, y-34, `${group.label} CLEARED +${pts}`, "#FFD35A");
   if(blast.clears%6===0){
     const was=blast.level;
@@ -276,6 +325,13 @@ function asDemo(){
       incoming.vx=-(W2-50-blast.cx)/2.6; incoming.vy=0; await step(1100);
       blast.orbitWant=(blast.orbitA??Math.PI/2)-Math.PI*.55; sfx("press"); await step(1900);   // swung clear: the rock sails through where it was
       if(!incoming.dead) asKill(incoming); await step(900);
+      // manual aim: the ship spins to point, and the pluck fires where it points
+      say("MANUAL AIM ×2","AN OPTION: SPIN THE SHIP WITH ANOTHER KNOB, AND A PLUCK FIRES WHERE IT POINTS. NOTES SCORE DOUBLE.");
+      blast.aimManual=true; blast.aimWant=blast.shipAng+Math.PI*.75; await step(1500);
+      const aimed=asRock("note", blast.cx+Math.cos(blast.aimWant)*170, blast.cy+Math.sin(blast.aimWant)*170, "G", {name:"G", pc:7, group:{left:1, label:"G"}});
+      aimed.born=performance.now()-5000; await step(900);
+      aimed.dead=true; helpString(7); demoPlay([67]); asFire(aimed, ()=>{ aimed.deadAt=performance.now(); aimed.el.remove(); explode(aimed.x, aimed.y, 16); sfx("boom"); });
+      await step(1800); blast.aimManual=false; blast.aimWant=null;
       say("READY?","CHOOSE A LEVEL."); sfx("level"); await step(2600);
       endAsDemo(token);
     }catch(e){ /* skipped */ }
@@ -286,6 +342,7 @@ function endAsDemo(token){
   if(!blast || blast.demo!==token) return;
   stopDemo(); blast.phase="menu"; blast.rocks.forEach(r=>{ if(!r.dead) asKill(r); }); blast.rocks=[]; blast.score=0;
   blast.orbitWant=Math.PI/2;                                                   // the ship home to its starting place
+  blast.aimManual=false; blast.aimWant=null; blast.shipAng=-Math.PI/2;
   if(blast.overlay) blast.overlay.hidden=false;
   clearTimeout(blast.attract);
   blast.attract=gameLater(()=>{ if(blast && blast.kind==="asteroids" && blast.phase==="menu" && blast.overlay && !blast.overlay.hidden) asDemo(); }, 25000);

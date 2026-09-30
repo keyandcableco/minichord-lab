@@ -24,6 +24,9 @@ const KM_LAYOUTS={
 };
 const kmLayout=()=>KM_LAYOUTS[saved.harpLayout==="keymaster" ? "keymaster" : "strip"];
 const KM_GLYPH={up:"▲",left:"◀",A:"A",B:"B",right:"▶",down:"▼"};
+// what a zone shows: its arrow or letter, or for a game whose A and B have a clear meaning, a picture
+// of it (Chord Sweeper: A sweeps, a burst; B flags, a flag)
+const kmGlyph=z=> (blast && blast.kind==="sweeper" && typeof SW_GLYPH!=="undefined" && SW_GLYPH[z]) || KM_GLYPH[z];
 const kmControl=pc=>kmLayout().byString[mod(pc,12)];
 
 // The keymaster harp as it looks: a leaning black plate with its twelve white notes in four rising
@@ -36,7 +39,7 @@ function kmPlate(el, label){
   el.classList.add("kmplate");
   el.innerHTML=`<svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><polygon points="${KM_PLATE_SHAPE}" fill="#0C0B0F" stroke="#4A443C" stroke-width="1.2" stroke-linejoin="round" vector-effect="non-scaling-stroke"/></svg>`;
   const dots=[];
-  KM_PLATE_DOTS.forEach(([x,y],sI)=>{ const d=document.createElement("span"); d.className="kdot"; d.dataset.pc=sI; d.style.left=x+"%"; d.style.top=y+"%"; d.textContent=label(sI); el.appendChild(d); dots[sI]=d; });
+  KM_PLATE_DOTS.forEach(([x,y],sI)=>{ const d=document.createElement("span"); d.className="kdot"; d.dataset.pc=sI; d.style.left=x+"%"; d.style.top=y+"%"; d.innerHTML=label(sI); el.appendChild(d); dots[sI]=d; });
   return dots;
 }
 /** the controller drawn beside the field, as the harp is laid out, lit as it's touched */
@@ -44,10 +47,10 @@ function kmStrip(field){
   const L=kmLayout(), el=document.createElement("div"); el.setAttribute("aria-label","The harp as a controller");
   if(L.cols===3){   // the keymaster: its own plate, each note marked with what it does
     el.className="kmstrip plate";
-    kmPlate(el, sI=>KM_GLYPH[L.byString[sI]]).forEach((d,sI)=>{ const z=L.byString[sI]; d.classList.add("km",`km-${z}`); d.dataset.zone=z; });
+    kmPlate(el, sI=>kmGlyph(L.byString[sI])).forEach((d,sI)=>{ const z=L.byString[sI]; d.classList.add("km",`km-${z}`); d.dataset.zone=z; });
   } else {
     el.className="kmstrip line";
-    L.drawOrder.forEach(pc=>{ const z=L.byString[pc], c=document.createElement("span"); c.className=`km km-${z}`; c.dataset.zone=z; c.dataset.pc=pc; c.textContent=KM_GLYPH[z]; el.appendChild(c); });
+    L.drawOrder.forEach(pc=>{ const z=L.byString[pc], c=document.createElement("span"); c.className=`km km-${z}`; c.dataset.zone=z; c.dataset.pc=pc; c.innerHTML=kmGlyph(z); el.appendChild(c); });
   }
   field.appendChild(el); return el;
 }

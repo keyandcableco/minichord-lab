@@ -34,5 +34,19 @@ const t=require("./harness").load("chord-sweeper");
   chord((t.PC[m2.key.tonic]+1)%12, "m"); await sleep(50);
   check("a wrong chord on a mine sets it off", m2.boom && a.lives===2, t.heard());
   check("its mines are the keys it said to find", a.mines.every(m=>a.keys.includes(m.key)));
+  // the mine went off: the whole field uncovered, the mines shown with their keys, and a prompt to go on
+  await sleep(2000);
+  const shut=[...t.d.querySelectorAll(".swcell")].filter(c=>!c.classList.contains("open") && !c.classList.contains("shown") && !c.classList.contains("boom") && !c.classList.contains("defused")).length;
+  check("after a mine goes off, the whole field is uncovered, mines and all", shut===0 && t.d.querySelectorAll(".swcell .mk").length>=1, `${shut} still covered`);
+  check("and it waits for the player to go on", a.phase==="next" && !!t.d.querySelector(".swnext"));
+  chord("C"); await sleep(50);
+  check("a chord goes on to the next field", a.phase==="play" && !t.d.querySelector(".swnext") && a.open.size===0);
+  // the harp's A and B are pictures: a burst to sweep, a flag to flag
+  const A=t.d.querySelector('.kmstrip [data-zone="A"]'), B=t.d.querySelector('.kmstrip [data-zone="B"]');
+  check("the harp's A and B show a burst and a flag", !!(A && A.querySelector("svg") && B && B.querySelector("svg path[fill='#FF4B3E']")));
+  // a right-click flags a square
+  const cell=t.d.querySelector('.swcell[data-x="7"][data-y="5"]');
+  cell.dispatchEvent(new w.MouseEvent("contextmenu",{bubbles:true, cancelable:true})); await sleep(20);
+  check("a right-click flags a square", a.flags.has("7,5"));
   t.done();
 })();

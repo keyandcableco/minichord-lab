@@ -308,11 +308,11 @@ function helperBoard(k){
     if(L.cols===3){
       const cover=document.createElement("div"); cover.className="hbcover"; place(cover, MC_HARP.slot); board.appendChild(cover);
       pad=document.createElement("div"); place(pad, MC_HARP.plate); board.appendChild(pad);
-      kmPlate(pad, sI=>KM_GLYPH[L.byString[sI]]).forEach((d,sI)=>{ const z=L.byString[sI]; d.classList.add("km",`km-${z}`); d.dataset.zone=z; });
+      kmPlate(pad, sI=>kmGlyph(L.byString[sI])).forEach((d,sI)=>{ const z=L.byString[sI]; d.classList.add("km",`km-${z}`); d.dataset.zone=z; });
       pad.classList.add("onboard");
     } else {
       pad=document.createElement("div"); pad.className="hbstrip hbpad"; place(pad, MC_HARP.strip); board.appendChild(pad);
-      L.drawOrder.forEach(pc=>{ const z=L.byString[pc], c=document.createElement("span"); c.className=`km km-${z}`; c.dataset.zone=z; c.dataset.pc=pc; c.textContent=KM_GLYPH[z]; pad.appendChild(c); });
+      L.drawOrder.forEach(pc=>{ const z=L.byString[pc], c=document.createElement("span"); c.className=`km km-${z}`; c.dataset.zone=z; c.dataset.pc=pc; c.innerHTML=kmGlyph(z); pad.appendChild(c); });
     }
   }
   if(k==="asteroids" || k==="fifths" || k==="breakout" || k==="sight"){

@@ -86,8 +86,12 @@ function buildSweeperField(box){
     setTimeout(()=>{ swLayout(); swDraw(); });
     if(blast.overlay) field.appendChild(blast.overlay);
     // a click on a square moves the cursor there and sweeps it
-    grid.addEventListener("click", e=>{ const c=e.target.closest(".swcell"); if(!c || !blast || blast.phase!=="play") return;
+    grid.addEventListener("click", e=>{ if(blast && blast.phase==="next"){ swGoOn(); return; }
+      const c=e.target.closest(".swcell"); if(!c || !blast || blast.phase!=="play") return;
       blast.cur=[+c.dataset.x,+c.dataset.y]; swSweep(); });
+    // a right-click flags it (or takes the flag off), as in any minesweeper
+    grid.addEventListener("contextmenu", e=>{ const c=e.target.closest(".swcell"); if(!c || !blast) return; e.preventDefault();
+      if(blast.phase!=="play") return; blast.cur=[+c.dataset.x,+c.dataset.y]; swFlag(); });
   }
   swBar(); setTimeout(helperSync);
 }
@@ -103,7 +107,7 @@ const swMineAt=(x,y)=>blast.mines.find(m=>m.x===x && m.y===y);
 const swDist=(x,y)=>Math.min(...blast.mines.map(m=>Math.max(Math.abs(m.x-x),Math.abs(m.y-y))));
 function swDraw(){
   if(!blast || !blast.gridEl) return;
-  const s=blast.cs, reveal=blast.phase==="reveal"; let h="";
+  const s=blast.cs, reveal=blast.phase==="reveal" || !!blast.showMines; let h="";
   for(let y=0;y<SW_H;y++) for(let x=0;x<SW_W;x++){
     const k=swKey(x,y), open=blast.open.has(k), m=swMineAt(x,y), cur=blast.cur[0]===x && blast.cur[1]===y && blast.phase==="play";
     let inner="", cls="";
@@ -133,14 +137,14 @@ function swSide(){
   blast.sideEl.innerHTML=`<p class="swfind">FIND ${L.named?"":"THESE KEYS"}</p><ul class="swkeys">${find}</ul><p>TO DEFUSE <b>${blast.mines.length?left:(blast.keys||[]).length}</b></p><p>SWEEPS <b>${blast.sweeps}</b></p>
     <p class="swhow">NEXT TO A MINE: ITS V7. TWO AWAY: V OF V. THREE AWAY: V OF V OF V. FURTHER: CALM.</p>
     ${L.subs?`<p class="swhow">A TRITONE SUBSTITUTE RESOLVES THE SAME WAY${L.dim?"; SO DO vii°7 AND THE BARE TRITONE":""}.</p>`:""}
-    <p class="swhow">ON A MINE, PLAY ITS KEY'S CHORD: THE RELEASE.</p>`;
+    <p class="swhow">TO DEFUSE A MINE, PUT THE CURSOR ON IT AND PLAY ITS KEY'S HOME CHORD.</p>`;
 }
 function swBar(){
   if(!blast || blast.kind!=="sweeper" || !blast.hud) return;
   blast.hud.innerHTML=`<span>SCORE ${blast.score}${multTag()}</span><span class="lvl">LEVEL ${blast.level+1} · FIELD ${blast.fields+1}</span><span class="lives">${"♥".repeat(Math.max(0,blast.lives))||"-"}</span>`;
 }
 const SWMENU_G={key:"sweeper", title:"CHORD SWEEPER",
-  rules:()=>`<p>A GAME OF TENSION AND RELEASE. EACH MINE IS A KEY'S HOME. SWEPT SQUARES SHOW THE TENSION POINTING THERE: NEXT TO A MINE, ITS V7; TWO AWAY, V OF V; THREE AWAY, V OF V OF V. FURTHER OUT IT'S CALM.</p><p>LATER, TRITONE SUBSTITUTES, DIMINISHED SEVENTHS AND BARE TRITONES POINT HOME TOO.</p><p>STEER ON THE HARP OR THE ARROW KEYS. A SWEEPS, B FLAGS.</p><p>ON A MINE, PLAY ITS KEY'S CHORD TO DEFUSE IT. SWEEP A MINE, OR PLAY THE WRONG CHORD ON IT, AND IT GOES OFF.</p>`,
+  rules:()=>`<p>A GAME OF TENSION AND RELEASE. EACH MINE IS A KEY'S HOME. SWEPT SQUARES SHOW THE TENSION POINTING THERE: NEXT TO A MINE, ITS V7; TWO AWAY, V OF V; THREE AWAY, V OF V OF V. FURTHER OUT IT'S CALM.</p><p>LATER, TRITONE SUBSTITUTES, DIMINISHED SEVENTHS AND BARE TRITONES POINT HOME TOO.</p><p>STEER ON THE HARP OR THE ARROW KEYS. A SWEEPS, B FLAGS. WITH A MOUSE, CLICK TO SWEEP AND RIGHT-CLICK TO FLAG.</p><p>TO DEFUSE A MINE, PUT THE CURSOR ON IT AND PLAY ITS KEY'S HOME CHORD. SWEEP A MINE, OR PLAY THE WRONG CHORD ON IT, AND IT GOES OFF, AND THE WHOLE FIELD IS SHOWN.</p>`,
   stat:()=>`FIELDS ${blast.fields}`,
   rows:row=>{
     row("HARP", ["STANDARD STRIP","KEYMASTER GRID"], ()=>saved.harpLayout==="keymaster"?1:0, i=>{ saved.harpLayout = i ? "keymaster" : "strip"; save(); kmRestrip(); });
@@ -214,6 +218,7 @@ function sweeperNote(pc){
   if(!blast || blast.kind!=="sweeper") return;
   kmFlash(blast.strip, pc);
   if(blast.phase==="demo" && blast.demo){ endSwDemo(blast.demo); return; }
+  if(blast.phase==="next"){ if(kmControl(pc)==="A") swGoOn(); return; }      // A goes on to the next field
   if(blast.phase!=="play") return;
   const c=kmControl(pc);
   if(c==="A") return swSweep();
@@ -231,6 +236,7 @@ document.addEventListener("keydown", e=>{
 function sweeperChord(voices){
   if(!blast || blast.kind!=="sweeper") return;
   if(blast.phase==="demo" && blast.demo){ endSwDemo(blast.demo); return; }
+  if(blast.phase==="next"){ swGoOn(); return; }                                // any chord goes on to the next field
   if(blast.phase!=="play") return;
   const pitches=voices.map(v=>v.pitch), name=chordName(pitches, devFifths()); if(!chordId(pitches)) return;
   const m=swMineAt(...blast.cur);
@@ -244,13 +250,31 @@ function sweeperChord(voices){
   if(blast.mines.every(x=>x.defused)) swCleared();
 }
 function swBoom(m, why, label){
-  const [px,py]=swXY(m.x,m.y); m.boom=true; blast.phase="reveal"; swDraw();
+  const [px,py]=swXY(m.x,m.y); m.boom=true; blast.phase="reveal";
+  // the whole field uncovered: every square's chord, every mine and whose key it was
+  for(let y=0;y<SW_H;y++) for(let x=0;x<SW_W;x++) if(!swMineAt(x,y)) blast.open.add(swKey(x,y));
+  blast.showMines=true; swDraw();
   heard(label||"SWEEP",false,why); explode(px,py,44,["#FF4B3E","#FF8A3D","#FFD35A","#F1E8D2"]); sfx("boom"); buzz(blast.field,true);
   blast.lives--; swBar(); banner("BOOM", `IT WAS ${m.key.name}${blast.lives>0?` · ${blast.lives} ${blast.lives===1?"LIFE":"LIVES"} LEFT`:""}`);
   gameLater(()=>{
     if(blast.lives<=0){ blast.phase="over"; blast.over=true; const best=Math.max(saved.best.sweeper||0, blast.score); saved.best.sweeper=best; save(); swMenu(true); return; }
-    swField(); }, 3000);
+    swNextPrompt(); }, 1800);
 }
+// after a mine goes off, the uncovered field stays up to be read until the player goes on:
+// A on the harp, a chord, a click, or Enter
+function swNextPrompt(){
+  blast.phase="next";
+  const p=document.createElement("div"); p.className="swnext";
+  p.innerHTML=`<b>NEXT FIELD ▶</b><span>A ON THE HARP, ANY CHORD, A CLICK OR ENTER</span>`;
+  p.onclick=()=>swGoOn();
+  blast.field.appendChild(p); blast.nextEl=p;
+}
+function swGoOn(){
+  if(!blast || blast.kind!=="sweeper" || blast.phase!=="next") return;
+  blast.nextEl && blast.nextEl.remove(); blast.nextEl=null; blast.showMines=false;
+  blast.phase="play"; swField();
+}
+document.addEventListener("keydown", e=>{ if(blast && blast.kind==="sweeper" && blast.phase==="next" && (e.code==="Enter" || e.code==="Space")){ e.preventDefault(); swGoOn(); } });
 function swCleared(){
   const secs=(performance.now()-blast.fieldAt)/1000, pts=mulPts(Math.max(0,Math.round(90-secs))*3*(blast.level+1));
   blast.score+=pts; blast.fields++; stats.streak=blast.fields; scoreboard(); swBar();
@@ -260,6 +284,9 @@ function swCleared(){
 }
 const SW_MINE=`<svg viewBox="0 0 16 16" shape-rendering="crispEdges" aria-hidden="true"><path fill="#16132A" d="M5 4h6v8H5zM4 5h8v6H4z"/><path fill="#16132A" d="M7 1h2v3H7zM7 12h2v3H7zM1 7h3v2H1zM12 7h3v2h-3zM3 3h2v2H3zM11 3h2v2h-2zM3 11h2v2H3zM11 11h2v2h-2z"/><path fill="#F1E8D2" d="M6 6h2v2H6z"/></svg>`;
 const SW_FLAG=`<svg viewBox="0 0 16 16" shape-rendering="crispEdges" aria-hidden="true"><path fill="#F1E8D2" d="M5 2h1v11H5zM3 13h6v1H3z"/><path fill="#FF4B3E" d="M6 2h6v1H6zM6 3h5v1H6zM6 4h6v1H6zM6 5h4v1H6z"/></svg>`;
+
+const SW_SWEEP=`<svg viewBox="0 0 16 16" shape-rendering="crispEdges" aria-hidden="true"><path fill="#FFD35A" d="M7 1h2v3H7zM7 12h2v3H7zM1 7h3v2H1zM12 7h3v2h-3zM3 3h2v2H3zM11 3h2v2h-2zM3 11h2v2H3zM11 11h2v2h-2z"/><path fill="#FF8A3D" d="M5 5h6v6H5z"/><path fill="#F1E8D2" d="M7 7h2v2H7z"/></svg>`;
+const SW_GLYPH={A:SW_SWEEP, B:SW_FLAG};    // the harp's A and B, as pictures (see kmGlyph)
 
 // ---------- Chord Sweeper's demo ----------
 function swDemo(){
