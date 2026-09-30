@@ -22,9 +22,9 @@ const KM_LAYOUTS={
   strip:{byString:["down","down","down","right","right","B","A","left","left","up","up","up"], drawOrder:[11,10,9,8,7,6,5,4,3,2,1,0], cols:1},
   // the keymaster's corners do nothing, so up, down, left and right are each clearly apart
   keymaster:{byString:[null,"down",null,"left","B","right","left","A","right",null,"up",null], drawOrder:[9,10,11,6,7,8,3,4,5,0,1,2], cols:3},
-  // the keymaster as a d-pad by its contact numbers: 2 down, 3 right, 4 left, 5 up, 6 B, 7 A; the
-  // rest do nothing
-  kmpad:{byString:[null,"down","right","left","up","B","A",null,null,null,null,null], drawOrder:[9,10,11,6,7,8,3,4,5,0,1,2], cols:3},
+  // the keymaster as a d-pad by its contact numbers: 2 down, 3 right, 4 left, 5 up, and A and B on 10
+  // and 9, a row clear of the directions; the rest do nothing
+  kmpad:{byString:[null,"down","right","left","up",null,null,null,"B","A",null,null], drawOrder:[9,10,11,6,7,8,3,4,5,0,1,2], cols:3},
 };
 // the harp layouts a player can pick, in the order they're offered
 const HARP_LAYOUTS=[["STANDARD STRIP","strip"],["KEYMASTER GRID","keymaster"],["KEYMASTER D-PAD","kmpad"]];

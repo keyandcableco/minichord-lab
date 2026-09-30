@@ -39,7 +39,9 @@ function snReady(){
 }
 // the board: a grid of cells, beside the controller strip
 function snLayout(){
-  const f=blast.field, W=f.clientWidth-(kmLayout().cols===3 ? 150 : 84), H=f.clientHeight-64;   // room on the right for the controller
+  // room on the right: for the controller strip, or for the on-screen minichord when it's shown (beginner mode, the demo)
+  const f=blast.field, side = (saved.beginner || blast.phase==="demo") ? Math.ceil(Math.min(f.clientWidth*.4, 380))+20 : (kmLayout().cols===3 ? 150 : 84);
+  const W=f.clientWidth-side, H=f.clientHeight-64;
   let cell;
   if(blast.phase==="play" && blast.cols){ cell=Math.max(12, Math.floor(Math.min(W/blast.cols, H/blast.rows))); }   // mid-game the board keeps its cells and only scales
   else { cell=Math.max(24, Math.min(34, Math.floor(Math.min(W/24, H/15)))); blast.cols=Math.floor(W/cell); blast.rows=Math.floor(H/cell); }
@@ -263,7 +265,7 @@ function snDemo(){
     try{
       const grid=kmLayout().cols===3, pad=saved.harpLayout==="kmpad";
       say("THE HARP IS YOUR CONTROLLER", pad ? "THE KEYMASTER AS A D-PAD, BY ITS NUMBERED CONTACTS." : grid ? "ITS FOUR ROWS OF THREE ARE A D-PAD, WITH TWO BUTTONS IN THE MIDDLE." : "TOP TO BOTTOM, THE STRIP IS UP, LEFT, TWO BUTTONS, RIGHT AND DOWN."); await step(3200);
-      const tour = pad ? [[["down"],"CONTACT 2 GOES DOWN"],[["right"],"3 GOES RIGHT"],[["left"],"4 GOES LEFT"],[["up"],"5 GOES UP"],[["A","B"],"7 IS A AND 6 IS B: B DROPS YOUR OLDEST NOTE"]]
+      const tour = pad ? [[["down"],"CONTACT 2 GOES DOWN"],[["right"],"3 GOES RIGHT"],[["left"],"4 GOES LEFT"],[["up"],"5 GOES UP"],[["A","B"],"10 IS A AND 9 IS B: B DROPS YOUR OLDEST NOTE"]]
         : grid ? [[["up"],"THE TOP MIDDLE GOES UP"],[["down"],"THE BOTTOM MIDDLE GOES DOWN: THE CORNERS DO NOTHING"],[["left"],"THE LEFT SIDE GOES LEFT"],[["right"],"THE RIGHT SIDE GOES RIGHT"],[["A","B"],"A AND B IN THE MIDDLE: B DROPS YOUR OLDEST NOTE"]]
         : [[["up"],"THE TOP THREE GO UP"],[["left"],"THE NEXT TWO GO LEFT"],[["A","B"],"A AND B IN THE MIDDLE: B DROPS YOUR OLDEST NOTE"],[["right"],"TWO FOR RIGHT"],[["down"],"AND THE BOTTOM THREE GO DOWN"]];
       for(const [zs,t] of tour){

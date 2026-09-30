@@ -28,11 +28,11 @@ const t=require("./harness").load("chord-snake");
   check("on the keymaster, the four corners do nothing", [0,2,9,11].every(pc=>t.w.eval(`kmControl(${pc})`)==null) && t.w.eval("kmControl(10)")==="up" && t.w.eval("kmControl(1)")==="down");
   const q0=a.queue.length; t.w.eval("snTurn(kmControl(0))");
   check("and a corner doesn't turn the snake", a.queue.length===q0);
-  // the keymaster as a d-pad by its contacts: 2 down, 3 right, 4 left, 5 up, 6 B, 7 A, the rest nothing
+  // the keymaster as a d-pad by its contacts: 2 down, 3 right, 4 left, 5 up, 9 B, 10 A, the rest nothing
   t.w.eval("saved.harpLayout='kmpad'; kmRestrip()");
   const pad=[...Array(12).keys()].map(pc=>t.w.eval(`kmControl(${pc})`));
-  check("the keymaster d-pad: contact 2 down, 3 right, 4 left, 5 up, 6 B, 7 A, the rest nothing",
-    JSON.stringify(pad)===JSON.stringify([null,"down","right","left","up","B","A",null,null,null,null,null]), JSON.stringify(pad));
+  check("the keymaster d-pad: contact 2 down, 3 right, 4 left, 5 up, 9 B, 10 A, the rest nothing",
+    JSON.stringify(pad)===JSON.stringify([null,"down","right","left","up",null,null,null,"B","A",null,null]), JSON.stringify(pad));
   check("and the plate beside the field numbers its contacts 1 to 12", [...t.d.querySelectorAll(".kmstrip .kmn")].map(n=>n.textContent).join()===[...Array(12).keys()].map(i=>i+1).join());
   t.w.eval("saved.harpLayout='strip'");
   t.done();
