@@ -32,6 +32,8 @@ const DEMO_SCENES=[
   {key:true, keyPress:[3,1], text:"THE ROWS ARE NOW SHARP, NATURAL AND FLAT KEYS. PRESS ONE.", hold:3400},
   {key:false, keyDone:"D", text:"LET GO: YOU'RE IN D MAJOR. ITS F AND C BUTTONS NOW PLAY F♯ AND C♯.", hold:3800},
   {title:"MANUAL AIM ×2", text:"AN OPTION: STEER THE SHIP WITH A KNOB, AND A CHORD FIRES STRAIGHT UP. GET UNDER THE CHORD, THEN PLAY IT, FOR DOUBLE.", hold:4200},
+  {title:"THE BEAM", text:"IN MANUAL AIM, KEEP A CHORD SOUNDING (THE HOLD BUTTON LATCHES IT) AND A BEAM FIRES: SWEEP IT UNDER EVERY CHORD LIKE IT. IT RUNS ON ENERGY.", hold:4600},
+  {title:"POWER-UPS", text:"PLAY A POWER-UP'S CHORD TO TAKE IT. OMNI BEAM BLASTS ANY CHORD IT TOUCHES; SLOW TIME HALVES THE SPEED; A SHIELD SAVES A LIFE.", hold:4600},
   {title:"SCORING", text:"RICHER CHORDS SCORE MORE: A MAJOR CHORD 10, A MINOR 15, SEVENTHS 20 TO 30, UP TO 50 FOR SIXTHS AND DIMINISHED SEVENTHS. HALF AGAIN WITH THE MODIFIER, AND HALF AGAIN AS A SLASH CHORD.", hold:5200},
   {title:"READY?", text:"CHOOSE A LEVEL. PLAY EACH CHORD BEFORE IT LANDS.", hold:2800},
 ];
@@ -141,7 +143,7 @@ function beginBlast(level){
   // plain buttons; the player's own key goes back when they leave
   blastSetup();
   // manual aim: the ship steered by a knob (or the arrow keys), a chord firing straight up from it
-  blast.aimManual=!!saved.invAim; blast.shipWant=.5;
+  blast.aimManual=!!saved.invAim; blast.shipWant=.5; blast.powers={}; blast.energy=1; blast.beamOn=false;
   if(blast.aimManual){ const inert=arcadeKnobsInert();
     gameLater(()=>banner("MANUAL AIM ×2", inert ? `STEER THE SHIP WITH THE ${KNOB_NAMES[steerKnob()]} KNOB` : "STEER THE SHIP WITH ← →"), 1300); }
   if(canWrite() && hasSetting(35)){ borrow(35, keyIndexOf(0)); blast.dir = Math.random()<.5 ? 1 : -1; ensure(31, blast.dir>0 ? 0 : 1); modPill(); }   // written every time, whatever the page last read
@@ -178,7 +180,8 @@ function stopBlaster(){ if(blast){ blast.fx?.ro?.disconnect(); if(blast.kind==="
 function blastBar(){
   if(!blast || !blast.hud) return;
   const key = blast.keyTarget ? ` · KEY ${blast.keyTarget.name}` : "";
-  blast.hud.innerHTML=`<span>SCORE ${blast.score}${multTag()}</span><span class="lvl">LEVEL ${blast.level+1}${key}</span><span class="lives">${"♥".repeat(Math.max(0,blast.lives))||"-"}</span>`;
+  const pw = typeof blastPowerHud==="function" && blast.kind==="blaster" ? blastPowerHud() : "";
+  blast.hud.innerHTML=`<span>SCORE ${blast.score}${multTag()}</span><span class="lvl">LEVEL ${blast.level+1}${key}${pw}</span><span class="lives">${"♥".repeat(Math.max(0,blast.lives))||"-"}</span>`;
 }
 // a big message across the middle of the field: a new level, a key to set, Barry Harris
 function banner(big, small){
@@ -223,15 +226,16 @@ function spawnBlast(now){
   const lv=BLAST_LEVELS[blast.level];
   const onScreen=new Set(blast.items.filter(i=>!i.done).map(i=>i.sym));
   const slashNow = lv.slash && Math.random()<.35;        // on the slash levels about one chord in three
-  const bonus = Math.random()<.13;                       // a ★ chord: five times the points, and harmless if it lands
+  const power = typeof blastPowerChance==="function" ? blastPowerChance() : null;   // now and then a power-up, played like a chord
+  const bonus = !power && Math.random()<.13;             // a ★ chord: five times the points, and harmless if it lands
   for(let k=0;k<40;k++){
     const c=pickBlastChord(slashNow); if(!c) continue;
     const sym=c.root+c.qq+(c.bass?`/${c.bass}`:"");
     if(onScreen.has(sym)) continue;
-    const el=document.createElement("span"); el.className="fchord"+(bonus?" bonus":""); el.innerHTML=(bonus?PIXEL_STAR:""); el.append(sym);
+    const el=document.createElement("span"); el.className="fchord"+(bonus?" bonus":"")+(power?` power pu-${power}`:""); el.innerHTML=(bonus?PIXEL_STAR:"")+(power?`<i class="puicon">${POWERS[power].icon}</i>`:""); el.append(sym);
     el.style.left=`${12+Math.random()*76}%`; el.style.top="0"; el.style.transform="translate(-50%,24px)";
     blast.field.appendChild(el);
-    blast.items.push({el, sym, root:c.root, q:c.qq, bass:c.bass, bonus, rootPc:pcOfName(c.root), bassPc:c.bass?pcOfName(c.bass):null, t0:now});
+    blast.items.push({el, sym, root:c.root, q:c.qq, bass:c.bass, bonus, power, rootPc:pcOfName(c.root), bassPc:c.bass?pcOfName(c.bass):null, t0:now});
     return;
   }
 }

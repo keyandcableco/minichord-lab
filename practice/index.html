@@ -155,6 +155,11 @@
 /* ---------- Chord Invaders: an arcade cabinet ---------- */
 .field.arcade{height:clamp(500px,76vh,640px);background:#07060C;border:2px solid #000;border-top:8px solid var(--felt);font-family:"Press Start 2P",monospace;user-select:none}
 .field.arcade canvas.fx{position:absolute;inset:0;width:100%;height:100%;image-rendering:pixelated;z-index:0}
+/* Chord Invaders' power-ups: a chord in a coloured capsule */
+.field.arcade .fchord.power{padding:.15em .45em;border:2px solid #FF5AA0;border-radius:999px;background:rgba(255,90,160,.18);box-shadow:0 0 12px rgba(255,90,160,.6)}
+.field.arcade .fchord.pu-slow{border-color:#7FE9FF;background:rgba(127,233,255,.16);box-shadow:0 0 12px rgba(127,233,255,.6)}
+.field.arcade .fchord.pu-shield{border-color:#7FE08A;background:rgba(127,224,138,.16);box-shadow:0 0 12px rgba(127,224,138,.6)}
+.field.arcade .fchord .puicon{font-style:normal;margin-right:.3em;font-family:system-ui,sans-serif}
 .field.arcade .fchord{z-index:2;font:400 var(--chord-size,1.25rem) "Minichord Lab Accidentals","Press Start 2P",monospace;color:#F1E8D2;text-shadow:0 0 6px rgba(255,255,255,.35);letter-spacing:-.02em}
 .field.arcade .fchord.low{color:#FFD35A;text-shadow:0 0 10px rgba(255,200,60,.8)}
 .field.arcade .fchord.bonus{color:#7FE9FF;text-shadow:0 0 10px rgba(80,220,255,.9)}
@@ -988,6 +993,7 @@ details.fold[open] .nowplaying{display:none}
 <script defer src="../arcade/games/sight-line.js"></script>
 <script defer src="../arcade/sounds.js"></script>
 <script defer src="../arcade/games/invaders-demo.js"></script>
+<script defer src="../arcade/games/invaders-power.js"></script>
 <script defer src="../arcade/screen.js"></script>
 <script defer src="../arcade/bonus.js"></script>
 <script defer src="room.js"></script>

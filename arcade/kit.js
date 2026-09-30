@@ -164,7 +164,7 @@ const mulPts=p=>Math.round(p*(blast.mult||1));
 const multTag=()=> blast && blast.mult && blast.mult!==1 ? ` ×${blast.mult}` : "";
 // what each game's things are worth at level 1 (all of it times the level)
 const POINTS_FOR={
-  blaster:()=>[...BLAST_TIERS.map(([,n,sp,v])=>[n,String(v),sp]), ["NEEDS THE MODIFIER","× 1.5"], ["SLASH CHORD","× 1.5"], ["★ CHORD","× 5"], ["KEY SET","25"]],
+  blaster:()=>[...BLAST_TIERS.map(([,n,sp,v])=>[n,String(v),sp]), ["NEEDS THE MODIFIER","× 1.5"], ["SLASH CHORD","× 1.5"], ["★ CHORD","× 5"], ["KEY SET","25"], ["BY THE BEAM","THE SAME"], ["⚡ ⏳ 🛡 POWER-UPS","OMNI BEAM · SLOW TIME · SHIELD"]],
   command:[["NOTE","10"],["★ NOTE","50"]],
   snake:[["CHORD CASHED IN","15 A NOTE"],["★ NOTE","50"],["NOTE DROPPED","−5"]],
   asteroids:()=>[...BLAST_TIERS.map(([,n,sp,v])=>[n,String(v),sp]), ["NEEDS THE MODIFIER","× 1.5"], ["★ ROCK","× 3"], ["NOTE SHOT","10"], ["CHORD CLEARED","25"], ["MANUAL AIM","EVERYTHING × 2"]],

@@ -169,11 +169,13 @@ function fxDraw(now, dt){
   } else {
   // the ship: a little pixel cannon at the bottom centre, or, in the demo, off to the left under the
   // chords it falls through, clear of the minichord drawn at the foot of the field; it glides there
-  const want = blast.phase==="demo" && blast.demo ? DEMO_SHIP : blast.aimManual && blast.shipWant!=null ? blast.shipWant : .5;
+  const steered = blast.aimManual || (typeof powerOn==="function" && powerOn("omni"));
+  const want = blast.phase==="demo" && blast.demo ? DEMO_SHIP : steered && blast.shipWant!=null ? blast.shipWant : .5;
   blast.shipF = blast.shipF==null ? want : blast.shipF+(want-blast.shipF)*Math.min(1,dt*3);
   const sx=Math.floor(W*blast.shipF), sy=H-6;
   g.fillStyle="#F1E8D2"; g.fillRect(sx-1,sy-4,2,3); g.fillRect(sx-3,sy-1,6,2); g.fillRect(sx-5,sy+1,10,2);
   g.fillStyle="#FF4B3E"; g.fillRect(sx-1,sy+3,2,1+Math.floor(now/80)%2);
+  if(blast.kind==="blaster" && typeof blastBeamDraw==="function") blastBeamDraw(g, sx, sy, now);
   }
   // missiles: a bright head and a short trail, flying to the chord they were fired at
   fx.missiles=fx.missiles.filter(m=>{
@@ -212,6 +214,7 @@ function blastTick(now){
       if(blast.lives<=0){ blastOver(); blast.raf=requestAnimationFrame(blastTick); return; } }
     else k.el.style.top=`${24+y*(H-80)}px`;
   }
+  if(typeof blastPowerTick==="function") blastPowerTick(now, dt);              // the beam and the power-ups
   const low=lowestBlast(); markLowest(blast.items, low);
   if(low){ arcadeMod(low.root); helpChord(low.root, low.q, low.bass); } else helpChord(null);
   blast.raf=requestAnimationFrame(blastTick);
@@ -220,7 +223,8 @@ function blastMiss(it){
   it.el.style.top=`${it.y||0}px`; it.el.style.transform="";               // back to top, so the miss animation can move it
   it.done=true; it.el.classList.add("miss"); setTimeout(()=>it.el.remove(),600);
   const x=it.el.offsetLeft, y=blast.field.clientHeight-40;
-  if(it.bonus){ popup(x,y,"GONE","#7FE9FF"); return; }                 // a ★ chord costs nothing if it lands
+  if(it.bonus || it.power){ popup(x,y,"GONE","#7FE9FF"); return; }     // a ★ chord or a power-up costs nothing if it lands
+  if(typeof blastShieldTakes==="function" && blastShieldTakes(it)) return;
   blast.lives--; blastBar(); buzz(blast.field, true); sfx("miss"); popup(x,y,"MISS","#FF4B3E");
   feedback(`${it.sym} landed.`,"bad", `On your minichord: ${howTo(it.root,it.q)}${it.bass?`, then press ${pressRoot(it.bass)} as well`:""}.`);
   if(blast.lives<=0) blastOver();
@@ -238,33 +242,41 @@ function heard(name, hit, why="NOT FALLING"){   // each game says why a miss mis
   blast.heard.className="heard"+(hit?"":" no");
   blast.heard.innerHTML=`HEARD <b>${name||"?"}</b>${hit?"":` · ${why}`}`;
 }
+// whether a falling chord is the chord in these pitches (a slash chord needs its bass at the bottom)
+function blastMatches(i, pitches){
+  if(i.bassPc==null) return isChord(pitches,i.rootPc,i.q);
+  const tones=FORM[i.q].map(f=>mod(i.rootPc+f[1],12)), pcs=pitches.map(p=>mod(Math.round(p),12));
+  return mod(Math.round(Math.min(...pitches)),12)===i.bassPc && pcs.every(p=>p===i.bassPc || tones.includes(p)) && pcs.includes(tones[1]);
+}
 function blasterChord(voices){
   if(blast && blast.kind==="command") return;           // Harp Command listens to the harp alone
   if(blast && blast.phase==="demo" && blast.demo){ endDemo(blast.demo); return; }
   if(!blast || blast.phase!=="play") return;
   const pitches=voices.map(v=>v.pitch);
-  const matches=i=>{
-    if(i.bassPc==null) return isChord(pitches,i.rootPc,i.q);
-    const tones=FORM[i.q].map(f=>mod(i.rootPc+f[1],12)), pcs=pitches.map(p=>mod(Math.round(p),12));
-    return mod(Math.round(Math.min(...pitches)),12)===i.bassPc && pcs.every(p=>p===i.bassPc || tones.includes(p)) && pcs.includes(tones[1]);
-  };
   const name=chordName(pitches,devFifths());
   // the lowest matching chord, ★ chords only if nothing ordinary matches; in manual aim, only one above the ship
   const fr=blast.field, shipX=fr.clientWidth*(blast.shipF??.5);
   const above=i=>Math.abs(i.el.offsetLeft-shipX) <= i.el.offsetWidth/2+14;
-  const pool=blast.items.filter(i=>!i.done && matches(i));
+  const pool=blast.items.filter(i=>!i.done && blastMatches(i, pitches));
   const hit=(blast.aimManual ? pool.filter(above) : pool).sort((a,b)=>(a.bonus-b.bonus)||(a.t0-b.t0))[0];
   if(!hit && blast.aimManual && pool.length){ heard(name,false,"WIDE: GET UNDER IT"); sfx("shoot");     // it's up there, but not above the ship
     blast.fx.missiles.push({x0:shipX/PX, y0:(fr.clientHeight-22)/PX, x1:shipX/PX, y1:0, t0:performance.now(), dur:260, hit:()=>{}}); return; }
   if(!hit){ heard(name,false); if(chordId(pitches)) later(()=>{ buzz(blast && blast.field, true); sfx("miss"); }); return; }
   heard(name,true);
+  blastKill(hit, "shot");
+}
+// a chord destroyed, by a shot from the ship or by the beam: its points, a power-up if it carried one,
+// and every eighth a level up
+function blastKill(hit, how){
   hit.done=true; hit.el.classList.remove("low");
-  // a missile from the ship to the chord; the chord explodes when it arrives
-  const x=hit.el.offsetLeft, y=(hit.y||0)+hit.el.offsetHeight/2;
+  const fr=blast.field, shipX=fr.clientWidth*(blast.shipF??.5), x=hit.el.offsetLeft, y=(hit.y||0)+hit.el.offsetHeight/2;
   const {pts, tags}=blastPoints(hit);                           // by its chord type, the modifier and a slash
-  sfx("shoot");
-  blast.fx.missiles.push({x0:shipX/PX, y0:(fr.clientHeight-22)/PX, x1:x/PX, y1:y/PX, t0:performance.now(), dur:170,
-    hit:()=>{ sfx(hit.bonus?"bonus":"boom"); hit.el.classList.add("gone"); setTimeout(()=>hit.el.remove(),50); explode(x,y, hit.bonus?44:26, hit.bonus?["#7FE9FF","#FFFFFF","#B9F3FF","#FFD35A"]:undefined); popup(x,y-10,`+${pts}${tags.length?" "+tags.join(" · "):""}`, hit.bonus?"#7FE9FF":tags.length?"#FFD35A":undefined); }});
+  const boom=()=>{ sfx(hit.bonus?"bonus":"boom"); hit.el.classList.add("gone"); setTimeout(()=>hit.el.remove(),50);
+    explode(x,y, hit.bonus||hit.power?44:26, hit.power?["#FF5AA0","#FFD35A","#7FE9FF"]:hit.bonus?["#7FE9FF","#FFFFFF","#B9F3FF","#FFD35A"]:undefined);
+    popup(x,y-10,`+${pts}${tags.length?" "+tags.join(" · "):""}`, hit.bonus?"#7FE9FF":tags.length?"#FFD35A":undefined);
+    if(hit.power) blastPowerGet(hit); };
+  if(how==="beam") boom();
+  else { sfx("shoot"); blast.fx.missiles.push({x0:shipX/PX, y0:(fr.clientHeight-22)/PX, x1:x/PX, y1:y/PX, t0:performance.now(), dur:170, hit:boom}); }
   blast.hits++; blast.score+=pts; stats.streak=blast.hits; scoreboard();
   if(blast.hits%8===0){
     const was=blast.level; blast.level=nextLevel(blast.level);
