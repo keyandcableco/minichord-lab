@@ -33,6 +33,8 @@ const isHarpPort = n => /minichord/i.test(n) && n.includes("2");
 const isChordPort = n => /minichord/i.test(n) && (n.includes("1") || n.trim().toLowerCase()==="minichord");
 
 export class Minichord extends EventTarget {
+  /** ms a note-off waits in case the same note comes straight back (a flickering contact) */
+  static OFF_DEBOUNCE=30;
   constructor(){
     super();
     this.midi=null; this.out=null; this.sysex=false; this.inputChoice="auto";
@@ -173,13 +175,23 @@ export class Minichord extends EventTarget {
   }
   _on(ch,note,vel){
     if(!this._chordChannel(ch)){ const c=this.chans[ch]; this.dispatchEvent(new CustomEvent("harp",{detail:{note, ch, pitch:note+(this.mpe?c.bend*c.range:0)}})); return; }
+    const key=ch+":"+note;
+    // back within the debounce (a button pressed gently, its contact flickering): it never stopped
+    if(this._offs && this._offs.has(key)){ clearTimeout(this._offs.get(key)); this._offs.delete(key); if(this.notes.has(key)) return; }
     // a voice's channel holds one note at a time
     if(this.mpe) for(const [k,n] of this.notes) if(n.ch===ch) this.notes.delete(k);
-    this.notes.set(ch+":"+note,{ch,note,vel,t:performance.now()});
+    this.notes.set(key,{ch,note,vel,t:performance.now()});
     this._changed(true);
   }
-  _off(ch,note){ if(this.notes.delete(ch+":"+note)) this._changed(true); }
-  allOff(){ this.notes.clear(); this.chans.forEach(c=>c.bend=0); this._changed(true); }
+  // A note-off takes effect a moment later, and not at all if the same note comes straight back: a
+  // chord button pressed gently can flicker its contact, sending the chord off and on again and again,
+  // and without this the chord never holds still long enough to be read, however clearly it sounds.
+  _off(ch,note){
+    const key=ch+":"+note; if(!this.notes.has(key)) return;
+    const offs=this._offs||(this._offs=new Map()); clearTimeout(offs.get(key));
+    offs.set(key, setTimeout(()=>{ offs.delete(key); if(this.notes.delete(key)) this._changed(true); }, Minichord.OFF_DEBOUNCE));
+  }
+  allOff(){ if(this._offs){ this._offs.forEach(t=>clearTimeout(t)); this._offs.clear(); } this.notes.clear(); this.chans.forEach(c=>c.bend=0); this._changed(true); }
   _cc(ch,cc,val){
     // the knobs, when "knobs send MIDI" (address 238) is on: CC 20 chord, 21 harp, 22 modulation, on the chord channel
     // (channel 16 on the first test builds); nothing else the minichord sends uses these numbers
@@ -204,16 +216,19 @@ export class Minichord extends EventTarget {
   _changed(noteChange){
     if(!this._frame) this._frame=requestAnimationFrame(()=>{ this._frame=0; this.dispatchEvent(new Event("voices")); });
     if(noteChange){
+      // settled 40 ms after the last change, but never more than 150 ms after the first, so a burst of
+      // changes can't hold a chord back for ever
+      const now=performance.now();
+      if(!this._settle) this._settleStart=now;
       clearTimeout(this._settle);
-      this._settleStart=performance.now();
-      this._settle=setTimeout(()=>this._trySettle(),40);
+      this._settle=setTimeout(()=>{ this._settle=0; this._trySettle(); }, Math.max(0, Math.min(40, 150-(now-this._settleStart))));
     }
   }
   // A chord has settled when notes stop arriving and, with glide on, the bends stop moving too:
   // the minichord sends each new note first and then bends the voice home from where it was.
   _trySettle(){
     const now=performance.now();
-    if(now-(this._lastBend||0)<50 && now-this._settleStart<2500){ this._settle=setTimeout(()=>this._trySettle(),30); return; }
+    if(now-(this._lastBend||0)<50 && now-this._settleStart<2500){ this._settle=setTimeout(()=>{ this._settle=0; this._trySettle(); },30); return; }
     const v=this.voices, key=v.map(x=>x.ch+":"+x.note).join(",");
     if(v.length && key!==this._lastChordKey){
       this._lastChordKey=key;
