@@ -6,7 +6,14 @@
  * main font: unicode-range keeps it to those five characters. A subset of Steinberg's Bravura Text under the
  * SIL Open Font License, renamed as its Reserved Font Name requires; see fonts/OFL-lab-music.txt. */
 @font-face{font-family:"Minichord Lab Accidentals";font-style:normal;font-weight:100 900;font-display:swap;
-  src:url("fonts/lab-accidentals.woff2") format("woff2");unicode-range:U+266D-266F,U+1D12A-1D12B;size-adjust:85%;}
+  src:url("fonts/lab-accidentals.woff2") format("woff2");unicode-range:U+266D-266F;size-adjust:85%;}
+/* The double flat and double sharp are drawn about half the height of the single ones in this subset,
+   so they come from the same font at their own size: a face of their own, over the same file, scaled
+   up to match. Anything that reads or writes the characters is untouched. */
+@font-face{font-family:"Minichord Lab Accidentals";font-style:normal;font-weight:100 900;font-display:swap;
+  src:url("fonts/lab-accidentals.woff2") format("woff2");unicode-range:U+1D12B;size-adjust:160%;}
+@font-face{font-family:"Minichord Lab Accidentals";font-style:normal;font-weight:100 900;font-display:swap;
+  src:url("fonts/lab-accidentals.woff2") format("woff2");unicode-range:U+1D12A;size-adjust:390%;}
 :root{
   /* ivory: the page is an aged key, the surfaces a fresh one; ink is the logo's ebony */
   --board:#F3ECDA; --panel:#FFF8E7; --ink:#2B2B2B; --muted:#6B6358; --rule:#D9CDB2;
