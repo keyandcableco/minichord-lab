@@ -323,6 +323,17 @@
 .helper{position:absolute;z-index:1;pointer-events:none}
 /* the on-screen minichord: in beginner mode's play a little smaller and slightly see-through, in a
    demo bigger and solid, the same in every game (Chord Invaders' demo has its own, the same size) */
+/* playing on the computer keyboard: the layout card, and the keys as they're held */
+.kbcard{position:fixed;left:50%;bottom:10px;transform:translateX(-50%);z-index:40;background:rgba(7,6,12,.94);border:3px solid #FFD35A;box-shadow:0 0 0 3px #000;padding:10px 14px;text-align:center;pointer-events:none;max-width:min(560px,94vw)}
+.kbcard b{display:block;font:400 .55rem "Press Start 2P",monospace;color:#FFD35A;margin-bottom:8px}
+.kbgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.kbgrid span{display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px 2px;background:#16132A;border:2px solid #3D3656;font:400 .5rem "Minichord Lab Accidentals","Press Start 2P",monospace;color:#F1E8D2}
+.kbgrid span i{font-style:normal;font-size:.42rem;color:#8A83A8}
+.kbgrid span.on{background:#FFD35A;color:#16132A;border-color:#FFD35A}
+.kbgrid span.on i{color:#5A4A10}
+.kbcard p{margin:8px 0 0;font:400 .42rem/1.7 "Press Start 2P",monospace;color:#8A83A8}
+.kbcard .kbnow{font-size:.9rem;color:#7FE9FF;margin-top:6px;min-height:1.2em}
+body.kbplay #connect{opacity:.5}
 .helper.hboard{right:10px;bottom:28px;width:min(380px,40%);opacity:.82}
 .field.demoing .helper.hboard{width:min(520px,62%);bottom:10px;right:14px;opacity:1}
 /* in the demos of games whose play doesn't show it, the on-screen minichord smaller, in the corner, clear of their panels */
@@ -876,6 +887,7 @@ details.fold[open] .nowplaying{display:none}
     <a class="crumb" href="../">Minichord Lab</a>
     <div class="connect">
       <button id="connect" class="primary">Connect minichord</button>
+      <button id="keysBtn" type="button" title="Play with the computer keyboard instead">No minichord? Use the keyboard</button>
       <select id="input" aria-label="MIDI input" disabled><option>No MIDI yet</option></select>
     </div>
   </div>
@@ -1028,6 +1040,7 @@ details.fold[open] .nowplaying{display:none}
 <script defer src="games.js"></script>
 <script defer src="../arcade/games/invaders.js"></script>
 <script defer src="../arcade/matrix.js"></script>
+<script defer src="keyboard.js"></script>
 <script defer src="../arcade/games/harp-command.js"></script>
 <script defer src="../arcade/controller.js"></script>
 <script defer src="../arcade/games/chord-snake.js"></script>

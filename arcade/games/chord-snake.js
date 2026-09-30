@@ -245,7 +245,8 @@ function snDrop(){
 }
 document.addEventListener("keydown", e=>{
   if(!q || q.kind!=="snake" || /INPUT|SELECT|TEXTAREA/.test(document.activeElement?.tagName||"")) return;
-  const k={ArrowUp:"up",ArrowDown:"down",ArrowLeft:"left",ArrowRight:"right",KeyW:"up",KeyS:"down",KeyA:"left",KeyD:"right"}[e.code];
+  const letters = !(typeof kbOn==="function" && kbOn());          // in keyboard play the letters are the instrument's
+  const k=Object.assign({ArrowUp:"up",ArrowDown:"down",ArrowLeft:"left",ArrowRight:"right"}, letters?{KeyW:"up",KeyS:"down",KeyA:"left",KeyD:"right"}:{})[e.code];
   if(k){ e.preventDefault(); snTurn(k); return; }
   if(e.code==="KeyX" || e.code==="KeyB"){ e.preventDefault(); if(blast && blast.phase==="play") snDrop(); }
 });

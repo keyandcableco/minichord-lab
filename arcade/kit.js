@@ -430,7 +430,7 @@ function hsEntry(slug, score, next){
     (saved.hiscores||(saved.hiscores={}))[slug]=local; save();
     // the shared board
     let rank=local.indexOf(entry)+1, shared=false;
-    if(scoresOnline()){
+    if(scoresOnline() && !mc.virtual){                      // keyboard play: this computer's board only
       ov.querySelector(".padhint").textContent="SENDING…";
       try{
         const r=await fetch(`${SCORES_API}/api/scores/${slug}`,{method:"POST", headers:{"Content-Type":"application/json"},
@@ -439,7 +439,7 @@ function hsEntry(slug, score, next){
         if(r.ok){ rank=j.rank; shared=true; hsCache[slug]={at:performance.now(), scores:j.scores}; } else blast.hsNote=(j.error||"").toUpperCase();
       }catch(e){ blast.hsNote="THE SHARED BOARD COULDN'T BE REACHED: KEPT ON THIS COMPUTER"; }
     }
-    blast.hsResult=`${initials} · #${rank} ON ${shared?"THE BOARD":"THIS COMPUTER'S BOARD"}`;
+    blast.hsResult=`${initials} · #${rank} ON ${shared?"THE BOARD":"THIS COMPUTER'S BOARD"}${mc.virtual?" · KEYBOARD PLAY":""}`;
     sfx("level"); ov.remove(); next();
   };
   // skipped: nothing is sent or kept, and the game over screen says so

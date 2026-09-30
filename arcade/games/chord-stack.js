@@ -227,7 +227,8 @@ function stackHarp(pc){
 }
 document.addEventListener("keydown", e=>{
   if(!q || q.kind!=="stack" || /INPUT|SELECT|TEXTAREA/.test(document.activeElement?.tagName||"")) return;
-  const c={ArrowLeft:"left",ArrowRight:"right",ArrowDown:"down",ArrowUp:"up",KeyA:"left",KeyD:"right",KeyS:"down",KeyW:"up",KeyZ:"A",Space:"B",KeyX:"B"}[e.code];
+  const letters = !(typeof kbOn==="function" && kbOn());          // in keyboard play the letters are the instrument's
+  const c=Object.assign({ArrowLeft:"left",ArrowRight:"right",ArrowDown:"down",ArrowUp:"up",Space:"B"}, letters?{KeyA:"left",KeyD:"right",KeyS:"down",KeyW:"up",KeyZ:"A",KeyX:"B"}:{})[e.code];
   if(c){ e.preventDefault(); stControl(c); }
 });
 // the blocks above a cleared run fall into its gaps, column by column
