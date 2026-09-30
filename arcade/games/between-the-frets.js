@@ -91,14 +91,20 @@ function frDrawBoard(marks=[]){
 // a quarter-tone accidental (Stein–Zimmermann: the half-sharp is a sharp with one upright, the
 // half-flat a flat turned round). notes: [{m, c}], m a MIDI pitch that may end in .5.
 const FR_LETTERS=[["C",0],["D",2],["E",4],["F",5],["G",7],["A",9],["B",11]];
-function frSpell(m){
-  const oct=Math.floor(m/12)-1, pc=((m%12)+12)%12, nat=FR_LETTERS.find(([,p])=>p===pc);
-  if(nat) return {li:FR_LETTERS.indexOf(nat), oct, acc:0};
-  const up=FR_LETTERS.find(([,p])=>p===pc-.5), down=FR_LETTERS.find(([,p])=>p===pc+.5);
-  if(up) return {li:FR_LETTERS.indexOf(up), oct, acc:.5};
-  if(down) return {li:FR_LETTERS.indexOf(down), oct, acc:-.5};
-  const sh=FR_LETTERS.find(([,p])=>p===pc-1); return {li:FR_LETTERS.indexOf(sh), oct, acc:1};
+// Spelled from a letter where there is one: a note is its letter and whatever accidental reaches the
+// pitch, so the minor third above F is A-flat (two letters up), not G-sharp, and a quarter-tone below
+// C is C half-flat, not B half-sharp. With no letter to go by (a harp string plucked while exploring),
+// the nearest natural, then a quarter-tone from one, then a sharp or a flat as the modifier leans.
+function frSpell(m, li=null, flat=frFlatLean()){
+  if(li!=null){ const nat=FR_LETTERS[li][1], oct=Math.round((m-nat)/12)-1; return {li, oct, acc:m-(12*(oct+1)+nat)}; }
+  const tryLetter=(pc,acc)=>{ const k=FR_LETTERS.findIndex(([,p])=>p===((pc%12)+12)%12); return k<0 ? null : frSpell(m, k); };
+  const pc=((m%12)+12)%12;
+  return tryLetter(pc,0) || (flat ? tryLetter(pc+.5)||tryLetter(pc-.5) : tryLetter(pc-.5)||tryLetter(pc+.5))
+      || (flat ? tryLetter(pc+1) : tryLetter(pc-1));
 }
+// flats when the modifier flattens, sharps when it sharpens
+const frFlatLean=()=> typeof mc!=="undefined" && mc.params && mc.params[31]===1;
+const frFifths=()=> frFlatLean() ? -1 : 1;
 function frDrawStaff(notes=[]){
   const el=blast && blast.stageEl && blast.stageEl.querySelector(".frstaff"); if(!el) return;
   const SPc=7, top=12, y=(li,oct)=>top+4*SPc-((li+7*oct)-(2+7*4))*SPc/2;      // E4 on the bottom line
@@ -106,9 +112,9 @@ function frDrawStaff(notes=[]){
   let h=`<svg viewBox="0 0 ${W} 58" aria-hidden="true">`;
   for(let k=0;k<5;k++) h+=`<line x1="4" x2="${W-4}" y1="${top+k*SPc}" y2="${top+k*SPc}"/>`;
   h+=`<text class="glyph" x="8" y="${top+3*SPc}">\uE050</text>`;
-  notes.forEach((n,i)=>{ const sp=frSpell(n.m), yy=y(sp.li,sp.oct), x=58+i*44;
+  notes.forEach((n,i)=>{ const sp=frSpell(n.m, n.li), yy=y(sp.li,sp.oct), x=58+i*44;
     if(sp.li+7*sp.oct<=7*4+0) h+=`<line x1="${x-8}" x2="${x+16}" y1="${top+5*SPc}" y2="${top+5*SPc}"/>`;   // middle C's ledger line
-    const acc = sp.acc===.5 ? "\uE282" : sp.acc===-.5 ? "\uE280" : sp.acc===1 ? "\uE262" : "";
+    const acc = sp.acc===.5 ? "\uE282" : sp.acc===-.5 ? "\uE280" : sp.acc===1 ? "\uE262" : sp.acc===-1 ? "\uE260" : "";
     if(acc) h+=`<text class="glyph acc" x="${x-15}" y="${yy}" style="fill:${n.c}">${acc}</text>`;
     h+=`<text class="glyph" x="${x}" y="${yy}" style="fill:${n.c}">\uE0A2</text>`; });
   el.innerHTML=h+"</svg>";
@@ -224,7 +230,7 @@ function fretsNote(){
   }
   if(q.step==="answer") frReplay();
 }
-const frNoteName=m=>{ const s=frSpell(m); return FR_LETTERS[s.li][0]+(s.acc===.5?" +¼":s.acc===-.5?" −¼":s.acc===1?"♯":""); };
+const frNoteName=m=>{ const s=frSpell(m); return FR_LETTERS[s.li][0]+(s.acc===.5?" +¼":s.acc===-.5?" −¼":s.acc===1?"♯":s.acc===-1?"♭":""); };
 function fretsChord(voices){
   if(!blast || blast.kind!=="frets") return;
   if(blast.phase==="demo" && blast.demo){ endFrDemo(blast.demo); return; }
@@ -234,15 +240,15 @@ function fretsChord(voices){
   if(q.step==="find"){
     if(blast.instrument){                                                         // the minichord's own quarter-tone: the root voice's exact pitch
       const rv=voices.find(v=>mod(v.note ?? Math.round(v.pitch),12)===id.root), at=rv ? mod(rv.pitch,12) : -1, want=mod(FR_NAT[q.letter]+q.off/100,12);
-      if(rv && Math.min(Math.abs(at-want), 12-Math.abs(at-want))<.2) frFound(true); else { heard(chordName(pitches,0),false,`${q.letter} AND THE MODIFIER`); sfx("miss"); }
+      if(rv && Math.min(Math.abs(at-want), 12-Math.abs(at-want))<.2) frFound(true); else { heard(chordName(pitches,frFifths()),false,`${q.letter} AND THE MODIFIER`); sfx("miss"); }
       return;
     }
     const want=(FR_NAT[q.letter]+Math.sign(q.off)+12)%12;
-    if(id.root===want) frFound(true); else { heard(SHARP_NAMES[id.root],false,`${q.letter} AND THE MODIFIER`); sfx("miss"); }
+    if(id.root===want) frFound(true); else { heard((frFlatLean()?FLAT_NAMES:SHARP_NAMES)[id.root],false,`${q.letter} AND THE MODIFIER`); sfx("miss"); }
     return;
   }
   const said = q.kind==="riff" ? "FCGD".indexOf(SHARP_NAMES[id.root]) : row;
-  if(said<0){ heard(chordName(pitches,0),false, q.kind==="riff"?"THE F, C, G OR D COLUMN":"THE MAJOR, MINOR OR 7 ROW"); return; }
+  if(said<0){ heard(chordName(pitches,frFifths()),false, q.kind==="riff"?"THE F, C, G OR D COLUMN":"THE MAJOR, MINOR OR 7 ROW"); return; }
   if(said===q.answer) frRight(); else frWrong("NOT QUITE", q.kind==="riff" ? `NOTE ${said+1}` : FR_ROWS[q.kind][said]);
 }
 function frRight(byHarp){
@@ -276,9 +282,12 @@ function frReveal(q){
 }
 // what the staff shows: the reference always; the test once answered, in pink
 function frStaffNotes(q, reveal){
-  if(q.kind==="neutral"){ const r=q.ref[0][0]; return reveal ? [{m:r,c:"#F1E8D2"},{m:r+[4,3,3.5][q.answer],c:"#FF5AA0"},{m:r+7,c:"#F1E8D2"}] : [{m:r,c:"#F1E8D2"},{m:r+7,c:"#F1E8D2"}]; }
-  if(q.kind==="riff") return q.ref.map((n,i)=>({m: reveal && i===q.idx ? q.test[i][0] : n[0], c: reveal && i===q.idx ? "#FF5AA0" : "#F1E8D2"}));
-  const ref=q.show.ref; return reveal ? [{m:ref,c:"#F1E8D2"},{m:q.show.test,c:"#FF5AA0"}] : [{m:ref,c:"#F1E8D2"}];
+  const L=FR_LETTERS.findIndex(([n])=>n===q.letter);
+  if(q.kind==="neutral"){ const r=q.ref[0][0], third=(L+2)%7, fifth=(L+4)%7;       // a third is two letters up, a fifth four
+    return reveal ? [{m:r,c:"#F1E8D2",li:L},{m:r+[4,3,3.5][q.answer],c:"#FF5AA0",li:third},{m:r+7,c:"#F1E8D2",li:fifth}] : [{m:r,c:"#F1E8D2",li:L},{m:r+7,c:"#F1E8D2",li:fifth}]; }
+  if(q.kind==="riff") return q.ref.map((n,i)=>{ const bent=reveal && i===q.idx; return {m: bent ? q.test[i][0] : n[0], c: bent ? "#FF5AA0" : "#F1E8D2", li: FR_LETTERS.findIndex(([nm])=>nm===q.riff[i])}; });
+  const ref=q.show.ref;
+  return reveal ? [{m:ref,c:"#F1E8D2"},{m:q.show.test,c:"#FF5AA0",li:q.off?L:null}] : [{m:ref,c:"#F1E8D2"}];
 }
 function frNext(ms=1400){
   blast.q.step="done"; blast.q.at=0;

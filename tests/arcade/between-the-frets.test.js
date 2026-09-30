@@ -28,6 +28,11 @@ const t=require("./harness").load("between-the-frets");
   check("a wrong answer costs a life", a.lives===lives-1, t.heard());
   // a riff: which note bent, by column
   const r=w.eval(`frQuestion("riff")`);
+  // the staff spells a third from its root's letter: F minor's third is A-flat, not G-sharp
+  const third=(letter,ans)=>{ const r=60+NAT[letter], n=w.eval(`frStaffNotes({kind:"neutral", letter:"${letter}", ref:[[${r}]], answer:${ans}, show:{}}, true)`)[1];
+    const sp=w.eval(`frSpell(${n.m}, ${n.li})`); return w.eval("FR_LETTERS")[sp.li][0]+sp.acc; };
+  check("thirds are spelled from their root's letter: F minor's is A♭, C minor's E♭, G minor's B♭", third("F",1)==="A-1" && third("C",1)==="E-1" && third("G",1)==="B-1" && third("F",2)==="A-0.5",
+    [third("F",1),third("C",1),third("G",1),third("F",2)].join(" "));
   check("a riff bends one note, a quarter-tone", r.test[r.idx][0]-r.ref[r.idx][0]===r.off/100 && r.test.every((n,i)=>i===r.idx || n[0]===r.ref[i][0]));
   sb.restoreAll();
   check("leaving gives the speaker and the key back", mc.params[97]===150 && mc.params[35]===2);
