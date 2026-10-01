@@ -191,7 +191,7 @@ const multTag=()=> blast && blast.mult && blast.mult!==1 ? ` ×${blast.mult}` : 
 // what each game's things are worth at level 1 (all of it times the level)
 const POINTS_FOR={
   blaster:()=>[...BLAST_TIERS.map(([,n,sp,v])=>[n,String(v),sp]), ["NEEDS THE MODIFIER","× 1.5"], ["SLASH CHORD","× 1.5"], ["★ CHORD","× 5"], ["KEY SET","25"], ["BY THE BEAM","THE SAME"], ["⚡ ⏳ 🛡 POWER-UPS","OMNI BEAM · SLOW TIME · SHIELD"]],
-  command:[["NOTE","10"],["★ NOTE","50"]],
+  command:[["NOTE","10"],["★ NOTE","50"],["💥 ⏳ 🛡 POWER-UPS","MULTISHOT · SLOW TIME · SHIELD"]],
   snake:[["CHORD CASHED IN","15 A NOTE"],["★ NOTE","50"],["NOTE DROPPED","−5"]],
   asteroids:()=>[...BLAST_TIERS.map(([,n,sp,v])=>[n,String(v),sp]), ["NEEDS THE MODIFIER","× 1.5"], ["★ ROCK","× 3"], ["NOTE SHOT","10"], ["CHORD CLEARED","25"], ["MANUAL AIM","EVERYTHING × 2"]],
   stack:()=>[...BLAST_TIERS.map(([,n,sp,v])=>[n,`${v} A NOTE`,sp]), ["ITS NOTES SIDE BY SIDE","× 2"], ["A WHOLE ROW OF ONE CHORD","× 5"], ["CHORDS AT ONCE","× CHORDS"]],
@@ -215,12 +215,13 @@ const pointsFor=k=>{ const p=POINTS_FOR[k]; return typeof p==="function" ? p() :
 // its name and what it does. A game without any skips the page.
 const POWERS_FOR={
   blaster:()=>Object.entries(POWERS).map(([k,P])=>({look:`<span class="fchord power pu-${k}"><i class="puicon">${P.icon}</i>C</span>`, name:P.name, text:P.page})),
+  command:()=>Object.entries(HC_POWERS).map(([k,P])=>({look:`<span class="fchord fnote power pu-${k}">${hcPowerLook(k,"E")}</span>`, name:P.name, text:P.page})),
   breakout:()=>[{look:`<span class="bobrick power row1 pwbrick">G</span>`, name:"POWER BRICK", text:"BREAK ONE AND ITS CHORD'S TONES RAIN DOWN, THE PADDLE A CANNON: PLUCK EACH TONE ON THE HARP FOR A BONUS, ALL OF THEM FOR THE WHOLE CHORD."}],
 };
 const powersFor=k=> POWERS_FOR[k] ? POWERS_FOR[k]() : [];
 function powersRender(el){
   let i=0; const d=()=>`style="animation-delay:${(i++)*.6}s"`;
-  el.innerHTML=`<h3>POWER-UPS</h3><p class="ptsub">${cabKind()==="blaster" ? "PLAY A POWER-UP'S CHORD TO TAKE IT" : "THEY TURN UP NOW AND THEN"}</p>
+  el.innerHTML=`<h3>POWER-UPS</h3><p class="ptsub">${cabKind()==="blaster" ? "PLAY A POWER-UP'S CHORD TO TAKE IT" : cabKind()==="command" ? "PLUCK A POWER-UP'S STRING TO TAKE IT" : "THEY TURN UP NOW AND THEN"}</p>
     <ul class="pwtable">${powersFor(cabKind()).map(p=>`<li ${d()}><span class="pwlook">${p.look}</span><div><b>${p.name}</b><em>${p.text}</em></div></li>`).join("")}</ul>`;
 }
 // The lives, as pixel hearts in the HUD: a full heart for each life left, a dark empty one for each

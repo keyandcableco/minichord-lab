@@ -20,7 +20,7 @@ const bonusOn=()=> saved.bonus!==false;
 // the games whose harp is chromatic while they play, so any note can be plucked
 const BONUS_HARP_OK=new Set(["snake","stack","sweeper","asteroids","fifths","breakout","fleet","chopper","sight"]);
 // every timestamp a game keeps, moved on by the bonus's length when the game resumes
-const BONUS_TIME_KEYS=new Set(["t0","born","next","nextMove","nextFall","deadAt","serveAt","jamUntil","frozenUntil","edgeAt","shieldAt","hurtAt","crackedAt","callAt","deadline","fieldAt","fallAt","stepAt"]);
+const BONUS_TIME_KEYS=new Set(["t0","born","next","nextMove","nextFall","deadAt","serveAt","jamUntil","frozenUntil","edgeAt","shieldAt","hurtAt","crackedAt","callAt","deadline","fieldAt","fallAt","stepAt","powerUntil","sprayAt"]);
 function bonusShift(o, d, depth=0){
   if(!o || typeof o!=="object" || depth>2 || o.nodeType) return;
   for(const [k,v] of Object.entries(o)){
@@ -97,7 +97,7 @@ function bonusEnd(b){
     if(!blast || blast.bonus!==b) return;
     bonusShift(blast, performance.now()-blast.bonusStart);
     blast.bonus=null; blast.phase=blast.bonusPhase||"play"; blast.last=performance.now();
-    const bar=window[({blaster:"blastBar", command:"commandBar", snake:"snBar", asteroids:"asBar", stack:"stBar", breakout:"boBar", fifths:"fdBar", chopper:"chBar", fleet:"kfBar", sweeper:"swBar"})[blast.kind]];
+    const bar=window[({blaster:"blastBar", command:"blastBarCommand", snake:"snBar", asteroids:"asBar", stack:"stBar", breakout:"boBar", fifths:"fdBar", chopper:"chBar", fleet:"kfBar", sweeper:"swBar"})[blast.kind]];
     if(typeof bar==="function") bar();                        // the score, with the bonus in it
     stats.streak=stats.streak; scoreboard();
   }, b.tally && b.tally.length ? 3400 : 1800);

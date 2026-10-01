@@ -166,6 +166,7 @@ function fxDraw(now, dt){
       g.fillStyle = frozen ? ((Math.floor(now/120)+i)%2 ? "#7FE9FF" : "#B9F3FF") : hot ? "#FFD35A" : "#F1E8D2";
       g.fillRect(cx-1,cy-5,2,4); g.fillRect(cx-3,cy-1,6,2); g.fillRect(cx-4,cy+1,8,2);
       if(hot){ g.fillStyle="#FF8A3D"; g.fillRect(cx-1,cy-7,2,2); } });
+    if(typeof hcShieldDraw==="function") hcShieldDraw(g, W, H, now);    // a shield, glowing over them
   } else {
   // the ship: a little pixel cannon at the bottom centre, or, in the demo, off to the left under the
   // chords it falls through, clear of the minichord drawn at the foot of the field; it glides there
