@@ -35,6 +35,7 @@ function sfx(kind){
   else if(kind==="level"){ [523,659,784,1047,1319].forEach((f,i)=>tone("square",f,0,i*.07,.12,.45)); tone("triangle",1047,0,.36,.4,.6); }
   else if(kind==="key")  { [784,988,1175,1568].forEach((f,i)=>tone("triangle",f,0,i*.06,.14,.7)); }
   else if(kind==="over") { [392,370,349,330,311,294,262].forEach((f,i)=>tone("square",f,0,i*.16,.2,.5)); tone("triangle",131,0,1.12,.8,.8); }
+  else if(kind==="life") { [262,330,392,523, 523,659,784,1047].forEach((f,i)=>tone("square",f,0,i*.07+(i>3?.08:0),.11,.45)); tone("triangle",1047,0,.66,.45,.6); }   // the start, then from the top an octave up
   else if(kind==="start"){ [262,330,392,523].forEach((f,i)=>tone("square",f,0,i*.08,.11,.45)); }
   else if(kind==="freeze"){ tone("square",1600,200,0,.45,.35); noise(0,.5,8000,1500,.35); tone("triangle",2400,2400,.05,.3,.25); }   // an icy crackle
   else if(kind==="press"){ tone("square",1760,1320,0,.05,.35); }                                  // a button going down

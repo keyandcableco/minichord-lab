@@ -159,6 +159,7 @@
 /* Chord Invaders' power-ups: a chord in a coloured capsule */
 .field.arcade .fchord.power{padding:.15em .45em;border:2px solid #FF5AA0;border-radius:999px;background:rgba(255,90,160,.18);box-shadow:0 0 12px rgba(255,90,160,.6)}
 .field.arcade .fchord.pu-slow{border-color:#7FE9FF;background:rgba(127,233,255,.16);box-shadow:0 0 12px rgba(127,233,255,.6)}
+.field.arcade .fchord.pu-dacapo{border-color:#FF4B3E;background:rgba(255,75,62,.18);box-shadow:0 0 12px rgba(255,75,62,.65)}
 .field.arcade .fchord.pu-shield{border-color:#7FE08A;background:rgba(127,224,138,.16);box-shadow:0 0 12px rgba(127,224,138,.6)}
 .field.arcade .fchord.pu-multi{border-color:#FF8A3D;background:rgba(255,138,61,.18);box-shadow:0 0 12px rgba(255,138,61,.65)}
 .field.arcade .fchord.pu-pedal{border-color:#FF8A3D;background:rgba(255,138,61,.18);box-shadow:0 0 12px rgba(255,138,61,.65)}
@@ -185,6 +186,10 @@
 .hud .lives .heart.lost .fill{animation:heartdrain 1.1s steps(4) forwards}
 @keyframes heartlost{0%{transform:scale(1.5)}30%{transform:translateX(-4px) scale(1.4)}45%{transform:translateX(4px) scale(1.3)}60%{transform:translateX(-3px)}100%{transform:none}}
 @keyframes heartdrain{0%{fill:#FF4B3E}100%{fill:#1A1524}}
+.hud .lives .heart.won{animation:heartwon 1.1s steps(6) 1}
+.hud .lives .heart.won .fill{animation:heartfill 1.1s steps(4) 1}
+@keyframes heartwon{0%{transform:scale(.4)}35%{transform:scale(1.7)}60%{transform:scale(1.25)}100%{transform:none}}
+@keyframes heartfill{0%{fill:#FFFFFF}100%{fill:#FF4B3E}}
 .hud .lvl{color:#FFD35A}
 .heard{position:absolute;left:10px;bottom:10px;z-index:3;font:400 .55rem "Minichord Lab Accidentals","Press Start 2P",monospace;color:#9A93B5;pointer-events:none}
 .heard b{color:#F1E8D2;font-weight:400}
@@ -513,6 +518,7 @@ body.kbplay #connect{opacity:.5}
    their spot: the samples here sit in their own column beside their words instead */
 .pwtable .fchord,.pwtable .pwbrick{position:static;transform:none;left:auto;top:auto;animation:none}
 .pwtable .fchord.pu-slow{border-color:#7FE9FF;background:rgba(127,233,255,.16);box-shadow:0 0 12px rgba(127,233,255,.6)}
+.pwtable .fchord.pu-dacapo{border-color:#FF4B3E;background:rgba(255,75,62,.18);box-shadow:0 0 12px rgba(255,75,62,.65)}
 .pwtable .fchord.pu-shield{border-color:#7FE08A;background:rgba(127,224,138,.16);box-shadow:0 0 12px rgba(127,224,138,.6)}
 .pwtable .fchord.pu-multi{border-color:#FF8A3D;background:rgba(255,138,61,.18);box-shadow:0 0 12px rgba(255,138,61,.65)}
 .pwtable .fchord.pu-pedal{border-color:#FF8A3D;background:rgba(255,138,61,.18);box-shadow:0 0 12px rgba(255,138,61,.65)}

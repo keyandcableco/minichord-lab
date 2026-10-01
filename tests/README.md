@@ -37,7 +37,7 @@ key presses, checking what should happen.
 | `sight-line` | notes and chords read at the playhead; wrong strings and missed notes; key signatures and key changes; inversions and their bass; tunes named; the demo scrolls like play |
 | `chord-asteroids-aim` | chord rocks worth their chord; manual aim: the knobs made inert, the ship spun by a knob, off-line shots wide, notes double; both knobs endless at their stops |
 | `chord-invaders-aim` | manual aim: the knobs inert, the ship steered by a knob, a chord above the ship hits and one elsewhere goes wide, the multiplier doubled |
-| `chord-invaders-power` | the beam destroys that chord above the ship, on energy; omni beam destroys anything and sweeps in auto aim; power-ups taken by their chord; slow time; the shield |
+| `chord-invaders-power` | the beam destroys that chord above the ship, on energy; omni beam destroys anything and sweeps in auto aim; power-ups taken by their chord; slow time; the shield; DA CAPO gives a heart back, or one more up to five, rarer than the rest |
 | `minichord-contact` | a gentle press whose contact flickers is read as its one chord, quickly; firm presses, new chords and letting go as before |
 | `pixel-minichord` | what's made from the pixel minichord's grid is up to date; Ben holds it |
 | `chord-matrix-stack` | the alternate matrix sets the layout and deals sus chords that light and clear; the helper's buttons; the custom matrix follows the preset's slots |

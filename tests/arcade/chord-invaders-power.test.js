@@ -1,7 +1,8 @@
 // Chord Invaders' beam and power-ups: in manual aim the press that shoots the right chord down, kept
 // held, fires a short beam that destroys every chord of its type it crosses (not other types, not away
 // from the ship); a chord merely held earns nothing; it starts only from a full bar, which refills slowly; OMNI BEAM destroys anything, sweeping by itself in auto aim; a power-up is taken
-// by playing its chord; SLOW TIME halves the fall; a SHIELD saves a life; the title screen's POWER-UPS page.
+// by playing its chord; SLOW TIME halves the fall; a SHIELD saves a life; DA CAPO gives a heart back, or one
+// more; the title screen's POWER-UPS page.
 const t=require("./harness").load("invaders");
 (async()=>{
   const {w, sleep, check, mc, d}=t;
@@ -56,8 +57,21 @@ const t=require("./harness").load("invaders");
   a.powers={shield:true}; const lives=a.lives, landing=place("E","E","",300);
   w.eval("blastMiss(blast.items[blast.items.length-1])");
   check("SHIELD: the next chord that lands costs no life, and the shield is spent", a.lives===lives && !w.eval("powerOn('shield')"));
+  // DA CAPO: a heart back, or with every heart full one more, up to five; never kept, never sent without room
+  reset(); a.powers={}; a.lives=2; w.eval("blastBar()");
+  const dc1=place("F","F","",450,{power:"dacapo"}); t.chord("F",""); await sleep(300);
+  check("DA CAPO: taken by its chord, it gives a lost heart back", dc1.done && a.lives===3 && d.querySelectorAll(".hud .lives .heart").length===3 && !!d.querySelector(".hud .lives .heart.won"));
+  const dc2=place("F","F","",450,{power:"dacapo"}); t.chord("F",""); await sleep(300);
+  check("with every heart full it gives one heart more", dc2.done && a.lives===4 && d.querySelectorAll(".hud .lives .heart:not(.gone)").length===4);
+  check("and it's spent at once, so other power-ups still come", !w.eval("Object.keys(POWERS).some(k=>powerOn(k))"));
+  a.lives=5; let picked=new Set(); for(let k=0;k<300;k++) picked.add(w.eval("powerPick(POWERS)"));
+  check("with five hearts it never comes", !picked.has("dacapo") && picked.size===3);
+  a.lives=3; let n=0; for(let k=0;k<2000;k++) if(w.eval("powerPick(POWERS)")==="dacapo") n++;
+  check("and it's rarer than the rest", n>60 && n<400, `${n} of 2000`);
+  w.eval("newRun(); blast.lives=3; blastBar()");
+  check("a new game starts with its own three hearts, not the last game's four", d.querySelectorAll(".hud .lives .heart").length===3);
   w.eval("blast.phase='menu'; blast.items.forEach(i=>i.el.remove()); blast.items=[]; blastMenu(); cabStage(blast.overlay,'powers')"); await sleep(50);
-  check("the title screen has a POWER-UPS page: each power-up as it looks, its name, what it does", d.querySelectorAll(".cab-powers .pwtable li").length===3 && /OMNI BEAM/.test(d.querySelector(".cab-powers").textContent) && !!d.querySelector(".cab-powers .fchord.pu-slow"));
+  check("the title screen has a POWER-UPS page: each power-up as it looks, its name, what it does", d.querySelectorAll(".cab-powers .pwtable li").length===4 && /OMNI BEAM/.test(d.querySelector(".cab-powers").textContent) && /DA CAPO/.test(d.querySelector(".cab-powers").textContent) && !!d.querySelector(".cab-powers .fchord.pu-slow"));
   check("a game without power-ups skips it (Breakout has its arpeggio brick and four capsules)", w.eval("powersFor('snake').length")===0 && w.eval("powersFor('breakout').length")===5);
   t.done();
 })();

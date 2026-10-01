@@ -16,6 +16,7 @@
 //              touches, whatever it is, with no energy used; in auto aim the ship sweeps it by itself
 //   SLOW TIME  everything falls at half speed for ten seconds
 //   SHIELD     the next chord that lands costs no life
+//   DA CAPO    a life back, or one more with every heart full (kit.js: it's every game's)
 // The beam is a way out of a tight spot, not a way round learning the chords: it fires only from a
 // press that has just shot the right chord down (the chord above you, played on the right buttons),
 // it lasts little more than a second, and it starts only from a full bar, which takes most of half a
@@ -27,15 +28,17 @@ const POWERS={
   omni:  {name:"OMNI BEAM", icon:"⚡", secs:8,  say:"HOLD ANY CHORD: THE BEAM BLASTS WHATEVER IT TOUCHES", page:"FOR 8 SECONDS, ANY CHORD YOU HOLD FIRES A BEAM THAT BLASTS EVERY CHORD IT TOUCHES, WHATEVER IT IS."},
   slow:  {name:"SLOW TIME", icon:"⏳", secs:10, say:"EVERYTHING FALLS AT HALF SPEED", page:"FOR 10 SECONDS, EVERYTHING FALLS AT HALF SPEED."},
   shield:{name:"SHIELD",    icon:"🛡", secs:0,  say:"THE NEXT CHORD THAT LANDS COSTS NOTHING", page:"THE NEXT CHORD THAT LANDS COSTS NO LIFE."},
+  dacapo:DA_CAPO,
 };
 const powerOn=k=> !!(blast && blast.powers && blast.powers[k] && (POWERS[k].secs===0 || performance.now()<blast.powers[k]));
 // a power-up to drop now and then, one at a time, never while one runs
 function blastPowerChance(){
   if(!blast || blast.phase!=="play" || blast.items.some(i=>!i.done && i.power)) return null;
   if(Object.keys(POWERS).some(k=>powerOn(k)) || Math.random()>.06) return null;
-  return rnd(Object.keys(POWERS));
+  return powerPick(POWERS);
 }
 function blastPowerGet(it){
+  if(POWERS[it.power].instant){ daCapo(); blastBar(); return; }
   const P=POWERS[it.power], now=performance.now();
   (blast.powers||(blast.powers={}))[it.power] = P.secs ? now+P.secs*1000 : true;
   banner(P.name+"!", P.say); sfx("level"); blastBar();
