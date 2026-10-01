@@ -306,8 +306,18 @@ function beginnerRow(opts){
       b.onclick=()=>{ saved.harpLayout=v; save(); hmark(b); helperSync(true); }; hg.appendChild(b); });
     harpRow.append(hl,hg);
   }
+  // the minichord's sound while playing: the arcade's clean one (no vibrato or delay), or the player's own
+  const sr=document.createElement("div"); sr.className="optrow"; const sl=document.createElement("span"); sl.className="optlabel"; sl.textContent="SOUND";
+  const sg=document.createElement("div"); sg.className="levels";
+  const smark=b=>{ [...sg.children].forEach(x=>{ x.style.background=""; x.style.color=""; }); b.style.background="#F1E8D2"; b.style.color="#16132A"; };
+  [["CLEAN FOR PLAYING","clean"],["MY PRESET'S","mine"]].forEach(([t,v])=>{ const b=document.createElement("button"); b.textContent=t;
+    if((saved.arcadeSound||"clean")===v) smark(b);
+    b.title = v==="clean" ? "Vibrato and delay off while you play, so every chord is steady. Glide is always off: a gliding chord can't be read until it lands." : "Your preset's own vibrato and delay. Glide is still off: a gliding chord can't be read until it lands.";
+    b.onclick=()=>{ saved.arcadeSound=v; save(); smark(b); }; sg.appendChild(b); });
+  sr.append(sl,sg);
   const before=opts.querySelector("p.blink") || [...opts.querySelectorAll(".levels")].pop();
   opts.insertBefore(r, before); if(harpRow) opts.insertBefore(harpRow, r);
+  if(canWrite()) opts.insertBefore(sr, r);
 }
 function helperSync(rebuild){
   if(!blast || !blast.field) return;

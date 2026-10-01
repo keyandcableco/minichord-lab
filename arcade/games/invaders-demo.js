@@ -172,6 +172,7 @@ function blastSetup(){
   ensure(31, blast.dir>0 ? 0 : 1);
   if(slashReady()) ensure(113,1);                             // for the slash levels, the slash note in the bass
   if(hasSetting(39)) ensure(39,0);                            // the standard chord layout: the chords it drops
+  arcadePreset();                                              // glide off, and a clean sound unless the player keeps their own
   if(hasSetting(30)) ensure(30,0);                            // untransposed, so the buttons play the chords they name
   poll(true);
   modPill();

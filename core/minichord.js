@@ -35,8 +35,7 @@ const isChordPort = n => /minichord/i.test(n) && (n.includes("1") || n.trim().to
 export class Minichord extends EventTarget {
   /** ms a note-off waits in case the same note comes straight back (a flickering contact) */
   static OFF_DEBOUNCE=30;
-  /** ms a chord may wait for a flickering press to show all its notes again */
-  static SETTLE_MAX=600;
+
   constructor(){
     super();
     this.midi=null; this.out=null; this.sysex=false; this.inputChoice="auto";
@@ -186,7 +185,12 @@ export class Minichord extends EventTarget {
     const type=st&0xF0, ch=st&0x0F;
     if(type===0x90 && data[2]>0) this._on(ch,data[1],data[2]);
     else if(type===0x80 || type===0x90) this._off(ch,data[1]);
-    else if(type===0xE0){ const v=(data[2]<<7)|data[1]; this.chans[ch].bend = v>=8192 ? (v-8192)/8191 : (v-8192)/8192; this._lastBend=performance.now(); this._changed(false); }
+    // A bend that moves is a glide, and the chord waits for it to land. The firmware also sends a bend
+    // before every note, gliding or not, and resends it each time a flickering press restarts the
+    // chord; one that repeats the value already there isn't motion, and mustn't keep the chord waiting.
+    else if(type===0xE0){ const v=(data[2]<<7)|data[1], b = v>=8192 ? (v-8192)/8191 : (v-8192)/8192;
+      if(b!==this.chans[ch].bend) this._lastBend=performance.now();
+      this.chans[ch].bend=b; this._changed(false); }
     else if(type===0xB0) this._cc(ch,data[1],data[2]);
   }
   _chordChannel(ch){
@@ -212,7 +216,6 @@ export class Minichord extends EventTarget {
     // a voice's channel holds one note at a time
     if(this.mpe) for(const [k,n] of this.notes) if(n.ch===ch) this.notes.delete(k);
     this.notes.set(key,{ch,note,vel,t:performance.now()});
-    this._peak=Math.max(this._peak||0, this.notes.size);        // the most this press has shown
     this._changed(true);
   }
   // A note-off takes effect a moment later, and not at all if the same note comes straight back: a
@@ -221,7 +224,9 @@ export class Minichord extends EventTarget {
   _off(ch,note){
     const key=ch+":"+note; if(!this.notes.has(key)) return;
     const offs=this._offs||(this._offs=new Map()); clearTimeout(offs.get(key));
-    offs.set(key, setTimeout(()=>{ offs.delete(key); if(this.notes.delete(key)){ if(!this.notes.size) this._peak=0; this._changed(true); } }, Minichord.OFF_DEBOUNCE));
+    // Once every note has really gone (past the debounce), the press is over: the same chord played
+    // again is a new press, however quickly it comes. A flicker shorter than the debounce never gets here.
+    offs.set(key, setTimeout(()=>{ offs.delete(key); if(this.notes.delete(key)){ if(!this.notes.size) this._lastChordKey=""; this._changed(true); } }, Minichord.OFF_DEBOUNCE));
   }
   allOff(){ if(this._offs){ this._offs.forEach(t=>clearTimeout(t)); this._offs.clear(); } this.notes.clear(); this.chans.forEach(c=>c.bend=0); this._changed(true); }
   _cc(ch,cc,val){
@@ -262,14 +267,7 @@ export class Minichord extends EventTarget {
     const now=performance.now();
     if(now-(this._lastBend||0)<50 && now-this._settleStart<2500){ this._settle=setTimeout(()=>{ this._settle=0; this._trySettle(); },30); return; }
     const v=this.voices, key=v.map(x=>x.ch+":"+x.note).join(",");
-    // A gently pressed button can flicker, dropping a voice and bringing it back, so a chord is never
-    // read while fewer notes are held than the press has just shown: half a chord is no chord, and
-    // reading one leaves a soft press looking like nothing happened. Once the smaller set has held
-    // still a while it is taken as real, which is what letting go one note at a time looks like.
-    if(v.length && v.length<(this._peak||0) && now-this._settleStart<Minichord.SETTLE_MAX){
-      this._settle=setTimeout(()=>{ this._settle=0; this._trySettle(); }, 30); return;
-    }
-    this._peak=v.length;
+
     if(v.length && key!==this._lastChordKey){
       this._lastChordKey=key;
       const ev=new CustomEvent("chord",{detail:v}); ev.startedAt=this._settleStart;   // when its notes arrived, before any glide

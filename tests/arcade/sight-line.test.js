@@ -37,14 +37,18 @@ const t=require("./harness").load("sight-line");
   check("the arrows swing the minichord's chord inversion", t.mc.params[37]===1 && a.inv===1);
   let invOk=false, invWrong=false;
   for(let k=0;k<40 && !(invOk && invWrong);k++){ const m=await atLine(); if(!m) break;
-    if(m.chord && m.inv && !invWrong){ play(m, m.rootPc); await sleep(20); invWrong = !m.done && /BASS/.test(t.heard()); play(m, m.bassPc); await sleep(20); invOk = invOk || m.done; }
+    if(m.chord && m.inv && !invWrong){ play(m, m.rootPc);
+      for(let i=0;i<15 && !/BASS/.test(t.heard());i++) await sleep(20);          // however long this machine takes to say so
+      invWrong = !m.done && /BASS/.test(t.heard());
+      play(m, m.bassPc); for(let i=0;i<15 && !m.done;i++) await sleep(20); invOk = invOk || m.done; }
     else if(m.chord){ play(m, m.bassPc); await sleep(20); } else { note(m.pc); await sleep(20); } }
   check("an inversion played in root position isn't it; with its bass, it is", invOk && invWrong, t.heard());
   // a key change: asks for the combo, and pays once the minichord is in the new key
   const ch=w.eval("(()=>{ const n={change:true, f:2, x:blast.ph+2}; blast.notes.push(n); slNoteEl(n); return n; })()");
-  await sleep(200);
+  for(let i=0;i<60 && a.keyWant!==2;i++) await sleep(50);                     // until it reaches the line, however slowly
   check("a key change reaching the line puts the staff in the new key and asks for it", a.keyF===2 && a.keyWant===2);
-  const s1=a.score; t.mc.params[35]=w.eval("keyIndexOf(2)"); t.mc.dispatchEvent(new w.Event("device")); await sleep(50);
+  const s1=a.score; t.mc.params[35]=w.eval("keyIndexOf(2)"); t.mc.dispatchEvent(new w.Event("device"));
+  for(let i=0;i<20 && !(a.score>s1);i++) await sleep(25);
   check("setting the minichord to it pays", a.score>s1 && a.keyWant==null);
   // tunes: read one to the end and it's named
   a.level=9; w.eval("slLevelStart()"); a.lives=9;

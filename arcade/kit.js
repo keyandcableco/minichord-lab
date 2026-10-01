@@ -102,9 +102,26 @@ function menuRebuild(build){
   if(st==="options" && blast.overlay.dataset.stage){ cabStage(blast.overlay,"options"); blast.overlay.dataset.optpage=pg||"options"; }
   return true;
 }
+// The arcade's preset, put on the minichord for the length of a game and given back after (in one
+// message where the firmware can push and pop). Two parts:
+//   what playing needs, always: glide off, since a gliding chord isn't read until it lands, so a fast
+//     change feels like a press that didn't register; and chords that don't retrigger on their own;
+//   what only changes the sound, unless the player keeps their own (ARCADE SOUND): vibrato off on the
+//     chords and the strings, so a chord to name is a steady one, and no delay echoing the last chord
+//     over the next.
+// (The rhythm mode is a switch on the instrument, not a setting, so it can't be borrowed: a game asks
+// for it to be off when it sees chords arrive on the beat.)
+const ARCADE_PLAY ={199:0, 21:0};                    // glide chords, retrigger chords
+const ARCADE_SOUND={175:0, 76:0, 183:0};             // chord vibrato, harp vibrato, chord delay mix
+const arcadeCleanSound=()=> saved.arcadeSound!=="mine";
+function arcadePreset(){
+  for(const [a,v] of Object.entries(ARCADE_PLAY)) if(hasSetting(+a)) ensure(+a, v);
+  if(arcadeCleanSound()) for(const [a,v] of Object.entries(ARCADE_SOUND)) if(hasSetting(+a)) ensure(+a, v);
+}
 // setting up for the minichord, once per game: its settings read regularly, and whatever it borrows
 function arcadeSetup(fn){ if(blast.setupDone) return; blast.setupDone=true; poll(true); arcadeVolumes();
   if(hasSetting(39)) ensure(39,0);      // the standard chord layout: every game asks for its chords
+  if(canWrite()) arcadePreset();        // glide off, and a clean sound unless the player keeps their own
   if(fn) fn(); }
 // Manual aim needs knobs that change nothing on the instrument: the chord and harp knobs always move
 // their volumes, and the mod knob's main function is a setting of the preset. On firmware with knob
