@@ -446,9 +446,10 @@ function hsEntry(slug, score, next){
   const skip=()=>{ if(st.done) return; st.done=true; blast.hsEntry=null; clearInterval(st.timer);
     blast.hsNote="SCORE NOT ENTERED"; sfx("miss"); ov.remove(); next(); };
   blast.hsEntry={step, move, set, finish, skip, back:()=>move(-1), knob:v=>{   // relative: where the knob rests when a letter comes up is that letter; a sixth of a turn either way is six letters
-    if(!settled()) return; keepAlive();
+    if(!settled()) return;
     if(st.knobBase==null || st.knobPos!==st.pos){ st.knobBase=v; st.knobPos=st.pos; st.knobFrom=HS_CHARS.indexOf(st.letters[st.pos]); return; }
-    const d=Math.round((v-st.knobBase)*36); if(!d) return;
+    const d=Math.round((v-st.knobBase)*36); if(!d) return;                     // a knob that is merely sitting there reports anyway: only a letter that changes is someone being here
+    keepAlive();
     st.letters[st.pos]=HS_CHARS[mod(st.knobFrom+d, HS_CHARS.length)]; draw(); }, type:ch=>{ if(!settled()) return; keepAlive(); st.letters[st.pos]=ch; draw(); set(); }};
   draw(); sfx("bonus");
 }

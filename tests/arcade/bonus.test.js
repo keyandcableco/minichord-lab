@@ -40,16 +40,8 @@ const t=require("./harness").load("chord-snake", {storage:{saved:{bonus:true}}})
   // the snake paused through all that, and moves again after
   const head=JSON.stringify(a.body[0]); await sleep(900);
   check("the game carries on where it was", a.phase==="play" && JSON.stringify(a.body[0])!==head);
-  // Chord Invaders' own round: chosen for that game, harder chords as the level rises, and a tally
-  const r2=await play("oddout", async b=>{
-    for(let k=0;k<4 && !b.over;k++){ const a=b.ans; chord(a.root, a.q); await t.sleep(120); }
-  });
-  check("ODD ONE OUT: every intruder caught, and a tally of them", r2.gained>0 && /EVERY INTRUDER|OF 4 CAUGHT/.test(r2.result||"") && /INTRUDERS CAUGHT/.test(r2.tallyText||""), `${r2.result} · ${r2.tallyText}`);
-  const tiers=w.eval(`(()=>{ const g=BONUS_GAMES.find(x=>x.id==='oddout'), b={say(){}, stage:document.createElement('div')};
-    blast.level=0; g.start(b); const easy=b.tier.qs.length+"/"+b.tier.n;
-    blast.level=9; g.start(b); return easy+" then "+b.tier.qs.length+"/"+b.tier.n; })()`);
-  check("the chords it uses get harder as the game does", tiers==="1/4 then 5/6", tiers);
-  check("Chord Invaders picks its own round, and keeps it to itself", w.eval(`(()=>{ const was=blast.kind;
+  // Chord Invaders' own round is kept to that game (played there: see invaders-oddout.test.js)
+  check("a game's own round is kept to itself", w.eval(`(()=>{ const was=blast.kind;
     blast.kind="blaster"; const mine=[...Array(6)].map(()=>{ blast.bonus=null; arcadeBonus(); const id=blast.bonus.g.id; blast.bonus.over=true; blast.bonus=null; blast.phase="play"; return id; });
     blast.kind=was; const others=[...Array(8)].map(()=>{ blast.bonus=null; arcadeBonus(); const id=blast.bonus.g.id; blast.bonus.over=true; blast.bonus=null; blast.phase="play"; return id; });
     return [...new Set(mine)].join()+" | "+(others.includes("oddout")?"LEAKED":"kept out"); })()`)==="oddout | kept out");

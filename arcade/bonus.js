@@ -31,6 +31,11 @@ function bonusShift(o, d, depth=0){
   if(depth===0 && o.fx && o.fx.missiles) o.fx.missiles.forEach(m=>{ if(m.t0) m.t0+=d; });
 }
 const bonusDue=()=> !!(blast && blast.phase==="play" && bonusOn() && !blast.bonus && blast.bonusAt!=null && blast.level>=blast.bonusAt);
+// A round marked inField is played with the game itself: its own things in its own field, steered and
+// shot the way the game is, with the bonus frame only around the edges. The game's input keeps
+// working while it runs (its spawning and its clock don't), and the round watches what the game does.
+const bonusInField=()=> !!(blast && blast.bonus && !blast.bonus.over && blast.bonus.g.inField);
+const bonusPlaying=()=> bonusInField() && blast.bonus.ready;
 const BONUS_KEYS_MAJ=["C","G","D","F","A","B♭","E"];
 const bonusDiatonic=key=>[[0,""],[1,"m"],[2,"m"],[3,""],[4,""],[5,"m"]].map(([deg,q])=>({root:above(key,deg,[0,2,4,5,7,9][deg]), q}));
 const bSym=c=>c.root+c.q;
@@ -47,7 +52,7 @@ function arcadeBonus(id){
   const g = BONUS_GAMES.find(x=>x.id===id) || rnd(pool.filter(x=>x.id!==blast.lastBonus)) || rnd(pool);
   blast.lastBonus=g.id; blast.bonusPhase=blast.phase; blast.phase="bonus"; blast.bonusStart=performance.now();
   helpChord(null);
-  const el=document.createElement("div"); el.className="bonusround";
+  const el=document.createElement("div"); el.className="bonusround"+(g.inField?" infield":"");
   el.innerHTML=`<div class="bohead"><span class="rainbow">BONUS ROUND</span><b>${g.name}</b></div><p class="boinstr">${g.instr}</p><div class="bostage"></div>
     <div class="botime"><i></i></div><p class="boscore">BONUS <b>0</b></p>`;
   blast.field.appendChild(el);
@@ -56,6 +61,11 @@ function arcadeBonus(id){
   b.say=t=>{ el.querySelector(".boinstr").textContent=t; };
   b.finish=()=>bonusEnd(b);
   blast.bonus=b; sfx("level");
+  if(g.inField){
+    blast.field.classList.add("bonusfield");
+    // its chords are the standard ones, so an alternate or custom layout is put aside for the round
+    if(canWrite() && hasSetting(39) && mc.params[39]){ b.layoutWas=mc.params[39]; borrow(39,0); }
+  }
   // first the warning: what's coming, its rules, and a count down; then the mini-game and its clock
   el.classList.add("intro"); b.stage.innerHTML=`<p class="bocount">3</p>`;
   let n=3; b.countT=setInterval(()=>{ n--; const c=b.stage.querySelector(".bocount");
@@ -70,6 +80,8 @@ function arcadeBonus(id){
 const BONUS_WARN=4200;
 function bonusEnd(b){
   if(b.over) return; b.over=true; clearInterval(b.timer); clearInterval(b.countT); if(b.g.stop) b.g.stop(b);
+  if(b.g.inField && blast.field) blast.field.classList.remove("bonusfield");
+  if(b.layoutWas!=null && canWrite()){ borrow(39, b.layoutWas); b.layoutWas=null; }   // the player's own layout back
   const pts=mulPts(b.score*(blast.level+1));
   // the tally: what was caught, what it scored and what the level multiplied it by, held long enough to read
   const lines=(b.tally||[]).map(([what,n])=>`<span>${what}</span><b>${n}</b>`).join("");
@@ -153,22 +165,23 @@ const BONUS_GAMES=[
      else { sfx("miss"); buzz(b.stage,true); } } },
 
   // four chords, three from one major key: play the one that doesn't belong
-  // Chord Invaders' own: the odd chord out, from harder company as the game goes on. The chords are
-  // the ones the game is dropping at this level, so a player who has reached the sevenths meets
-  // sevenths here. Each one caught is worth more than the last, and every wrong shot costs a little.
-  {id:"oddout", name:"ODD ONE OUT", secs:22,
+  // Chord Invaders' own, played with the game itself: four chords fall as they always do and stop,
+  // three of them from one key. Steer under the one that doesn't belong and play it, exactly as in the
+  // game; shoot a chord that belongs and it costs. Its company gets harder as the game goes on.
+  {id:"oddout", name:"ODD ONE OUT", secs:22, inField:true,
    instr:"THREE OF THESE BELONG TO ONE KEY. SHOOT THE ONE THAT DOESN'T.",
    start(b){
-     b.n=0; b.hits=0; b.misses=0; b.tally=[];
+     b.n=0; b.hits=0; b.misses=0; b.tally=[]; b.mine=[];
      const lv=Math.min(4, Math.floor((blast.level||0)/2));            // how far the game has got
      b.tier=[{n:4, qs:[""],        say:"MAJOR CHORDS"},
              {n:4, qs:["","m"],    say:"MAJOR AND MINOR"},
-             {n:5, qs:["","m"],    say:"FIVE TO CHOOSE FROM"},
+             {n:4, qs:["","m"],    say:"HARDER KEYS"},
              {n:5, qs:["","m","7"],say:"SEVENTHS IN THE MIX"},
-             {n:6, qs:["","m","7","maj7","m7"], say:"EVERY CHORD THE GAME DROPS"}][lv];
+             {n:5, qs:["","m","7","maj7","m7"], say:"EVERY CHORD THE GAME DROPS"}][lv];
      b.say(`${this.instr} · ${b.tier.say}`);
      this.next(b);
    },
+   // the chords of this round, dropped into the game's field and left hanging where they stop
    next(b){
      const T=b.tier, key=rnd(BONUS_KEYS_MAJ), dia=bonusDiatonic(key).filter(c=>T.qs.includes(c.q));
      const inKey=new Set(dia.map(c=>pcOfName(c.root)+c.q));
@@ -178,22 +191,48 @@ const BONUS_GAMES=[
      if(!odd) return this.next(b);
      b.ans=odd; b.key=key;
      const cards=[...belong, odd].sort(()=>Math.random()-.5);
-     b.stage.innerHTML=`<div class="bocards big">${cards.map(c=>bCard(bSym(c))).join("")}</div>`;
+     const H=blast.field.clientHeight||420, top=Math.round(H*.3);
+     b.mine=cards.map((c,i)=>{
+       const el=document.createElement("span"); el.className="fchord bonuschord"; el.textContent=bSym(c);
+       el.style.left=`${12+(76/(cards.length-1))*i}%`; el.style.top="0";
+       blast.field.appendChild(el);
+       const it={el, sym:bSym(c), root:c.root, q:c.q, bass:null, bonus:false, rootPc:pcOfName(c.root), bassPc:null,
+                 t0:performance.now(), y:top, odd:c===odd};
+       blast.items.push(it);
+       // it falls in, then hangs there: the game's own clock is stopped during a bonus round
+       el.style.transform="translate(-50%,24px)"; void el.offsetWidth;
+       el.style.transition="transform .9s ease-out"; el.style.transform=`translate(-50%,${top}px)`;
+       setTimeout(()=>{ el.style.transition=""; }, 950);
+       return it;
+     });
    },
-   chord(b, pitches){
-     if(isChord(pitches, pcOfName(b.ans.root), b.ans.q)){
-       b.hits++; b.add(60+b.hits*20);                                  // each one worth more than the last
-       [...b.stage.querySelectorAll(".bocard")].forEach(c=>{ if(c.textContent===bSym(b.ans)) c.classList.add("done"); });
-       b.say(`${bSym(b.ans)} ISN'T IN ${b.key} MAJOR`);
+   // the game shot something: right or wrong, the round says so, and the game's own explosion has run
+   shot(b, hit, how){
+     const right=!!hit.odd;
+     hit.done=true; hit.el.classList.add(right?"gone":"wrongshot");
+     const x=hit.el.offsetLeft, y=(hit.y||0)+hit.el.offsetHeight/2;
+     if(right){
+       b.hits++; b.add(60+b.hits*20, [x,y]);
+       sfx("bonus"); explode(x,y,36,["#FFD35A","#FFFFFF","#7FE9FF"]);
+       setTimeout(()=>hit.el.remove(), 60);
+       b.say(`${hit.sym} ISN'T IN ${b.key} MAJOR`);
+       this.clear(b);
        if(b.hits>=4){ b.result="EVERY INTRUDER CAUGHT"; b.finish(); return; }
-       setTimeout(()=>{ if(!b.over) this.next(b); }, 700);
-     } else if(chordId(pitches)){
+       setTimeout(()=>{ if(!b.over) this.next(b); }, 800);
+     } else {
        b.misses++; b.score=Math.max(0, b.score-15); b.el.querySelector(".boscore b").textContent=b.score;
-       sfx("miss"); buzz(b.stage,true); b.say("THAT ONE BELONGS: TRY ANOTHER");
+       sfx("miss"); buzz(blast.field, true); popup(x, y-10, "−15", "#FF4B3E");
+       hit.done=false; hit.el.classList.remove("wrongshot");                 // it stays: try another
+       b.say(`${hit.sym} BELONGS TO ${b.key} MAJOR`);
      }
    },
-   stop(b){ b.tally=[["INTRUDERS CAUGHT", b.hits], ...(b.misses?[["WRONG SHOTS", `−${b.misses*15}`]]:[])];
-     if(!b.result) b.result = b.hits ? `${b.hits} OF 4 CAUGHT` : "NONE CAUGHT"; } },
+   // this round's chords, taken out of the game's field
+   clear(b){ (b.mine||[]).forEach(it=>{ it.done=true; it.el.remove(); const i=blast.items.indexOf(it); if(i>=0) blast.items.splice(i,1); }); b.mine=[]; },
+   stop(b){
+     this.clear(b);
+     b.tally=[["INTRUDERS CAUGHT", b.hits], ...(b.misses?[["WRONG SHOTS", `−${b.misses*15}`]]:[])];
+     if(!b.result) b.result = b.hits ? `${b.hits} OF 4 CAUGHT` : "NONE CAUGHT";
+   } },
   {id:"odd", name:"ODD ONE OUT", secs:20,
    instr:"THREE OF THESE CHORDS ARE FROM ONE KEY. PLAY THE ONE THAT DOESN'T BELONG.",
    start(b){ b.n=0; this.next(b); },

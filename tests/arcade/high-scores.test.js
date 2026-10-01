@@ -14,7 +14,9 @@ if(process.argv[2]==="countdown"){
     for(let i=0;i<120 && !d.querySelector(".hsentry");i++) await sleep(50);
     const num=()=>+d.querySelector(".hscount i").textContent;
     const first=num();
-    await sleep(2500); const after=num();
+    // a knob sitting still reports all the while: that is nobody being there, so the count runs on
+    for(let i=0;i<25;i++){ t.knob(64+(i%2),22); await sleep(100); }
+    const after=num();
     key("ArrowUp"); await sleep(50); const reset=num();      // a letter picked: the full time again
     key("Escape"); await sleep(300);
     const board=(JSON.parse(w.localStorage.getItem("lab-spellbound")).saved.hiscores||{})["chord-stack"]||[];
@@ -50,7 +52,7 @@ if(process.argv[2]==="countdown"){
     // the countdown, and giving up: a second run, straight to the entry
     const c=spawnSync(process.execPath,[__filename,"countdown"],{encoding:"utf8",timeout:90000});
     let j={}; try{ j=JSON.parse((c.stdout||"").trim().split("\n").pop()); }catch(e){ j={err:(c.stderr||"").slice(0,200)}; }
-    check("the initials count down, twenty seconds as a cabinet does", j.first===20 && j.after<20, j.err||`${j.first} then ${j.after}`);
+    check("the initials count down, twenty seconds as a cabinet does, a resting knob not stopping it", j.first===20 && j.after<20, j.err||`${j.first} then ${j.after}`);
     check("picking a letter puts the full time back", j.reset===20, `${j.reset}`);
     check("Escape gives up: no score kept, and the game over screen says so", j.skipped && /NOT ENTERED/.test(j.note||""), j.note);
     const r=spawnSync(process.execPath,[__filename,"beginner"],{encoding:"utf8",timeout:60000});

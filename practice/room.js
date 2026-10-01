@@ -332,7 +332,7 @@ function reveal(a){
   if(q && q.learn) return q.learn;
   if(a.type==="chord") return `${a.tones.join(" ")} · on your minichord: ${howTo(a.spellRoot,a.q)}.`;
   if(a.type==="slash") return `Hold ${howTo(a.spellRoot,a.q)}, then press ${pressRoot(a.bassName)} as well.`;
-  if(a.type==="key") return `Key signature: ${sigText(a.fifths)}. Its home chord is ${pressRoot(a.tonicName)}, with the major button.`;
+  if(a.type==="key") return `Key signature: ${sigText(a.fifths)}. Its home chord is ${pressRoot(a.tonicName)}, on the major row.`;
   if(a.type==="smooth" && smooth.last) return moveText(smooth.last.f, smooth.last.v);
   if(a.type==="blaster"){ const l=lowestBlast(); return l ? `On your minichord: ${howTo(l.root,l.q)}${l.bass?`, then press ${pressRoot(l.bass)} as well`:""}.` : ""; }
   return "";
@@ -423,7 +423,7 @@ function answerChord(voices){
   clearTimeout(pendingWrong); pendingWrong=null;
   if(!q || solved) return;
   if(blast && blast.hsEntry){ blast.hsEntry.set(); return; }                     // initials: a chord sets the letter
-  if(blast && blast.bonus){ bonusChord(voices); return; }                      // a bonus round
+  if(blast && blast.bonus && !bonusInField()){ bonusChord(voices); return; }   // a bonus round (an in-field one is played with the game)
   if(blast && blast.phase==="play") blast.midiIn=(blast.midiIn||0)+1;
   if(arcadeMenuChord(voices)) return;            // an arcade title screen, played from the buttons
   if(q.answer.type==="blaster") return blasterChord(voices);
@@ -467,7 +467,7 @@ function answerChord(voices){
   }
 }
 function answerNote(pc, pickedName){
-  if(blast && blast.bonus){ bonusNote(pc); return; }                           // a bonus round
+  if(blast && blast.bonus && !bonusInField()){ bonusNote(pc); return; }        // a bonus round (an in-field one is played with the game)
   if(blast && blast.hsEntry){ const c=kmControl(pc), h=blast.hsEntry;               // initials: the harp as a d-pad
     if(!c) return;                                                               // a dead corner of the keymaster
     if(c==="up") h.step(1); else if(c==="down") h.step(-1); else if(c==="left"||c==="B") h.move(-1); else if(c==="right") h.move(1); else h.set(); return; }

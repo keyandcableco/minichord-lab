@@ -688,6 +688,15 @@ html.arcadepage .gamebar{align-items:flex-end}
 .botime i{display:block;height:100%;background:#FFD35A;transform-origin:left}
 .boscore b,.bototal b{color:#FFD35A;font-weight:400}.bototal{font-size:1.1rem}
 /* the tally at the end of a bonus round: what was caught, then the total, held to be read */
+/* an in-field bonus round: the game's field stays in view, the bonus frame only around its edges */
+.field .bonusround.infield{background:none;justify-content:space-between;pointer-events:none}
+.field .bonusround.infield .bostage{flex:1;display:flex;align-items:center;justify-content:center}
+.field .bonusround.infield .bohead,.field .bonusround.infield .boinstr,.field .bonusround.infield .boscore{background:rgba(7,6,12,.82);padding:6px 12px}
+.field .bonusround.infield.over{background:rgba(7,6,12,.92)}
+.field.bonusfield .fchord:not(.bonuschord){opacity:.25}        /* whatever the game had, dimmed behind the round */
+/* all the same size, whatever they're spelled: a wider box would say which to shoot */
+.fchord.bonuschord{z-index:4;box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;width:5.4em;height:2.2em;padding:0;border:2px solid #FFD35A;background:rgba(7,6,12,.6)}
+.fchord.bonuschord.wrongshot{animation:buzz .3s steps(2) 2}
 .botally{display:grid;grid-template-columns:auto auto;gap:6px 20px;justify-content:center;margin:10px 0;font:400 .6rem/1.9 "Press Start 2P",monospace;color:#F1E8D2}
 .botally b{color:#FFD35A;font-weight:400;text-align:right}
 .boback{font:400 .5rem "Press Start 2P",monospace;color:#8A83A8;margin-top:12px;animation:blink 1s steps(2) infinite}

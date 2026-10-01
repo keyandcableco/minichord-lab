@@ -40,11 +40,14 @@ const FORM={
   "maj9":[[0,0],[2,4],[6,11],[8,14]], "m9":[[0,0],[2,3],[6,10],[8,14]], "add9":[[0,0],[2,4],[4,7],[8,14]], "6/9":[[0,0],[2,4],[5,9],[8,14]],
 };
 // which buttons make each chord, so a reveal teaches the instrument too
-const BUTTONS={"":"the major button","m":"the minor button","7":"the 7 button","maj7":"major and 7 together","m7":"minor and 7 together",
-  "°":"major and minor together","+":"all three type buttons","6":"major, in Barry Harris mode","m6":"minor, in Barry Harris mode",
-  "°7":"major and minor together, in Barry Harris mode","sus4":"major, on the alternate layout","sus2":"minor, on the alternate layout",
-  "7sus4":"7, on the alternate layout","maj9":"major and 7, on the alternate layout","m9":"minor and 7, on the alternate layout",
-  "add9":"major and minor, on the alternate layout","6/9":"all three, on the alternate layout"};
+// The chord buttons are a grid: seven columns, one per letter, and three rows (major, minor, 7), so a
+// chord is the button where its column meets a row, and the richer chords are two or three of that
+// column's rows held together.
+const BUTTONS={"":"on the major row","m":"on the minor row","7":"on the 7 row","maj7":"holding its major and 7 rows","m7":"holding its minor and 7 rows",
+  "°":"holding its major and minor rows","+":"holding all three rows","6":"on the major row, in Barry Harris mode","m6":"on the minor row, in Barry Harris mode",
+  "°7":"holding its major and minor rows, in Barry Harris mode","sus4":"on the major row, with the alternate layout","sus2":"on the minor row, with the alternate layout",
+  "7sus4":"on the 7 row, with the alternate layout","maj9":"holding its major and 7 rows, with the alternate layout","m9":"holding its minor and 7 rows, with the alternate layout",
+  "add9":"holding its major and minor rows, with the alternate layout","6/9":"holding all three rows, with the alternate layout"};
 const QNAME={"":"major","m":"minor","°":"dim","+":"aug"};
 const SETS={standard:["","m","7","maj7","m7","°","+"], barry:["6","m6","7","maj7","m7","°7","+"],
   alt:["sus4","sus2","7sus4","maj9","m9","add9","6/9"]};
@@ -147,7 +150,7 @@ const modDir=()=> mc.params[31]===1 ? -1 : 1;
 const modWord=()=> modDir()>0 ? "sharp" : "flat";
 function pressRoot(rootName){
   const f=devFifths(), {li,acc}=parse(rootName), m=modDir(), target=pcOfName(rootName);
-  const ka=keyAcc(li,f), label=L=>`the ${L} button`;
+  const ka=keyAcc(li,f), label=L=>`the ${L} column`;
   if(acc===ka) return label(LETTERS[li]) + (ka ? ` (${LETTERS[li]}${ACC[ka]} in this key)` : "");
   if(acc===ka+m) return `${label(LETTERS[li])} with the ${modWord()} modifier`;
   // otherwise another letter reaches the same note
@@ -158,7 +161,7 @@ function pressRoot(rootName){
   }
   return `the ${LETTERS[li]} button`;
 }
-const howTo=(root,q)=>`${pressRoot(root)}, with ${BUTTONS[q]}`;
+const howTo=(root,q)=>`${pressRoot(root)}, ${BUTTONS[q]}`;
 
 // ---------- the games ----------
 function genSpell(){
@@ -199,7 +202,7 @@ function genSlash(){
     // the slash is another button: a note of the key, most often the chord's own third or fifth
     const pool=[tones[1],tones[2],tones[1],tones[2], ...[0,1,2,3,4,5,6].map(i=>above(key.name,i,[0,2,4,5,7,9,11][i]))];
     const bass=rnd(pool); if(!bass || bass===root) continue;
-    return {kind:"slash", prompt:`${root}${d.q}/${bass}`, sub:`Play this slash chord: hold ${root}${d.q}, then press the ${bass[0]} button as well.`,
+    return {kind:"slash", prompt:`${root}${d.q}/${bass}`, sub:`Play this slash chord: hold ${root}${d.q}, then press its ${bass[0]} column as well.`,
       answer:{type:"slash", root:pcOfName(root), q:d.q, bass:pcOfName(bass), name:`${root}${d.q}/${bass}`, tones, spellRoot:root, bassName:bass},
       hint: tones.includes(bass) ? `${bass} is the chord's ${tones.indexOf(bass)===1?"third":"fifth"}, so this is an inversion.` : `${bass} isn't in ${root}${d.q}: the slash adds it underneath.`,
       hear:[bass, ...tones], context:key.fifths, needs: (mc.params[7]??0)>=13 ? [{addr:113,value:1,what:`"Slash voice" set to Bass, so the slash note is the bass`}]
@@ -233,7 +236,7 @@ function genHarp(){
   const ask = style==="number" ? (i ? `its ${ORD[i]}` : "its root") : style==="name" ? `its ${DEGREE_NAMES[i]}` : `${/^[AEF]/.test(note)?"an":"a"} ${note}`;
   return {kind:"harp", prompt:`Hold ${key.name} and pluck ${ask}`, sub:`Hold ${key.name} major and the harp plays the ${key.name} major scale. Find the note on it.`,
     answer:{type:"note", pc:pcOfName(note), name:note}, hint: style==="letter" ? `It's the ${ORD[i]} of the scale.` : `It's ${note}.`, hear:[note], context:key.fifths,
-    needs:[PER_CHORD,NOT_CHROMATIC], pressRoot:key.name, holdHint:()=>`Hold ${pressRoot(key.name)}, with the major button.`};
+    needs:[PER_CHORD,NOT_CHROMATIC], pressRoot:key.name, holdHint:()=>`Hold ${pressRoot(key.name)}, on the major row.`};
 }
 function genMissing(){
   let c; for(let k=0;k<50;k++){ c=pickChord(); if(c.tones.length>=3) break; }
@@ -326,7 +329,7 @@ function scaleAnswer(pool, sc, rootPc){
   }
   const others=shuffle(pool.filter(x=>x.i!==sc.i)).slice(0,6);
   const keypad=shuffle([sc,...others]).map((x,k)=>({value:x.i, letter:LETTERS[k], label:`${LETTERS[k]} · ${x.n}`}));
-  return {choices:keypad, keypad, how:"Answer on the minichord by pressing the chord button with the answer's letter, or pick below."};
+  return {choices:keypad, keypad, how:"Answer on the minichord by pressing the chord button in the answer's letter column, or pick below."};
 }
 function genScale(){
   const pool=scalePool(), sc=rnd(pool), key=questionKey();
@@ -559,8 +562,8 @@ function genTranspose(){
   const t=1+Math.floor(Math.random()*11);
   if(canWrite()){ borrow(30,t); }
   const name=spell(t,0);
-  return {wantsWrite:!canWrite(), borrows:[30], kind:"transpose", prompt:"What does the C button play now?", sub: canWrite() ? "The minichord is secretly transposed. Play its C chord (with the key signature set to C) against Hear it, which plays a true C major, and name the chord it really sounds."
-      : "Hear it plays C major, then the C button's chord on a secretly transposed minichord. Which chord is the second one?",
+  return {wantsWrite:!canWrite(), borrows:[30], kind:"transpose", prompt:"What does the C column's major button play now?", sub: canWrite() ? "The minichord is secretly transposed. Play its C chord (with the key signature set to C) against Hear it, which plays a true C major, and name the chord it really sounds."
+      : "Hear it plays C major, then the C column's major chord on a secretly transposed minichord. Which chord is the second one?",
     answer:{type:"choice", value:t, name:`${name} major (${INTERVALS[t]})`}, hint:`It's ${INTERVALS[t]}.`, context:0,
     choices:[1,2,3,4,5,6,7,8,9,10,11].map(v=>({value:v,label:spell(v,0)})),
     hearFn:()=> canWrite() ? [[48,0],[52,0],[55,0],[60,0]] : [[48,0],[52,0],[55,0],[60,0],[48+t,1.4],[52+t,1.4],[55+t,1.4],[60+t,1.4]]};
@@ -616,7 +619,7 @@ const CAT={1:["","major",[0,4,7]],2:["m","minor",[0,3,7]],3:["7","dominant 7th",
   9:["m6","minor 6th",[0,3,7,9]],10:["°7","diminished 7th",[0,3,6,9]],11:["m7♭5","half-diminished 7th",[0,3,6,10]],
   12:["sus4","sus4",[0,5,7]],13:["sus2","sus2",[0,2,7]],14:["7sus4","7sus4",[0,5,7,10]],15:["maj9","major 9th",[0,4,7,11,2]],
   16:["m9","minor 9th",[0,3,7,10,2]],17:["add9","add9",[0,4,7,2]],18:["6/9","6/9",[0,4,7,9,2]]};
-const COMBOS=["the major button","the minor button","the 7 button","major and 7","minor and 7","major and minor","all three"];
+const COMBOS=["the major row","the minor row","the 7 row","major and 7","minor and 7","major and minor","all three"];
 const altReady=()=>canWrite() && mc.params[202]!==undefined;
 let alt=null, heldVoices=[];
 function altNeeds(slots, extra=[]){
@@ -816,7 +819,7 @@ function genReshape(){
       : `Hold ${startSym}, then pluck the harp to change the notes that have to move. The game points the cantus at the right voice for you, so you only need the note; keep holding the chord.`;
     return {kind:"reshape", prompt:`${startSym} → ${sym}`, promptHtml:`<span class="keyname">${startSym}</span> <span class="in">→</span> <span class="num">${sym}</span>`,
       sub:how, pressRoot:root, needs, context:0, barry:sq,
-      holdHint:()=>`Hold ${pressRoot(root)}${sq==="m"?", with the minor button":", with the major button"}.`,
+      holdHint:()=>`Hold ${pressRoot(root)}${sq==="m"?", on the minor row":", on the major row"}.`,
       answer:{type:"reshape", name:sym, spellRoot:root, q:sq},
       get hint(){ const m=reshapeNext(); return m ? `Pluck ${toneNames.get(m.to)}: the ${VOICE_WORDS[m.rank]} moves from ${reshapeName(m.fromPc)} to ${toneNames.get(m.to)}.` : `Hold ${startSym} first.`; },
       learn:`${startSym} to ${sym}: ${reshapeMoves()}.`,

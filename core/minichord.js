@@ -35,6 +35,8 @@ const isChordPort = n => /minichord/i.test(n) && (n.includes("1") || n.trim().to
 export class Minichord extends EventTarget {
   /** ms a note-off waits in case the same note comes straight back (a flickering contact) */
   static OFF_DEBOUNCE=30;
+  /** ms a chord may wait for a flickering press to show all its notes again */
+  static SETTLE_MAX=600;
   constructor(){
     super();
     this.midi=null; this.out=null; this.sysex=false; this.inputChoice="auto";
@@ -210,6 +212,7 @@ export class Minichord extends EventTarget {
     // a voice's channel holds one note at a time
     if(this.mpe) for(const [k,n] of this.notes) if(n.ch===ch) this.notes.delete(k);
     this.notes.set(key,{ch,note,vel,t:performance.now()});
+    this._peak=Math.max(this._peak||0, this.notes.size);        // the most this press has shown
     this._changed(true);
   }
   // A note-off takes effect a moment later, and not at all if the same note comes straight back: a
@@ -218,7 +221,7 @@ export class Minichord extends EventTarget {
   _off(ch,note){
     const key=ch+":"+note; if(!this.notes.has(key)) return;
     const offs=this._offs||(this._offs=new Map()); clearTimeout(offs.get(key));
-    offs.set(key, setTimeout(()=>{ offs.delete(key); if(this.notes.delete(key)) this._changed(true); }, Minichord.OFF_DEBOUNCE));
+    offs.set(key, setTimeout(()=>{ offs.delete(key); if(this.notes.delete(key)){ if(!this.notes.size) this._peak=0; this._changed(true); } }, Minichord.OFF_DEBOUNCE));
   }
   allOff(){ if(this._offs){ this._offs.forEach(t=>clearTimeout(t)); this._offs.clear(); } this.notes.clear(); this.chans.forEach(c=>c.bend=0); this._changed(true); }
   _cc(ch,cc,val){
@@ -259,6 +262,14 @@ export class Minichord extends EventTarget {
     const now=performance.now();
     if(now-(this._lastBend||0)<50 && now-this._settleStart<2500){ this._settle=setTimeout(()=>{ this._settle=0; this._trySettle(); },30); return; }
     const v=this.voices, key=v.map(x=>x.ch+":"+x.note).join(",");
+    // A gently pressed button can flicker, dropping a voice and bringing it back, so a chord is never
+    // read while fewer notes are held than the press has just shown: half a chord is no chord, and
+    // reading one leaves a soft press looking like nothing happened. Once the smaller set has held
+    // still a while it is taken as real, which is what letting go one note at a time looks like.
+    if(v.length && v.length<(this._peak||0) && now-this._settleStart<Minichord.SETTLE_MAX){
+      this._settle=setTimeout(()=>{ this._settle=0; this._trySettle(); }, 30); return;
+    }
+    this._peak=v.length;
     if(v.length && key!==this._lastChordKey){
       this._lastChordKey=key;
       const ev=new CustomEvent("chord",{detail:v}); ev.startedAt=this._settleStart;   // when its notes arrived, before any glide

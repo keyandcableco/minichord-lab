@@ -332,7 +332,7 @@ const knobHold={};
 mc.addEventListener("knob", e=>{
   if(!blast || !blast.field) return;
   const {knob, value}=e.detail;
-  if(blast.bonus){ bonusKnob(value, knob); return; }                          // a bonus round: any knob
+  if(blast.bonus && !bonusInField()){ bonusKnob(value, knob); return; }       // a bonus round: any knob (an in-field one steers the game)
   if(blast.hsEntry){ if(knob===steerKnob()) blast.hsEntry.knob(value); return; }
   if(cabWaiting()){
     const base=(blast.knobBase||(blast.knobBase={}));
@@ -353,7 +353,8 @@ mc.addEventListener("knob", e=>{
   if(blast.kind==="stack") return stKnob(v);
   if(blast.kind==="asteroids") return asKnob(v);
   if(blast.kind==="sight") return sightKnob(v);
-  if(blast.kind==="blaster"){ if(blast.aimManual && blast.phase==="play") blast.shipWant=.06+v*.88; return; }   // Chord Invaders' ship, in manual aim
+  // Chord Invaders' ship, in manual aim; an in-field bonus round is steered the same way
+  if(blast.kind==="blaster"){ if(blast.aimManual && (blast.phase==="play" || bonusPlaying())) blast.shipWant=.06+v*.88; return; }
   if(blast.kind==="fifths") return fdKnob(v);
   if(blast.kind!=="breakout") return;
   const W=blast.W||blast.field.clientWidth; blast.paddle.target=v*(W-blast.paddle.w); blast.steer="knob";

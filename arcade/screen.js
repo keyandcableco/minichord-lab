@@ -251,7 +251,7 @@ function blastMatches(i, pitches){
 function blasterChord(voices){
   if(blast && blast.kind==="command") return;           // Harp Command listens to the harp alone
   if(blast && blast.phase==="demo" && blast.demo){ endDemo(blast.demo); return; }
-  if(!blast || blast.phase!=="play") return;
+  if(!blast || (blast.phase!=="play" && !(typeof bonusPlaying==="function" && bonusPlaying()))) return;   // an in-field bonus round is played with the game
   const pitches=voices.map(v=>v.pitch);
   const name=chordName(pitches,devFifths());
   // the lowest matching chord, ★ chords only if nothing ordinary matches; in manual aim, only one above the ship
@@ -268,6 +268,14 @@ function blasterChord(voices){
 // a chord destroyed, by a shot from the ship or by the beam: its points, a power-up if it carried one,
 // and every eighth a level up
 function blastKill(hit, how){
+  // an in-field bonus round: the ship fires as it always does, and the round scores when the shot lands
+  if(typeof bonusPlaying==="function" && bonusPlaying() && blast.bonus.g.shot){
+    const b=blast.bonus, fr=blast.field, shipX=fr.clientWidth*(blast.shipF??.5);
+    const x=hit.el.offsetLeft, y=(hit.y||0)+hit.el.offsetHeight/2, land=()=>{ if(!b.over) b.g.shot(b, hit, how); };
+    if(how==="beam") land();
+    else { sfx("shoot"); blast.fx.missiles.push({x0:shipX/PX, y0:(fr.clientHeight-22)/PX, x1:x/PX, y1:y/PX, t0:performance.now(), dur:170, hit:land}); }
+    return;
+  }
   hit.done=true; hit.el.classList.remove("low");
   const fr=blast.field, shipX=fr.clientWidth*(blast.shipF??.5), x=hit.el.offsetLeft, y=(hit.y||0)+hit.el.offsetHeight/2;
   const {pts, tags}=blastPoints(hit);                           // by its chord type, the modifier and a slash

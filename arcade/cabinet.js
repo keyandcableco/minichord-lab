@@ -6,8 +6,8 @@
 
 // ---------- the title screens, from the chord buttons ----------
 // An arcade game's title and game over screens can be run from the minichord alone. The chord
-// buttons' columns, F C G D A E B from the left, count 1 to 7: a column's major button starts that
-// level, its minor button sets that speed, and its 7 button switches to that arcade game. The key
+// buttons' columns, F C G D A E B from the left, count 1 to 7: a column's major row starts that
+// level, its minor row sets that speed, and its 7 row switches to that arcade game. The key
 // signature's sharps and flats don't matter; the column is read from the chord's letter.
 const ARCADE_GAMES=["blaster","command","snake","asteroids","stack","breakout","fifths","chopper","fleet","sweeper","frets","sight"];
 const COLUMN_LETTERS="FCGDAEB";
@@ -31,7 +31,7 @@ function arcadeSwitch(g){
 // the line on each title screen that says so
 function arcadeKeys(ov){
   const p=document.createElement("p"); p.className="padhint";
-  p.textContent="ON THE MINICHORD: A COLUMN'S MAJOR BUTTON STARTS THAT LEVEL · MINOR SETS THE SPEED · 7 SWITCHES GAME";
+  p.textContent="ON THE MINICHORD: A COLUMN'S MAJOR ROW STARTS THAT LEVEL · MINOR SETS THE SPEED · 7 SWITCHES GAME";
   ov.appendChild(p);
 }
 

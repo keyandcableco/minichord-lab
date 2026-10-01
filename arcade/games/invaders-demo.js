@@ -34,6 +34,7 @@ const DEMO_SCENES=[
   {act:"aim", title:"MANUAL AIM ×2", text:"STEER UNDER IT WITH A KNOB, THEN PLAY IT."},
   {act:"beam", title:"THE BEAM", text:"HOLD A CHORD AND SWEEP: EVERY CHORD OF ITS TYPE GOES."},
   {act:"omni", title:"POWER-UPS", text:"SHOOT ONE TO TAKE IT."},
+  {title:"BONUS ROUNDS", text:"EVERY TWO LEVELS: FOUR CHORDS STOP IN THE SKY, THREE FROM ONE KEY. SHOOT THE ONE THAT DOESN'T BELONG.", hold:4200},
   {title:"READY?", text:"CHOOSE A LEVEL. PLAY EACH CHORD BEFORE IT LANDS.", hold:2800},
 ];
 function stopDemo(){ const was=!!(blast && blast.demo);
@@ -283,7 +284,7 @@ function blastKey(){
 
 // manual aim: the arrow keys steer Chord Invaders' ship too
 document.addEventListener("keydown", e=>{
-  if(!blast || blast.kind!=="blaster" || !blast.aimManual || blast.phase!=="play" || /INPUT|SELECT|TEXTAREA/.test(document.activeElement?.tagName||"")) return;
+  if(!blast || blast.kind!=="blaster" || !blast.aimManual || (blast.phase!=="play" && !(typeof bonusPlaying==="function" && bonusPlaying())) || /INPUT|SELECT|TEXTAREA/.test(document.activeElement?.tagName||"")) return;
   const d={ArrowLeft:-1,ArrowRight:1}[e.code]; if(!d) return;
   e.preventDefault(); blast.shipWant=Math.max(.06, Math.min(.94, (blast.shipWant??.5)+d*.06));
 });

@@ -40,6 +40,7 @@ key presses, checking what should happen.
 | `invaders-demo-acts` | Chord Invaders' demo shows the beam burning every minor chord and leaving the major, and the omni power-up |
 | `push-pop` | with firmware push and pop, one message gives everything back, even what the Lab never touched; without it, every borrowed setting is written back |
 | `keyboard-play` | with no minichord the computer keyboard is one: its rows are the chord buttons, the number row the harp, games play unaltered, their letter controls step aside |
+| `invaders-oddout` | Chord Invaders' own bonus round, played with the game: chords in its field, shot with its own firing, the field left clean |
 | `key-fleet` | fleets never touch; hits cripple; keys are called by tonic, cadence and the key change combo |
 | `high-scores` | GAME OVER before the initials; input ignored at first; the board kept; beginner mode stays off it |
 | `lobby` | the arcade lobby's cabinets, best scores and ticker |
