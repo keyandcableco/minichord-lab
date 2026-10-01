@@ -58,6 +58,7 @@ key presses, checking what should happen.
 | `lobby` | the arcade lobby's cabinets, best scores and ticker |
 | `bonus` | every two levels a bonus round starts; each of the five mini-games can be won; the game carries on after |
 | `game-clock` | every game's clock keeps true time down to ten frames a second: all twelve ticks take up to a tenth of a second, and Breakout's ball covers the same ground at ten frames a second as at sixty |
+| `cabinet-plain` | the light mode judged by time, long frames counted, never a fast machine or a tab coming back; slow in full screen on AUTO, the plain cabinet first, remembered for that screen, then the field light; CABINET, PLAIN and AUTO in the settings; the player's CRT choice can't bring scanlines into a plain cabinet |
 | `fullscreen` | full screen builds the cabinet round the game, in CRT, its SOUND, RESET and connection status working; leaving puts it back |
 | `timers` | a game's timers belong to its run, so none from an old game reaches the next |
 | `practice-room` | the Practice Room around the arcade: every one of its games opens and deals a round |

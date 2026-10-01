@@ -74,11 +74,51 @@ function toggleFull(field){
   fsConn(cab);
   fsHome={parent:field.parentNode, next:field.nextSibling, field};
   cab.querySelector(".fsscreen").appendChild(field); document.body.appendChild(cab);
-  field.classList.add("crt","fscrt");
+  field.classList.add("crt","fscrt"); fxFresh(); if(fsPlainWanted()) fsPlain(true);
   const req=cab.requestFullscreen || cab.webkitRequestFullscreen, pseudo=()=>cab.classList.add("pseudo");
   try{ const p=req ? req.call(cab) : null; if(!req) pseudo(); else if(p && p.catch) p.catch(pseudo); }catch(e){ pseudo(); }
   field._fullLabel && field._fullLabel(); setTimeout(arcadeRelayout,60);
 }
+// ---------- the plain cabinet ----------
+// The cabinet asks a lot of a graphics chip: a full screen of it is redrawn every frame, layer on layer
+// (the backdrop, the marquee and its lights, the bezel, the screen's rounded glass, the game, its
+// canvases, the CRT's scanlines). An old chip at a big screen's size can't do that sixty times a
+// second: Intel's HD 4600 at 4K managed fourteen, though the page's own work was a few milliseconds a
+// frame. The plain cabinet keeps what the player needs (the game's name, SOUND, RESET, SCREEN, the
+// connection) and drops the rest: black all round, the screen square and flat, the lettering still.
+// FULL SCREEN in the arcade's settings: AUTO (the cabinet, going plain by itself once frames have come
+// slowly for two seconds, and remembering that screen, by its size and density, so next time it starts
+// plain), CABINET (always the full one) or PLAIN (always). Choosing AUTO again forgets this screen,
+// for a machine that's been improved.
+const fsScreenKey=()=>`${screen.width}x${screen.height}@${window.devicePixelRatio||1}`;
+const fsMode=()=> saved.fsCab || "auto";
+const FS_MODES=["auto","cabinet","plain"];
+function fsPlainWanted(){ const m=fsMode(); return m==="plain" || (m==="auto" && !!(saved.fsSlow||{})[fsScreenKey()]); }
+function fsPlain(on){
+  const cab=document.querySelector(".fscab"); if(!cab) return;
+  cab.classList.toggle("plain", on);
+  const f=cab.querySelector(".fsscreen>.field"); if(f) f.classList.toggle("crt", !on);
+  setTimeout(arcadeRelayout,60);
+}
+// the light mode's first step in full screen, on AUTO: plain, and this screen remembered. False if
+// there's nothing to do here (not full screen, already plain, or the cabinet chosen).
+function fsTooSlow(){
+  const cab=document.querySelector(".fscab"); if(!cab || cab.classList.contains("plain") || fsMode()!=="auto") return false;
+  saved.fsSlow={...(saved.fsSlow||{}), [fsScreenKey()]:true}; save();
+  fsPlain(true);
+  if(blast && blast.field) popup(fieldW()/2, 70, "PLAIN CABINET, TO KEEP UP", "#9A93B5");
+  return true;
+}
+// the setting changed: AUTO forgets this screen; whatever it is, a cabinet that's up follows it now
+function fsModeSet(i){
+  saved.fsCab=FS_MODES[i];
+  if(saved.fsCab==="auto" && saved.fsSlow){ delete saved.fsSlow[fsScreenKey()]; }
+  save(); fxFresh();
+  if(document.querySelector(".fscab")) fsPlain(fsPlainWanted());
+}
+// A change of size is judged afresh: a machine that couldn't keep up in full screen may well in the
+// page, and one that was light in the page tries full screen at its best first.
+function fxFresh(){ const fx=blast && blast.fx; if(!fx) return; fx.light=false; fx.avg=0; fx.slowSince=0; blast.field && blast.field.classList.remove("lowfx"); }
 // the bezel says whether the minichord's there: connected, or a blinking INSERT MINICHORD
 function fsConn(cab){ cab=cab||document.querySelector(".fscab"); const c=cab && cab.querySelector(".fsconn"); if(!c) return;
   const on=!!mc.out; c.textContent = on ? "MINICHORD CONNECTED" : "INSERT MINICHORD"; c.classList.toggle("blink", !on); c.classList.toggle("on", on); }
@@ -88,7 +128,7 @@ mc.addEventListener("device", ()=>fsConn());
 function fsAdopt(){
   const cab=document.querySelector(".fscab"), scr=cab && cab.querySelector(".fsscreen"); if(!scr || !blast || !blast.field || scr.contains(blast.field)) return;
   const old=scr.querySelector(".field"); if(fsHome){ fsHome.parent=blast.field.parentNode; fsHome.next=blast.field.nextSibling; fsHome.field=blast.field; }
-  if(old) old.remove(); scr.appendChild(blast.field); blast.field.classList.add("crt","fscrt"); setTimeout(arcadeRelayout,60);
+  if(old) old.remove(); scr.appendChild(blast.field); blast.field.classList.add("fscrt"); blast.field.classList.toggle("crt", !cab.classList.contains("plain")); setTimeout(arcadeRelayout,60);
 }
 function fsExit(){
   if(document.fullscreenElement || document.webkitFullscreenElement) (document.exitFullscreen || document.webkitExitFullscreen).call(document);
@@ -97,7 +137,7 @@ function fsExit(){
 function fsRestore(){
   const cab=document.querySelector(".fscab"); if(!cab || !fsHome) return;
   const {parent, next, field}=fsHome; fsHome=null;
-  field.classList.remove("fscrt"); if(!saved.crt) field.classList.remove("crt");
+  field.classList.remove("fscrt"); field.classList.toggle("crt", !!saved.crt); fxFresh();
   parent.insertBefore(field, next && next.parentNode===parent ? next : null); cab.remove();
   field._fullLabel && field._fullLabel(); setTimeout(arcadeRelayout,60);
 }

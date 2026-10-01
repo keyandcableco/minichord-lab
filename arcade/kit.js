@@ -156,7 +156,8 @@ function arcadeVolumeWatch(){
 // darkened and rounded as a tube's are, a faint roll and flicker, and a slight colour fringe on the
 // lettering. All of it is drawn over the field by the browser's own compositor, so it costs next to
 // nothing, even on a slow machine. Switched on the title screens' options, and remembered.
-function crtSync(){ document.querySelectorAll(".field.arcade").forEach(f=>f.classList.toggle("crt", !!saved.crt)); }
+// a field in the cabinet is CRT unless the cabinet's plain; one in the page, as the player chose
+function crtSync(){ document.querySelectorAll(".field.arcade").forEach(f=>{ const cab=f.closest(".fscab"); f.classList.toggle("crt", cab ? !cab.classList.contains("plain") : !!saved.crt); }); }
 function crtRow(opts){
   const r=document.createElement("div"); r.className="optrow"; const l=document.createElement("span"); l.className="optlabel"; l.textContent="SCREEN";
   const g=document.createElement("div"); g.className="levels";
@@ -271,6 +272,7 @@ function arcadeSettings(){
   if(k==="breakout") choice("PADDLE", ["NARROW","NORMAL","WIDE"], ()=>saved.boPaddle??1, i=>{ saved.boPaddle=i; save(); }, "FROM THE NEXT GAME");
   choice("BEGINNER", ["OFF","SHOW WHAT TO PRESS"], ()=>saved.beginner?1:0, i=>{ saved.beginner=!!i; save(); helperSync(true); }, "NO HIGH SCORES WITH IT ON");
   choice("SCREEN", ["FLAT","CRT"], ()=>saved.crt?1:0, i=>{ saved.crt=!!i; save(); crtSync(); });
+  choice("FULL SCREEN", ["AUTO","CABINET","PLAIN"], ()=>FS_MODES.indexOf(fsMode()), i=>fsModeSet(i), "AUTO GOES PLAIN WHERE THE GRAPHICS CAN'T KEEP UP");
   choice("BONUS ROUNDS", ["ON","OFF"], ()=>saved.bonus===false?1:0, i=>{ saved.bonus=!i; save(); }, "A MINI-GAME EVERY TWO LEVELS");
   if(["blaster","asteroids","breakout","fifths","command"].includes(k))
     choice("LETTERING", SIZES.map(x=>x[0]), ()=>saved.chordSize??1, i=>{ saved.chordSize=i; save(); applyChordSize(); });

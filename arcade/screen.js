@@ -22,7 +22,7 @@ const DT_MAX=.1;
 function sharpLayer(fx){ const cv=document.createElement("canvas"); cv.className="fxsharp"; fx.cv.after(cv); return cv; }
 // ready to draw in the field's own pixels: sized to it (and the screen's density), cleared
 function sharpBegin(cv){
-  const dpr=window.devicePixelRatio||1, W=blast.fx.fw, H=blast.fx.fh;
+  const dpr=blast.fx.light ? 1 : window.devicePixelRatio||1, W=blast.fx.fw, H=blast.fx.fh;   // light: the screen's pixels, not its density's
   if(cv.width!==Math.round(W*dpr) || cv.height!==Math.round(H*dpr)){ cv.width=Math.round(W*dpr); cv.height=Math.round(H*dpr); }
   const g=cv.getContext("2d"); g.setTransform(dpr,0,0,dpr,0,0); g.clearRect(0,0,W,H); g.lineJoin="round"; g.lineCap="round";
   return g;
@@ -149,10 +149,18 @@ function fxDraw(now, dt){
   blast.lastPhase=blast.phase;
   // how the machine is keeping up: if frames come slowly for a couple of seconds the field goes light,
   // the canvas drawn every other frame and the glows dropped
+  // Long frames count too, up to a tenth of a second each: they're what a struggling full screen makes,
+  // and leaving them out (as it once did) meant this never came on when it was needed most. Only a gap
+  // of a second or more is left out, a tab coming back. It's judged by time, two seconds of it, not by
+  // a count of frames, which at ten a second took twelve. In full screen the first step is the plain
+  // cabinet (cabinet.js); only if it's still slow after that does the field itself go light.
   const gap=now-(fx.prevNow||now); fx.prevNow=now;
-  if(gap>0 && gap<200) fx.avg = fx.avg ? fx.avg*.97+gap*.03 : gap;
-  fx.slowFor = fx.avg>24 ? (fx.slowFor||0)+1 : 0;
-  if(!fx.light && fx.slowFor>120){ fx.light=true; blast.field && blast.field.classList.add("lowfx"); }
+  if(gap>0 && gap<1000) fx.avg = fx.avg ? fx.avg*.94+Math.min(gap,100)*.06 : gap;
+  if(fx.avg>24){ if(!fx.slowSince) fx.slowSince=now; } else fx.slowSince=0;
+  if(!fx.light && !fx.probe && fx.slowSince && now-fx.slowSince>2000){
+    if(typeof fsTooSlow==="function" && fsTooSlow()){ fx.avg=0; fx.slowSince=0; }
+    else { fx.light=true; blast.field && blast.field.classList.add("lowfx"); }
+  }
   // behind a title screen, or on a struggling machine, the canvas needn't be drawn every frame
   const titleUp = blast.phase==="menu" && blast.overlay && !blast.overlay.hidden;
   const every = titleUp ? 50 : fx.light ? 30 : 0;

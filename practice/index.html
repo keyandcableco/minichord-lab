@@ -493,7 +493,8 @@ body.kbplay #connect{opacity:.5}
 @media (prefers-reduced-motion:reduce){.field.arcade.crt::after{animation:none}}
 /* a machine that's struggling: no glows or colour fringes, no rolling band */
 .field.arcade.lowfx .fchord,.field.arcade.lowfx .overlay h3,.field.arcade.lowfx .overlay p,.field.arcade.lowfx .banner,.field.arcade.lowfx .popup{text-shadow:none!important}
-.field.arcade.lowfx.crt::after{display:none}
+.field.arcade.lowfx.crt::before,.field.arcade.lowfx.crt::after{display:none}   /* the CRT's scanlines and roll too */
+.field.arcade.lowfx *{text-shadow:none!important}
 
 /* the points screen, Pac-Man style: each line appears in turn, a dotted leader to its value */
 .cab-points{display:flex;flex-direction:column;align-items:center;gap:10px;width:100%}
@@ -769,6 +770,18 @@ html.arcadepage .gamebar{align-items:flex-end}
 .fsplate .nesbtn button svg{width:70%;height:auto}
 .fsplate .fsreset{background:#1C1C22}
 @media (max-aspect-ratio:1/1){ .fsscreen{height:auto;width:88vw} }   /* a phone held upright: fit the width */
+/* the plain cabinet (cabinet.js): for graphics that can't redraw the whole cabinet every frame at a big
+   screen's size. Black all round, the game's screen square and flat, the lettering still: nothing for
+   the chip to blend, layer on layer, but the game */
+.fscab.plain{background:#000}
+.fscab.plain .fsmarquee{background:#000;border-color:#000;box-shadow:none}
+.fscab.plain .fsmarquee::before,.fscab.plain .fsmarquee::after,.fscab.plain .fsbezel::before{display:none}
+.fscab.plain .fsmarquee span{color:#FFD35A;text-shadow:none}
+.fscab.plain .fsbezel{background:#000;border-color:#000;border-radius:0;box-shadow:none}
+.fscab.plain .fsscreen,.fscab.plain .fsscreen>.field{border-radius:0;box-shadow:none}
+.fscab.plain .rainbow{animation:none;color:#FFD35A}
+.fscab.plain .blink{animation:none}
+.fscab.plain .field.arcade *{text-shadow:none!important}
 /* Between the Frets: a stage in black and white polka dots, a fretboard, the band */
 .frstage{position:absolute;inset:0;z-index:2;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:60px 16px 20px;pointer-events:none}
 .frband{position:absolute;left:0;right:0;bottom:14px;display:flex;justify-content:space-between;padding:0 18px}
