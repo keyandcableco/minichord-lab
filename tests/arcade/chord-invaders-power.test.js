@@ -1,6 +1,6 @@
-// Chord Invaders' beam and power-ups: in manual aim a chord kept sounding fires a beam that destroys
-// every chord of its type the beam crosses (not other types, not away from the ship), on energy that
-// drains and refills; OMNI BEAM destroys anything, sweeping by itself in auto aim; a power-up is taken
+// Chord Invaders' beam and power-ups: in manual aim the press that shoots the right chord down, kept
+// held, fires a short beam that destroys every chord of its type it crosses (not other types, not away
+// from the ship); a chord merely held earns nothing; it starts only from a full bar, which refills slowly; OMNI BEAM destroys anything, sweeping by itself in auto aim; a power-up is taken
 // by playing its chord; SLOW TIME halves the fall; a SHIELD saves a life; the title screen's POWER-UPS page.
 const t=require("./harness").load("invaders");
 (async()=>{
@@ -17,20 +17,34 @@ const t=require("./harness").load("invaders");
   const hold=(root,q)=>{ const r=48+t.PC[root], iv={"":[0,4,7],"m":[0,3,7],"7":[0,4,7,10]}[q]; sounding=iv.map(x=>r+x); };
   reset(); a.shipWant=.5; a.shipF=.5;
   const cUnder=place("C","C","",450), aUnder=place("Am","A","m",455), gUnder=place("G","G","",445), cFar=place("C","C","",100);
+  // a chord merely held, with no hit, earns nothing
   hold("C",""); await sleep(700);
-  check("a chord kept sounding fires the beam, and C major above the ship is destroyed", a.beamOn && cUnder.done);
-  check("and so is every chord of its type in the beam, G major too, whatever the root", gUnder.done);
-  check("but not a chord of another type in the beam, nor one away from the ship", !aUnder.done && !cFar.done);
-  const e1=a.energy; check("the beam spends energy", e1<1, `${e1.toFixed(2)}`);
-  sounding=[]; await sleep(600);
-  check("and it refills when the chord stops", a.energy>e1 && !a.beamOn, `${e1.toFixed(2)} → ${a.energy.toFixed(2)}`);
+  check("holding a chord without shooting fires no beam", !a.beamOn && !cUnder.done && !gUnder.done);
+  sounding=[]; await sleep(60);
+  // the press that shoots the right chord down earns the beam: keep holding it
+  hold("C",""); t.chord("C",""); await sleep(600);
+  check("shooting the right chord, then holding, fires the beam", cUnder.done && a.beamOn);
+  check("which burns every chord of its type in its path, G major too", gUnder.done);
+  check("but not a chord of another type, nor one away from the ship", !aUnder.done && !cFar.done);
+  await sleep(1100);
+  check("it lasts little more than a second", !a.beamOn && a.energy<.05, `energy ${a.energy.toFixed(2)}`);
+  sounding=[]; await sleep(1000);
+  const e2=a.energy;
+  check("and it refills slowly", e2>0 && e2<.1, `energy ${e2.toFixed(2)} after a second`);
+  // with the bar not full, even an earned press fires nothing
+  const c2=place("C","C","",450), g2=place("G","G","",448);
+  hold("C",""); t.chord("C",""); await sleep(600);
+  check("it starts again only from a full bar", c2.done && !a.beamOn && !g2.done, `energy ${a.energy.toFixed(2)}`);
+  sounding=[]; reset();
   // OMNI BEAM: any chord held blasts whatever it touches
   reset(); a.powers={omni:w.performance.now()+8000};
   const g7=place("G7","G","7",450); hold("A","m"); await sleep(700);
   check("OMNI BEAM: any chord held destroys whatever the beam touches", g7.done);
   sounding=[];
-  a.aimManual=false; const s0=a.shipWant; await sleep(500);
-  check("in auto aim, the omni beam sweeps the ship by itself", Math.abs(a.shipWant-s0)>.05, `${s0.toFixed(2)} → ${a.shipWant.toFixed(2)}`);
+  // in auto aim the omni beam sweeps by itself: watch where the ship is sent over a second
+  a.aimManual=false; let lo=1, hi=0;
+  for(let k=0;k<25;k++){ await sleep(40); lo=Math.min(lo,a.shipWant); hi=Math.max(hi,a.shipWant); }
+  check("in auto aim, the omni beam sweeps the ship by itself", hi-lo>.2, `${lo.toFixed(2)} to ${hi.toFixed(2)}`);
   a.aimManual=true; a.powers={};
   // a power-up taken by playing its chord: SLOW TIME halves the fall
   reset(); a.shipWant=.5; a.shipF=.5; await sleep(100);

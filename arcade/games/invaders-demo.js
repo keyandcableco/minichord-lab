@@ -32,7 +32,7 @@ const DEMO_SCENES=[
   {key:true, keyPress:[3,1], text:"THE ROWS ARE SHARP, NATURAL AND FLAT KEYS. PRESS ONE.", hold:3400},
   {key:false, keyDone:"D", text:"LET GO: D MAJOR.", hold:3000},
   {act:"aim", title:"MANUAL AIM ×2", text:"STEER UNDER IT WITH A KNOB, THEN PLAY IT."},
-  {act:"beam", title:"THE BEAM", text:"HOLD A CHORD AND SWEEP: EVERY CHORD OF ITS TYPE GOES."},
+  {act:"beam", title:"THE BEAM", text:"SHOOT ONE DOWN AND KEEP HOLDING: A SHORT BEAM BURNS EVERY CHORD OF ITS TYPE."},
   {act:"omni", title:"POWER-UPS", text:"SHOOT ONE TO TAKE IT."},
   {title:"BONUS ROUNDS", text:"EVERY TWO LEVELS: FOUR CHORDS STOP IN THE SKY, THREE FROM ONE KEY. SHOOT THE ONE THAT DOESN'T BELONG.", hold:4200},
   {title:"READY?", text:"CHOOSE A LEVEL. PLAY EACH CHORD BEFORE IT LANDS.", hold:2800},
@@ -317,10 +317,11 @@ async function demoAct(act, {token, el, cells, clear, sleep, playChord, $d}){
       press(2,[0]); playChord({chord:"G"}); await sleep(350); fire(g); await sleep(1500);
     }
     if(act==="beam"){
-      const minors=[["Am",.2],["Dm",.46],["Em",.8]].map(([s,f])=>drop(s,f,"minor")); drop("C",.62);
-      await steer(.1, 900); if(!live()) return;
-      press(4,[1]); playChord({chord:"Am"}); await sleep(450);
-      await sweep(.1, .9, 2600, c=>c.classList.contains("minor")); if(!live()) return;
+      // close together, as a short beam is used: the C major sits between the minors and survives
+      const minors=[["Am",.2],["Dm",.33],["Em",.47]].map(([s,f])=>drop(s,f,"minor")); drop("C",.4);
+      await steer(.2, 900); if(!live()) return;
+      press(4,[1]); playChord({chord:"Am"}); await sleep(250); fire(minors[0]); await sleep(450);   // the hit that earns it
+      await sweep(.2, .58, 1300, c=>c.classList.contains("minor")); if(!live()) return;
       $d(".democap").textContent="THE C MAJOR STAYS: IT'S ANOTHER TYPE."; await sleep(1800);
     }
     if(act==="omni"){

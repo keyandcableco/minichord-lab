@@ -16,7 +16,13 @@
 //              touches, whatever it is, with no energy used; in auto aim the ship sweeps it by itself
 //   SLOW TIME  everything falls at half speed for ten seconds
 //   SHIELD     the next chord that lands costs no life
-const BEAM_WAIT=350, BEAM_DRAIN=.25, BEAM_FILL=.12, BEAM_HALF=7;   // ms held before it fires; energy a second out and in; px either side of the ship
+// The beam is a way out of a tight spot, not a way round learning the chords: it fires only from a
+// press that has just shot the right chord down (the chord above you, played on the right buttons),
+// it lasts little more than a second, and it starts only from a full bar, which takes most of half a
+// minute to refill.
+const BEAM_WAIT=350, BEAM_DRAIN=.8, BEAM_FILL=.04, BEAM_HALF=7;    // ms held before it fires; energy a second out and in; px either side of the ship
+// what the minichord is sounding now, as the beam tells one press from another
+const heldKeyNow=()=> (typeof mc!=="undefined" ? mc.voices : []).map(x=>x.note ?? Math.round(x.pitch)).sort().join();
 const POWERS={
   omni:  {name:"OMNI BEAM", icon:"⚡", secs:8,  say:"HOLD ANY CHORD: THE BEAM BLASTS WHATEVER IT TOUCHES", page:"FOR 8 SECONDS, ANY CHORD YOU HOLD FIRES A BEAM THAT BLASTS EVERY CHORD IT TOUCHES, WHATEVER IT IS."},
   slow:  {name:"SLOW TIME", icon:"⏳", secs:10, say:"EVERYTHING FALLS AT HALF SPEED", page:"FOR 10 SECONDS, EVERYTHING FALLS AT HALF SPEED."},
@@ -51,10 +57,12 @@ function blastPowerTick(now, dt){
   if(omni && !blast.aimManual) blast.shipWant=.5+.4*Math.sin(now/650);
   // what's sounding: a chord kept on for a moment
   const v=typeof mc!=="undefined" ? mc.voices : [], pitches=v.map(x=>x.note ?? Math.round(x.pitch)), key=pitches.slice().sort().join();
-  if(key!==blast.heldKey){ blast.heldKey=key; blast.heldSince=now; }
+  if(key!==blast.heldKey){ blast.heldKey=key; blast.heldSince=now; if(blast.beamArmed!==key) blast.beamArmed=null; }   // a new press: unearned
   const held = pitches.length>=3 && !!chordId(pitches) && now-blast.heldSince>=BEAM_WAIT;
   if(blast.energy==null) blast.energy=1;
-  const can = (blast.aimManual || omni) && held && (omni || blast.energy>0);
+  // the ordinary beam: earned by this press's hit, started only from a full bar, run until it's empty
+  const earned = blast.aimManual && blast.beamArmed===key;
+  const can = omni ? held : (earned && held && (blast.beamOn ? blast.energy>0 : blast.energy>=.999));
   if(can && !blast.beamOn) sfx("press");
   blast.beamOn=can;
   if(can && !omni) blast.energy=Math.max(0, blast.energy-BEAM_DRAIN*dt);
@@ -80,7 +88,7 @@ function blastBeamDraw(g, sx, sy, now){
 // the HUD's extra: the beam's energy in manual aim, and a power-up while it runs
 function blastPowerHud(){
   let h="";
-  if(blast.aimManual){ const n=Math.round((blast.energy??1)*6); h+=` · BEAM ${"▮".repeat(n)}${"▯".repeat(6-n)}`; }
+  if(blast.aimManual){ const e=blast.energy??1, n=Math.round(e*6); h+= e>=.999 ? " · BEAM READY" : ` · BEAM ${"▮".repeat(n)}${"▯".repeat(6-n)}`; }
   if(blast.powers) for(const k of Object.keys(blast.powers)) if(powerOn(k)){ const P=POWERS[k];
     h+=` · ${P.name}${P.secs?` ${Math.ceil((blast.powers[k]-performance.now())/1000)}`:""}`; }
   return h;

@@ -263,6 +263,7 @@ function blasterChord(voices){
     blast.fx.missiles.push({x0:shipX/PX, y0:(fr.clientHeight-22)/PX, x1:shipX/PX, y1:0, t0:performance.now(), dur:260, hit:()=>{}}); return; }
   if(!hit){ heard(name,false); if(chordId(pitches)) later(()=>{ buzz(blast && blast.field, true); sfx("miss"); }); return; }
   heard(name,true);
+  if(blast.aimManual && typeof heldKeyNow==="function") blast.beamArmed=heldKeyNow();   // this press shot the right chord down: it may keep holding for the beam
   blastKill(hit, "shot");
 }
 // a chord destroyed, by a shot from the ship or by the beam: its points, a power-up if it carried one,

@@ -319,6 +319,9 @@ function bezelButtons(){
 }
 function coldBoot(){
   if(!blast || !blast.field || blast.booting) return;
+  // whatever game over was doing ends here: the GAME OVER splash, the initials and their countdown
+  clearTimeout(blast.splashT); if(blast.hsEntry && blast.hsEntry.cancel) blast.hsEntry.cancel();
+  blast.field.querySelectorAll(".hssplash, .hsentry").forEach(e=>e.remove());
   const field=blast.field; blast.booting=true;
   stopDemo(); cancelAnimationFrame(blast.raf);
   const el=document.createElement("div"); el.className="boot"; field.appendChild(el);
@@ -410,18 +413,20 @@ function gameOverSplash(score, then){
   ov.innerHTML=`<h3 class="over">GAME OVER</h3><p class="hsfinal">${score.toLocaleString("en-US")}</p><p>LEVEL ${blast.level+1}</p><p class="hsnext">…</p>`;
   blast.field.appendChild(ov); sfx("over");
   gameLater(()=>{ if(blast && blast.phase==="over"){ const n=ov.querySelector(".hsnext"); n.textContent="NEW HIGH SCORE!"; n.classList.add("blink"); sfx("bonus"); } }, 1800);
-  setTimeout(()=>{ ov.remove(); if(blast && blast.phase==="over") then(); }, 3600);
+  blast.splashT=setTimeout(()=>{ ov.remove(); if(blast && blast.phase==="over") then(); }, 3600);
 }
 function hsEntry(slug, score, next){
   const ov=document.createElement("div"); ov.className="overlay hsentry";
   const letters=(saved.hsInitials||"AAA").split("");
   ov.innerHTML=`<h3>NEW HIGH SCORE!</h3><p class="hsscore">${score.toLocaleString("en-US")}</p><p>ENTER YOUR INITIALS</p><div class="hsletters">${letters.map(()=>"<span></span>").join("")}</div>
     <p class="hscount"><i>${HS_SECONDS}</i></p>
-    <p class="padhint">▲▼, A KNOB OR THE HARP PICKS A LETTER · ◀▶ MOVES · A CHORD OR ENTER SETS IT · ESC SKIPS</p>`;
+    <p class="padhint">▲▼, A KNOB OR THE HARP PICKS A LETTER · ◀▶ MOVES · A CHORD OR ENTER SETS IT</p>
+    <button type="button" class="hsno">NO THANKS · DON'T SEND MY SCORE</button>
+    <p class="padhint">LEFT ALONE, IT ISN'T SENT</p>`;
   blast.field.appendChild(ov);
   const st={letters, pos:0, ov, done:false};
-  // A cabinet's countdown: the entry takes itself away if nobody types, keeping whatever letters are
-  // showing, and anything the player does puts the full time back. Escape gives up on it entirely.
+  // A cabinet's countdown: left alone, the entry goes and the score isn't sent; anything the player
+  // does puts the full time back. NO THANKS (or Escape) declines at once.
   let left=HS_SECONDS;
   const num=ov.querySelector(".hscount i");
   const tick=()=>{
@@ -429,7 +434,7 @@ function hsEntry(slug, score, next){
     left--; num.textContent=Math.max(0,left);
     ov.querySelector(".hscount").classList.toggle("low", left<=5);
     if(left<=5 && left>0) sfx("press");
-    if(left<=0){ clearInterval(st.timer); finish(); }
+    if(left<=0){ clearInterval(st.timer); skip("TIME UP: SCORE NOT ENTERED"); }
   };
   st.timer=setInterval(tick, 1000);
   const keepAlive=()=>{ left=HS_SECONDS; num.textContent=left; ov.querySelector(".hscount").classList.remove("low"); };
@@ -459,10 +464,13 @@ function hsEntry(slug, score, next){
     blast.hsResult=`${initials} · #${rank} ON ${shared?"THE BOARD":"THIS COMPUTER'S BOARD"}${mc.virtual?" · KEYBOARD PLAY":""}`;
     sfx("level"); ov.remove(); next();
   };
-  // skipped: nothing is sent or kept, and the game over screen says so
-  const skip=()=>{ if(st.done) return; st.done=true; blast.hsEntry=null; clearInterval(st.timer);
-    blast.hsNote="SCORE NOT ENTERED"; sfx("miss"); ov.remove(); next(); };
-  blast.hsEntry={step, move, set, finish, skip, back:()=>move(-1), knob:v=>{   // relative: where the knob rests when a letter comes up is that letter; a sixth of a turn either way is six letters
+  // declined (or left alone): nothing is sent or kept, and the game over screen says so
+  const skip=(why)=>{ if(st.done) return; st.done=true; blast.hsEntry=null; clearInterval(st.timer);
+    blast.hsNote=why||"SCORE NOT ENTERED"; sfx("miss"); ov.remove(); next(); };
+  // RESET: the entry simply ends, nothing after it
+  const cancel=()=>{ st.done=true; clearInterval(st.timer); ov.remove(); if(blast) blast.hsEntry=null; };
+  ov.querySelector(".hsno").onclick=()=>skip("NO THANKS: SCORE NOT SENT");
+  blast.hsEntry={step, move, set, finish, skip, cancel, back:()=>move(-1), knob:v=>{   // relative: where the knob rests when a letter comes up is that letter; a sixth of a turn either way is six letters
     if(!settled()) return;
     if(st.knobBase==null || st.knobPos!==st.pos){ st.knobBase=v; st.knobPos=st.pos; st.knobFrom=HS_CHARS.indexOf(st.letters[st.pos]); return; }
     const d=Math.round((v-st.knobBase)*36); if(!d) return;                     // a knob that is merely sitting there reports anyway: only a letter that changes is someone being here
