@@ -397,7 +397,7 @@ body.kbplay #connect{opacity:.5}
 .bobrick.cracked{background:#FFF4C2;color:#8B0000;animation:crackglow .5s steps(2) infinite;background-image:linear-gradient(135deg,transparent 45%,#07060C 46%,#07060C 50%,transparent 51%),linear-gradient(45deg,transparent 55%,#07060C 56%,#07060C 59%,transparent 60%)}
 @keyframes crackglow{50%{box-shadow:0 0 14px rgba(255,211,90,.95)}}
 .bobrick.gone{opacity:0;transform:scale(1.3)}
-.bopaddle{position:absolute;left:0;z-index:3;height:12px;background:#F1E8D2;border:2px solid #07060C;box-shadow:inset 0 -3px 0 #B5AC96,0 0 0 2px #FFD35A}
+.bopaddle{position:absolute;left:0;z-index:3;box-sizing:border-box;height:14px;background:#F1E8D2;border:2px solid #07060C;box-shadow:inset 0 -3px 0 #B5AC96,0 0 0 2px #FFD35A}
 /* the power-up: its bricks pulse, their tones fall, the paddle's a cannon and the ball waits */
 .bobrick.power{box-shadow:0 0 0 2px #7FE9FF,0 0 12px rgba(127,233,255,.7);animation:powerbrick .6s steps(2) infinite}
 @keyframes powerbrick{50%{box-shadow:0 0 0 2px #FFD35A,0 0 16px rgba(255,211,90,.8)}}
@@ -408,6 +408,26 @@ body.kbplay #connect{opacity:.5}
 .bopaddle.cannon::after{content:"";position:absolute;left:50%;top:-14px;width:10px;height:14px;transform:translateX(-50%);background:#7FE9FF;border:2px solid #07060C;border-bottom:0}
 .boball.held{box-shadow:0 0 14px #7FE9FF;opacity:.5}
 .boball{position:absolute;left:0;top:0;z-index:3;width:14px;height:14px;background:#FFFFFF;box-shadow:0 0 8px rgba(255,255,255,.8);transform:translate(-40px,-40px)}
+/* Chord Breakout's capsules and their powers, and the coda's open bricks */
+.bocap{position:absolute;left:0;top:0;z-index:4;display:inline-flex;align-items:center;gap:.35em;padding:4px 10px;border-radius:999px;font:400 .45rem "Press Start 2P",monospace;color:#16132A;background:#F1E8D2;border:2px solid #07060C;white-space:nowrap;will-change:transform}
+.bocap .puicon,.bobrick .puicon{font-style:normal;font-family:system-ui,sans-serif;font-size:.85rem;line-height:1}
+.bobrick .puicon{font-size:.9em;margin-right:.25em}
+.bocap.pu-crescendo{background:#FF8A3D;box-shadow:0 0 12px rgba(255,138,61,.7)}
+.bocap.pu-ritard{background:#7FE9FF;box-shadow:0 0 12px rgba(127,233,255,.7)}
+.bocap.pu-divisi{background:#FF5AA0;box-shadow:0 0 12px rgba(255,90,160,.7)}
+.bocap.pu-fermata{background:#7FE08A;box-shadow:0 0 12px rgba(127,224,138,.7)}
+.bobrick.capbrick{box-shadow:inset -3px -3px 0 rgba(0,0,0,.25),inset 3px 3px 0 rgba(255,255,255,.35),0 0 0 2px #F1E8D2}
+.bopaddle.pw-crescendo{background:#FF8A3D;box-shadow:inset 0 -3px 0 #A8521F,0 0 0 2px #FFD35A}
+.bopaddle.pw-fermata{background:#7FE08A;box-shadow:inset 0 -3px 0 #3E8A4A,0 0 0 2px #7FE08A}
+.field.arcade .boball.caught{box-shadow:0 0 14px #7FE08A}
+.boball.extra{background:#FFF4C2}
+.bobrick.cracked.open{background:#FFD35A;color:#16132A;background-image:none;box-shadow:0 0 0 2px #FFF4C2,0 0 16px rgba(255,211,90,.9);animation:codapulse 1s ease-in-out infinite}
+@keyframes codapulse{50%{box-shadow:0 0 0 2px #FFF4C2,0 0 4px rgba(255,211,90,.4)}}
+.pwtable .pwlook .bocap{position:static}
+/* its own bonus round, CHORD CATCH: the notes to catch, and the paddle, over the round's frame */
+.botone.bocatch{background:#F1E8D2;box-shadow:0 0 10px rgba(241,232,210,.5)}
+.field.bonusfield .bobrick,.field.bonusfield .boball,.field.bonusfield .bocap,.field.bonusfield .botone:not(.bocatch){opacity:.25}
+.field.bonusfield .bopaddle,.field.bonusfield .botone.bocatch{z-index:26}
 
 /* Fifths Defender: the keys round the rim */
 .fxsharp{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1}
@@ -1079,6 +1099,7 @@ details.fold[open] .nowplaying{display:none}
 <script defer src="../arcade/games/chord-stack.js"></script>
 <script defer src="../arcade/cabinet.js"></script>
 <script defer src="../arcade/games/chord-breakout.js"></script>
+<script defer src="../arcade/games/chord-breakout-power.js"></script>
 <script defer src="../arcade/games/fifths-defender.js"></script>
 <script defer src="../arcade/kit.js"></script>
 <script defer src="../arcade/pixel-minichord.js"></script>

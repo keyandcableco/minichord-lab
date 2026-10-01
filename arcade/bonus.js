@@ -20,7 +20,7 @@ const bonusOn=()=> saved.bonus!==false;
 // the games whose harp is chromatic while they play, so any note can be plucked
 const BONUS_HARP_OK=new Set(["snake","stack","sweeper","asteroids","fifths","breakout","fleet","chopper","sight"]);
 // every timestamp a game keeps, moved on by the bonus's length when the game resumes
-const BONUS_TIME_KEYS=new Set(["t0","born","next","nextMove","nextFall","deadAt","serveAt","jamUntil","frozenUntil","edgeAt","shieldAt","hurtAt","crackedAt","callAt","deadline","fieldAt","fallAt","stepAt","powerUntil","sprayAt"]);
+const BONUS_TIME_KEYS=new Set(["t0","born","next","nextMove","nextFall","deadAt","serveAt","jamUntil","frozenUntil","edgeAt","shieldAt","hurtAt","crackedAt","callAt","deadline","fieldAt","fallAt","stepAt","powerUntil","sprayAt","releaseAt","boTouchAt","codaUntil"]);
 function bonusShift(o, d, depth=0){
   if(!o || typeof o!=="object" || depth>2 || o.nodeType) return;
   for(const [k,v] of Object.entries(o)){
@@ -42,7 +42,7 @@ const bSym=c=>c.root+c.q;
 // A game's own bonus rounds, which come before the shared ones: they use that game's controls and
 // get harder as the game does, so a player who reaches level nine meets a harder round than one who
 // reached level three.
-const BONUS_OWN={blaster:["oddout"], command:["spell"], asteroids:["salvage"]};
+const BONUS_OWN={blaster:["oddout"], command:["spell"], asteroids:["salvage"], breakout:["catch"]};
 function arcadeBonus(id){
   if(!blast || blast.bonus) return;
   blast.bonusAt=blast.level+BONUS_EVERY;
@@ -429,6 +429,88 @@ const BONUS_GAMES=[
      this.clear(b);
      b.tally=[["CHORDS REBUILT", b.built], ["PARTS HAULED IN", b.parts], ...(b.junk?[["JUNK", `−${b.junk*2} SECONDS`]]:[])];
      if(!b.result) b.result = b.built ? `${b.built} OF 4 REBUILT` : "NONE REBUILT";
+   } },
+  // Chord Breakout's own, played in its field with the paddle: the wall and the ball hold still and dim,
+  // a chord is called with a slot for each of its notes, and notes fall from the top, spelled. Catch the
+  // chord's notes with the paddle, steered as in the game, and let the others fall: a wrong one caught
+  // costs two seconds of the round's clock, never a life. Every slot full scores the chord and calls the
+  // next, up to four. The chords are the game's own level's; as the game goes on the notes fall faster
+  // and the wrong ones come thicker, and at the top they sit a semitone from the right ones.
+  {id:"catch", name:"CHORD CATCH", secs:24, inField:true,
+   instr:"CATCH THE CHORD'S NOTES WITH THE PADDLE. LET THE OTHERS FALL: A WRONG ONE COSTS TIME.",
+   start(b){
+     b.built=0; b.caught=0; b.junk=0; b.drops=[];
+     const lv=Math.min(BO_LEVELS.length-1, blast.level||0);
+     b.level=BO_LEVELS[lv];
+     b.tier=[{vy:85, gap:950, junk:.4}, {vy:100, gap:850, junk:.45}, {vy:115, gap:780, junk:.5}, {vy:130, gap:720, junk:.55, near:true}][Math.min(3, Math.floor(lv/2))];
+     b.say(`${this.instr} · ${boLevelName(lv).toUpperCase()}${b.tier.near?" · THE WRONG ONES A SEMITONE OFF":""}`);
+     this.next(b);
+   },
+   next(b){
+     const L=b.level;
+     let root, q, tones;
+     for(let k=0;k<60;k++){ root=rnd(L.roots==="natural" ? ["C","D","E","F","G","A","B"] : ROOTS); q=rnd(L.qs); tones=spellChord(root,q);
+       if(tones && !tones.some(t=>/𝄪|𝄫/.test(t))) break; tones=null; }
+     if(!tones){ root="C"; q=""; tones=spellChord("C",""); }
+     const pcs=new Set(tones.map(pcOfName));
+     // the wrong notes: out of the chord; at the top, a semitone from one of its notes
+     const near=[...new Set([...pcs].flatMap(p=>[mod(p+1,12),mod(p-1,12)]))].filter(p=>!pcs.has(p));
+     b.pool=b.tier.near ? near : [...Array(12).keys()].filter(p=>!pcs.has(p));
+     b.flats=tones.some(t=>t.includes("♭"));
+     b.ans={root, q, tones, pcs, sym:root+q}; b.got=new Set(); b.dropAt=performance.now()+400;
+     this.tray(b);
+   },
+   // the chord being caught: its name and a slot for each note, filled as its notes come in
+   tray(b){
+     b.stage.innerHTML=`<p class="bosym small">${b.ans.sym}</p><div class="bocards tray">${b.ans.tones.map(n=>bCard(b.got.has(pcOfName(n))?n:"?", b.got.has(pcOfName(n))?"done":"q")).join("")}</div>`;
+   },
+   // every frame: a note now and then from the top, the notes falling, the paddle catching them
+   move(b, now, dt){
+     if(b.over || !b.ans) return;
+     const W=blast.W||blast.field.clientWidth||900, H=blast.H||blast.field.clientHeight||420, p=blast.paddle;
+     if(!b.between && now>=b.dropAt && b.drops.length<5){
+       b.dropAt=now+b.tier.gap*(.8+Math.random()*.4);
+       const need=b.ans.tones.filter(t=>!b.got.has(pcOfName(t)) && !b.drops.some(d=>d.part && d.pc===pcOfName(t)));
+       const part=need.length>0 && Math.random()>=b.tier.junk;
+       const name=part ? rnd(need) : (b.flats?FLAT_NAMES:SHARP_NAMES)[rnd(b.pool)];
+       const el=document.createElement("div"); el.className="botone bocatch"; el.textContent=name; blast.field.appendChild(el);
+       b.drops.push({name, pc:pcOfName(name), part, x:40+Math.random()*(W-80), y:60, vy:b.tier.vy*(.9+Math.random()*.2)/speedMul(), el});
+     }
+     for(const d of [...b.drops]){
+       d.y+=d.vy*dt; d.el.style.transform=`translate(${d.x}px,${d.y}px) translate(-50%,-50%)`;
+       if(d.y+12>=blast.padY-2 && d.y-12<=blast.padY+16 && Math.abs(d.x-(p.x+p.w/2))<p.w/2+16){ this.land(b, d); continue; }
+       if(d.y>H+20){ d.el.remove(); b.drops=b.drops.filter(x=>x!==d); }
+     }
+   },
+   // a note caught: one of the chord's fills its slot; a wrong one costs time
+   land(b, d){
+     d.el.remove(); b.drops=b.drops.filter(x=>x!==d);
+     const p=blast.paddle, cx=p.x+p.w/2;
+     if(d.part && !b.got.has(d.pc)){
+       b.got.add(d.pc); b.caught++; heard(d.name, true); b.add(10, [cx, blast.padY-24]); this.tray(b);
+       if(b.ans.tones.every(t=>b.got.has(pcOfName(t)))) this.rebuilt(b);
+     } else if(d.part){ popup(cx, blast.padY-24, "ALREADY IN", "#9A93B5"); }
+     else {
+       b.junk++; b.t0-=2000; sfx("miss"); buzz(blast.field, true); heard(d.name, false, "NOT IN THE CHORD");
+       popup(cx, blast.padY-24, "WRONG −2 SECONDS", "#FF4B3E");
+       b.say(`${d.name} ISN'T IN ${b.ans.sym}`);
+     }
+   },
+   rebuilt(b){
+     const p=blast.paddle;
+     b.built++; b.between=true; b.add(60+b.built*20, [p.x+p.w/2, blast.padY-44]);
+     explode(p.x+p.w/2, blast.padY-10, 34, ["#FFD35A","#FFFFFF","#7FE9FF"]);
+     b.say(`${b.ans.sym} CAUGHT: ${b.ans.tones.join(" ")}`);
+     b.stage.querySelector(".bosym")?.classList.add("lit");
+     this.clear(b);
+     setTimeout(()=>{ if(b.over) return; b.between=false;
+       if(b.built>=4){ b.result="EVERY CHORD CAUGHT"; b.finish(); } else this.next(b); }, 800);
+   },
+   clear(b){ (b.drops||[]).forEach(d=>d.el.remove()); b.drops=[]; },
+   stop(b){
+     this.clear(b);
+     b.tally=[["CHORDS CAUGHT", b.built], ["NOTES CAUGHT", b.caught], ...(b.junk?[["WRONG NOTES", `−${b.junk*2} SECONDS`]]:[])];
+     if(!b.result) b.result = b.built ? `${b.built} OF 4 CAUGHT` : "NONE CAUGHT";
    } },
   {id:"odd", name:"ODD ONE OUT", secs:20,
    instr:"THREE OF THESE CHORDS ARE FROM ONE KEY. PLAY THE ONE THAT DOESN'T BELONG.",

@@ -58,6 +58,6 @@ const t=require("./harness").load("invaders");
   check("SHIELD: the next chord that lands costs no life, and the shield is spent", a.lives===lives && !w.eval("powerOn('shield')"));
   w.eval("blast.phase='menu'; blast.items.forEach(i=>i.el.remove()); blast.items=[]; blastMenu(); cabStage(blast.overlay,'powers')"); await sleep(50);
   check("the title screen has a POWER-UPS page: each power-up as it looks, its name, what it does", d.querySelectorAll(".cab-powers .pwtable li").length===3 && /OMNI BEAM/.test(d.querySelector(".cab-powers").textContent) && !!d.querySelector(".cab-powers .fchord.pu-slow"));
-  check("a game without power-ups skips it", w.eval("powersFor('snake').length")===0 && w.eval("powersFor('breakout').length")===1);
+  check("a game without power-ups skips it (Breakout has its arpeggio brick and four capsules)", w.eval("powersFor('snake').length")===0 && w.eval("powersFor('breakout').length")===5);
   t.done();
 })();
