@@ -20,6 +20,9 @@ key presses, checking what should happen.
 | `harp-command-demo` | the demo's D major labels hold while the minichord reports in, and through a resize; the multishot scene |
 | `chord-snake` | the snake eats notes and cashes chords in; the harp steers |
 | `chord-asteroids` | rocks crack by their chords and notes are shot on the harp |
+| `chord-asteroids-power` | power-up rocks cracked by their chord give their power, not notes; PEDAL POINT holds a note and shoots every rock of it, a string with no rock moving the pedal, not jamming; FERMATA holds every rock still and sends none; RESOLUTION blows up the screen on the key's home chord; the bonus round's pause; the POWER-UPS page |
+| `chord-asteroids-demo` | the demo's POWER-UPS scene: a pedal point capsule cracked by its chord, then every E rock shot by the held note; nothing left running after |
+| `chord-asteroids-salvage` | Chord Asteroids' own bonus round: wreckage hauled in by its string fills the called chord's slots, junk costs two seconds, a full chord calls the next; fair sets at every level; the field clean after |
 | `chord-stack` | pieces move and rotate, the square too; a row holding a chord lights and clears its notes, the blocks above falling in; side by side scores double, a whole row five times; the harp and a knob steer; topping out ends it |
 | `chord-breakout` | the knob steers (only the chosen one, without wobble or the mouse); the ball bounces true; chords break bricks |
 | `fifths-defender` | the knob's centred, endless dial; the aimed key's chord fires, another doesn't |

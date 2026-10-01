@@ -42,7 +42,7 @@ const bSym=c=>c.root+c.q;
 // A game's own bonus rounds, which come before the shared ones: they use that game's controls and
 // get harder as the game does, so a player who reaches level nine meets a harder round than one who
 // reached level three.
-const BONUS_OWN={blaster:["oddout"], command:["spell"]};
+const BONUS_OWN={blaster:["oddout"], command:["spell"], asteroids:["salvage"]};
 function arcadeBonus(id){
   if(!blast || blast.bonus) return;
   blast.bonusAt=blast.level+BONUS_EVERY;
@@ -330,6 +330,105 @@ const BONUS_GAMES=[
      if(b.waveWas){ blast.wave=b.waveWas; b.waveWas=null; hcTuneHarp(); hcLabels(); }    // the harp back to its key
      b.tally=[["ODD NOTES SHOT", b.hits], ["CHORDS PLAYED", b.chords], ...(b.misses?[["WRONG", `−${b.misses*15}`]]:[])];
      if(!b.result) b.result = (b.hits+b.chords) ? `${b.hits+b.chords} OF 4 SPELLED` : "NONE SPELLED";
+   } },
+  // Chord Asteroids' own, played in its field: the game's rocks stop, and a field of wreckage drifts
+  // round the ship, loose notes the size of the notes a chord rock cracks into. A call names a chord;
+  // pluck each of its notes on the harp and the ship's tractor beam hauls that one in, filling its slot.
+  // When every slot is full the chord is rebuilt and the next call comes. Junk (a note that isn't in the
+  // chord) is hauled in too and thrown out, costing two seconds of the round's clock, never a life. The
+  // chords are the game's own level's, and the junk thickens, then sits a semitone from the real parts,
+  // as the game goes on.
+  {id:"salvage", name:"SALVAGE RUN", secs:26, inField:true,
+   instr:"REBUILD THE CHORD FROM THE WRECKAGE: PLUCK EACH OF ITS NOTES TO HAUL IT IN. JUNK COSTS TIME.",
+   start(b){
+     b.built=0; b.parts=0; b.junk=0; b.mine=[];
+     const lv=Math.min(AS_LEVELS.length-1, blast.level||0);
+     b.level=AS_LEVELS[lv];
+     b.tier=[{junk:3}, {junk:4}, {junk:4}, {junk:5, near:true}, {junk:5, near:true}][lv];
+     b.say(`${this.instr} · ${b.level.n.toUpperCase()}${b.tier.near?" · THE JUNK A SEMITONE OFF":""}`);
+     this.next(b);
+   },
+   next(b){
+     const L=b.level;
+     let root, q, tones;
+     for(let k=0;k<60;k++){ root=rnd(L.roots==="natural" ? ["C","D","E","F","G","A","B"] : ROOTS); q=rnd(L.qs); tones=spellChord(root,q);
+       if(tones && !tones.some(t=>/𝄪|𝄫/.test(t))) break; tones=null; }
+     if(!tones) return this.next(b);
+     const pcs=new Set(tones.map(pcOfName));
+     // the junk: notes out of the chord, all different; at the top, a semitone from one of its notes
+     const near=[...new Set([...pcs].flatMap(p=>[mod(p+1,12),mod(p-1,12)]))].filter(p=>!pcs.has(p));
+     const pool=(b.tier.near ? near : [...Array(12).keys()].filter(p=>!pcs.has(p))).sort(()=>Math.random()-.5);
+     const flats=tones.some(t=>t.includes("♭")), junk=pool.slice(0, b.tier.junk).map(p=>({name:(flats?FLAT_NAMES:SHARP_NAMES)[p], pc:p, part:false}));
+     b.ans={root, q, tones, pcs, sym:root+q}; b.got=new Set();
+     this.tray(b);
+     // the wreckage, spread round the ship outside its orbit, drifting slowly
+     const W=blast.field.clientWidth||900, H=blast.field.clientHeight||420, cx=blast.hx??W/2, cy=blast.hy??H/2;
+     const all=[...tones.map(n=>({name:n, pc:pcOfName(n), part:true})), ...junk].sort(()=>Math.random()-.5);
+     const R0=(blast.orbitR||100)+50, a0=Math.random()*Math.PI*2;
+     b.mine=all.map((n,i)=>{
+       const a=a0+i/all.length*Math.PI*2+(Math.random()-.5)*.3, R=R0+Math.random()*Math.max(20, Math.min(W,H)*.5-R0-30);
+       const x=Math.max(30, Math.min(W-30, cx+Math.cos(a)*R*(W/H>1.4?1.6:1))), y=Math.max(40, Math.min(H-40, cy+Math.sin(a)*R));
+       const r=asRock("note", x, y, n.name, {name:n.name, pc:n.pc, part:n.part});
+       r.kind="salvage"; r.el.classList.add("salvage","bonuschord");
+       const da=Math.random()*Math.PI*2, sp=14+Math.random()*16; r.vx=Math.cos(da)*sp; r.vy=Math.sin(da)*sp;
+       r.el.style.transform=`translate(${r.x}px,${r.y}px) translate(-50%,-50%)`;
+       return r;
+     });
+   },
+   // the chord being rebuilt: its name and a slot for each note, filled as its parts come in
+   tray(b){
+     b.stage.innerHTML=`<p class="bosym small">${b.ans.sym}</p><div class="bocards tray">${b.ans.tones.map(n=>bCard(b.got.has(pcOfName(n))?n:"?", b.got.has(pcOfName(n))?"done":"q")).join("")}</div>`;
+   },
+   // every frame: the wreckage drifts and wraps; what's being hauled comes in fast, and lands
+   move(b, now, dt){
+     const W=blast.field.clientWidth||900, H=blast.field.clientHeight||420;
+     for(const r of b.mine){
+       if(r.dead) continue;
+       if(r.towed){
+         const ax=blast.cx-r.x, ay=blast.cy-r.y, d=Math.hypot(ax,ay)||1;
+         if(d<16){ this.land(b, r); continue; }
+         const sp=Math.min(420, 160+(now-r.towed)*.6); r.vx=ax/d*sp; r.vy=ay/d*sp;
+       }
+       r.x+=r.vx*dt; r.y+=r.vy*dt; r.ang+=r.spin*dt;
+       if(!r.towed){ if(r.x<-20) r.x=W+19; else if(r.x>W+20) r.x=-19; if(r.y<-20) r.y=H+19; else if(r.y>H+20) r.y=-19; }
+       r.el.style.transform=`translate(${r.x}px,${r.y}px) translate(-50%,-50%)`;
+     }
+   },
+   // a string plucked: the nearest piece of wreckage of that note is caught in the tractor beam
+   pluck(b, pc){
+     if(b.over || !b.ans || b.between) return;
+     const r=b.mine.filter(x=>!x.dead && !x.towed && x.pc===pc).sort((p,q)=>Math.hypot(p.x-blast.cx,p.y-blast.cy)-Math.hypot(q.x-blast.cx,q.y-blast.cy))[0];
+     const nm=r ? r.name : (b.ans.tones.find(t=>pcOfName(t)===pc) || SHARP_NAMES[pc]);
+     if(!r){ heard(nm, false, b.got.has(pc) ? "ALREADY IN" : "NOTHING THERE"); buzz(blast.field, true); return; }
+     heard(nm, true); sfx("press");
+     r.towed=performance.now(); r.el.classList.add("towed");
+     if(!asManual()) blast.shipAng=Math.atan2(r.y-blast.cy, r.x-blast.cx);
+   },
+   // a piece hauled in: a part fills its slot, junk is thrown out and costs time
+   land(b, r){
+     asKill(r);
+     if(r.part){
+       b.parts++; b.got.add(r.pc); b.add(10, [blast.cx, blast.cy-24]); this.tray(b);
+       if(b.ans.tones.every(t=>b.got.has(pcOfName(t)))) this.rebuilt(b);
+     } else {
+       b.junk++; b.t0-=2000; sfx("miss"); buzz(blast.field, true);
+       explode(blast.cx, blast.cy, 18, ["#FF4B3E","#FF8A3D"]); popup(blast.cx, blast.cy-24, "JUNK −2 SECONDS", "#FF4B3E");
+       b.say(`${r.name} ISN'T IN ${b.ans.sym}`);
+     }
+   },
+   rebuilt(b){
+     b.built++; b.between=true; b.add(60+b.built*20, [blast.cx, blast.cy-44]);
+     explode(blast.cx, blast.cy, 40, ["#FFD35A","#FFFFFF","#7FE9FF"]);
+     b.say(`${b.ans.sym} REBUILT: ${b.ans.tones.join(" ")}`);
+     b.stage.querySelector(".bosym")?.classList.add("lit");
+     setTimeout(()=>{ if(b.over) return; this.clear(b); b.between=false;
+       if(b.built>=4){ b.result="EVERY CHORD REBUILT"; b.finish(); } else this.next(b); }, 800);
+   },
+   clear(b){ (b.mine||[]).forEach(r=>{ if(!r.dead) asKill(r); }); blast.rocks=blast.rocks.filter(r=>!(b.mine||[]).includes(r)); b.mine=[]; },
+   stop(b){
+     this.clear(b);
+     b.tally=[["CHORDS REBUILT", b.built], ["PARTS HAULED IN", b.parts], ...(b.junk?[["JUNK", `−${b.junk*2} SECONDS`]]:[])];
+     if(!b.result) b.result = b.built ? `${b.built} OF 4 REBUILT` : "NONE REBUILT";
    } },
   {id:"odd", name:"ODD ONE OUT", secs:20,
    instr:"THREE OF THESE CHORDS ARE FROM ONE KEY. PLAY THE ONE THAT DOESN'T BELONG.",

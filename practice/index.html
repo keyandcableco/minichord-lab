@@ -161,6 +161,11 @@
 .field.arcade .fchord.pu-slow{border-color:#7FE9FF;background:rgba(127,233,255,.16);box-shadow:0 0 12px rgba(127,233,255,.6)}
 .field.arcade .fchord.pu-shield{border-color:#7FE08A;background:rgba(127,224,138,.16);box-shadow:0 0 12px rgba(127,224,138,.6)}
 .field.arcade .fchord.pu-multi{border-color:#FF8A3D;background:rgba(255,138,61,.18);box-shadow:0 0 12px rgba(255,138,61,.65)}
+.field.arcade .fchord.pu-pedal{border-color:#FF8A3D;background:rgba(255,138,61,.18);box-shadow:0 0 12px rgba(255,138,61,.65)}
+.field.arcade .fchord.pu-fermata{border-color:#7FE9FF;background:rgba(127,233,255,.16);box-shadow:0 0 12px rgba(127,233,255,.6)}
+.field.arcade .fchord.pu-resolve{border-color:#FFD35A;background:rgba(255,211,90,.16);box-shadow:0 0 12px rgba(255,211,90,.6)}
+.field.arcade .fchord.rock.salvage{color:#FFD35A}
+.field.arcade .fchord.rock.salvage.towed{color:#7FE9FF;text-shadow:0 0 10px rgba(127,233,255,.8)}
 .field.arcade .fchord .puicon{font-style:normal;margin-right:.3em;font-family:system-ui,sans-serif}
 .field.arcade .fchord{z-index:2;font:400 var(--chord-size,1.25rem) "Minichord Lab Accidentals","Press Start 2P",monospace;color:#F1E8D2;text-shadow:0 0 6px rgba(255,255,255,.35);letter-spacing:-.02em}
 .field.arcade .fchord.low{color:#FFD35A;text-shadow:0 0 10px rgba(255,200,60,.8)}
@@ -489,6 +494,9 @@ body.kbplay #connect{opacity:.5}
 .pwtable .fchord.pu-slow{border-color:#7FE9FF;background:rgba(127,233,255,.16);box-shadow:0 0 12px rgba(127,233,255,.6)}
 .pwtable .fchord.pu-shield{border-color:#7FE08A;background:rgba(127,224,138,.16);box-shadow:0 0 12px rgba(127,224,138,.6)}
 .pwtable .fchord.pu-multi{border-color:#FF8A3D;background:rgba(255,138,61,.18);box-shadow:0 0 12px rgba(255,138,61,.65)}
+.pwtable .fchord.pu-pedal{border-color:#FF8A3D;background:rgba(255,138,61,.18);box-shadow:0 0 12px rgba(255,138,61,.65)}
+.pwtable .fchord.pu-fermata{border-color:#7FE9FF;background:rgba(127,233,255,.16);box-shadow:0 0 12px rgba(127,233,255,.6)}
+.pwtable .fchord.pu-resolve{border-color:#FFD35A;background:rgba(255,211,90,.16);box-shadow:0 0 12px rgba(255,211,90,.6)}
 .pwtable .fchord .puicon{font-style:normal;margin-right:.3em;font-family:system-ui,sans-serif}
 .pwtable .pwlook .pwbrick{position:static;width:5.5rem;height:1.9rem;font-size:.7rem}
 .pwtable li b{display:block;font:400 .72rem "Press Start 2P",monospace;color:#FFD35A;margin-bottom:6px}
@@ -687,6 +695,8 @@ html.arcadepage .gamebar{align-items:flex-end}
 .bocard.dim{background:#3A3D48;color:#9A93B5}.bocard.lit{background:#7FE9FF}.bocard.done{background:#7FE08A}
 .boarrow{color:#9A93B5;font-size:1rem}
 .bosym{font:400 1.6rem "Minichord Lab Accidentals","Press Start 2P",monospace;color:#FFD35A;margin:0}
+.bosym.small{font-size:1rem}.bosym.lit{color:#7FE08A}
+.bocards.tray{gap:6px}.bocards.tray .bocard{min-width:1.6em;padding:6px 8px;font-size:.7rem}   /* Salvage Run's slots, small enough to sit inside the ship's orbit */
 .bosmall{color:#9A93B5;margin:0}
 .bobeat{width:90px;height:90px;border-radius:50%;border:4px solid #7FE9FF;display:flex;align-items:center;justify-content:center}
 .bobeat i{display:block;width:60px;height:60px;border-radius:50%;background:#7FE9FF;animation:beatpulse 1s ease-in-out infinite}
@@ -1065,6 +1075,7 @@ details.fold[open] .nowplaying{display:none}
 <script defer src="../arcade/controller.js"></script>
 <script defer src="../arcade/games/chord-snake.js"></script>
 <script defer src="../arcade/games/chord-asteroids.js"></script>
+<script defer src="../arcade/games/chord-asteroids-power.js"></script>
 <script defer src="../arcade/games/chord-stack.js"></script>
 <script defer src="../arcade/cabinet.js"></script>
 <script defer src="../arcade/games/chord-breakout.js"></script>

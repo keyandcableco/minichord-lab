@@ -10,7 +10,8 @@
 // back toward the ship. Pluck each note on the harp and the ship turns and shoots it. The ship flies
 // an orbit round the middle, swung round by the mod knob or the arrow keys, to dodge. A rock that
 // reaches the ship costs a life; a string that plays no rock jams the gun for a moment, so
-// strumming doesn't pay. Clearing every note of a chord scores a bonus.
+// strumming doesn't pay. Clearing every note of a chord scores a bonus. Now and then a power-up rock
+// comes (chord-asteroids-power.js), and every two levels its own bonus round, SALVAGE RUN (bonus.js).
 const AS_LEVELS=[
   {n:"Major and minor", qs:["","m"], roots:"natural"},
   {n:"Sharps and flats", qs:["","m"], roots:"all"},
@@ -104,10 +105,10 @@ document.addEventListener("keydown", e=>{
 });
 function asBar(){
   if(!blast || blast.kind!=="asteroids" || !blast.hud) return;
-  blast.hud.innerHTML=`<span>SCORE ${blast.score}${multTag()}</span><span class="lvl">LEVEL ${blast.level+1}${mxTag()}</span><span class="lives">${livesHtml()}</span>`;
+  blast.hud.innerHTML=`<span>SCORE ${blast.score}${multTag()}</span><span class="lvl">LEVEL ${blast.level+1}${mxTag()}${asPowerHud()}</span><span class="lives">${livesHtml()}</span>`;
 }
 const ASMENU_G={key:"asteroids", title:"CHORD ASTEROIDS",
-  rules:()=>`<p>PLAY A ROCK'S CHORD TO CRACK IT INTO ITS NOTES.</p><p>PLUCK EACH NOTE ON THE HARP TO SHOOT IT DOWN.</p><p>FLY ROUND YOUR ORBIT TO DODGE: THE MOD KNOB, OR THE ARROW KEYS. HOLD A KNOB AT ITS END AND IT KEEPS GOING ROUND.</p><p>MANUAL AIM SCORES DOUBLE: SPIN THE SHIP WITH ANOTHER KNOB (OR ↑ ↓). A CHORD OR A PLUCK FIRES WHERE IT POINTS.</p><p class="starline">${PIXEL_STAR}ROCKS SCORE BIG AND NEVER HURT.</p>`,
+  rules:()=>`<p>PLAY A ROCK'S CHORD TO CRACK IT INTO ITS NOTES.</p><p>PLUCK EACH NOTE ON THE HARP TO SHOOT IT DOWN.</p><p>FLY ROUND YOUR ORBIT TO DODGE: THE MOD KNOB, OR THE ARROW KEYS. HOLD A KNOB AT ITS END AND IT KEEPS GOING ROUND.</p><p>MANUAL AIM SCORES DOUBLE: SPIN THE SHIP WITH ANOTHER KNOB (OR ↑ ↓). A CHORD OR A PLUCK FIRES WHERE IT POINTS.</p><p class="starline">${PIXEL_STAR}ROCKS SCORE BIG AND NEVER HURT.</p><p>NOW AND THEN A POWER-UP ROCK: CRACK IT WITH ITS CHORD TO TAKE IT.</p>`,
   rows:row=>{
     mxRow(row, ()=>menuRebuild(()=>asMenu()));
     row("AIM", ["AUTO","MANUAL ×2"], ()=>saved.asAim?1:0, i=>{ saved.asAim=i; save(); });
@@ -122,7 +123,7 @@ function beginAsteroids(level){
   piano.start(); stopDemo(); clearTimeout(blast.attract);
   if(blast.overlay){ blast.overlay.remove(); blast.overlay=null; }
   blast.rocks.forEach(r=>r.el.remove());
-  Object.assign(blast,{rocks:[], score:0, lives:3, level, startLevel:level, clears:0, phase:"play", over:false, jamUntil:0, aimManual:!!saved.asAim, aimWant:null, orbitOffset:0, aimOffset:0, orbitV:null, aimV:null,
+  Object.assign(blast,{rocks:[], score:0, lives:3, level, startLevel:level, clears:0, phase:"play", over:false, jamUntil:0, asPower:null, sprayAt:0, aimManual:!!saved.asAim, aimWant:null, orbitOffset:0, aimOffset:0, orbitV:null, aimV:null,
     next:performance.now()+1200, gap:5200*speedMul()*Math.pow(.94,level), drift:34/speedMul()*Math.pow(1.05,level)});
   if(AS_LEVELS[level].barry && canWrite()) borrow(33,1); else if(canWrite() && hasSetting(33)) ensure(33,0);
   mxApply();                                    // the minichord to the chosen matrix
@@ -139,6 +140,7 @@ function asRock(kind, x, y, label, extra={}){
   const r = kind==="chord" ? 46 : 22, n=11, shape=[...Array(n)].map((_,i)=>({a:i/n*Math.PI*2, d:r*(.78+Math.random()*.3)}));
   const el=document.createElement("span"); el.className=`fchord rock rock-${kind}`+(extra.star?" bonus":"");
   el.innerHTML=(extra.star?PIXEL_STAR:""); el.append(label);
+  if(extra.power){ el.classList.add("power", `pu-${extra.power}`); el.insertAdjacentHTML("afterbegin", asPowerLook(extra.power, "")); }
   blast.field.appendChild(el);
   const rock={id:++blast.rockId, kind, x, y, vx:0, vy:0, r, ang:Math.random()*6.28, spin:(Math.random()-.5)*.8, shape, label, el, born:performance.now(), ...extra};
   blast.rocks.push(rock); return rock;
@@ -153,8 +155,8 @@ function asSpawn(){
     const side=Math.floor(Math.random()*4), t=Math.random();
     const [x,y]=[[t*W,-40],[W+40,t*H],[t*W,H+40],[-40,t*H]][side];
     const ang=Math.atan2(blast.cy-y, blast.cx-x)+(Math.random()-.5)*.5, sp=blast.drift*(.85+Math.random()*.3);
-    const star=Math.random()<.1;
-    const rock=asRock("chord", x, y, root+q, {root, q, tones, rootPc:pcOfName(root), star});
+    const power=asPowerChance(), star=!power && Math.random()<.1;          // now and then a power-up, cracked like any rock
+    const rock=asRock("chord", x, y, root+q, {root, q, tones, rootPc:pcOfName(root), star, power});
     rock.vx=Math.cos(ang)*sp; rock.vy=Math.sin(ang)*sp;
     return;
   }
@@ -170,10 +172,13 @@ function asTick(now){
     if(blast.orbitWant!=null) helpKnobFollow(steerKnob(), lap(blast.orbitWant-Math.PI/2));
     if(blast.aimManual && blast.aimWant!=null) helpKnobFollow(asAimKnob(), lap(blast.aimWant+Math.PI/2)); }
   if(asManual() && blast.aimWant!=null){ const d=blast.aimWant-blast.shipAng; blast.shipAng += Math.abs(d)<.002 ? d : d*Math.min(1,dt*12); }
+  if(blast.phase==="bonus" && typeof bonusPlaying==="function" && bonusPlaying() && blast.bonus.g.move) blast.bonus.g.move(blast.bonus, now, dt);   // its own bonus round's wreckage drifts
+  if(blast.phase==="play") asPowerTick(now, dt);                         // a power running out, the pedal firing
+  const held = blast.phase==="play" && asFrozen();                      // fermata: nothing moves
   if(blast.phase==="play" || blast.phase==="demo"){
     if(blast.phase==="play" && now>=blast.next && blast.rocks.filter(r=>!r.dead && r.kind==="chord").length<4){ asSpawn(); blast.next=now+blast.gap*(.8+Math.random()*.4); }
     for(const r of blast.rocks){
-      if(r.dead) continue;
+      if(r.dead || held) continue;
       if(r.kind==="note"){
         // notes scatter from the crack, then turn back toward the ship
         const ax=blast.cx-r.x, ay=blast.cy-r.y, d=Math.hypot(ax,ay)||1, pull=blast.drift*1.1*Math.min(1,(now-r.born)/1400);
@@ -200,7 +205,7 @@ function asTick(now){
 function asKill(r){ r.dead=true; r.deadAt=performance.now(); r.el.remove(); }
 function asHitShip(r){
   asKill(r); explode(blast.cx, blast.cy, 30, ["#FF4B3E","#FF8A3D","#FFD35A"]);
-  if(r.star){ popup(blast.cx, blast.cy-30, "GONE", "#7FE9FF"); return; }
+  if(r.star || r.power){ popup(blast.cx, blast.cy-30, "GONE", "#7FE9FF"); return; }   // a ★ rock or a power-up costs nothing
   sfx("miss"); buzz(blast.field,true); blast.lives--; asBar(); blast.shieldAt=performance.now();
   if(blast.lives<=0){
     blast.phase="over"; blast.over=true;
@@ -231,6 +236,7 @@ function asteroidsChord(voices){
   if(blast.phase==="demo" && blast.demo){ endAsDemo(blast.demo); return; }
   if(blast.phase!=="play") return;
   const pitches=voices.map(v=>v.pitch), name=chordName(pitches,0);
+  if(asResolve(pitches)) return;                                     // a resolution held, and the home chord played
   const pool=blast.rocks.filter(r=>!r.dead && r.kind==="chord" && isChord(pitches, r.rootPc, r.q));
   const hit=(asManual() ? pool.filter(asInLine) : pool).sort((a,b)=>Math.hypot(a.x-blast.cx,a.y-blast.cy)-Math.hypot(b.x-blast.cx,b.y-blast.cy))[0];
   if(!hit && asManual() && pool.length){ heard(name,false,"WIDE"); sfx("shoot"); asWide(performance.now()); return; }   // that rock's there, but not where the ship points
@@ -251,6 +257,7 @@ function asCrack(hit){
   explode(hit.x, hit.y, hit.star?46:34, hit.star?["#7FE9FF","#FFFFFF","#FFD35A"]:["#C9C0A8","#FFD35A","#F1E8D2"]);
   sfx(hit.star?"bonus":"boom");
   const pts=asChordPoints(hit); blast.score+=pts; popup(hit.x, hit.y-30, `+${pts}`, hit.star?"#7FE9FF":undefined);
+  if(hit.power){ explode(hit.x, hit.y, 44, ["#FF5AA0","#FFD35A","#7FE9FF"]); asPowerGet(hit); asBar(); return; }   // a power-up bursts into its power, not its notes
   // its notes fly out in a ring, each spelled as the chord's own
   const group={id:hit.id, left:hit.tones.length, label:hit.label};
   hit.tones.forEach((t,i)=>{
@@ -264,10 +271,12 @@ function asCrack(hit){
 function asteroidsNote(pc){
   if(!blast || blast.kind!=="asteroids") return;
   if(blast.phase==="demo" && blast.demo){ endAsDemo(blast.demo); return; }
+  if(typeof bonusPlaying==="function" && bonusPlaying()){ const b=blast.bonus; if(b.g.pluck) b.g.pluck(b, pc); return; }   // its own bonus round
   if(blast.phase!=="play") return;
   const now=performance.now();
   if(now<blast.jamUntil){ heard("",false,"JAMMED"); return; }
   const pool=blast.rocks.filter(x=>!x.dead && x.kind==="note" && x.pc===pc);
+  if(asPedalPluck(pc, pool.length>0)) return;                        // pedal point: a string with no rock moves the pedal there
   const r=(asManual() ? pool.filter(asInLine) : pool).sort((a,b)=>Math.hypot(a.x-blast.cx,a.y-blast.cy)-Math.hypot(b.x-blast.cx,b.y-blast.cy))[0];
   const nm=(r && r.name) || SHARP_NAMES[pc];
   if(!r && asManual() && pool.length){                    // there is such a note, but not where the ship points: the shot goes wide
@@ -275,12 +284,19 @@ function asteroidsNote(pc){
     return; }
   if(!r){ heard(nm,false,"NO SUCH ROCK"); sfx("freeze"); blast.jamUntil=now+1100+120*blast.level; popup(blast.cx, blast.cy+40, "JAMMED", "#7FE9FF"); return; }
   heard(nm,true);
+  asShootNote(r);
+}
+// a note rock shot down, by its string or by the pedal: the ship turns (the pedal's shots fly from
+// wherever it points, without turning it), and the note scores, the last of its chord a bonus
+function asShootNote(r, pedal){
   r.dead=true;                                        // spoken for: no second shot at it
-  asFire(r, ()=>{ r.deadAt=performance.now(); r.el.remove(); explode(r.x, r.y, 16);
-    const pts=mulPts(10*(blast.level+1)); blast.score+=pts; popup(r.x, r.y-14, `+${pts}`);
+  const then=()=>{ r.deadAt=performance.now(); r.el.remove(); explode(r.x, r.y, 16);
+    const pts=mulPts(10*(blast.level+1)); blast.score+=pts; popup(r.x, r.y-14, `+${pts}`, pedal?"#FF8A3D":undefined);
     sfx("boom");
     if(--r.group.left===0) asCleared(r.group, r.x, r.y);
-    asBar(); });
+    asBar(); };
+  if(!pedal) return asFire(r, then);
+  sfx("shoot"); blast.fx.missiles.push({x0:blast.cx/PX, y0:blast.cy/PX, x1:r.x/PX, y1:r.y/PX, t0:performance.now(), dur:140, hit:then});
 }
 function asCleared(group, x, y){
   const pts=mulPts(25*(blast.level+1)); blast.score+=pts; blast.clears++; stats.streak=blast.clears; scoreboard();
@@ -300,9 +316,14 @@ function asCleared(group, x, y){
 function asDraw(_g, now){
   if(!blast.sharp) blast.sharp=sharpLayer(blast.fx);
   const g=sharpBegin(blast.sharp), U=PX, cx=blast.cx, cy=blast.cy;
+  const round=typeof bonusInField==="function" && bonusInField(), still=asFrozen();
   for(const r of blast.rocks){ if(r.dead) continue;
-    g.strokeStyle = r.star ? "#7FE9FF" : r.kind==="chord" ? "#C9C0A8" : "#F1E8D2"; g.lineWidth=U*.7;
-    g.beginPath(); r.shape.forEach((p,i)=>{ const x=r.x+Math.cos(p.a+r.ang)*p.d, y=r.y+Math.sin(p.a+r.ang)*p.d; i?g.lineTo(x,y):g.moveTo(x,y); }); g.closePath(); g.stroke(); }
+    g.globalAlpha = round && r.kind!=="salvage" ? .25 : 1;               // the game's own rocks, dimmed behind its bonus round
+    g.strokeStyle = still ? "#7FE9FF" : r.star ? "#7FE9FF" : r.power ? "#FF5AA0" : r.kind==="chord" ? "#C9C0A8" : r.kind==="salvage" ? "#FFD35A" : "#F1E8D2"; g.lineWidth=U*.7;
+    g.beginPath(); r.shape.forEach((p,i)=>{ const x=r.x+Math.cos(p.a+r.ang)*p.d, y=r.y+Math.sin(p.a+r.ang)*p.d; i?g.lineTo(x,y):g.moveTo(x,y); }); g.closePath(); g.stroke();
+    if(r.towed){ g.strokeStyle="rgba(127,233,255,.7)"; g.lineWidth=U*.5; g.setLineDash([U*1.5,U*1.5]); g.beginPath(); g.moveTo(cx,cy); g.lineTo(r.x,r.y); g.stroke(); g.setLineDash([]); } }   // salvage's tractor beam
+  g.globalAlpha=1;
+  asPowerDraw(g, U, now);
   // the ship: a triangle turned toward its aim or its last shot, with a shield flash when hit
   const a=blast.shipAng, pt=(d,o)=>[cx+Math.cos(a+o)*d*U, cy+Math.sin(a+o)*d*U];
   const hurt=now-(blast.shieldAt||0)<500, jam=now<blast.jamUntil;
@@ -356,15 +377,33 @@ function asDemo(){
       aimed.born=performance.now()-5000; await step(900);
       aimed.dead=true; helpString(7); demoPlay([67]); asFire(aimed, ()=>{ aimed.deadAt=performance.now(); aimed.el.remove(); explode(aimed.x, aimed.y, 16); sfx("boom"); });
       await step(1800); blast.aimManual=false; blast.aimWant=null;
+      // a power-up: a capsule rock cracked by its chord, and pedal point shooting every E in sight
+      await asDemoPedal(step, say);
       say("READY?","CHOOSE A LEVEL."); sfx("level"); await step(2600);
       endAsDemo(token);
     }catch(e){ /* skipped */ }
   })();
 }
+// the demo's power-up scene: a pedal point capsule cracked by its chord, then one pluck of E held,
+// and every E rock shot down as it comes
+async function asDemoPedal(step, say){
+  say("POWER-UPS","NOW AND THEN A POWER-UP ROCK: CRACK IT WITH ITS CHORD. PEDAL POINT HOLDS A NOTE AND SHOOTS EVERY ROCK OF IT.");
+  const W=blast.field.clientWidth, cap=asRock("chord", W*.78, blast.cy-70, "D", {root:"D", q:"", tones:["D","F♯","A"], rootPc:2, power:"pedal"});
+  cap.vx=-14; cap.vy=6; await step(1600);
+  blast.helpKey=null; helpChord("D",""); await step(900);
+  demoPlay([50,54,57]); asKill(cap); asCrack(cap); blast.helpKey=null; helpChord(null); await step(1100);
+  const group={left:99, label:"E"};                          // never cleared: a demo doesn't climb levels
+  const es=[[-.9,150],[2.3,190],[.5,210]].map(([a,d])=>{ const r=asRock("note", blast.cx+Math.cos(a)*d, blast.cy+Math.sin(a)*d, "E", {name:"E", pc:4, group}); r.vx=r.vy=0; r.born=performance.now(); return r; });
+  await step(700);
+  helpString(4); demoPlay([64]); if(blast.asPower) blast.asPower.pc=4;
+  for(const r of es){ await step(450); if(!r.dead) asShootNote(r, true); }
+  await step(1600); helpString(-1);
+  blast.asPower=null; blast.score=0; asBar();
+}
 function endAsDemo(token){
   if(blast && blast.demo===token) demoHarpDone();
   if(!blast || blast.demo!==token) return;
-  stopDemo(); blast.phase="menu"; blast.rocks.forEach(r=>{ if(!r.dead) asKill(r); }); blast.rocks=[]; blast.score=0;
+  stopDemo(); blast.phase="menu"; blast.rocks.forEach(r=>{ if(!r.dead) asKill(r); }); blast.rocks=[]; blast.score=0; blast.asPower=null;
   blast.orbitWant=Math.PI/2;                                                   // the ship home to its starting place
   blast.aimManual=false; blast.aimWant=null; blast.shipAng=-Math.PI/2;
   if(blast.overlay) blast.overlay.hidden=false;
