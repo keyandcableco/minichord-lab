@@ -22,6 +22,7 @@ const t=require("./harness").load("invaders",{storage:{saved:{bonus:true}}});
   layout();
   // the frame loop rebuilds the missile array, so watch it rather than patching it
   w.eval("window.__shots=0; setInterval(()=>{ if(blast && blast.fx && blast.fx.missiles.length) window.__shots++; }, 10)");
+  check("the count before the round is gone once it starts", !d.querySelector(".bonusround .bocount"));
   check("its chords fall into the game's own field", b.mine.length>=4 && b.mine.every(it=>a.items.includes(it)) && d.querySelectorAll(".fchord.bonuschord").length>=4, `${b.mine.length} chords`);
   check("the game is still the game: its clock stopped, its input live", a.phase==="bonus" && w.eval("bonusPlaying()")===true);
   // the knob steers the ship during the round, as it does in play

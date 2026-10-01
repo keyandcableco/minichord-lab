@@ -71,6 +71,7 @@ function arcadeBonus(id){
   let n=3; b.countT=setInterval(()=>{ n--; const c=b.stage.querySelector(".bocount");
     if(n>0){ if(c) c.textContent=n; sfx("press"); return; }
     clearInterval(b.countT); if(b.over) return;
+    if(c) c.remove();                                         // the count goes as the round starts (an in-field round draws nothing over it)
     el.classList.remove("intro"); b.ready=true; b.t0=performance.now(); sfx("start");
     b.timer=setInterval(()=>{ const left=1-(performance.now()-b.t0)/(b.secs*1000);
       el.querySelector(".botime i").style.transform=`scaleX(${Math.max(0,left)})`;
