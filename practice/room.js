@@ -843,7 +843,12 @@ mc.addEventListener("device", ()=>{
   // changes what the game holds is put straight back.
   if(mc.unasked && !mc.comboPick && Object.keys(wanted).length && canWrite()){
     const preset=mc.presetLoaded;
-    for(const [a,v] of Object.entries(wanted)){ if(mc.params[a]!==v){ if(preset){ borrowed[a]=mc.params[a]; roundBorrows.add(+a); } mc.writeParam(+a, v); } } }
+    // the modifier flipped by the double tap is the player's own choice: the game takes it up rather
+    // than undoing it, and points the next double tap the other way (a preset load still resets it).
+    // Done first, so what follows sees the double tap as it now is.
+    if(!preset && (31 in wanted) && mc.params[31]!==wanted[31]){ wanted[31]=mc.params[31]; if(blast) blast.modFor=null; modTap(); modPill(); }
+    for(const [a,v] of Object.entries(wanted)){ if(mc.params[a]!==v){
+      if(preset){ borrowed[a]=mc.params[a]; roundBorrows.add(+a); } mc.writeParam(+a, v); } } }
   if(q && settings.modTap!=="off" && canWrite() && mc.params[200]!==31) modTap();   // set it up once connected
   if(blast && blast.kind==="command") commandDevice();
   else if(blast && blast.kind==="snake") snDevice();

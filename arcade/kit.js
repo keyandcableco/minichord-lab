@@ -183,6 +183,7 @@ function diffMult(kind=cabKind()){
   if(kind==="command") m*=MULT_DENSITY[saved.hcDensity??1]??1;
   if(kind==="breakout") m*=MULT_PADDLE[saved.boPaddle??1]??1;
   if((kind==="asteroids" && saved.asAim) || (kind==="blaster" && saved.invAim)) m*=2;   // manual aim: harder, so double
+  if(MOD_GAMES.has(kind) && !autoMod()) m*=1.25;                              // the modifier set by hand: a quarter more
   return Math.round(m*100)/100;
 }
 const mulPts=p=>Math.round(p*(blast.mult||1));

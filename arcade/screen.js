@@ -191,6 +191,13 @@ function blastTick(now){
   if(!blast) return;
   const dt=Math.min(.05,(now-blast.last)/1000); blast.last=now;
   if(blast.fx) fxDraw(now, dt);
+  // an in-field bonus round: the auto modifier follows the chord above the ship, since the round's
+  // chords all hang at one height and none is the lowest
+  if(typeof bonusPlaying==="function" && bonusPlaying() && blast.bonus.mine){
+    const sx=blast.field.clientWidth*(blast.shipF??.5);
+    const near=blast.bonus.mine.filter(i=>!i.done).sort((a,b)=>Math.abs(a.el.offsetLeft-sx)-Math.abs(b.el.offsetLeft-sx))[0];
+    if(near) arcadeMod(near.root);
+  }
   if(blast.phase!=="play"){ blast.raf=requestAnimationFrame(blastTick); return; }
   const live=blast.items.filter(i=>!i.done);
   if(blast.pauseForBarry && !live.length){

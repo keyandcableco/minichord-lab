@@ -132,7 +132,12 @@ document.addEventListener("keydown", e=>{
 // lowest falling chord, the nearest rock, a ready row or a chord the snake can cash in. A root the key
 // signature doesn't give needs the modifier: a sharp one "sharpens", a flat one "flattens". It's only
 // set when that chord changes, so a double tap to flip it yourself holds until the next one.
+// The games whose chords can need the modifier, and whether it's set for the player (the default, a
+// help) or left to them: by hand scores a quarter more, the double tap flipping it.
+const MOD_GAMES=new Set(["blaster","breakout","asteroids","chopper","stack","snake","fifths"]);
+const autoMod=()=> saved.autoMod!==false;
 function arcadeMod(rootName){
+  if(!autoMod()) return;
   if(!blast || !rootName || !canWrite() || !hasSetting(31) || blast.modFor===rootName) return;
   blast.modFor=rootName;
   const {li,acc}=parse(rootName), ka=keyAcc(li,devFifths());
@@ -142,7 +147,8 @@ function arcadeMod(rootName){
 // the instruction on the chord games' title screens
 function arcadeModNote(ov){
   const p=document.createElement("p"); p.className="padhint";
-  p.textContent="THE MODIFIER: THE GAME SETS SHARP OR FLAT FOR THE CHORD YOU NEED NEXT. DOUBLE-TAP IT TO FLIP IT YOURSELF.";
+  p.textContent = autoMod() ? "THE MODIFIER: THE GAME SETS SHARP OR FLAT FOR THE CHORD YOU NEED NEXT. DOUBLE-TAP IT TO FLIP IT YOURSELF."
+    : "THE MODIFIER IS YOURS TO SET: DOUBLE-TAP IT TO FLIP BETWEEN SHARP AND FLAT. A QUARTER MORE POINTS.";
   ov.appendChild(p);
 }
 
@@ -318,6 +324,16 @@ function beginnerRow(opts){
   const before=opts.querySelector("p.blink") || [...opts.querySelectorAll(".levels")].pop();
   opts.insertBefore(r, before); if(harpRow) opts.insertBefore(harpRow, r);
   if(canWrite()) opts.insertBefore(sr, r);
+  // the modifier: set for you, or by hand for a quarter more points
+  if(MOD_GAMES.has(cabKind()) && canWrite()){
+    const mr=document.createElement("div"); mr.className="optrow"; const ml=document.createElement("span"); ml.className="optlabel"; ml.textContent="MODIFIER";
+    const mg=document.createElement("div"); mg.className="levels";
+    const mmark=b=>{ [...mg.children].forEach(x=>{ x.style.background=""; x.style.color=""; }); b.style.background="#F1E8D2"; b.style.color="#16132A"; };
+    [["SET FOR YOU",true],["BY HAND ×1.25",false]].forEach(([t,v])=>{ const b=document.createElement("button"); b.textContent=t; if(autoMod()===v) mmark(b);
+      b.title = v ? "The game sets sharp or flat for the chord you need next." : "You set sharp or flat yourself, double-tapping the modifier: a quarter more points.";
+      b.onclick=()=>{ saved.autoMod=v; save(); mmark(b); }; mg.appendChild(b); });
+    mr.append(ml,mg); opts.insertBefore(mr, sr.isConnected ? sr : r);
+  }
 }
 function helperSync(rebuild){
   if(!blast || !blast.field) return;
