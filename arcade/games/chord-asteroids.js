@@ -326,7 +326,7 @@ function asDraw(_g, now){
   asPowerDraw(g, U, now);
   // the ship: a triangle turned toward its aim or its last shot, with a shield flash when hit
   const a=blast.shipAng, pt=(d,o)=>[cx+Math.cos(a+o)*d*U, cy+Math.sin(a+o)*d*U];
-  const hurt=now-(blast.shieldAt||0)<500, jam=now<blast.jamUntil;
+  const hurt=now-(blast.shieldAt||0)<500, jam=now<blast.jamUntil || now<(blast.bonus?.jamUntil||0);   // the gun jammed, or its bonus round's beam
   g.fillStyle = hurt ? "#FF4B3E" : jam ? "#7FE9FF" : "#F1E8D2";
   g.beginPath(); const [x1,y1]=pt(6,0), [x2,y2]=pt(5,2.5), [x3,y3]=pt(5,-2.5), [x4,y4]=pt(2,Math.PI); g.moveTo(x1,y1); g.lineTo(x2,y2); g.lineTo(x4,y4); g.lineTo(x3,y3); g.closePath(); g.fill();
   if(hurt){ g.strokeStyle="rgba(255,75,62,.7)"; g.lineWidth=U*.7; g.beginPath(); g.arc(cx,cy,7*U,0,Math.PI*2); g.stroke(); }

@@ -31,6 +31,10 @@ const t=require("./harness").load("chord-asteroids",{storage:{saved:{bonus:true}
   check("a part is hauled in and fills its slot", p0.dead && b.got.has(p0.pc) && b.score>s0 && d.querySelectorAll(".bonusround .bocards.tray .bocard.done").length===1, `${p0.name}: +${b.score-s0}`);
   note(p0.pc); await sleep(50);
   check("its note again finds nothing more to haul", /ALREADY IN/.test(t.heard()), t.heard());
+  // a string with nothing out there jams the beam, so the rest of a sweep hauls nothing
+  const p1=parts[1]; note(p1.pc); await sleep(50);
+  check("an empty string jams the beam: the next pluck hauls nothing", !p1.towed && /JAMMED/.test(t.heard()), t.heard());
+  await sleep(1100);
   // the rest: the chord is rebuilt and the next is called
   const sym=b.ans.sym, built=b.built;
   for(const r of parts.slice(1)){ note(r.pc); await sleep(100); }
@@ -38,6 +42,10 @@ const t=require("./harness").load("chord-asteroids",{storage:{saved:{bonus:true}
   check("every part in rebuilds the chord, for a bonus", b.built===built+1, sym);
   for(let i=0;i<30 && b.between;i++) await sleep(100); await sleep(300);
   check("and the next chord is called, with fresh wreckage", b.mine.length>0 && b.mine.every(r=>!r.dead), b.ans.sym);
+  // a sweep across all twelve strings: it stalls at the first string with nothing there
+  const before=b.mine.filter(r=>r.towed).length; for(let pc=0;pc<12;pc++) note(pc); await sleep(30);
+  const towed=b.mine.filter(r=>r.towed).length-before, firstEmpty=[...Array(12).keys()].findIndex(pc=>!b.mine.some(r=>r.pc===pc));
+  check("a sweep across the harp hauls in only what comes before its first empty string", towed===firstEmpty && towed<b.mine.length, `${towed} of ${b.mine.length}`);
   w.eval("blast.bonus.finish()");
   for(let i=0;i<50 && a.phase!=="play";i++) await sleep(100);
   check("the tally counts chords, parts and junk", b.tally.some(x=>x[0]==="CHORDS REBUILT" && x[1]===1) && b.tally.some(x=>x[0]==="JUNK"));

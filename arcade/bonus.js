@@ -335,17 +335,19 @@ const BONUS_GAMES=[
   // round the ship, loose notes the size of the notes a chord rock cracks into. A call names a chord;
   // pluck each of its notes on the harp and the ship's tractor beam hauls that one in, filling its slot.
   // When every slot is full the chord is rebuilt and the next call comes. Junk (a note that isn't in the
-  // chord) is hauled in too and thrown out, costing two seconds of the round's clock, never a life. The
+  // chord) is hauled in too and thrown out, costing two seconds of the round's clock, never a life; and a
+  // string with nothing of its note out there jams the beam for a moment, as it jams the gun in the game,
+  // so a sweep across the harp hauls in a piece or two and stalls instead of emptying the field. The
   // chords are the game's own level's, and the junk thickens, then sits a semitone from the real parts,
   // as the game goes on.
   {id:"salvage", name:"SALVAGE RUN", secs:26, inField:true,
-   instr:"REBUILD THE CHORD FROM THE WRECKAGE: PLUCK EACH OF ITS NOTES TO HAUL IT IN. JUNK COSTS TIME.",
+   instr:"REBUILD THE CHORD FROM THE WRECKAGE: PLUCK EACH OF ITS NOTES TO HAUL IT IN. JUNK COSTS TIME, AND AN EMPTY STRING JAMS THE BEAM.",
    start(b){
      b.built=0; b.parts=0; b.junk=0; b.mine=[];
      const lv=Math.min(AS_LEVELS.length-1, blast.level||0);
      b.level=AS_LEVELS[lv];
      b.tier=[{junk:3}, {junk:4}, {junk:4}, {junk:5, near:true}, {junk:5, near:true}][lv];
-     b.say(`${this.instr} · ${b.level.n.toUpperCase()}${b.tier.near?" · THE JUNK A SEMITONE OFF":""}`);
+     b.say(`${b.level.n.toUpperCase()}${b.tier.near?" · THE JUNK A SEMITONE OFF":""}`);   // the rules were read in the warning; the field needs the room
      this.next(b);
    },
    next(b){
@@ -394,12 +396,16 @@ const BONUS_GAMES=[
        r.el.style.transform=`translate(${r.x}px,${r.y}px) translate(-50%,-50%)`;
      }
    },
-   // a string plucked: the nearest piece of wreckage of that note is caught in the tractor beam
+   // a string plucked: the nearest piece of wreckage of that note is caught in the tractor beam; a
+   // string with none jams it, so the rest of a sweep finds it jammed
    pluck(b, pc){
      if(b.over || !b.ans || b.between) return;
+     const now=performance.now();
+     if(now<(b.jamUntil||0)){ heard("", false, "JAMMED"); return; }
      const r=b.mine.filter(x=>!x.dead && !x.towed && x.pc===pc).sort((p,q)=>Math.hypot(p.x-blast.cx,p.y-blast.cy)-Math.hypot(q.x-blast.cx,q.y-blast.cy))[0];
      const nm=r ? r.name : (b.ans.tones.find(t=>pcOfName(t)===pc) || SHARP_NAMES[pc]);
-     if(!r){ heard(nm, false, b.got.has(pc) ? "ALREADY IN" : "NOTHING THERE"); buzz(blast.field, true); return; }
+     if(!r){ heard(nm, false, b.got.has(pc) ? "ALREADY IN" : "NOTHING THERE"); sfx("freeze"); buzz(blast.field, true);
+       b.jamUntil=now+1000; popup(blast.cx, blast.cy+40, "BEAM JAMMED", "#7FE9FF"); return; }
      heard(nm, true); sfx("press");
      r.towed=performance.now(); r.el.classList.add("towed");
      if(!asManual()) blast.shipAng=Math.atan2(r.y-blast.cy, r.x-blast.cx);
@@ -443,7 +449,7 @@ const BONUS_GAMES=[
      const lv=Math.min(BO_LEVELS.length-1, blast.level||0);
      b.level=BO_LEVELS[lv];
      b.tier=[{vy:85, gap:950, junk:.4}, {vy:100, gap:850, junk:.45}, {vy:115, gap:780, junk:.5}, {vy:130, gap:720, junk:.55, near:true}][Math.min(3, Math.floor(lv/2))];
-     b.say(`${this.instr} · ${boLevelName(lv).toUpperCase()}${b.tier.near?" · THE WRONG ONES A SEMITONE OFF":""}`);
+     b.say(`${boLevelName(lv).toUpperCase()}${b.tier.near?" · THE WRONG ONES A SEMITONE OFF":""}`);
      this.next(b);
    },
    next(b){

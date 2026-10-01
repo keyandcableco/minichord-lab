@@ -731,6 +731,10 @@ html.arcadepage .gamebar{align-items:flex-end}
 .field .bonusround.infield .bostage{flex:1;display:flex;align-items:center;justify-content:center}
 .field .bonusround.infield .bohead,.field .bonusround.infield .boinstr,.field .bonusround.infield .boscore{background:rgba(7,6,12,.82);padding:6px 12px}
 .field .bonusround.infield.over{background:rgba(7,6,12,.92)}
+/* once an in-field round is under way its title goes and its line drops to the foot, small, so the wreckage or the notes have the field */
+.field .bonusround.infield:not(.intro):not(.over) .bohead{display:none}
+.field .bonusround.infield:not(.intro):not(.over) .boinstr{order:1;font-size:.5rem;line-height:1.6;padding:3px 10px}
+.field .bonusround.infield:not(.intro):not(.over) .boscore{order:2}
 .field.bonusfield .fchord:not(.bonuschord){opacity:.25}        /* whatever the game had, dimmed behind the round */
 /* all the same size, whatever they're spelled: a wider box would say which to shoot */
 .fchord.bonuschord{z-index:4;box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;width:5.4em;height:2.2em;padding:0;border:2px solid #FFD35A;background:rgba(7,6,12,.6)}
