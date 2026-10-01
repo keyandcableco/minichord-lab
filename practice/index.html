@@ -702,6 +702,9 @@ html.arcadepage .gamebar{align-items:flex-end}
 /* all the same size, whatever they're spelled: a wider box would say which to shoot */
 .fchord.bonuschord{z-index:4;box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;width:5.4em;height:2.2em;padding:0;border:2px solid #FFD35A;background:rgba(7,6,12,.6)}
 .fchord.bonuschord.wrongshot{animation:buzz .3s steps(2) 2}
+.fchord.fnote.bonuschord{width:auto;min-width:3.2em;padding:0 .4em}         /* notes: one or two letters, all the same box */
+.fchord.bonuschord.spelled{border-color:#7FE08A;color:#7FE08A}              /* the chord, once its odd note is shot */
+.fchord.bonuschord.exposed{border-color:#FF4B3E;color:#FF4B3E;animation:blink .4s steps(2) 3}
 .botally{display:grid;grid-template-columns:auto auto;gap:6px 20px;justify-content:center;margin:10px 0;font:400 .6rem/1.9 "Press Start 2P",monospace;color:#F1E8D2}
 .botally b{color:#FFD35A;font-weight:400;text-align:right}
 .boback{font:400 .5rem "Press Start 2P",monospace;color:#8A83A8;margin-top:12px;animation:blink 1s steps(2) infinite}

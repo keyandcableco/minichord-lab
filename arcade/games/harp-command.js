@@ -126,7 +126,7 @@ function blastBarCommand(){
   blast.hud.innerHTML=`<span>SCORE ${blast.score}${multTag()}</span><span class="lvl">LEVEL ${blast.level+1}${key}${toGo}</span><span class="lives">${livesHtml()}</span>`;
 }
 const COMMANDMENU_G={key:"command", title:"HARP COMMAND",
-  rules:()=>`<p>NOTES FALL TOWARD YOUR CANNONS.</p><p>PLUCK THE STRING THAT PLAYS ONE AND ITS CANNON FIRES.</p><p class="starline">${PIXEL_STAR}NOTES SCORE BIG AND NEVER HURT.</p><p>A WRONG STRING FREEZES YOUR CANNONS.</p>`,
+  rules:()=>`<p>NOTES FALL TOWARD YOUR CANNONS.</p><p>PLUCK THE STRING THAT PLAYS ONE AND ITS CANNON FIRES.</p><p class="starline">${PIXEL_STAR}NOTES SCORE BIG AND NEVER HURT.</p><p>A WRONG STRING FREEZES YOUR CANNONS.</p><p>EVERY TWO LEVELS, SPELL IT: ALL BUT ONE NOTE SPELL A CHORD. PLUCK THE ODD ONE, OR PLAY THE CHORD FOR THE REST.</p>`,
   rows:row=>{
     row("SPEED", SPEEDS.map(x=>x[0].toUpperCase()), ()=>+saved.speed||0, i=>{ saved.speed=i; save(); });
     row("NOTE SIZE", SIZES.map(x=>x[0]), ()=>saved.chordSize??1, i=>{ saved.chordSize=i; save(); applyChordSize(); });
@@ -224,10 +224,12 @@ const FREEZE_MS=()=>1200+150*(blast.level||0);
 function commandNote(pc){
   if(!blast || blast.kind!=="command") return;
   if(blast.phase==="demo" && blast.demo){ endCommandDemo(blast.demo); return; }
-  if(blast.phase!=="play") return;
-  if(performance.now()<(blast.frozenUntil||0)){ heard("FROZEN",false); return; }
+  const inRound = typeof bonusPlaying==="function" && bonusPlaying();     // its own bonus round: the cannons fire as ever
+  if(blast.phase!=="play" && !inRound) return;
+  if(!inRound && performance.now()<(blast.frozenUntil||0)){ heard("FROZEN",false); return; }
   const hit=blast.items.filter(i=>!i.done && i.pc===pc).sort((a,b)=>(a.bonus-b.bonus)||(a.t0-b.t0))[0];
   const name=(hcStrings().find(x=>x.pc===pc)||{name:SHARP_NAMES[pc]}).name;
+  if(!hit && inRound){ heard(name,false); buzz(blast.field,true); return; }   // nothing on that string: no freeze in a round
   if(!hit){
     heard(name,false); buzz(blast.field,true); sfx("freeze");
     blast.frozenUntil=performance.now()+FREEZE_MS(); blast.field.classList.add("frozen");
@@ -235,9 +237,15 @@ function commandNote(pc){
     popup(blast.field.clientWidth/2, blast.field.clientHeight-70, "FROZEN", "#7FE9FF");
     return;
   }
-  heard(name,true);
+  heard(hit.name||name,true);
   hit.done=true; hit.el.classList.remove("low");
   const c=blast.cannons[hit.string]; c.fired=performance.now();
+  if(inRound){                                                    // the shot flies, then the round decides
+    const fr=blast.field, x=hit.el.offsetLeft, y=(hit.y||24)+hit.el.offsetHeight/2, b=blast.bonus;
+    sfx("shoot");
+    blast.fx.missiles.push({x0:c.x/PX, y0:(fr.clientHeight-30)/PX, x1:x/PX, y1:y/PX, t0:performance.now(), dur:160, hit:()=>{ if(!b.over) b.g.shot(b, hit); }});
+    return;
+  }
   const fr=blast.field, x=hit.el.offsetLeft, y=(hit.y||24)+hit.el.offsetHeight/2, pts=mulPts((hit.bonus?50:10)*(blast.level+1));
   sfx("shoot");
   blast.fx.missiles.push({x0:c.x/PX, y0:(fr.clientHeight-30)/PX, x1:x/PX, y1:y/PX, t0:performance.now(), dur:160,

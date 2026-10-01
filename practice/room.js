@@ -424,6 +424,7 @@ function answerChord(voices){
   if(!q || solved) return;
   if(blast && blast.hsEntry){ blast.hsEntry.set(); return; }                     // initials: a chord sets the letter
   if(blast && blast.bonus && !bonusInField()){ bonusChord(voices); return; }   // a bonus round (an in-field one is played with the game)
+  if(blast && blast.bonus && bonusPlaying() && blast.bonus.g.chord){ blast.bonus.g.chord(blast.bonus, voices.map(v=>v.pitch)); return; }   // one that listens to chords itself
   if(blast && blast.phase==="play") blast.midiIn=(blast.midiIn||0)+1;
   if(arcadeMenuChord(voices)) return;            // an arcade title screen, played from the buttons
   if(q.answer.type==="blaster") return blasterChord(voices);

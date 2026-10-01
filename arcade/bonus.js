@@ -42,7 +42,7 @@ const bSym=c=>c.root+c.q;
 // A game's own bonus rounds, which come before the shared ones: they use that game's controls and
 // get harder as the game does, so a player who reaches level nine meets a harder round than one who
 // reached level three.
-const BONUS_OWN={blaster:["oddout"]};
+const BONUS_OWN={blaster:["oddout"], command:["spell"]};
 function arcadeBonus(id){
   if(!blast || blast.bonus) return;
   blast.bonusAt=blast.level+BONUS_EVERY;
@@ -233,6 +233,103 @@ const BONUS_GAMES=[
      this.clear(b);
      b.tally=[["INTRUDERS CAUGHT", b.hits], ...(b.misses?[["WRONG SHOTS", `−${b.misses*15}`]]:[])];
      if(!b.result) b.result = b.hits ? `${b.hits} OF 4 CAUGHT` : "NONE CAUGHT";
+   } },
+  // Harp Command's own, played with its cannons: four notes stop in the sky above their strings, all but
+  // one spelling a chord. Pluck the odd note's string and its cannon shoots it down; or play the chord
+  // the others spell and every cannon fires at once, which is worth more. The harp is chromatic for
+  // the round, so every note has a string; the chords and the odd note get harder as the game does.
+  {id:"spell", name:"SPELL IT", secs:24, inField:true,
+   instr:"ALL BUT ONE NOTE SPELL A CHORD. PLUCK THE ODD ONE, OR PLAY THE CHORD FOR THE REST.",
+   start(b){
+     b.hits=0; b.chords=0; b.misses=0; b.mine=[];
+     const lv=Math.min(4, Math.round((blast.level||0)*4/Math.max(1, HC_LEVELS.length-1)));   // the five steps across Harp Command's levels
+     b.tier=[{qs:[""],                           say:"MAJOR CHORDS"},
+             {qs:["","m"],                       say:"MAJOR AND MINOR"},
+             {qs:["","m","°","+"],               say:"DIMINISHED AND AUGMENTED TOO"},
+             {qs:["7","maj7","m7"],              say:"SEVENTHS: FIVE NOTES"},
+             {qs:["","m","7","maj7","m7","°","+"], near:true, say:"THE ODD NOTE A SEMITONE AWAY"}][lv];
+     // every note has a string for the round
+     b.waveWas=blast.wave; blast.wave={kind:"chrom"}; hcTuneHarp(); hcLabels();
+     b.say(`${this.instr} · ${b.tier.say}`);
+     this.next(b);
+   },
+   next(b){
+     const T=b.tier;
+     let root, q, tones;
+     for(let k=0;k<40;k++){ root=rnd(ROOTS); q=rnd(T.qs); tones=spellChord(root,q); if(tones && !tones.some(t=>/𝄪|𝄫/.test(t))) break; }
+     const pcs=new Set(tones.map(pcOfName));
+     // the odd note: anywhere off the chord, or (at the top) a semitone from one of its notes
+     const near=[...pcs].flatMap(p=>[mod(p+1,12),mod(p-1,12)]).filter(p=>!pcs.has(p));
+     const pool = T.near ? near : [...Array(12).keys()].filter(p=>!pcs.has(p));
+     // only an odd note that leaves one answer: with it in, no other set of the notes may make a chord of
+     // this round's kinds (E♭ G B♭ with C would also be C minor, leaving B♭ odd)
+     const iv=q=>(VL_TONES[q]||FORM[q].map(f=>f[1]));
+     const isTierChord=set=>[...Array(12).keys()].some(r=>T.qs.some(qq=>{ const c=new Set(iv(qq).map(x=>mod(r+x,12))); return c.size===set.size && [...set].every(p=>c.has(p)); }));
+     const unique=p=>{ const all=[...pcs,p]; return all.every(x=>x===p || !isTierChord(new Set(all.filter(y=>y!==x)))); };
+     const fair=pool.filter(unique);
+     if(!fair.length) return this.next(b);                        // this chord has no fair odd note: deal another
+     const oddPc=rnd(fair), flats=tones.some(t=>t.includes("♭"));
+     const oddName=(flats ? FLAT_NAMES : SHARP_NAMES)[oddPc];
+     b.ans={root, q, oddPc, oddName};
+     const notes=[...tones.map(n=>({name:n, pc:pcOfName(n), odd:false})), {name:oddName, pc:oddPc, odd:true}];
+     const H=blast.field.clientHeight||420, top=Math.round(H*.32);
+     b.mine=notes.map((n,i)=>{
+       const el=document.createElement("span"); el.className="fchord fnote bonuschord"; el.textContent=n.name;
+       el.style.left=`${blast.cannons[n.pc].x}px`; el.style.top="0";
+       blast.field.appendChild(el);
+       const y=top+(i%2)*28;                                     // alternate heights, so neighbours don't touch
+       const it={el, string:n.pc, pc:n.pc, name:n.name, label:n.name, t0:performance.now(), y, odd:n.odd};
+       blast.items.push(it);
+       el.style.transform="translate(-50%,24px)"; void el.offsetWidth;
+       el.style.transition="transform .9s ease-out"; el.style.transform=`translate(-50%,${y}px)`;
+       setTimeout(()=>{ el.style.transition=""; }, 950);
+       return it;
+     });
+   },
+   won(b, how){
+     const sym=`${b.ans.root}${b.ans.q}`;
+     b.say(how==="chord" ? `${sym}: ${spellChord(b.ans.root,b.ans.q).join(" ")}` : `${b.ans.oddName} ISN'T IN ${sym}`);
+     setTimeout(()=>{ this.clear(b); if(b.hits+b.chords>=4){ b.result="EVERY CHORD SPELLED"; b.finish(); } else if(!b.over) this.next(b); }, 700);
+   },
+   // a cannon has hit a note
+   shot(b, hit){
+     const x=hit.el.offsetLeft, y=(hit.y||0)+hit.el.offsetHeight/2;
+     if(hit.odd){
+       b.hits++; b.add(60+(b.hits+b.chords)*20, [x,y]);
+       sfx("bonus"); explode(x,y,30,["#FFD35A","#FFFFFF","#7FE9FF"]); hit.el.remove();
+       b.mine.filter(i=>!i.odd).forEach(i=>i.el.classList.add("spelled"));
+       this.won(b, "pluck");
+     } else {
+       b.misses++; b.score=Math.max(0,b.score-15); b.el.querySelector(".boscore b").textContent=b.score;
+       sfx("miss"); buzz(blast.field,true); popup(x, y-10, "−15", "#FF4B3E");
+       hit.done=false;                                            // it stays: it belongs
+       b.say(`${hit.name} IS IN THE CHORD`);
+     }
+   },
+   // the chord the notes spell, played on the buttons: every one of its notes shot down at once
+   chord(b, pitches){
+     if(!b.ready || b.over || !b.ans) return;
+     if(isChord(pitches, pcOfName(b.ans.root), b.ans.q)){
+       b.chords++; b.add(100+(b.hits+b.chords)*20);
+       const fr=blast.field;
+       b.mine.filter(i=>!i.odd && !i.done).forEach((it,k)=>{ it.done=true; const c=blast.cannons[it.string]; c.fired=performance.now();
+         const x=it.el.offsetLeft, y=(it.y||0)+it.el.offsetHeight/2;
+         blast.fx.missiles.push({x0:c.x/PX, y0:(fr.clientHeight-30)/PX, x1:x/PX, y1:y/PX, t0:performance.now()+k*40, dur:170,
+           hit:()=>{ sfx("boom"); explode(x,y,26); it.el.remove(); }}); });
+       sfx("shoot");
+       const odd=b.mine.find(i=>i.odd); if(odd) odd.el.classList.add("exposed");
+       this.won(b, "chord");
+     } else if(chordId(pitches)){
+       b.misses++; b.score=Math.max(0,b.score-15); b.el.querySelector(".boscore b").textContent=b.score;
+       sfx("miss"); buzz(blast.field,true); b.say("THAT ISN'T THE CHORD THEY SPELL");
+     }
+   },
+   clear(b){ (b.mine||[]).forEach(it=>{ it.done=true; it.el.remove(); const i=blast.items.indexOf(it); if(i>=0) blast.items.splice(i,1); }); b.mine=[]; },
+   stop(b){
+     this.clear(b);
+     if(b.waveWas){ blast.wave=b.waveWas; b.waveWas=null; hcTuneHarp(); hcLabels(); }    // the harp back to its key
+     b.tally=[["ODD NOTES SHOT", b.hits], ["CHORDS PLAYED", b.chords], ...(b.misses?[["WRONG", `−${b.misses*15}`]]:[])];
+     if(!b.result) b.result = (b.hits+b.chords) ? `${b.hits+b.chords} OF 4 SPELLED` : "NONE SPELLED";
    } },
   {id:"odd", name:"ODD ONE OUT", secs:20,
    instr:"THREE OF THESE CHORDS ARE FROM ONE KEY. PLAY THE ONE THAT DOESN'T BELONG.",

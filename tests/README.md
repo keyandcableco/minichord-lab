@@ -43,6 +43,7 @@ key presses, checking what should happen.
 | `invaders-oddout` | Chord Invaders' own bonus round, played with the game: chords in its field, shot with its own firing, the field left clean |
 | `arcade-preset` | a game takes glide off and stops retriggers, and vibrato and delay unless the player keeps their own sound; all given back after |
 | `modifier` | a double tap flips the modifier and stays flipped; set for you or by hand (×1.25); in the bonus round it follows the chord above the ship |
+| `harp-command-spell` | Harp Command's own bonus round: pluck the note that doesn't spell the chord, or play the chord to shoot the rest |
 | `key-fleet` | fleets never touch; hits cripple; keys are called by tonic, cadence and the key change combo |
 | `high-scores` | GAME OVER before the initials; input ignored at first; the board kept; beginner mode stays off it |
 | `lobby` | the arcade lobby's cabinets, best scores and ticker |
