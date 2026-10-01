@@ -189,7 +189,7 @@ document.addEventListener("keydown", e=>{ if(blast && blast.kind==="frets" && e.
 function frSay(t){ const p=blast.stageEl && blast.stageEl.querySelector(".frprompt"); if(p) p.textContent=t; }
 function frTick(now){
   if(!blast || blast.kind!=="frets") return;
-  const dt=Math.min(.05,(now-blast.last)/1000); blast.last=now;
+  const dt=Math.min(DT_MAX,(now-blast.last)/1000); blast.last=now;
   if(blast.fx) fxDraw(now, dt);
   const q=blast.q;
   if(blast.phase==="play" && q && q.at){

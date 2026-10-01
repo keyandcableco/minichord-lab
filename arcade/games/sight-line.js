@@ -190,7 +190,7 @@ function slSpawn(){
 }
 function slTick(now){
   if(!blast || blast.kind!=="sight") return;
-  const dt=Math.min(.05,(now-blast.last)/1000); blast.last=now;
+  const dt=Math.min(DT_MAX,(now-blast.last)/1000); blast.last=now;
   if(blast.fx) fxDraw(now, dt);
   if((blast.phase==="play" || (blast.phase==="demo" && blast.demoScroll)) && blast.W){
     const gap=Math.max(84, blast.SP*7), lastX=blast.notes.length ? blast.notes[blast.notes.length-1].x : -1e9;

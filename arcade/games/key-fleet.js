@@ -238,7 +238,7 @@ function kfWave(){
 }
 function kfTick(now){
   if(!blast || blast.kind!=="fleet") return;
-  const dt=Math.min(.05,(now-blast.last)/1000); blast.last=now;
+  const dt=Math.min(DT_MAX,(now-blast.last)/1000); blast.last=now;
   if(blast.fx) fxDraw(now, dt);
   blast.raf=requestAnimationFrame(kfTick);
 }

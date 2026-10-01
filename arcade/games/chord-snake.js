@@ -154,7 +154,7 @@ function snDraw(){
 }
 function snTick(now){
   if(!blast || blast.kind!=="snake") return;
-  const dt=Math.min(.05,(now-blast.last)/1000); blast.last=now;
+  const dt=Math.min(DT_MAX,(now-blast.last)/1000); blast.last=now;
   if(blast.fx) fxDraw(now, dt);
   if(blast.phase==="play" && now>=blast.nextMove){ snStep(); blast.nextMove=now+blast.stepMs*(1+.03*blast.tail.length); }
   blast.raf=requestAnimationFrame(snTick);

@@ -163,7 +163,7 @@ function asSpawn(){
 }
 function asTick(now){
   if(!blast || blast.kind!=="asteroids") return;
-  const dt=Math.min(.05,(now-blast.last)/1000); blast.last=now;
+  const dt=Math.min(DT_MAX,(now-blast.last)/1000); blast.last=now;
   if(blast.orbitWant!=null && blast.hx!=null){ const a=blast.orbitA??Math.PI/2, d=blast.orbitWant-a;   // the ship glides round to where it's steered
     blast.orbitA = Math.abs(d)<.002 ? blast.orbitWant : a+d*Math.min(1,dt*9); asPlace(); }
   asEdge(now, dt);

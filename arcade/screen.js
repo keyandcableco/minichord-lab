@@ -11,6 +11,12 @@
 // canvas pixels per screen pixel: 3 in the page, more as the field grows (full screen), so the canvas
 // stays about the same size to draw however big it's shown
 let PX=3;
+// The longest step a game's clock takes in one frame. A frame that took longer is counted as this
+// long, so a machine drawing fewer frames a second than this allows plays the game in slow motion. It
+// was a twentieth of a second (a thirtieth in Chord Breakout), which a full screen on a big monitor
+// fell below; a tenth keeps every game at its true speed down to ten frames a second, choppy rather
+// than slowed, while a tab that comes back after a while still doesn't jump the game on.
+const DT_MAX=.1;
 // A canvas at the screen's own resolution, over the shared pixel canvas: for a game whose lines and
 // shapes should be sharp (the shared canvas is deliberately low-resolution, right for the stars).
 function sharpLayer(fx){ const cv=document.createElement("canvas"); cv.className="fxsharp"; fx.cv.after(cv); return cv; }
@@ -190,7 +196,7 @@ function fxDraw(now, dt){
 }
 function blastTick(now){
   if(!blast) return;
-  const dt=Math.min(.05,(now-blast.last)/1000); blast.last=now;
+  const dt=Math.min(DT_MAX,(now-blast.last)/1000); blast.last=now;
   if(blast.fx) fxDraw(now, dt);
   // an in-field bonus round: the auto modifier follows the chord above the ship, since the round's
   // chords all hang at one height and none is the lowest

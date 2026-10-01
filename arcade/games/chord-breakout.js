@@ -160,7 +160,7 @@ function beginBreakout(level){
 }
 function boTick(now){
   if(!blast || blast.kind!=="breakout") return;
-  const dt=Math.min(.033,(now-blast.last)/1000); blast.last=now;
+  const dt=Math.min(DT_MAX,(now-blast.last)/1000); blast.last=now;
   if(blast.fx) fxDraw(now, dt);
   if((blast.phase==="play" || blast.phase==="demo") && blast.ball){
     boPaddleTick(now, dt);

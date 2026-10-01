@@ -197,7 +197,7 @@ function hcStaffSvg(name, string){
 }
 function commandTick(now){
   if(!blast || blast.kind!=="command") return;
-  const dt=Math.min(.05,(now-blast.last)/1000); blast.last=now;
+  const dt=Math.min(DT_MAX,(now-blast.last)/1000); blast.last=now;
   if(blast.fx) fxDraw(now, dt);
   if(blast.phase!=="play"){ blast.raf=requestAnimationFrame(commandTick); return; }
   hcPowerTick(now, dt);                                              // slow time, multishot, a power running out

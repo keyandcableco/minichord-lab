@@ -34,7 +34,9 @@ const t=require("./harness").load("chord-breakout",{storage:{saved:{bonus:true}}
   check("and the next is called", !b.between && b.ans && b.got.size===0, b.ans.sym);
   // the real thing: a falling note of the chord, caught under the paddle
   await sleep(200); const was=b.caught;
-  for(let i=0;i<80 && b.caught===was;i++){ const dr=b.drops.find(x=>x.part); if(dr){ const W=a.W-a.paddle.w; knob(Math.max(0,Math.min(127,Math.round((dr.x-a.paddle.w/2)/W*127)))); } await sleep(100); }
+  // (steered straight to it, the knob having had its own check above, and the round's clock kept full,
+  // so a slow run can't time the round out first)
+  for(let i=0;i<120 && b.caught===was;i++){ b.t0=w.performance.now(); const dr=b.drops.filter(x=>x.part).sort((p,q)=>q.y-p.y)[0]; if(dr) a.paddle.target=dr.x-a.paddle.w/2; await sleep(100); }
   check("a falling note of the chord, steered under, is caught", b.caught>was);
   w.eval("blast.bonus.finish()");
   for(let i=0;i<50 && a.phase!=="play";i++) await sleep(100);

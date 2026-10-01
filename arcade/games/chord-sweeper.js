@@ -189,7 +189,7 @@ function swLay(sx,sy){
 }
 function swTick(now){
   if(!blast || blast.kind!=="sweeper") return;
-  const dt=Math.min(.05,(now-blast.last)/1000); blast.last=now;
+  const dt=Math.min(DT_MAX,(now-blast.last)/1000); blast.last=now;
   if(blast.fx) fxDraw(now, dt);
   blast.raf=requestAnimationFrame(swTick);
 }

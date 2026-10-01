@@ -274,7 +274,7 @@ function chHelp(){
 }
 function chTick(now){
   if(!blast || blast.kind!=="chopper") return;
-  const dt=Math.min(.05,(now-blast.last)/1000); blast.last=now;
+  const dt=Math.min(DT_MAX,(now-blast.last)/1000); blast.last=now;
   if(blast.fx) fxDraw(now, dt);
   if(blast.phase==="play" && blast.tune){
     if(blast.tune.heldAt && now-blast.tune.heldAt>500) chTuned("dial");              // held in tune: through

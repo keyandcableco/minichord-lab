@@ -136,7 +136,7 @@ function fdEdge(now){
 }
 function fdTick(now){
   if(!blast || blast.kind!=="fifths") return;
-  const dt=Math.min(.05,(now-blast.last)/1000); blast.last=now;
+  const dt=Math.min(DT_MAX,(now-blast.last)/1000); blast.last=now;
   if(blast.phase==="play" || blast.phase==="demo"){
     fdEdge(now);
     if(blast.phase==="play" && now>=blast.next && blast.foes.filter(f=>!f.dead).length<4+blast.level){ fdSpawn(); blast.next=now+blast.gap*(.75+Math.random()*.5); }

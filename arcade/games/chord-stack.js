@@ -183,7 +183,7 @@ function stSpawn(){
 }
 function stTick(now){
   if(!blast || blast.kind!=="stack") return;
-  const dt=Math.min(.05,(now-blast.last)/1000); blast.last=now;
+  const dt=Math.min(DT_MAX,(now-blast.last)/1000); blast.last=now;
   if(blast.fx) fxDraw(now, dt);
   if(blast.phase==="play" && blast.piece && now>=blast.nextFall){ stFall(); blast.nextFall=now+blast.fallMs; }
   blast.raf=requestAnimationFrame(stTick);
