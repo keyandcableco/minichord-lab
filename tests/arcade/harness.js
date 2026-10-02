@@ -50,10 +50,6 @@ function load(slug, {storage, every}={}){
   Object.defineProperty(w.HTMLElement.prototype,"clientHeight",{get(){ return this.classList && this.classList.contains("field") ? 420 : 0; }});
   // boot.js: the core modules, on window
   w.eval(["theory.js","temperaments.js","sound.js","minichord.js"].map(wrap).join("\n"));
-  // Fux's rules and solver, as CP, on a page with Fux on it (boot.js imports them only there)
-  if(scripts.some(f=>/[\\/]fux\.js$/.test(f))){ const raw=fs.readFileSync(path.join(ROOT,"core","counterpoint.js"),"utf8");
-    const names=[...raw.matchAll(/^export (?:async )?(?:class|function|const|let) ([A-Za-z_$][\w$]*)/mg)].map(m=>m[1]);
-    w.eval("window.CP=(function(){"+raw.replace(/^import .*$/mg,"").replace(/^export (default )?/mg,"")+"\nreturn {"+names.join(",")+"};})();"); }
   // then the page's scripts, each as a <script> of its own, as the browser runs them
   const errors=[]; w.addEventListener("error", e=>errors.push(e.message));
   for(const f of scripts){ const el=w.document.createElement("script"); el.textContent=fs.readFileSync(f,"utf8"); w.document.body.appendChild(el);

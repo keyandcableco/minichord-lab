@@ -148,11 +148,6 @@ function fxPaintBackground(kind, W, H){
     const bx=Math.floor(W*.84), br=Math.max(6, Math.floor(W*.035));
     for(let y=-br;y<=0;y++) for(let x=-br*1.6;x<=br*1.6;x++){ if((x*x)/(br*br*2.6)+(y*y)/(br*br)<=1){ g.fillStyle=rand()<.15?"#2F6B2A":"#1A4419"; g.fillRect(Math.floor(bx+x), horizon+y, 1, 1); } }
     g.fillStyle="#1F4A1C"; g.fillRect(0,horizon,W,H-horizon);
-  } else if(kind==="fux"){
-    // a night-blue page, faintly ruled, a few stars at the top
-    g.fillStyle="#0A0B1E"; g.fillRect(0,0,W,H);
-    g.fillStyle="#10122C"; for(let y=0;y<H;y+=4) g.fillRect(0,y,W,1);
-    for(let i=0;i<W*H/500;i++){ g.fillStyle=rand()<.3?"#8F8AB8":"#34304F"; g.fillRect(Math.floor(rand()*W),Math.floor(rand()*H*.25),1,1); }
   } else if(kind==="fifths"){
     g.fillStyle="#040308"; g.fillRect(0,0,W,H);
     for(let i=0;i<W*H/300;i++){ g.fillStyle=rand()<.3?"#4B4670":"#221F3A"; g.fillRect(Math.floor(rand()*W),Math.floor(rand()*H),1,1); }
@@ -353,10 +348,10 @@ function blastKill(hit, how){
 }
 // the arcade games' generators are looked up only when asked for: a game opened on its own
 // (?game=…&solo) loads only its own file, so the others aren't there
-const GENS={spell:genSpell, command:()=>genCommand(), snake:()=>genSnake(), asteroids:()=>genAsteroids(), stack:()=>genStack(), breakout:()=>genBreakout(), fifths:()=>genFifths(), chopper:()=>genChopper(), fleet:()=>genFleet(), sweeper:()=>genSweeper(), frets:()=>genFrets(), sight:()=>genSight(), hunt:()=>genHunt(), fux:()=>genFux(), hidden:genHidden, oddone:genOddOne, shades:genShades, reshape:genReshape, blaster:genBlaster, diatonic:genDiatonic, numeral:genNumeral, staff:genStaff, slash:genSlash, key:genKey, harp:genHarp, missing:genMissing,
+const GENS={spell:genSpell, command:()=>genCommand(), snake:()=>genSnake(), asteroids:()=>genAsteroids(), stack:()=>genStack(), breakout:()=>genBreakout(), fifths:()=>genFifths(), chopper:()=>genChopper(), fleet:()=>genFleet(), sweeper:()=>genSweeper(), frets:()=>genFrets(), sight:()=>genSight(), hunt:()=>genHunt(), hidden:genHidden, oddone:genOddOne, shades:genShades, reshape:genReshape, blaster:genBlaster, diatonic:genDiatonic, numeral:genNumeral, staff:genStaff, slash:genSlash, key:genKey, harp:genHarp, missing:genMissing,
   melody:()=>genMelody(false), solfa:()=>genMelody(true), chordscale:genChordScale, smooth:genSmooth, whichvoice:genWhichVoice, simon:genSimon, directions:genDirections, pluckchord:genPluckChord, buildscale:genBuildScale,
   scale:genScale, transpose:genTranspose, temper:genTemper, tune:genTune};
 const MYSTERY=new Set(["scale","transpose","temper","tune"]);
-const LABELS={spell:"Spell it", hidden:"Hidden layout", oddone:"Odd one out", shades:"Shades of the third", reshape:"Reshape", blaster:"Chord Invaders", command:"Harp Command", snake:"Chord Snake", asteroids:"Chord Asteroids", stack:"Chord Stack", breakout:"Chord Breakout", fifths:"Fifths Defender", chopper:"Chopper Rescue", fleet:"Key Fleet", sweeper:"Chord Sweeper", frets:"Between the Frets", sight:"Sight Line", hunt:"Chord Hunt", fux:"Fux", diatonic:"Seven chords", numeral:"Numerals", staff:"On the staff", slash:"Slash chords", key:"Key detective", harp:"Harp hunt", missing:"Missing note", mix:"Mix",
+const LABELS={spell:"Spell it", hidden:"Hidden layout", oddone:"Odd one out", shades:"Shades of the third", reshape:"Reshape", blaster:"Chord Invaders", command:"Harp Command", snake:"Chord Snake", asteroids:"Chord Asteroids", stack:"Chord Stack", breakout:"Chord Breakout", fifths:"Fifths Defender", chopper:"Chopper Rescue", fleet:"Key Fleet", sweeper:"Chord Sweeper", frets:"Between the Frets", sight:"Sight Line", hunt:"Chord Hunt", diatonic:"Seven chords", numeral:"Numerals", staff:"On the staff", slash:"Slash chords", key:"Key detective", harp:"Harp hunt", missing:"Missing note", mix:"Mix",
   melody:"Play by number", solfa:"Play by solfège", chordscale:"Chord scales", smooth:"Smooth moves", whichvoice:"Which voice moved?", simon:"Simon says", directions:"Follow the directions", pluckchord:"Pluck the chord", buildscale:"Build the scale",
   scale:"Scale detective", transpose:"Transpose detective", temper:"Temperament taster", tune:"Tune up"};

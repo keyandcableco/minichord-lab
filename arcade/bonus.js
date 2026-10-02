@@ -97,7 +97,7 @@ function bonusEnd(b){
     if(!blast || blast.bonus!==b) return;
     bonusShift(blast, performance.now()-blast.bonusStart);
     blast.bonus=null; blast.phase=blast.bonusPhase||"play"; blast.last=performance.now();
-    const bar=window[({blaster:"blastBar", command:"blastBarCommand", snake:"snBar", asteroids:"asBar", stack:"stBar", breakout:"boBar", fifths:"fdBar", chopper:"chBar", fleet:"kfBar", sweeper:"swBar", hunt:"hdBar", fux:"fuBar"})[blast.kind]];
+    const bar=window[({blaster:"blastBar", command:"blastBarCommand", snake:"snBar", asteroids:"asBar", stack:"stBar", breakout:"boBar", fifths:"fdBar", chopper:"chBar", fleet:"kfBar", sweeper:"swBar", hunt:"hdBar"})[blast.kind]];
     if(typeof bar==="function") bar();                        // the score, with the bonus in it
     stats.streak=stats.streak; scoreboard();
   }, b.tally && b.tally.length ? 3400 : 1800);

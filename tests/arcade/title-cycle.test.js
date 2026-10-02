@@ -1,7 +1,7 @@
 // Every game's title screen moves on by itself (title, rules, points …), before and after its demo:
 // nothing keeps rebuilding it back to the start.
 const {spawnSync}=require("child_process");
-const SLUGS=["invaders","harp-command","chord-snake","chord-asteroids","chord-stack","chord-breakout","fifths-defender","chopper-rescue","key-fleet","chord-sweeper","between-the-frets","sight-line","chord-hunt","fux"];
+const SLUGS=["invaders","harp-command","chord-snake","chord-asteroids","chord-stack","chord-breakout","fifths-defender","chopper-rescue","key-fleet","chord-sweeper","between-the-frets","sight-line","chord-hunt"];
 if(process.argv[2]){
   const t=require("./harness").load(process.argv[2]);
   (async()=>{

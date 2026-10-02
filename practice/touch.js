@@ -27,7 +27,6 @@ const TD_PROFILES={
   frets:    {chords:1, harp:"notes"},
   sight:    {chords:1, harp:"notes", knob:1},
   hunt:     {chords:1, harp:"notes"},
-  fux:      {chords:0, harp:"notes"},
 };
 const TD_EVERYTHING={chords:1, harp:"notes"};                // the Practice Room's own games
 function tdProfile(){
