@@ -7,8 +7,12 @@ key presses, checking what should happen.
 
     cd tests
     npm install        # once: jsdom
-    npm test           # every test, about five minutes, each check printed as it happens
+    npm test           # every test, several at once: about seven minutes (seventeen one at a time)
+    npm test -- -j1    # one at a time, each check printed as it happens
     npm test -- fleet  # only the tests whose names contain "fleet"
+
+Side by side, a test's checks print together when it finishes, and one that fails is run again on
+its own before it counts: the checks keep real time, and a busy machine can make a sound one miss.
 
 | Test | What it checks |
 |---|---|
