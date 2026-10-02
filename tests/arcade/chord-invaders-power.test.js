@@ -3,7 +3,7 @@
 // from the ship); a chord merely held earns nothing; it starts only from a full bar, which refills slowly; OMNI BEAM destroys anything, sweeping by itself in auto aim; a power-up is taken
 // by playing its chord; SLOW TIME halves the fall; a SHIELD saves a life; DA CAPO gives a heart back, or one
 // more; the title screen's POWER-UPS page.
-const t=require("./harness").load("invaders");
+const t=require("./harness").load("invaders", {every:true});   // every game's files: it looks across them
 (async()=>{
   const {w, sleep, check, mc, d}=t;
   await sleep(150); t.connect({extra:{7:19, 117:0, 238:1}}); await sleep(100);

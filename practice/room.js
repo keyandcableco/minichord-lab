@@ -85,7 +85,8 @@ if(!LABELS[settings.mode]) settings.mode="spell";
 // A link can open one game directly, ?game=invaders (or any game's name, like ?game=reshape),
 // and ?solo shows that game on its own, without the menu, the settings or the answer area.
 const urlParams=new URLSearchParams(location.search);
-const GAME_SLUGS={invaders:"blaster", "chord-invaders":"blaster", "harp-command":"command", harpcommand:"command", "chord-snake":"snake", "chord-asteroids":"asteroids", asteroids:"asteroids", "chord-stack":"stack", "chord-breakout":"breakout", breakout:"breakout", "fifths-defender":"fifths", fifths:"fifths", "chopper-rescue":"chopper", chopper:"chopper", "key-fleet":"fleet", fleet:"fleet", "chord-sweeper":"sweeper", sweeper:"sweeper", "between-the-frets":"frets", frets:"frets", "sight-line":"sight", sight:"sight", "chord-hunt":"hunt", hunt:"hunt", sevenchords:"diatonic", layout:"hidden"};
+// (GAME_SLUGS, each game's names for ?game=, is in practice/index.html's head, where the page's
+// scripts are chosen by it)
 { const g=(urlParams.get("game")||"").toLowerCase(), k=GAME_SLUGS[g]||g; if(LABELS[k]) settings.mode=k; }
 const solo=urlParams.has("solo") && LABELS[settings.mode] && !!urlParams.get("game");
 if(!SETS[settings.set] || settings.set==="alt") settings.set="standard";

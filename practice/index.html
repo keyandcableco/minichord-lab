@@ -3,12 +3,41 @@
 <head>
 <meta charset="utf-8">
 <script>
-// A game's own page opens this page with ?game=<name>&solo. Dress it for the arcade before the first
-// paint, and keep it hidden until the arcade's set up, so the Practice Room never flashes up first.
-(function(){ var u=new URLSearchParams(location.search), g=u.get("game"), h=document.documentElement;
+// A game's own page opens this page with ?game=<name>&solo (or ?game=<mode>&solo, as the arcade's
+// switch does). Dress it for the arcade before the first paint, and keep it hidden until the arcade's
+// set up, so the Practice Room never flashes up first.
+const GAME_SLUGS={invaders:"blaster", "chord-invaders":"blaster", "harp-command":"command", harpcommand:"command", "chord-snake":"snake", "chord-asteroids":"asteroids", asteroids:"asteroids", "chord-stack":"stack", "chord-breakout":"breakout", breakout:"breakout", "fifths-defender":"fifths", fifths:"fifths", "chopper-rescue":"chopper", chopper:"chopper", "key-fleet":"fleet", fleet:"fleet", "chord-sweeper":"sweeper", sweeper:"sweeper", "between-the-frets":"frets", frets:"frets", "sight-line":"sight", sight:"sight", "chord-hunt":"hunt", hunt:"hunt", sevenchords:"diatonic", layout:"hidden"};
+const ARCADE_KINDS=["blaster","command","snake","asteroids","stack","breakout","fifths","chopper","fleet","sweeper","frets","sight","hunt"];
+(function(){ var u=new URLSearchParams(location.search), g=(u.get("game")||"").toLowerCase(), h=document.documentElement;
   if(!u.has("solo") || !g) return; h.classList.add("solo");
-  if(/^(invaders|chord-invaders|harp-command|harpcommand|chord-snake|chord-asteroids|chord-stack|chord-breakout|fifths-defender|chopper-rescue|key-fleet|chord-sweeper|between-the-frets|sight-line|chord-hunt)$/.test(g)){
+  if(ARCADE_KINDS.includes(GAME_SLUGS[g]||g)){
     h.classList.add("arcadepage","arcadeboot"); setTimeout(function(){ h.classList.remove("arcadeboot"); }, 4000); }   // never hidden for long, whatever happens
+})();
+// The page's own scripts, in the order they run: plain scripts sharing one scope, run by boot.js once
+// the core modules are in. A game's own files carry its name, so an arcade game opened on its own
+// loads the shared files and its own, not every game's; anything else (the Practice Room, an ear
+// game on its own) loads them all. They're fetched from here, while the rest of the page arrives.
+const ALL_SCRIPTS=[
+  "games.js", "../arcade/powers.js", "../arcade/games/invaders.js", "../arcade/matrix.js", "keyboard.js",
+  ["../arcade/games/harp-command.js","command"], ["../arcade/games/harp-command-power.js","command"],
+  "../arcade/controller.js", "../arcade/controls.js", ["../arcade/games/chord-snake.js","snake"],
+  ["../arcade/games/chord-asteroids.js","asteroids"],
+  ["../arcade/games/chord-asteroids-power.js","asteroids"], ["../arcade/games/chord-stack.js","stack"],
+  "../arcade/cabinet.js", ["../arcade/games/chord-breakout.js","breakout"],
+  ["../arcade/games/chord-breakout-power.js","breakout"], ["../arcade/games/fifths-defender.js","fifths"],
+  "../arcade/kit.js", "../arcade/pixel-minichord.js", ["../arcade/games/chopper-rescue.js","chopper"],
+  ["../arcade/games/chopper-rescue-power.js","chopper"], ["../arcade/games/key-fleet.js","fleet"],
+  ["../arcade/games/chord-sweeper.js","sweeper"], ["../arcade/games/between-the-frets.js","frets"],
+  ["../arcade/games/sight-line.js","sight"], ["../arcade/games/chord-hunt.js","hunt"],
+  ["../arcade/games/chord-hunt-power.js","hunt"], "../arcade/sounds.js",
+  "../arcade/games/invaders-demo.js", "../arcade/games/invaders-power.js", "../arcade/screen.js",
+  "../arcade/bonus.js", "room.js"];
+const PAGE_SCRIPTS=(function(){
+  var u=new URLSearchParams(location.search), g=(u.get("game")||"").toLowerCase(), k=GAME_SLUGS[g]||g;
+  var solo=u.has("solo") && ARCADE_KINDS.includes(k);
+  var list=ALL_SCRIPTS.filter(function(s){ return typeof s==="string" || !solo || s[1]===k; }).map(function(s){ return typeof s==="string" ? s : s[0]; });
+  list.forEach(function(src){ var l=document.createElement("link"); l.rel="preload"; l.as="script"; l.href=src; document.head.appendChild(l); });
+  return list;
 })();
 </script>
 <style>html.arcadeboot body{visibility:hidden}html.arcadeboot{background:#07060C}</style>
@@ -1207,38 +1236,6 @@ details.fold[open] .nowplaying{display:none}
 </main>
 
 <script type="module" src="boot.js"></script>
-<script defer src="games.js"></script>
-<script defer src="../arcade/powers.js"></script>
-<script defer src="../arcade/games/invaders.js"></script>
-<script defer src="../arcade/matrix.js"></script>
-<script defer src="keyboard.js"></script>
-<script defer src="../arcade/games/harp-command.js"></script>
-<script defer src="../arcade/games/harp-command-power.js"></script>
-<script defer src="../arcade/controller.js"></script>
-<script defer src="../arcade/games/chord-snake.js"></script>
-<script defer src="../arcade/games/chord-asteroids.js"></script>
-<script defer src="../arcade/games/chord-asteroids-power.js"></script>
-<script defer src="../arcade/games/chord-stack.js"></script>
-<script defer src="../arcade/cabinet.js"></script>
-<script defer src="../arcade/games/chord-breakout.js"></script>
-<script defer src="../arcade/games/chord-breakout-power.js"></script>
-<script defer src="../arcade/games/fifths-defender.js"></script>
-<script defer src="../arcade/kit.js"></script>
-<script defer src="../arcade/pixel-minichord.js"></script>
-<script defer src="../arcade/games/chopper-rescue.js"></script>
-<script defer src="../arcade/games/chopper-rescue-power.js"></script>
-<script defer src="../arcade/games/key-fleet.js"></script>
-<script defer src="../arcade/games/chord-sweeper.js"></script>
-<script defer src="../arcade/games/between-the-frets.js"></script>
-<script defer src="../arcade/games/sight-line.js"></script>
-<script defer src="../arcade/games/chord-hunt.js"></script>
-<script defer src="../arcade/games/chord-hunt-power.js"></script>
-<script defer src="../arcade/sounds.js"></script>
-<script defer src="../arcade/games/invaders-demo.js"></script>
-<script defer src="../arcade/games/invaders-power.js"></script>
-<script defer src="../arcade/screen.js"></script>
-<script defer src="../arcade/bonus.js"></script>
-<script defer src="room.js"></script>
 <!-- say-thanks -->
 <p style="text-align:center;margin:28px 0 18px;font-size:14px;opacity:0.8">Minichord Lab by <a href="https://keyandcable.com/projects.html" target="_blank" rel="noopener" style="color:inherit">The Key &amp; Cable Company</a> &middot; <a href="https://keyandcable.com/thanks.html" target="_blank" rel="noopener" style="color:inherit;font-weight:bold">Say thanks</a></p>
 </body>

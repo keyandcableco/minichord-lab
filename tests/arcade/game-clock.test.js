@@ -1,7 +1,7 @@
 // Every game's clock keeps true time on a slow machine: a frame is counted as up to a tenth of a
 // second, so at ten frames a second the game runs at its own speed, choppy rather than in slow motion
 // (it was a twentieth, a thirtieth in Chord Breakout, which a big full screen fell below).
-const t=require("./harness").load("chord-breakout");
+const t=require("./harness").load("chord-breakout", {every:true});   // every game's files: it looks across them
 (async()=>{
   const {w, sleep, check}=t;
   await sleep(150); t.connect(); await sleep(100);

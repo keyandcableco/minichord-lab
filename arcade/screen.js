@@ -343,7 +343,9 @@ function blastKill(hit, how){
   }
   blastBar();
 }
-const GENS={spell:genSpell, command:genCommand, snake:genSnake, asteroids:genAsteroids, stack:genStack, breakout:genBreakout, fifths:genFifths, chopper:genChopper, fleet:genFleet, sweeper:genSweeper, frets:genFrets, sight:genSight, hunt:genHunt, hidden:genHidden, oddone:genOddOne, shades:genShades, reshape:genReshape, blaster:genBlaster, diatonic:genDiatonic, numeral:genNumeral, staff:genStaff, slash:genSlash, key:genKey, harp:genHarp, missing:genMissing,
+// the arcade games' generators are looked up only when asked for: a game opened on its own
+// (?game=…&solo) loads only its own file, so the others aren't there
+const GENS={spell:genSpell, command:()=>genCommand(), snake:()=>genSnake(), asteroids:()=>genAsteroids(), stack:()=>genStack(), breakout:()=>genBreakout(), fifths:()=>genFifths(), chopper:()=>genChopper(), fleet:()=>genFleet(), sweeper:()=>genSweeper(), frets:()=>genFrets(), sight:()=>genSight(), hunt:()=>genHunt(), hidden:genHidden, oddone:genOddOne, shades:genShades, reshape:genReshape, blaster:genBlaster, diatonic:genDiatonic, numeral:genNumeral, staff:genStaff, slash:genSlash, key:genKey, harp:genHarp, missing:genMissing,
   melody:()=>genMelody(false), solfa:()=>genMelody(true), chordscale:genChordScale, smooth:genSmooth, whichvoice:genWhichVoice, simon:genSimon, directions:genDirections, pluckchord:genPluckChord, buildscale:genBuildScale,
   scale:genScale, transpose:genTranspose, temper:genTemper, tune:genTune};
 const MYSTERY=new Set(["scale","transpose","temper","tune"]);

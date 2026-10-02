@@ -32,14 +32,6 @@ function asNearest(kind){
   const cx=blast.cx, cy=blast.cy;
   return blast.rocks.filter(r=>!r.dead && r.kind===kind).sort((a,b)=>Math.hypot(a.x-cx,a.y-cy)-Math.hypot(b.x-cx,b.y-cy))[0]||null;
 }
-// the harp plays notes here, not a d-pad: chromatic from C, untransposed, at its own volume
-function asHarp(){
-  if(!canWrite()) return;
-  harpInOrder();
-  if(hasSetting(116)) borrow(116,1);
-  borrow(98,1); if(hasSetting(36)) borrow(36, mc.params[36] ?? 0);
-  if(hasSetting(30)) ensure(30,0);
-}
 function startAsteroids(){
   blast={kind:"asteroids", rocks:[], score:0, lives:3, level:0, clears:0, over:true, phase:"menu", raf:0, field:null, hud:null, fx:null,
     noShip:true, asteroids:true, last:performance.now(), next:0, shipAng:-Math.PI/2, cx:400, cy:230, jamUntil:0, rockId:0};

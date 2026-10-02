@@ -7,14 +7,18 @@ const fs=require("fs"), path=require("path");
 const {JSDOM}=require("jsdom");
 const ROOT=path.resolve(__dirname,"../..");
 
-function load(slug, {storage}={}){
+function load(slug, {storage, every}={}){
   const html=fs.readFileSync(path.join(ROOT,"practice/index.html"),"utf8");
   const first=html.indexOf('<script type="module"'), body=html.slice(html.indexOf("<body>")+6, first);
-  // the page's own scripts, in its order (boot.js, a module, is stood in for below)
-  const scripts=[...html.slice(first).matchAll(/<script defer src="([^"]+)"><\/script>/g)].map(m=>path.resolve(ROOT,"practice",m[1]));
   const dom=new JSDOM(`<!doctype html><html><body>${body}</body></html>`,
     {runScripts:"dangerously", pretendToBeVisual:true, url: slug ? `http://localhost/practice/?game=${slug}&solo` : `http://localhost/practice/`});
   const w=dom.window;
+  // the head's script, which chooses the page's own scripts (a game on its own loads only the shared
+  // ones and its own), then those, in its order (boot.js, a module, is stood in for below). {every:true}
+  // loads every game's, for a test that looks across the games from one game's page.
+  const head=html.match(/<script>\n(\/\/ A game's own page opens this page[\s\S]*?)<\/script>/)[1];
+  { const el=w.document.createElement("script"); el.textContent=head; w.document.head.appendChild(el); }
+  const scripts=w.eval(every ? "ALL_SCRIPTS.map(s=>typeof s==='string' ? s : s[0])" : "PAGE_SCRIPTS").map(f=>path.resolve(ROOT,"practice",f));
   // bonus rounds off, so a test that climbs levels isn't interrupted, unless it asks for them
   const st=storage||{}; st.saved={bonus:false, ...(st.saved||{})};
   w.localStorage.setItem("lab-spellbound", JSON.stringify(st));

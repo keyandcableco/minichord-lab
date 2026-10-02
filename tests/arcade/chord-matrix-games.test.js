@@ -2,7 +2,7 @@
 // chords are ("Sus4 and sus2", not "Major and minor"), a level that only changes roots or keys keeps
 // its name, the Barry Harris and slash levels step aside, and Asteroids, Snake and Breakout deal the
 // alternate chords; Asteroids, played, sets the minichord up and drops them.
-const t=require("./harness").load("chord-asteroids");
+const t=require("./harness").load("chord-asteroids", {every:true});   // every game's files: it looks across them
 (async()=>{
   const {w, sleep, check, mc}=t;
   const slots={}; for(let i=0;i<7;i++) slots[202+i]=0;
