@@ -36,10 +36,13 @@ function tdProfile(){
   // bonus round tuned by a knob (TUNE IT) has one while it plays, whatever the game
   if(blast && blast.kind==="blaster" && (blast.aimManual || saved.invAim)) return {...p, knob:1};
   if(blast && blast.bonus && !blast.bonus.over && blast.bonus.g && blast.bonus.g.knob && !p.knob) return {...p, knob:1};
+  // and a bonus round played on the harp's notes (MISSING NOTE) has the strings while it plays, in a
+  // game whose harp is a d-pad
+  if(blast && blast.bonus && !blast.bonus.over && blast.bonus.g && blast.bonus.g.harp && p.harp!=="notes") return {...p, harp:"notes"};
   return p;
 }
 // what the deck is built for: when it changes (another game, or manual aim chosen), the deck's built again
-const tdShape=()=>{ const p=tdProfile(); return (blast && blast.field ? blast.kind : "")+"|"+(p.knob||0)+"|"+tdPianoOn(); };
+const tdShape=()=>{ const p=tdProfile(); return (blast && blast.field ? blast.kind : "")+"|"+(p.knob||0)+"|"+(p.harp||"")+"|"+tdPianoOn(); };
 // A finger near the line between two rows presses both, so one thumb plays the chords that take two
 // buttons in a column and lie next to each other: major and minor (diminished), minor and seventh
 // (minor seventh). The edge is this much of a button's height, on each side of the line.

@@ -76,7 +76,16 @@ const size=(el, w, h)=>{ el.getBoundingClientRect=()=>({left:0, top:0, right:w, 
     a.queue.length=0;
     finger(sn, d.querySelector(`.tdz-${turn}`), "pointerdown", 4, 5, 5); await sleep(30); finger(sn, d.querySelector(`.tdz-${turn}`), "pointerup", 4, 5, 5);
     let ok=false; for(let i=0;i<20 && !ok;i++){ await sleep(40); ok=a.queue.includes(turn) || a.dir===turn; }
-    check("the d-pad steers the snake", ok, `${turn}: ${a.dir} ${a.queue}`); }
+    check("the d-pad steers the snake", ok, `${turn}: ${a.dir} ${a.queue}`);
+    // a bonus round played on the harp's notes: the strings while it plays, the d-pad after
+    w.eval('arcadeBonus("missing")'); await sleep(600);
+    check("MISSING NOTE in Chord Snake puts the strings on the deck in place of the d-pad", !!d.querySelector(".tdharp") && !d.querySelector(".tddpad"));
+    const b=w.eval("blast.bonus"); for(let i=0;i<80 && !b.ready;i++) await sleep(100);
+    const h=d.querySelector(".tdharp"); size(h, 1200, 40); const x=w.eval(`pcOfName(blast.bonus.ans)`)*100+50;
+    finger(sn, h, "pointerdown", 11, x, 20); finger(sn, h, "pointerup", 11, x, 20); await sleep(50);
+    check("and a string plucked there finds the missing note", b.n===1, `${b.n} found`);
+    w.eval("clearInterval(blast.bonus.timer); blast.bonus.over=true; blast.bonus.el.remove(); blast.bonus=null; blast.phase='play'"); await sleep(600);
+    check("the round over, the d-pad is back", !!d.querySelector(".tddpad") && !d.querySelector(".tdharp")); }
 
   // ---------- Chord Breakout: the strings and the knob ----------
   { const {w, d, mc}=bo;
