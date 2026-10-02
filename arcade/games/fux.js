@@ -190,7 +190,7 @@ function buildFuxField(box){
 // pitch ladder the notes sit on
 function fuLayout(){
   if(!blast || blast.kind!=="fux" || !blast.field) return;
-  const W=fieldW(), H=fieldH(), m=Math.max(26, W*.05), ships=!!fuLevel().ships && blast.phase==="play";
+  const W=fieldW(), H=fieldH(), m=Math.max(26, W*.05), ships=!!blast.ship || (!!fuLevel().ships && blast.phase==="play");
   blast.cannons = ships ? null : [...Array(12)].map((_,i)=>({x:m+(W-2*m)*i/11, fired:(blast.cannons&&blast.cannons[i])?blast.cannons[i].fired:0}));
   blast.noShip=ships;                                                // Two Ships draws its own, on the ladder
   blast.L={W, H, m, barW:(W-2*m)/11, top:96, bottom:H-66};
@@ -322,7 +322,7 @@ function fuTick(now){
   const dt=Math.min(DT_MAX,(now-blast.last)/1000); blast.last=now;
   if(blast.fx) fxDraw(now, dt);
   const ln=blast.line;
-  if(blast.ship && blast.phase==="play") shTick(dt);
+  if(blast.ship && (blast.phase==="play" || blast.phase==="demo")) shTick(dt);
   else if(ln && !ln.done && blast.L && (blast.phase==="play" || (blast.phase==="demo" && !blast.demoHold))){
     blast.scroll+=blast.L.barW/(ln.secs||fuSecs())*dt*(ln.rush ? FU_RUSH : 1);
     // a bar is past the cannons (and out of reach) at the left edge, and keeps scrolling till it's off
@@ -468,7 +468,27 @@ function fuDemo(){
       const i=blast.cannons.reduce((m,c,k)=>Math.abs(c.x-bad.x)<Math.abs(blast.cannons[m].x-bad.x) ? k : m, 0);
       fuShoot(i); await step(2600); blast.demoHold=false;
       say("SHELLS AND LIVES","A SHOT AT A GOOD BAR SPENDS A SHELL. A WRONG BAR THAT SCROLLS OFF THE LEFT COSTS A LIFE."); await step(4200);
-      say("LATER","DISSONANCES, HIDDEN FIFTHS, BAD LEAPS, THE CADENCE, COUNTERPOINT BELOW, AND TWO NOTES AGAINST ONE."); await step(4200);
+      say("LATER IN PATROL","DISSONANCES, HIDDEN FIFTHS, BAD LEAPS, THE CADENCE, COUNTERPOINT BELOW, AND TWO NOTES AGAINST ONE."); await step(3800);
+      // Two Ships: Fux's Dorian cantus, written against: a crash warned of, then the line to the dock
+      fuClearBars(); blast.line=null;
+      const s=shSetup(0, true, 1), sol=CP.solve({cantus:s.cantus, mode:s.mode, species:1, above:true, pitches:s.window, seed:3});
+      if(!sol) throw 0;
+      s.ready=true; fuLayout();
+      say("TWO SHIPS","THEN YOU WRITE IT. THE CANTUS IS THE BLUE SHIP. PLUCK A STRING TO MOVE YOURS, A CHORD BUTTON TO COMMIT.");
+      s.cantus.forEach((n,i)=>gameLater(()=>{ if(blast.ship===s) fuPiano([n], .4, 70); }, i*450)); await step(s.cantus.length*450+600);
+      const write=async(p, wait=900)=>{ const i=shWindow(s, s.ficta).indexOf(p); fuPiano([p], .8, 84); shPluck({note:s.dev[i], string:i}); await step(wait); };
+      const commit=async(wait=700)=>{ shCommit(); if(!s.done) fuPiano([s.cantus[s.slots[s.at].bar]], .8, 70); await step(wait); };
+      await write(sol[0], 1400); await commit(900);
+      say("THE COLOURS","THE LINE BETWEEN THE SHIPS SHOWS THE INTERVAL: GOLD PERFECT, GREEN IMPERFECT, RED A DISSONANCE.");
+      await write(sol[1], 1800); await commit(900);
+      // parallel fifths, plucked: LOCK-ON
+      const c1=s.cantus[2], prev=CP.interval(s.mode, s.cantus[1], sol[1]);
+      const crashNote=s.window.find(p=>prev.class==="perfect" ? p-c1===sol[1]-s.cantus[1] : CP.interval(s.mode,c1,p).class==="dissonant");
+      if(crashNote!=null){ say("LOCK-ON","PLUCK A NOTE THAT WOULD CRASH, A DISSONANCE OR PARALLEL FIFTHS, AND YOU'RE WARNED BEFORE YOU COMMIT IT."); await write(crashNote, 3600); }
+      say("CONTRARY MOTION","MOVE AGAINST THE CANTUS AND THE COMBO CLIMBS. LAND THE CADENCE, A SIXTH TO THE OCTAVE, AND THE SHIPS DOCK.");
+      for(let k=2;k<sol.length;k++){ await write(sol[k], 650); await commit(450); }
+      say("ALOYSIUS","DOCKED, YOUR LINE IS PLAYED BACK AND FUX'S MASTER GRADES IT."); await step(5200);
+      shClear(); fuClearBars(); blast.line=null; fuLayout(); fuLadder(); fuSign();
       endFuDemo(token);
     }catch(e){ /* skipped */ }
   })();

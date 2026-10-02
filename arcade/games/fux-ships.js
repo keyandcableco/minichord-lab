@@ -46,7 +46,7 @@ function shName(s, f, flat){ const ps=shShape(s, flat)[f.bar]; return fuName(f, 
 function shTune(s, ficta){
   const w=shWindow(s, ficta), r=mod(w[0],12);
   s.dev=w.map(p=>p-w[0]+60+r);                                     // what each string sends
-  if(!canWrite()) return;
+  if(!canWrite() || blast.phase==="demo") return;                  // the demo plays on the page alone
   const mask=w.reduce((m,p)=>m|(1<<mod(p-r,12)),0);
   const f=[0,1,2,3,4,5,-1,-2,-3,-4,-5,6].find(x=>mod(x*7,12)===r);
   borrow(98,0); if(hasSetting(30)) ensure(30,0);
@@ -72,22 +72,28 @@ function shStart(){
     if(clean && (L.species===1 || clean[clean.length-2].length===2)) pick={ci, above};
   }
   if(!pick){ banner("ALOYSIUS IS THINKING", "ONE MOMENT"); gameLater(()=>shStart(), 1500); return; }
-  const c=CP.CANTUS[pick.ci], mode=CP.MODES[c.mode];
-  const s={ci:pick.ci, cantus:c.cantus, mode, modeName:c.mode, above:pick.above, species:L.species,
-    window:CP.harpWindow(mode, c.cantus, pick.above), at:0, flat:[], pick:null, combo:1, faults:0, crashes:0, contrary:0, view:0, done:false};
-  s.slots=shSlots(s);
-  blast.ship=s; blast.lineNo++;
-  // the ladder spans the cantus and the strings
-  const pos=s.window.concat(s.cantus).map(p=>CP.degree(mode,p).pos);
-  blast.line={mode, modeName:c.mode, cantus:c.cantus, species:L.species, above:pick.above, lo:Math.min(...pos), hi:Math.max(...pos), ships:true, done:false};
-  fuClearBars(); fuLayout();
-  blast.bars=s.cantus.map((cn,i)=>{ const el=document.createElement("div"); el.className="fubar ship"; blast.field.appendChild(el); return {i, c:cn, p:[], el, bad:[], x:0}; });
-  shTune(s, false);
-  fuLadder(); fuSign(); shDrawAll(); fuBar();
+  blast.lineNo++;
+  const s=shSetup(pick.ci, pick.above, L.species), c=CP.CANTUS[pick.ci];
   banner(`CANTUS ${blast.lineNo} OF ${SH_ROUNDS}`, `${c.mode.toUpperCase()} · YOUR LINE ${pick.above?"ABOVE":"BELOW"} IT`);
   // the cantus, sung through once first, as a singer would hear it before writing against it
   const per=.5; s.cantus.forEach((n,i)=>gameLater(()=>{ if(blast.ship===s) fuPiano([n], per*.95, 72); }, 1600+i*per*1000));
   gameLater(()=>{ if(blast.ship!==s) return; s.ready=true; shBegin(s); }, 1900+s.cantus.length*per*1000);
+}
+// a cantus onto the field, ready to be written against: its bars, the ladder, the harp tuned to it
+function shSetup(ci, above, species){
+  const c=CP.CANTUS[ci], mode=CP.MODES[c.mode];
+  const s={ci, cantus:c.cantus, mode, modeName:c.mode, above, species,
+    window:CP.harpWindow(mode, c.cantus, above), at:0, flat:[], pick:null, combo:1, faults:0, crashes:0, contrary:0, view:0, done:false};
+  s.slots=shSlots(s);
+  blast.ship=s;
+  // the ladder spans the cantus and the strings
+  const pos=s.window.concat(s.cantus).map(p=>CP.degree(mode,p).pos);
+  blast.line={mode, modeName:c.mode, cantus:c.cantus, species, above, lo:Math.min(...pos), hi:Math.max(...pos), ships:true, done:false};
+  fuClearBars(); fuLayout();
+  blast.bars=s.cantus.map((cn,i)=>{ const el=document.createElement("div"); el.className="fubar ship"; blast.field.appendChild(el); return {i, c:cn, p:[], el, bad:[], x:0}; });
+  shTune(s, false);
+  fuLadder(); fuSign(); shDrawAll(); fuBar();
+  return s;
 }
 function shBegin(s){
   fuSay(s.species===2 ? "Two notes to each of mine. Begin on a perfect consonance." : "Begin on a perfect consonance. Then move against me.");
@@ -136,13 +142,14 @@ function shCommit(){
   if(crash.length){
     // a crash: the note (and any it depends on: the cadence's sixth, a dissonance that didn't pass) back
     const f=crash[0], back=Math.min(...crash.map(c=>s.slots.findIndex(q=>q.bar===c.bar && q.beat===(c.beat||0))).filter(i=>i>=0), s.at);
-    s.crashes++; s.combo=1; blast.lives--;
+    const demo=blast.phase==="demo";
+    s.crashes++; s.combo=1; if(!demo) blast.lives--;
     explode(x, y, 22, ["#FF4B3E","#FFD35A","#FFF4C2"]); sfx("crash"); buzz(blast.field,true);
     const name=shName(s, f, flat);
     heard(name, false, "CRASH");
     fuSay(FU_SAYS[f.rule] ? FU_SAYS[f.rule][1] : name, 4200);
     fuBar();
-    if(blast.lives<=0){ s.done=true; gameLater(()=>fuOver(), 1600); return; }
+    if(!demo && blast.lives<=0){ s.done=true; gameLater(()=>fuOver(), 1600); return; }
     s.flat.length=back; s.at=back; shNow(s);
     return;
   }
@@ -153,7 +160,8 @@ function shCommit(){
     fuSay(FU_SAYS[faults[0].rule] ? FU_SAYS[faults[0].rule][0] : shName(s, faults[0], flat)); }
   else if(contrary){ s.contrary++; s.combo=Math.min(4, s.combo+1); sfx("hit"); heard(`CONTRARY MOTION`, true, ""); }
   else sfx("shoot");
-  const pts=mulPts(10*s.combo*(blast.level+1)); blast.score+=pts; scoreboard(); fuBar();
+  const pts=blast.phase==="demo" ? 10*s.combo : mulPts(10*s.combo*(blast.level+1));
+  if(blast.phase!=="demo"){ blast.score+=pts; scoreboard(); fuBar(); }
   popup(x, y-24, `+${pts}${s.combo>1?` ×${s.combo}`:""}`);
   s.at++;
   if(s.at>=s.slots.length) return shDock(s);
@@ -171,13 +179,14 @@ function shDock(s){
   // the whole line, both voices, as it was written
   const per=.55; s.cantus.forEach((c,b)=>{ const ps=shShape(s,s.flat)[b]; const notes=Array.isArray(ps)?ps:[ps];
     fuPiano([c], per*.95, 66, .3+b*per); notes.forEach((p,j)=>fuPiano([p], per/notes.length*.95, 80, .3+b*per+j*per/notes.length)); });
-  const pass=approval>=50, bonus=pass ? mulPts(3*approval*(blast.level+1)) : 0;
-  blast.score+=bonus; scoreboard();
+  const demo=blast.phase==="demo", pass=approval>=50, bonus=pass && !demo ? mulPts(3*approval*(blast.level+1)) : 0;
+  if(bonus){ blast.score+=bonus; scoreboard(); }
   const notes=all.filter(f=>CP.forbidden(f) || f.severity==="style").slice(0,4).map(f=>`<li>BAR ${f.bar+1}: ${shName(s, f, s.flat)}</li>`).join("");
   const el=document.createElement("div"); el.className="fureview";
   el.innerHTML=`<b class="${pass?"":"no"}">${word}</b><span>APPROVAL ${approval}${bonus?` · +${bonus}`:""}</span><em>${say}</em>${notes?`<ul>${notes}</ul>`:""}`;
   blast.field.appendChild(el); s.reviewEl=el;
   fuSay(say, 6000); fuBar();
+  if(demo) return;                                                    // the demo says what comes next itself
   gameLater(()=>{ el.remove();
     if(!pass){ blast.lives--; fuBar(); buzz(blast.field,true); if(blast.lives<=0){ fuOver(); return; } blast.lineNo--; banner("AGAIN", "A NEW CANTUS"); gameLater(()=>shStart(), 2000); return; }
     if(blast.lineNo>=SH_ROUNDS){ blast.level++; blast.lineNo=0; sfx("level"); banner(`LEVEL ${blast.level+1}`, blast.level<FU_LEVELS.length ? fuLevel().n.toUpperCase() : "FASTER!"); fuBar(); gameLater(()=>fuLineStart(), 2600); return; }
