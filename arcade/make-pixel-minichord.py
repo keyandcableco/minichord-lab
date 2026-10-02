@@ -7,16 +7,19 @@
 It writes, beside the grid:
     pixel-minichord.js   the drawing, for the lobby's INSERT MINICHORD sign and Ben in Chopper Rescue
     favicon.svg          the arcade's favicon: the drawing turned 45 degrees clockwise, outlined and
-                         fitted to its square
-    favicon-32.png       the favicon as a picture, for browsers that don't take an SVG one (needs
-                         Pillow: pip install pillow; without it, everything else is still made)
+                         fitted to its square, its body white rather than gold
+    favicon-32.png       the favicon as a picture, for browsers that don't take an SVG one
+    icons/*.png          the home-screen icons: the favicon on the arcade's dark, plain and maskable
+                         (the PNGs need Pillow: pip install pillow; without it, the rest is still made)
 """
 import math, os, sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 GRID = os.path.join(HERE, "pixel-minichord.txt")
 COLOURS = {"#": "#FFD35A", "x": "#16132A", "o": "#FF4B3E"}   # gold body, dark, the red light
+FAVICON_COLOURS = {**COLOURS, "#": "#FFFFFF"}                 # the favicon's body is white
 OUTLINE = "#16132A"
+ICON_BG = "#07060C"
 
 
 def read_grid():
@@ -28,10 +31,10 @@ def read_grid():
     return [r.ljust(w, ".") for r in rows], w, len(rows)
 
 
-def paths(rows):
+def paths(rows, colours=COLOURS):
     """One path per colour, each pixel a one-unit square: M x y h1 v1 h-1 z."""
     out = []
-    for ch, fill in COLOURS.items():
+    for ch, fill in colours.items():
         d = "".join(f"M{x} {y}h1v1h-1z" for y, r in enumerate(rows) for x, c in enumerate(r) if c == ch)
         if d:
             out.append(f'<path fill="{fill}" d="{d}"/>')
@@ -68,25 +71,27 @@ def make_favicon(rows, w, h):
             "  <!-- Made by make-pixel-minichord.py from pixel-minichord.txt. -->\n"
             f'  <g transform="translate({20 - mx * scale:.3f} {20 - my * scale:.3f}) scale({scale:.4f}) rotate(45) translate({-cx} {-cy})">\n'
             f'    <path d="{everything}" fill="none" stroke="{OUTLINE}" stroke-width="{1.6 / scale:.2f}" stroke-linejoin="round"/>\n'
-            f"    {paths(rows)}\n"
+            f"    {paths(rows, FAVICON_COLOURS)}\n"
             "  </g>\n"
             "</svg>\n")
 
 
-def make_png(rows, w, h, path, size=32):
-    """The favicon as a picture: drawn large, turned, outlined, fitted, then scaled down smooth."""
+def make_pngs(rows, w, h):
+    """The favicon as pictures: drawn large, turned, outlined, fitted, then scaled down smooth; the
+    32-pixel favicon on nothing, the home-screen icons on the arcade's dark (the maskable ones
+    smaller, inside the circle a phone may crop them to)."""
     try:
         from PIL import Image, ImageDraw, ImageFilter
     except ImportError:
-        print("favicon-32.png not made: Pillow isn't installed (pip install pillow)")
+        print("favicon-32.png and icons/ not made: Pillow isn't installed (pip install pillow)")
         return False
     U = 24
     img = Image.new("RGBA", (w * U, h * U), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
     for y, r in enumerate(rows):
         for x, ch in enumerate(r):
-            if ch in COLOURS:
-                d.rectangle((x * U, y * U, x * U + U - 1, y * U + U - 1), fill=COLOURS[ch])
+            if ch in FAVICON_COLOURS:
+                d.rectangle((x * U, y * U, x * U + U - 1, y * U + U - 1), fill=FAVICON_COLOURS[ch])
     img = img.rotate(-45, resample=Image.BICUBIC, expand=True)             # clockwise
     alpha = img.split()[3]
     ring = alpha.filter(ImageFilter.MaxFilter(int(U * 1.6) | 1))           # the outline, round the body
@@ -97,7 +102,14 @@ def make_png(rows, w, h, path, size=32):
     side = int(max(out.size) * 40 / 38)
     sq = Image.new("RGBA", (side, side), (0, 0, 0, 0))
     sq.paste(out, ((side - out.width) // 2, (side - out.height) // 2))
-    sq.resize((size, size), Image.LANCZOS).save(path)
+    sq.resize((32, 32), Image.LANCZOS).save(os.path.join(HERE, "favicon-32.png"))
+    for name, size, fill in (("icon-192", 192, .875), ("icon-512", 512, .875), ("apple-touch-icon", 180, .875),
+                             ("maskable-192", 192, .65), ("maskable-512", 512, .65)):
+        icon = Image.new("RGBA", (size, size), ICON_BG)
+        n = round(size * fill)
+        mark = sq.resize((n, n), Image.LANCZOS)
+        icon.alpha_composite(mark, ((size - n) // 2, (size - n) // 2))
+        icon.convert("RGB").save(os.path.join(HERE, "icons", name + ".png"))
     return True
 
 
@@ -118,8 +130,8 @@ def main():
             sys.exit(f"out of date with pixel-minichord.txt: {', '.join(stale)} (run make-pixel-minichord.py)")
         print("pixel minichord: up to date")
         return
-    png = make_png(rows, w, h, os.path.join(HERE, "favicon-32.png"))
-    print(f"pixel minichord: {w} x {h}, made pixel-minichord.js, favicon.svg" + (", favicon-32.png" if png else ""))
+    png = make_pngs(rows, w, h)
+    print(f"pixel minichord: {w} x {h}, made pixel-minichord.js, favicon.svg" + (", favicon-32.png, icons/" if png else ""))
 
 
 if __name__ == "__main__":
