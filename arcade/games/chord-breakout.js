@@ -411,10 +411,12 @@ function breakoutChord(voices){
 }
 document.addEventListener("keydown", e=>{
   if(!q || q.kind!=="breakout" || !blast || /INPUT|SELECT|TEXTAREA/.test(document.activeElement?.tagName||"")) return;
-  const d={ArrowLeft:-1,KeyA:-1,ArrowRight:1,KeyD:1}[e.code]; if(d){ e.preventDefault(); blast.keyDir=d; blast.steer="keys"; }
+  const letters = !(typeof kbOn==="function" && kbOn());          // in keyboard play the letters are the instrument's
+  const d=Object.assign({ArrowLeft:-1,ArrowRight:1}, letters?{KeyA:-1,KeyD:1}:{})[e.code]; if(d){ e.preventDefault(); blast.keyDir=d; blast.steer="keys"; }
   if((e.code==="ArrowUp" || e.code==="Space") && blast.phase==="play" && blast.balls.some(b=>b.caught)){ e.preventDefault(); boRelease(); }   // FERMATA: let it go
 });
-document.addEventListener("keyup", e=>{ if(blast && blast.kind==="breakout" && ["ArrowLeft","KeyA","ArrowRight","KeyD"].includes(e.code)) blast.keyDir=0; });
+document.addEventListener("keyup", e=>{ const letters=!(typeof kbOn==="function" && kbOn());
+  if(blast && blast.kind==="breakout" && (["ArrowLeft","ArrowRight"].includes(e.code) || letters && ["KeyA","KeyD"].includes(e.code))) blast.keyDir=0; });
 
 // ---------- Chord Breakout's demo ----------
 // The game plays itself: the paddle follows the ball, and each brick cracked is played a moment later.

@@ -209,7 +209,8 @@ function fifthsNote(pc){
 }
 document.addEventListener("keydown", e=>{
   if(!q || q.kind!=="fifths" || !blast || blast.phase!=="play" || /INPUT|SELECT|TEXTAREA/.test(document.activeElement?.tagName||"")) return;
-  const d={ArrowLeft:-1,KeyA:-1,ArrowRight:1,KeyD:1}[e.code]; if(d){ e.preventDefault(); fdAimAt(blast.aim+d); }
+  const letters = !(typeof kbOn==="function" && kbOn());          // in keyboard play the letters are the instrument's
+  const d=Object.assign({ArrowLeft:-1,ArrowRight:1}, letters?{KeyA:-1,KeyD:1}:{})[e.code]; if(d){ e.preventDefault(); fdAimAt(blast.aim+d); }
 });
 // the circle drawn on the canvas: spokes, the aimed one lit, the enemies crawling in, the hub
 // The wheel: spokes, rim, enemies and the hub's claw. Drawn on a canvas of its own at the screen's

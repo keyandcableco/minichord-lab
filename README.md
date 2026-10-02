@@ -74,3 +74,5 @@ opens it with `?game=<name>&solo`). Its code is plain scripts, loaded in order a
 
 Order matters: a script can use what an earlier one declared as soon as it runs, and what a later one
 declared only from inside a function. `tests/` checks it all, headless: `cd tests && npm install && npm test`.
+`node tools/weigh.js` says what each arcade game's own page downloads before it can play, raw and
+gzipped, against the budget a phone's page should keep to (`--all` lists every file).

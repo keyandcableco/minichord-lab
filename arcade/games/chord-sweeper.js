@@ -230,7 +230,7 @@ document.addEventListener("keydown", e=>{
   const D={ArrowUp:[0,-1],ArrowDown:[0,1],ArrowLeft:[-1,0],ArrowRight:[1,0]}[e.code];
   if(D){ e.preventDefault(); swMove(...D); }
   else if(e.code==="Space" || e.code==="Enter"){ e.preventDefault(); swSweep(); }
-  else if(e.code==="KeyX"){ e.preventDefault(); swFlag(); }
+  else if(e.code==="KeyX" && !(typeof kbOn==="function" && kbOn())){ e.preventDefault(); swFlag(); }   // in keyboard play X is C7; the harp's B flags
 });
 // a chord: defusing the mine under the cursor, if it's that mine's key's home chord
 function sweeperChord(voices){

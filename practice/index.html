@@ -181,7 +181,14 @@ const PAGE_SCRIPTS=(function(){
 .answers{margin-top:22px}
 .answers .picker{max-width:720px}
 /* ---------- Chord Invaders: an arcade cabinet ---------- */
-.field.arcade{height:clamp(500px,76vh,640px);background:#07060C;border:2px solid #000;border-top:8px solid var(--felt);font-family:"Press Start 2P",monospace;user-select:none}
+/* On a touch screen the field is played, not read: a double tap doesn't zoom it, a long press doesn't
+   offer to copy or save, and a tap doesn't flash. On a screen shorter than the field (a phone held
+   sideways) it fits the window (svh; where that's unknown, the old height). Chord Breakout and Fifths
+   Defender steer by a finger dragged across the field, as by the mouse, so there a drag steers
+   instead of scrolling the page. */
+.field.arcade{height:clamp(500px,76vh,640px);height:clamp(min(500px,100svh),76vh,640px);background:#07060C;border:2px solid #000;border-top:8px solid var(--felt);font-family:"Press Start 2P",monospace;user-select:none;
+  -webkit-user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+.field.arcade.breakout,.field.arcade.fifths{touch-action:none}
 .field.arcade canvas.fx{position:absolute;inset:0;width:100%;height:100%;image-rendering:pixelated;z-index:0}
 /* Chord Invaders' power-ups: a chord in a coloured capsule */
 .field.arcade .fchord.power{padding:.15em .45em;border:2px solid #FF5AA0;border-radius:999px;background:rgba(255,90,160,.18);box-shadow:0 0 12px rgba(255,90,160,.6)}
@@ -885,8 +892,9 @@ html.arcadepage .gamebar{align-items:flex-end}
 .bonusround.intro .botime,.bonusround.intro .boscore{visibility:hidden}
 .bocount{font:400 3rem "Press Start 2P",monospace;color:#FFD35A;text-shadow:4px 4px 0 #000;margin:0}
 /* ---- the fullscreen cabinet ---- */
-.fscab{position:fixed;inset:0;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1.6vh;padding:2vh 2vw;box-sizing:border-box;overflow:hidden;
+.fscab{touch-action:none;overscroll-behavior:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent;position:fixed;inset:0;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1.6vh;padding:2vh 2vw;box-sizing:border-box;overflow:hidden;
   background:repeating-linear-gradient(135deg,rgba(255,90,160,.08) 0 12px,transparent 12px 44px),repeating-linear-gradient(45deg,rgba(127,233,255,.05) 0 8px,transparent 8px 52px),radial-gradient(ellipse at center,#1B0F26 0%,#07060C 72%)}
+html:has(.fscab),html:has(.fscab) body{overflow:hidden;overscroll-behavior:none}   /* the page behind the cabinet stays put: no scrolling it, no pull to refresh */
 .fsmarquee{position:relative;box-sizing:border-box;width:min(94vw,calc((100dvh - 24vh)*4/3 + 8vh));padding:1.6vh 2vw;text-align:center;background:linear-gradient(180deg,#2A1236,#12081A);border:4px solid #000;box-shadow:0 0 0 3px #3A2D4E,0 0 34px rgba(255,90,160,.35)}
 .fsmarquee span{font:400 clamp(.9rem,4.4vh,2.6rem)/1.2 "Press Start 2P",monospace;color:#FFE9A8;letter-spacing:.04em;text-shadow:0 0 6px #FFD35A,0 0 16px #FF8A3D,0 0 32px #FF5AA0,4px 4px 0 #000}
 .fsmarquee::before,.fsmarquee::after{content:"";position:absolute;inset:-3px;pointer-events:none;animation:chase .5s steps(2) infinite}
