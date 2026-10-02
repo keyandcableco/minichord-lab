@@ -397,6 +397,14 @@ function beginnerRow(opts){
   }
   // and the harp's strings, named or bare: a quarter more where the game asks for notes by name
   if(harpOnScreen(cabKind())){
+    // the harp drawn as the minichord's strings, or as an octave of a piano's keys
+    const pr=document.createElement("div"); pr.className="optrow"; const pl=document.createElement("span"); pl.className="optlabel"; pl.textContent="HARP AS";
+    const pg=document.createElement("div"); pg.className="levels";
+    const pmark=b=>{ [...pg.children].forEach(x=>{ x.style.background=""; x.style.color=""; }); b.style.background="#F1E8D2"; b.style.color="#16132A"; };
+    [["STRINGS",false],["PIANO KEYS",true]].forEach(([t,v])=>{ const b=document.createElement("button"); b.textContent=t; if(!!saved.tdPiano===v) pmark(b);
+      b.title = v ? "The harp as an octave of a piano's keys, C to B, each playing its string." : "The harp's twelve strings, as on the instrument.";
+      b.onclick=()=>{ saved.tdPiano=v; save(); pmark(b); if(typeof tdSync==="function") tdSync(); }; pg.appendChild(b); });
+    pr.append(pl,pg); opts.insertBefore(pr, r);
     const hr=document.createElement("div"); hr.className="optrow"; const hl=document.createElement("span"); hl.className="optlabel"; hl.textContent="STRINGS";
     const hg=document.createElement("div"); hg.className="levels";
     const hmark=b=>{ [...hg.children].forEach(x=>{ x.style.background=""; x.style.color=""; }); b.style.background="#F1E8D2"; b.style.color="#16132A"; };

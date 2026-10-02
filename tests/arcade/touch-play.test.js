@@ -90,7 +90,22 @@ const size=(el, w, h)=>{ el.getBoundingClientRect=()=>({left:0, top:0, right:w, 
     const k=d.querySelector(".tdknob"); size(k, 200, 40);
     w.eval("window.__knob=[]; mc.addEventListener('knob', e=>window.__knob.push(Math.round(e.detail.value*100)))");
     finger(bo, k, "pointerdown", 6, 150, 20); finger(bo, k, "pointermove", 6, 170, 20); finger(bo, k, "pointermove", 6, 110, 20); finger(bo, k, "pointerup", 6, 110, 20); await sleep(30);
-    check("the knob turns by how far it's dragged, from where it was", w.eval("window.__knob.join()")==="60,30", w.eval("window.__knob.join()")); }
+    check("the knob turns by how far it's dragged, from where it was", w.eval("window.__knob.join()")==="60,30", w.eval("window.__knob.join()"));
+    // the harp as a piano's keys: an octave, the black keys over the white
+    w.eval("saved.tdPiano=true; tdSync()"); await sleep(30);
+    const p=d.querySelector(".tdharp.tdpiano");
+    check("chosen, the harp is a piano's keys: seven white and five black", !!p && p.querySelectorAll("span.w").length===7 && p.querySelectorAll("span.b").length===5);
+    check("the knob and chord buttons stay", !!d.querySelector(".tdknob") && !!d.querySelector(".tdgrid"));
+    size(p, 700, 60); w.eval("window.__harp=[]");                      // white keys 100 wide, black keys over the top 36
+    finger(bo, p, "pointerdown", 8, 50, 50); finger(bo, p, "pointermove", 8, 100, 10); finger(bo, p, "pointermove", 8, 150, 50); finger(bo, p, "pointermove", 8, 150, 10); finger(bo, p, "pointerup", 8, 150, 10); await sleep(30);
+    check("a finger slid from C up over C♯ to D plays each key and lets each go; a white key's top, between black keys, is white", w.eval("window.__harp.join()")==="+60,-60,+61,-61,+62,-62", w.eval("window.__harp.join()"));
+    finger(bo, p, "pointerdown", 9, 690, 50); finger(bo, p, "pointerup", 9, 690, 50); await sleep(30);
+    check("the last key is B", w.eval("window.__harp.slice(-2).join()")==="+71,-71", w.eval("window.__harp.join()"));
+    size(p, 40, 700); w.eval("window.__harp=[]");                     // standing beside the game: low at the bottom, the black keys on the left
+    finger(bo, p, "pointerdown", 10, 30, 650); finger(bo, p, "pointermove", 10, 5, 600); finger(bo, p, "pointerup", 10, 5, 600); await sleep(30);
+    check("standing, C is at the bottom and C♯ over it on the left", w.eval("window.__harp.join()")==="+60,-60,+61,-61", w.eval("window.__harp.join()"));
+    w.eval("saved.tdPiano=false; tdSync()"); await sleep(30);
+    check("and back to the strings", !!d.querySelector(".tdharp") && !d.querySelector(".tdpiano")); }
 
   // ---------- Chord Asteroids in manual aim: two knobs ----------
   { const {w, d}=as;

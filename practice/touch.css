@@ -25,6 +25,12 @@
 .tdharp span{flex:1 1 0;display:flex;align-items:flex-end;justify-content:center;padding-bottom:3px;font-size:.38rem;color:#6E6790;border-left:1px solid #1E1A2C}
 .tdharp span:first-child{border-left:none}
 .tdharp span.on{background:#7FE9FF;color:#16132A}
+/* or the harp as a piano's keys: an octave, C to B, the black keys over the white (touch.js places each) */
+.tdpiano{position:relative;display:block;background:#0E0A16}
+.tdpiano span{position:absolute;left:var(--a);top:0;width:var(--s);height:100%;box-sizing:border-box;padding:0 0 4px;
+  border:1px solid #0E0A16;border-radius:0 0 4px 4px;background:#F1E8D2;color:#6E6790}
+.tdpiano span.b{z-index:1;height:60%;background:#16132A;border-color:#050407;color:#8A83AC;font-size:.3rem}
+.tdpiano span.on{background:#7FE9FF;color:#16132A}
 /* the harp as a controller: the d-pad on the left, B and A on the right */
 .tddpad{flex:1 1 auto;display:grid;gap:4px;grid-template-columns:repeat(3,minmax(40px,56px)) 1fr minmax(48px,64px) minmax(48px,64px);
   grid-template-rows:1fr 1fr;grid-template-areas:". up . . b a" "left down right . b a"}
@@ -53,6 +59,11 @@
 .tdeck[data-chords=""] .tdtop{height:96px}
 .tdeck[data-chords=""] .tdharp span{font-size:.55rem}
 .tdeck[data-harp="dpad"] .tdtop{height:92px}
+/* the piano's keys want more height than strings, for the black keys over the white */
+@media not all and (orientation:landscape) and (max-height:520px){
+  .tdeck[data-piano="1"][data-chords="1"][data-knob=""] .tdtop{height:60px}
+  .tdeck[data-piano="1"][data-knob="1"] .tdtop>.tdpiano{height:60px}
+}
 
 /* ---- standing either side of the game: a phone held sideways (touch.js has the same query) ---- */
 @media (orientation:landscape) and (max-height:520px){
@@ -76,6 +87,10 @@
   .tdz-A,.tdz-B{width:100%;height:auto;max-height:100%}
   /* no chord buttons (Harp Command): nothing on the left */
   .tdeck[data-chords=""]{--tdl:0px}
+  /* the piano stands too: low at the bottom, the black keys on the left */
+  .tdpiano span{left:0;top:auto;bottom:var(--a);width:100%;height:var(--s);align-items:center;justify-content:flex-end;
+    padding:0 5px 0 0;border:1px solid #0E0A16;border-radius:0 4px 4px 0}
+  .tdpiano span.b{width:60%;height:var(--s);border-color:#050407}
 }
 
 /* ---- the page makes room for the deck, and the game's field fits what's left ---- */

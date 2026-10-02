@@ -8,7 +8,8 @@
 // and what the game plays besides, its harp (twelve strings, low to high, to pluck or strum), a d-pad
 // where the game steers on the harp, and a knob where it steers on one. Each game shows what it needs.
 //   chords   the chord buttons
-//   harp     "notes": the twelve strings; "dpad": the harp as a game controller (arcade/controller.js),
+//   harp     "notes": the twelve strings (or, for a player who knows a piano better, an octave of its
+//            keys, C to B, each playing its string: saved.tdPiano); "dpad": the harp as a game controller (arcade/controller.js),
 //            drawn as a d-pad and A and B, each plucking the string the harp layout gives it
 //   knob     a knob, turned by dragging along it; Chord Asteroids in manual aim has two, one to orbit
 //            the ship and one to aim it
@@ -38,7 +39,7 @@ function tdProfile(){
   return p;
 }
 // what the deck is built for: when it changes (another game, or manual aim chosen), the deck's built again
-const tdShape=()=>{ const p=tdProfile(); return (blast && blast.field ? blast.kind : "")+"|"+(p.knob||0); };
+const tdShape=()=>{ const p=tdProfile(); return (blast && blast.field ? blast.kind : "")+"|"+(p.knob||0)+"|"+tdPianoOn(); };
 // A finger near the line between two rows presses both, so one thumb plays the chords that take two
 // buttons in a column and lie next to each other: major and minor (diminished), minor and seventh
 // (minor seventh). The edge is this much of a button's height, on each side of the line.
@@ -94,7 +95,7 @@ function tdBuild(){
     td.deck.addEventListener("pointerup", ()=>{ piano.start(); tdFullAtTap(); tdWake(); });   // sound, full screen and staying awake may only start from a touch
     if(window.ResizeObserver) new ResizeObserver(()=>tdHeight()).observe(td.deck);
   }
-  const deck=td.deck; deck.innerHTML=""; deck.dataset.harp=p.harp||""; deck.dataset.chords=p.chords?"1":""; deck.dataset.knob=p.knob?"1":"";
+  const deck=td.deck; deck.innerHTML=""; deck.dataset.harp=p.harp||""; deck.dataset.chords=p.chords?"1":""; deck.dataset.knob=p.knob?"1":""; deck.dataset.piano=p.harp==="notes" && tdPianoOn()?"1":"";
   // the modifier, held like the instrument's, beside the chord buttons
   const modBtn=document.createElement("button"); modBtn.type="button"; modBtn.className="tdmod"; modBtn.textContent="♯"; modBtn.setAttribute("aria-label","The modifier: hold it");
   tdHold(modBtn, id=>{ tdBuzz(); vmModifier("m"+id, true); }, id=>vmModifier("m"+id, false));
@@ -212,15 +213,35 @@ function tdFinger(id, zone){
   if(was) was.zone.rows.filter(r=>!zone || !zone.rows.includes(r)).forEach(r=>vmRelease(`t${id}:${r}`));
 }
 
-// the twelve strings, low to high: a finger plucks the string it lands on and each it crosses
+// The harp as a piano's keys instead: one octave, C to B, the white keys side by side and the black
+// keys over the lines between them, each key playing the string of its note. Chosen in the game's
+// options; the strings are the instrument's, the keys for a player who knows a keyboard.
+const tdPianoOn=()=> !!saved.tdPiano;
+const TD_WHITE=[0,2,4,5,7,9,11], TD_BLACK_W=.6, TD_BLACK_L=.6;   // a black key's width (of a white key's) and length (of the keys')
+// a black key sits over the line after the white key below it
+const tdBlackAt=i=> TD_WHITE.indexOf(i-1)+1;
+/** the key at f along the keys from the lowest (0 to 1) and g across them from the black keys' end: -1 if off them */
+function tdKeyAt(f, g){
+  if(!(f>=0 && f<1 && g>=0 && g<1)) return -1;
+  const w=f*7;
+  if(g<TD_BLACK_L) for(let i=1;i<12;i++) if(!TD_WHITE.includes(i) && Math.abs(w-tdBlackAt(i))<TD_BLACK_W/2) return i;
+  return TD_WHITE[Math.floor(w)];
+}
+// the twelve strings, low to high: a finger plucks the string it lands on and each it crosses (on the
+// piano's keys, plays the key it lands on and each it slides onto)
 function tdHarp(){
-  const h=document.createElement("div"); h.className="tdharp"; h.setAttribute("aria-label","The harp");
-  for(let i=0;i<12;i++){ const s=document.createElement("span"); s.dataset.i=i; s.textContent=SHARP_NAMES[i]; h.appendChild(s); }
+  const piano=tdPianoOn(), h=document.createElement("div"); h.className="tdharp"+(piano?" tdpiano":""); h.setAttribute("aria-label", piano ? "The harp, as a piano's keys" : "The harp");
+  for(let i=0;i<12;i++){ const s=document.createElement("span"); s.dataset.i=i; s.textContent=SHARP_NAMES[i];
+    if(piano){ const wi=TD_WHITE.indexOf(i), black=wi<0;   // where along the keys it starts, and how wide it is, of a white key
+      s.className=black?"b":"w"; s.style.setProperty("--a", ((black ? tdBlackAt(i)-TD_BLACK_W/2 : wi)/7*100)+"%"); s.style.setProperty("--s", ((black ? TD_BLACK_W : 1)/7*100)+"%"); }
+    h.appendChild(s); }
   // lying along the bottom, low on the left; standing beside the game (a phone held sideways), high at
-  // the top, as the instrument's
+  // the top, as the instrument's (the piano's black keys on the far side, or standing, on the left)
   const at=e=>{ const r=h.getBoundingClientRect(); if(!r.width || !r.height) return -1;
-    if(r.height>r.width){ const f=(e.clientY-r.top)/r.height; return f<0||f>=1 ? -1 : 11-Math.floor(f*12); }
-    const f=(e.clientX-r.left)/r.width; return f<0||f>=1 ? -1 : Math.floor(f*12); };
+    const fy=(e.clientY-r.top)/r.height, fx=(e.clientX-r.left)/r.width;
+    if(piano) return r.height>r.width ? tdKeyAt(1-fy, fx) : tdKeyAt(fx, fy);
+    if(r.height>r.width) return fy<0||fy>=1 ? -1 : 11-Math.floor(fy*12);
+    return fx<0||fx>=1 ? -1 : Math.floor(fx*12); };
   const on=new Map();
   const go=(id,i)=>{ if(on.get(id)===i) return; if(on.has(id)) vmLetGo("h"+id); if(i<0){ on.delete(id); return; } on.set(id,i); tdBuzz(); vmPluck("h"+id, i); };
   h.addEventListener("pointerdown", e=>{ e.preventDefault(); tdCapture(h, e); go(e.pointerId, at(e)); });

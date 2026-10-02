@@ -292,6 +292,7 @@ function arcadeSettings(){
   if(k==="breakout") choice("PADDLE", ["NARROW","NORMAL","WIDE"], ()=>saved.boPaddle??1, i=>{ saved.boPaddle=i; save(); }, "FROM THE NEXT GAME");
   if(k==="hunt") choice("FIELD GUIDE", ["NAMES","NUMERALS","NONE"], ()=>saved.hdGuide||0, i=>{ saved.hdGuide=i; save(); }, "FROM THE NEXT GAME · LESS TO READ SCORES MORE");
   if(k!=="command" && typeof playOnScreen==="function" && playOnScreen()) choice("BUTTONS", ["LABELLED","BARE ×1.25"], ()=>saved.tdBare?1:0, i=>{ saved.tdBare=!!i; save(); if(typeof tdDraw==="function") tdDraw(); }, "THE CHORD BUTTONS ON THE SCREEN · BARE SCORES MORE");
+  if(harpOnScreen(k)) choice("HARP AS", ["STRINGS","PIANO KEYS"], ()=>saved.tdPiano?1:0, i=>{ saved.tdPiano=!!i; save(); if(typeof tdSync==="function") tdSync(); }, "THE HARP ON THE SCREEN: THE MINICHORD'S TWELVE STRINGS, OR AN OCTAVE OF A PIANO");
   if(harpOnScreen(k)) choice("STRINGS", ["LABELLED",harpBareWord(k)], ()=>saved.tdHarpBare?1:0, i=>{ saved.tdHarpBare=!!i; save(); if(typeof tdDraw==="function") tdDraw(); }, HARP_BY_NAME.has(k) ? "THE HARP'S STRINGS ON THE SCREEN · BARE SCORES MORE" : "THE HARP'S STRINGS ON THE SCREEN");
   choice("BEGINNER", ["OFF","SHOW WHAT TO PRESS"], ()=>saved.beginner?1:0, i=>{ saved.beginner=!!i; save(); helperSync(true); }, "NO HIGH SCORES WITH IT ON");
   choice("SCREEN", ["FLAT","CRT"], ()=>saved.crt?1:0, i=>{ saved.crt=!!i; save(); crtSync(); });
