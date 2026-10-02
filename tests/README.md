@@ -48,6 +48,7 @@ its own before it counts: the checks keep real time, and a busy machine can make
 | `harp-off` | a harp string let go is a `harpoff`, from the harp's port and its channel in single port mode; a chord note's release stays the chord's |
 | `counterpoint` | `core/counterpoint.js` on its own: Choir's parallels as they were; intervals by degree in the mode (d5, A4, ficta); the first and second species' rules, each caught at its bar; the solver's lines break no rule, in every mode, above and below |
 | `fux` | Parallel Patrol: the rules loaded as CP on Fux's page; every level makes lines wrong only in its own ways; the harp set chromatic; a wrong bar shot from the string under it is down and named and keeps its shell; a good bar shot spends one; a wrong bar that gets away costs a life |
+| `fux-ships` | Two Ships: the harp tuned to the cantus's window (its notes as the custom scale, the harp mode written last); LOCK-ON warns of a crash with help on and not off; a crash costs a life and the note is written again; the cadence raises the leading tone on the strings; a correct line docks and Aloysius approves; the virtual minichord's harp plays the strings as tuned |
 | `pixel-minichord` | what's made from the pixel minichord's grid is up to date; Ben holds it |
 | `chord-matrix-stack` | the alternate matrix sets the layout and deals sus chords that light and clear; the helper's buttons; the custom matrix follows the preset's slots |
 | `chord-matrix-invaders` | the chords option is offered; the alternate matrix drops sus chords that shoot down |

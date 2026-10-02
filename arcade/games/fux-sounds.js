@@ -9,5 +9,8 @@ GAME_SFX.fux={
   hit:   ({tone})=>{ [1047,1319,1568].forEach((f,i)=>tone("triangle",f,0,i*.03,.18,.45)); },
   miss:  ({tone})=>{ tone("square",233,220,0,.25,.3); tone("square",247,233,0,.25,.25); },
   away:  ({tone})=>{ tone("triangle",660,330,0,.5,.5); tone("triangle",440,220,.1,.5,.35); },
+  lock:  ({tone})=>{ tone("square",1760,1760,0,.05,.25); tone("square",1760,1760,.09,.05,.25); },        // a crash coming
+  crash: ({tone,noise})=>{ noise(0,.4,3000,90,.8); tone("square",180,45,0,.3,.45); },
+  dock:  ({tone})=>{ [392,523,659,784,1047].forEach((f,i)=>tone("triangle",f,0,i*.07,.25,.45)); },
   level: ({tone})=>{ [523,784,659,1047].forEach((f,i)=>tone("triangle",f,0,i*.12,.2,.55)); tone("triangle",1568,0,.5,.5,.4); },
 };

@@ -29,7 +29,7 @@ const ALL_SCRIPTS=[
   ["../arcade/games/chopper-rescue-power.js","chopper"], ["../arcade/games/key-fleet.js","fleet"],
   ["../arcade/games/chord-sweeper.js","sweeper"], ["../arcade/games/between-the-frets.js","frets"],
   ["../arcade/games/sight-line.js","sight"], ["../arcade/games/chord-hunt.js","hunt"],
-  ["../arcade/games/chord-hunt-power.js","hunt"], ["../arcade/games/fux.js","fux"], "../arcade/sounds.js",
+  ["../arcade/games/chord-hunt-power.js","hunt"], ["../arcade/games/fux.js","fux"], ["../arcade/games/fux-ships.js","fux"], "../arcade/sounds.js",
   ["../arcade/games/harp-command-sounds.js","command"], ["../arcade/games/chord-snake-sounds.js","snake"],
   ["../arcade/games/chord-asteroids-sounds.js","asteroids"], ["../arcade/games/chord-stack-sounds.js","stack"],
   ["../arcade/games/chord-breakout-sounds.js","breakout"], ["../arcade/games/fifths-defender-sounds.js","fifths"],
@@ -663,6 +663,21 @@ html.arcadepage .gamebar{align-items:flex-end}
 .fushells{display:inline-flex;gap:3px;vertical-align:middle;margin-left:6px}
 .fushells i{display:block;width:5px;height:10px;background:#FFD35A;box-shadow:inset 0 -6px 0 #FF4B3E}
 .fushells i.spent{opacity:.15}
+/* Two Ships: the bar being written at the ships' place, the cantus to come faint, the line's colour */
+.fubar.ship.future .funote{opacity:.35}
+.fubar.ship.now .funote{height:18px;box-shadow:0 0 0 2px #F1E8D2,0 0 14px rgba(255,211,90,.6)}
+.fubar.ship.now .funote.c{box-shadow:0 0 0 2px #F1E8D2,0 0 14px rgba(127,178,255,.6)}
+.fubar.ship.now .funote.p.now{animation:fubob 1s ease-in-out infinite alternate}
+@keyframes fubob{from{margin-top:-2px}to{margin-top:2px}}
+.fubeam.perfect{background:#FFD35A}.fubeam.imperfect{background:#7FE08A}.fubeam.dissonant{background:#FF4B3E}
+.fubar.ship.now .fubeam{width:3px;margin-left:-1.5px}
+.fubeam.lock,.funote.lock{animation:fulock .3s steps(2) infinite}
+@keyframes fulock{50%{opacity:.25}}
+.fureview{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:6;min-width:min(380px,80%);display:flex;flex-direction:column;align-items:center;gap:8px;padding:14px 18px;background:#16132A;border:3px solid #000;box-shadow:0 0 0 3px #FFD35A,6px 6px 0 #000;font:400 .5rem "Press Start 2P",monospace;color:#F1E8D2;text-align:center}
+.fureview b{font:400 1.4rem "Press Start 2P",monospace;color:#FFD35A}.fureview b.no{color:#FF4B3E}
+.fureview em{font:italic 400 .9rem "Source Serif 4",Georgia,serif;color:#F1E8D2}
+.fureview ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:5px;color:#B9C7E6}
+@media (prefers-reduced-motion:reduce){.fubar.ship.now .funote.p.now,.fubeam.lock,.funote.lock{animation:none}}
 @media (max-width:700px){.fusign{display:none}.fusay{max-width:70%;font-size:.75rem}}
 
 /* Chord Hunt: the sky, the ducks, the grass in front of them, the dog, the panel at the foot */

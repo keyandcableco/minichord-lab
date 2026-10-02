@@ -324,7 +324,21 @@ Line's staff drawing and Bravura glyphs (`drawStaff` in `practice/games.js`).
    firmi against a facsimile.
 5. ~~Parallel Patrol, species 1 then 2.~~ Built as the game's first nine levels (`arcade/games/fux.js`).
    Its harp is chromatic (each string a cannon), so the full note isn't needed yet; Two Ships needs it.
-6. Two Ships, species 1 then 2, with Aloysius.
+6. ~~Two Ships, species 1 then 2, with Aloysius.~~ First cut in `arcade/games/fux-ships.js`, as levels 7–8
+   (first species, above and below) and 12–13 (second species), after each species' Patrol levels.
+   - **Turn-based.** Pluck to choose, commit with a chord button, Enter or a tap.
+   - **Judging.** A fatal finding is a crash: a life lost, and the note rolled back to the earliest
+     slot the finding sits on (the cadence's sixth, a dissonance that didn't pass). Faults stand but
+     reset the combo; contrary motion raises it, up to ×4.
+   - **Docking.** The whole line plays, and Aloysius gives an approval out of 100 (−15 a crash, −10 a
+     fault, −4 a style finding, +2 a contrary motion). 50 passes, two cantus firmi a level.
+   - **Ficta.** Automatic on every difficulty for now: the mask swap at the cadence note.
+   - **The harp.** Key = the window's lowest note, the custom mask rotated to it, harp octave (99) for
+     the register. The firmware only transposes up, and sends the lowest string from 60 up.
+   - **Without a minichord.** The virtual minichord (`practice/virtual.js`) now tunes its harp from
+     these settings, as the firmware does.
+   - **Not yet:** a Two Ships scene in the demo, ficta by hand on Hard, tempo mode, and a whole-note
+     penultimate bar in the second species (cantus firmi that need one are skipped).
 7. Arcade integration: demo, bonus round, power-ups, registration, card.
 
 ## 11. Later

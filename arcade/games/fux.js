@@ -25,6 +25,9 @@
 //
 // The harp is played as notes, chromatic from C (asHarp), so a string is a cannon wherever the harp's
 // scale would put it; a click or a tap on the field fires the nearest cannon too.
+//
+// After each species' Patrol levels come its Two Ships levels, where the counterpoint is written on
+// the harp, a note at a time: arcade/games/fux-ships.js.
 
 // ---------- the levels ----------
 const FU_SP1=["parallel5","parallel8","dissonance","direct","antiparallel","unison","melodic","unrecovered","crossing","overlap","start","end","cadence"];
@@ -37,14 +40,19 @@ const FU_LEVELS=[
   {n:"The line itself", species:1, rules:["melodic","unrecovered","crossing","overlap","unison"], errors:3},
   {n:"The cadence, and all of it", species:1, rules:FU_SP1, errors:3},
   {n:"Counterpoint below", species:1, rules:FU_SP1, errors:3, below:true},
+  {n:"Two Ships: note against note", ships:true, species:1},
+  {n:"Two Ships: below the cantus", ships:true, species:1, below:true},
   {n:"Two against one: passing", species:2, rules:["dissonance","passing"], errors:2},
   {n:"Two against one: downbeats", species:2, rules:["dissonance","passing","parallel5","parallel8","downbeats","repeat"], errors:3},
   {n:"Two against one: all of it", species:2, rules:FU_SP2, errors:4, both:true},
+  {n:"Two Ships: two against one", ships:true, species:2},
+  {n:"Two Ships: two against one, below", ships:true, species:2, below:true},
 ];
 const FU_LINES=3;                                                   // lines a level
 const FU_RUSH=10;                                                   // how much faster a line goes once all its faults are found
 const fuLevel=(n=blast.level)=>FU_LEVELS[Math.min(n, FU_LEVELS.length-1)];
-// the intervals over the bars: numbers, or hidden (kit.js scores it more)
+// HELP: Patrol's interval numbers over the bars, Two Ships' colours and LOCK-ON warnings; or none of
+// it (kit.js scores that more)
 const fuShowIv=()=> blast && blast.kind==="fux" && blast.phase==="play" && blast.ivAt!=null ? blast.ivAt===0 : !saved.fuIv;
 
 // ---------- what a wrong bar is called, and what Aloysius says ----------
@@ -77,7 +85,7 @@ const FU_CLEAN=["Bene. Every fault found, and no shot wasted.", "Clean. Fux woul
 const FU_DONE=["Some got past you. Again, more slowly in your head.", "Listen to each bar as it arrives."];
 // a finding's name, with the fifth or octave it's about where that matters
 function fuName(f, bar){
-  const I = bar ? CP.interval(blast.line.mode, bar.c, f.beat && bar.p.length>1 ? bar.p[f.beat] : bar.p[0]) : null;
+  const I = bar && bar.p.length ? CP.interval(blast.line.mode, bar.c, f.beat && bar.p.length>1 ? bar.p[f.beat] : bar.p[0]) : null;
   return (FU_NAMES[f.rule]||f.rule.toUpperCase()).replace("{I}", I && I.simple===5 ? "5TH" : "OCTAVE");
 }
 
@@ -151,8 +159,12 @@ function startFux(){
 // The minichord's side: the harp as notes, chromatic from C, so each string is its cannon.
 function fuDevice(){
   if(!blast || blast.kind!=="fux" || !canWrite()) return;
-  arcadeSetup(()=>{ asHarp(); });
+  arcadeSetup(()=>{ if(!blast.ship) asHarp(); });
+  // whether this minichord can be tuned for Two Ships decides which levels are open
+  const sig=FU_LEVELS.map((_,i)=>fuLevelOk(i)).join();
+  if(blast.phase==="menu" && blast.overlay && blast.menuSig!==sig){ menuRebuild(()=>fuMenu()); }
 }
+const fuLevelOk=i=> !FU_LEVELS[i].ships || shCanTune();
 function buildFuxField(box){
   const field=document.createElement("div"); field.className="field arcade fux"; field.setAttribute("aria-label","A two-voice line scrolling over twelve cannons");
   const hud=document.createElement("div"); hud.className="hud"; field.appendChild(hud); fullButton(field);
@@ -164,6 +176,7 @@ function buildFuxField(box){
     // a click or a tap on the field fires the cannon nearest it
     field.addEventListener("pointerdown", e=>{
       if(!blast || blast.kind!=="fux" || blast.phase!=="play" || e.target.closest(".overlay,button,.hud")) return;
+      if(blast.ship){ shCommit(); return; }                          // Two Ships: a tap commits the note
       const r=field.getBoundingClientRect(), x=e.clientX-r.left;
       const i=blast.cannons ? blast.cannons.reduce((m,c,k)=>Math.abs(c.x-x)<Math.abs(blast.cannons[m].x-x) ? k : m, 0) : -1;
       if(i>=0) fuShoot(i);
@@ -177,17 +190,20 @@ function buildFuxField(box){
 // pitch ladder the notes sit on
 function fuLayout(){
   if(!blast || blast.kind!=="fux" || !blast.field) return;
-  const W=fieldW(), H=fieldH(), m=Math.max(26, W*.05);
-  blast.cannons=[...Array(12)].map((_,i)=>({x:m+(W-2*m)*i/11, fired:(blast.cannons&&blast.cannons[i])?blast.cannons[i].fired:0}));
+  const W=fieldW(), H=fieldH(), m=Math.max(26, W*.05), ships=!!fuLevel().ships && blast.phase==="play";
+  blast.cannons = ships ? null : [...Array(12)].map((_,i)=>({x:m+(W-2*m)*i/11, fired:(blast.cannons&&blast.cannons[i])?blast.cannons[i].fired:0}));
+  blast.noShip=ships;                                                // Two Ships draws its own, on the ladder
   blast.L={W, H, m, barW:(W-2*m)/11, top:96, bottom:H-66};
   fuLadder();
-  if(blast.line) blast.bars.forEach(fuBarPlace);
+  if(blast.ship) shDrawAll(); else if(blast.line) blast.bars.forEach(b=>{ fuBarDraw(b); fuBarPlace(b); });
 }
 function fuBar(){
   if(!blast || blast.kind!=="fux" || !blast.hud) return;
   const L=fuLevel(), ln=blast.line;
-  const shells = ln ? `<span class="fushells">${[...Array(ln.shellsMax)].map((_,i)=>`<i class="${i<ln.shells?"":"spent"}"></i>`).join("")}</span>` : "";
-  blast.hud.innerHTML=`<span>SCORE ${blast.score}${multTag()}</span><span class="lvl">LEVEL ${blast.level+1} · ${L.n.toUpperCase()}${blast.lineNo?` · LINE ${blast.lineNo} OF ${FU_LINES}`:""} ${shells}</span><span class="lives">${livesHtml()}</span>`;
+  const sh=blast.ship;
+  const shells = ln && !sh && ln.shellsMax ? `<span class="fushells">${[...Array(ln.shellsMax)].map((_,i)=>`<i class="${i<ln.shells?"":"spent"}"></i>`).join("")}</span>` : "";
+  const count = sh ? ` · CANTUS ${blast.lineNo} OF ${SH_ROUNDS}${sh.combo>1?` · CONTRARY ×${sh.combo}`:""}` : blast.lineNo ? ` · LINE ${blast.lineNo} OF ${FU_LINES}` : "";
+  blast.hud.innerHTML=`<span>SCORE ${blast.score}${multTag()}</span><span class="lvl">LEVEL ${blast.level+1} · ${L.n.toUpperCase()}${count} ${shells}</span><span class="lives">${livesHtml()}</span>`;
 }
 // Aloysius speaks: a line in his box for a few seconds
 function fuSay(text, ms=3600){
@@ -205,13 +221,13 @@ function fuSign(){
 }
 
 const FUMENU_G={key:"fux", title:"FUX",
-  rules:()=>`<p>PARALLEL PATROL. A LINE IN TWO VOICES SCROLLS IN FROM THE RIGHT: THE CANTUS FIRMUS IN BLUE, THE COUNTERPOINT IN GOLD.</p><p>SOME BARS BREAK FUX'S RULES. PLUCK THE STRING UNDER A WRONG BAR TO SHOOT IT BEFORE IT SCROLLS AWAY: TWELVE STRINGS, TWELVE CANNONS, LOWEST ON THE LEFT.</p><p>A SHOT AT A GOOD BAR SPENDS A SHELL. A WRONG BAR THAT GETS PAST COSTS A LIFE.</p><p>LISTEN AS EACH BAR COMES ON. FIFTHS AND OCTAVES IN A ROW SOUND HOLLOW.</p>`,
+  rules:()=>`<p>PARALLEL PATROL. A LINE IN TWO VOICES SCROLLS IN FROM THE RIGHT: THE CANTUS FIRMUS IN BLUE, THE COUNTERPOINT IN GOLD.</p><p>SOME BARS BREAK FUX'S RULES. PLUCK THE STRING UNDER A WRONG BAR TO SHOOT IT BEFORE IT SCROLLS AWAY: TWELVE STRINGS, TWELVE CANNONS, LOWEST ON THE LEFT. A SHOT AT A GOOD BAR SPENDS A SHELL; A WRONG BAR THAT GETS PAST COSTS A LIFE.</p><p>TWO SHIPS. NOW YOU WRITE THE COUNTERPOINT: PLUCK A STRING TO MOVE YOUR SHIP, A CHORD BUTTON TO COMMIT. A DISSONANCE OR PARALLEL FIFTHS IS A CRASH. CONTRARY MOTION BUILDS A COMBO. LAND THE CADENCE TO DOCK, AND ALOYSIUS GRADES THE LINE.</p>`,
   stat:()=>`FAULTS FOUND ${blast.found} · LEVEL ${blast.level+1}`,
   rows:row=>{
     row("SPEED", SPEEDS.map(x=>x[0].toUpperCase()), ()=>+saved.speed||0, i=>{ saved.speed=i; save(); });
-    row("INTERVALS", ["NUMBERS","HIDDEN ×1.5"], ()=>saved.fuIv?1:0, i=>{ saved.fuIv=i; save(); });
+    row("HELP", ["SHOWN","NONE ×1.5"], ()=>saved.fuIv?1:0, i=>{ saved.fuIv=i; save(); });
   },
-  levels:FU_LEVELS,
+  levels:FU_LEVELS, ok:i=>fuLevelOk(i), needs:"NEEDS FIRMWARE 10+ (THE CUSTOM SCALE)",
   begin:i=>beginFux(i), demo:()=>fuDemo(), modNote:false};
 function fuMenu(over){ arcadeMenu(FUMENU_G, over); }
 function beginFux(level){
@@ -235,7 +251,10 @@ function beginFux(level){
 const fuSecs=()=> 1.15*speedMul()*Math.pow(.97, blast.level);
 function fuLineStart(){
   if(!blast || blast.phase!=="play") return;
-  const L=fuLevel(), ln=fuMakeLine(L);
+  const L=fuLevel();
+  if(L.ships){ fuLayout(); return shStart(); }
+  shClear(); fuLayout(); if(canWrite()) asHarp();                  // Patrol: the strings as cannons again
+  const ln=fuMakeLine(L);
   if(!ln){ banner("ALOYSIUS IS THINKING", "ONE MOMENT"); gameLater(()=>fuLineStart(), 1500); return; }
   blast.lineNo++;
   fuLineShow(ln);
@@ -303,7 +322,8 @@ function fuTick(now){
   const dt=Math.min(DT_MAX,(now-blast.last)/1000); blast.last=now;
   if(blast.fx) fxDraw(now, dt);
   const ln=blast.line;
-  if(ln && !ln.done && blast.L && (blast.phase==="play" || (blast.phase==="demo" && !blast.demoHold))){
+  if(blast.ship && blast.phase==="play") shTick(dt);
+  else if(ln && !ln.done && blast.L && (blast.phase==="play" || (blast.phase==="demo" && !blast.demoHold))){
     blast.scroll+=blast.L.barW/(ln.secs||fuSecs())*dt*(ln.rush ? FU_RUSH : 1);
     // a bar is past the cannons (and out of reach) at the left edge, and keeps scrolling till it's off
     for(const b of blast.bars){
@@ -331,10 +351,13 @@ function fuxNote(pc){
   if(!blast || blast.kind!=="fux") return;
   if(blast.phase==="demo" && blast.demo){ endFuDemo(blast.demo); return; }
   if(blast.phase!=="play") return;
+  if(blast.ship){ shPluck(mc.lastHarp); return; }                    // Two Ships: the string is a note to write
   fuShoot(mod(pc,12));
 }
 function fuxChord(){
-  if(blast && blast.kind==="fux" && blast.phase==="demo" && blast.demo) endFuDemo(blast.demo);
+  if(!blast || blast.kind!=="fux") return;
+  if(blast.phase==="demo" && blast.demo){ endFuDemo(blast.demo); return; }
+  if(blast.phase==="play" && blast.ship) shCommit();                  // Two Ships: any chord button commits
 }
 // a cannon fires at the bar over it (if one is), and the shot decides when it lands
 function fuShoot(i){
@@ -416,7 +439,7 @@ function fuOver(){
 function fuClearBars(){ (blast.bars||[]).forEach(b=>b.el.remove()); blast.bars=[]; }
 function fuClear(){
   if(!blast) return;
-  fuClearBars(); blast.line=null;
+  fuClearBars(); blast.line=null; shClear();
   if(blast.sayEl) blast.sayEl.hidden=true;
   fuLadder(); fuSign();
 }

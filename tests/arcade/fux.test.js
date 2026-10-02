@@ -6,8 +6,9 @@ const t=require("./harness").load("fux");
   const {w, sleep, check, note, writes}=t;
   await sleep(200); t.connect(); await sleep(100);
   check("the rules are loaded as CP, on Fux's page", typeof w.CP==="object" && typeof w.CP.check==="function");
-  // every level's lines: something wrong in each, and nothing outside its rules
-  const levels=w.eval(`FU_LEVELS.map((L,i)=>{ blast.fuBags=null; const ln=fuMakeLine(L); if(!ln) return {i, ok:false};
+  // every Patrol level's lines: something wrong in each, and nothing outside its rules
+  const levels=w.eval(`FU_LEVELS.map((L,i)=>{ if(L.ships) return {i, ok:true};                  // Two Ships writes its own lines: fux-ships.test.js
+    blast.fuBags=null; const ln=fuMakeLine(L); if(!ln) return {i, ok:false};
     const bad=ln.findings.filter(CP.forbidden); return {i, ok: bad.length>0 && bad.every(f=>L.rules.includes(f.rule)) && (!L.below || !ln.above) && ln.species===L.species, rules:[...new Set(bad.map(f=>f.rule))]}; })`);
   check("every level makes a line, wrong only in its own ways", levels.every(x=>x.ok), JSON.stringify(levels.filter(x=>!x.ok)));
   const a=await t.start(0);

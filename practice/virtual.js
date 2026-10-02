@@ -42,7 +42,7 @@ const vmOn=()=> vm.on && !!(typeof mc!=="undefined" && mc.virtual);
 function vmDefaults(){
   const p={};
   for(let a=0;a<256;a++) p[a]=0;
-  Object.assign(p, {2:80, 3:80, 7:0, 31:0, 35:0, 36:0, 39:0, 97:150, 112:12, 200:0, 201:0});
+  Object.assign(p, {2:80, 3:80, 7:0, 31:0, 35:0, 36:0, 39:0, 97:150, 99:1, 112:12, 200:0, 201:0});   // 99: the harp sounding as written
   return p;
 }
 // A front end takes the virtual minichord up, or puts it down; it's a minichord while any front end
@@ -122,20 +122,39 @@ function vmDoubleTap(){
   mc.dispatchEvent(new Event("device"));                       // the Lab reads the settings as a minichord reports them
 }
 const vmSharp=()=> vm.mod.size>0;
-// a harp string: its note (the twelve strings chromatic from middle C), and the same events a real
-// pluck and release send; silent when it's only a game's control (the touch screen's d-pad)
+// The harp's strings as the firmware tunes them (firmware/src/main.cpp, calculate_note_harp): twelve
+// semitones from middle C (the chromatic harp, address 98, and harp mode 0, which follows the chord
+// and isn't followed here, nor are the scales per chord, 8, 9 and 11); or a fixed scale on the key
+// signature (harp modes 1 to 7, the last three on its relative minor, a minor third down) or the custom
+// scale on it (mode 10, the scale's degrees as the bits of address 236), the strings climbing through
+// as many octaves as they need, then transposed (30, up only). That's the MIDI note a string sends. Its
+// sound is moved by whole octaves by the harp octave (99): at 1 it sounds as sent.
+const VM_HARP_SCALES={1:[0,2,4,5,7,9,11], 2:[0,2,4,7,9], 3:[0,2,3,7,10], 4:[0,2,4,5,7,8,9,11], 5:[0,2,3,5,7,8,10], 6:[0,2,3,5,7,8,11], 7:[0,2,3,7,10]};
+function vmHarpNote(i){
+  const P=mc.params, m=P[36]|0;
+  let midi=60+i;
+  if(P[98]!==1 && (VM_HARP_SCALES[m] || m===10)){
+    let iv = m===10 ? [...Array(12).keys()].filter(b=>(P[236]>>b)&1) : VM_HARP_SCALES[m];
+    if(!iv.length) iv=[0];                                     // an empty scale keeps its root, as the firmware does
+    const root=mod(mod((KEY_FIFTHS[P[35]|0]??0)*7, 12)-(m>=5 && m<=7 ? 3 : 0), 12);
+    midi=60+root+iv[i%iv.length]+12*Math.floor(i/iv.length)+(P[30]|0);
+  }
+  return {midi, sound:midi+12*((Number.isFinite(P[99]) ? P[99] : 1)-1)};
+}
+// a harp string: its note, as the harp's settings tune it, and the same events a real pluck and release
+// send; silent when it's only a game's control (the touch screen's d-pad)
 function vmPluck(id, i, silent){
   if(!vmOn()) return;
   vm.strings.set(id, i);
-  const note=60+i;
+  const h=vmHarpNote(i), note=h.midi;
   mc.dispatchEvent(new CustomEvent("harp",{detail:{note, pitch:note, string:i, ch:0}}));
-  if(!silent) vmPlay([note], {dur:.9, vel:70});
+  if(!silent) vmPlay([h.sound], {dur:.9, vel:70});
   vmTell();
 }
 function vmLetGo(id){
   if(!vm.strings.has(id)) return;
   const i=vm.strings.get(id); vm.strings.delete(id);
-  if(![...vm.strings.values()].includes(i)) mc.dispatchEvent(new CustomEvent("harpoff",{detail:{note:60+i, ch:0}}));
+  if(![...vm.strings.values()].includes(i)) mc.dispatchEvent(new CustomEvent("harpoff",{detail:{note:vmHarpNote(i).midi, string:i, ch:0}}));
   vmTell();
 }
 // a knob turned, 0 to 1: as the minichord sends it, "knobs send MIDI" on (CC 20, 21, 22)
