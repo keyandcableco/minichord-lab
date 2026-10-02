@@ -436,7 +436,7 @@ body.kbplay #connect{opacity:.5}
 .helper .board .kmplate.onboard .kdot{font-size:.28rem;border-width:2px}
 
 /* Chord Breakout: the wall, the paddle and the ball */
-.bobrick{position:absolute;z-index:2;display:flex;align-items:center;justify-content:center;box-sizing:border-box;font:400 calc(var(--chord-size,1.25rem)*.6) "Minichord Lab Accidentals","Press Start 2P",monospace;color:#16132A;border:2px solid #07060C;box-shadow:inset -3px -3px 0 rgba(0,0,0,.25),inset 3px 3px 0 rgba(255,255,255,.35);transition:opacity .3s,transform .3s}
+.bobrick{position:absolute;z-index:2;display:flex;align-items:center;justify-content:center;box-sizing:border-box;font:400 calc(var(--chord-size,1.25rem)*.6)/1 "Minichord Lab Accidentals","Press Start 2P",monospace;white-space:nowrap;overflow:hidden;color:#16132A;border:2px solid #07060C;box-shadow:inset -3px -3px 0 rgba(0,0,0,.25),inset 3px 3px 0 rgba(255,255,255,.35);transition:opacity .3s,transform .3s}
 .bobrick.row0{background:#E0605A}.bobrick.row1{background:#E9A23B}.bobrick.row2{background:#D8C85A}.bobrick.row3{background:#7FBF6A}.bobrick.row4{background:#6FA7D8}
 .bobrick.bonus{background:#7FE9FF}
 .bobrick .pstar{width:.8em;height:.62em;margin-right:.15em}
@@ -447,7 +447,7 @@ body.kbplay #connect{opacity:.5}
 /* the power-up: its bricks pulse, their tones fall, the paddle's a cannon and the ball waits */
 .bobrick.power{box-shadow:0 0 0 2px #7FE9FF,0 0 12px rgba(127,233,255,.7);animation:powerbrick .6s steps(2) infinite}
 @keyframes powerbrick{50%{box-shadow:0 0 0 2px #FFD35A,0 0 16px rgba(255,211,90,.8)}}
-.botone{position:absolute;left:0;top:0;z-index:4;padding:6px 8px;font:400 .8rem "Minichord Lab Accidentals","Press Start 2P",monospace;color:#16132A;background:#7FE9FF;border:3px solid #07060C;box-shadow:0 0 12px rgba(127,233,255,.6);will-change:transform}
+.botone{position:absolute;left:0;top:0;z-index:4;padding:4px 6px;font:400 .8rem/1 "Minichord Lab Accidentals","Press Start 2P",monospace;white-space:nowrap;color:#16132A;background:#7FE9FF;border:3px solid #07060C;box-shadow:0 0 12px rgba(127,233,255,.6);will-change:transform}
 .botone.aimed{background:#FFD35A;box-shadow:0 0 16px rgba(255,211,90,.9)}
 .botone.lost{opacity:0;transition:opacity .4s}
 .bopaddle.cannon{background:#7FE9FF;box-shadow:inset 0 -3px 0 #3A8FA8,0 0 0 2px #7FE9FF}
@@ -455,7 +455,7 @@ body.kbplay #connect{opacity:.5}
 .boball.held{box-shadow:0 0 14px #7FE9FF;opacity:.5}
 .boball{position:absolute;left:0;top:0;z-index:3;width:14px;height:14px;background:#FFFFFF;box-shadow:0 0 8px rgba(255,255,255,.8);transform:translate(-40px,-40px)}
 /* Chord Breakout's capsules and their powers, and the coda's open bricks */
-.bocap{position:absolute;left:0;top:0;z-index:4;display:inline-flex;align-items:center;gap:.35em;padding:4px 10px;border-radius:999px;font:400 .45rem "Press Start 2P",monospace;color:#16132A;background:#F1E8D2;border:2px solid #07060C;white-space:nowrap;will-change:transform}
+.bocap{position:absolute;left:0;top:0;z-index:4;display:inline-flex;align-items:center;gap:.35em;padding:4px 10px;border-radius:999px;font:400 .45rem/1 "Press Start 2P",monospace;color:#16132A;background:#F1E8D2;border:2px solid #07060C;white-space:nowrap;will-change:transform}
 .bocap .puicon,.bobrick .puicon{font-style:normal;font-family:system-ui,sans-serif;font-size:.85rem;line-height:1}
 .bobrick .puicon{font-size:.9em;margin-right:.25em}
 .bocap.pu-crescendo{background:#FF8A3D;box-shadow:0 0 12px rgba(255,138,61,.7)}
@@ -560,7 +560,7 @@ body.kbplay #connect{opacity:.5}
 .overlay[data-stage="powers"] .cab-title,.overlay[data-stage="powers"] .cab-rules,.overlay[data-stage="powers"] .cab-options,.overlay[data-stage="powers"] .cab-scores,.overlay[data-stage="powers"] .cab-points{display:none!important}
 .pwtable{list-style:none;margin:0;padding:0;display:grid;gap:18px;width:min(560px,92%)}
 .pwtable li{display:grid;grid-template-columns:6.5rem 1fr;align-items:center;gap:16px;opacity:0;animation:ptin .01s steps(1) forwards}
-.pwtable .pwlook{display:flex;justify-content:center}
+.pwtable .pwlook{display:flex;justify-content:center;align-items:center}
 .pwtable li>div{text-align:left}
 /* the power-ups' own looks, as in the games (the games draw them inside their fields; these are standalone copies) */
 .pwtable .fchord{display:inline-flex;align-items:center;font:400 1.05rem "Minichord Lab Accidentals","Press Start 2P",monospace;color:#F1E8D2;text-shadow:0 0 6px rgba(255,255,255,.35);padding:.15em .45em;border:2px solid #FF5AA0;border-radius:999px;background:rgba(255,90,160,.18);box-shadow:0 0 12px rgba(255,90,160,.6)}
@@ -1021,6 +1021,7 @@ html.arcadepage{background:#07060C;
     radial-gradient(1px 1px at 22% 84%,#fff 50%,transparent 51%),radial-gradient(1px 1px at 58% 32%,#4B4670 50%,transparent 51%);
   background-size:230px 230px}
 html.arcadepage body{background:transparent;color:#F1E8D2}
+html.arcadepage{-webkit-text-size-adjust:100%;text-size-adjust:100%}   /* a phone turned sideways keeps the sizes set here: Safari would otherwise blow up the text */
 html.arcadepage main{max-width:1180px}
 html.arcadepage .labbar{background:#0E0A16;border:3px solid #000;box-shadow:0 0 0 2px #2F2342;border-bottom:3px solid #000;padding:10px 14px}
 html.arcadepage .labbar .crumb{font:400 .66rem "Press Start 2P",monospace;color:#9A93B5;text-decoration:none}

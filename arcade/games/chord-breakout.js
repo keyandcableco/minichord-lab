@@ -109,8 +109,16 @@ function boLayout(){
   p.x=Math.max(0, Math.min(W-p.w, p.x));
   const cols=blast.cols||8, bw=(W-40)/cols;
   blast.bricks.forEach(b=>{ b.x=20+b.c*bw+2; b.y=56+b.r*36; b.w=bw-4; b.h=30;
-    b.el.style.cssText=`left:${b.x}px;top:${b.y}px;width:${b.w}px;height:${b.h}px`; });
+    b.el.style.cssText=`left:${b.x}px;top:${b.y}px;width:${b.w}px;height:${b.h}px`; boFit(b.el); });
 }
+// a chord too long for its brick (a slash chord on a phone) set smaller until it fits, never below half
+function boFit(el){
+  const room=el.clientWidth-6; if(room<=0) return;
+  const r=document.createRange(); r.selectNodeContents(el); const need=r.getBoundingClientRect().width; if(need<=room) return;
+  el.style.fontSize=`calc(var(--chord-size,1.25rem)*.6*${Math.max(.5, room/need).toFixed(3)})`;
+}
+// how many bricks across: eight on a wide field, fewer on a narrow one (a phone), so a chord can be read
+const boCols=W=> Math.max(4, Math.min(8, Math.floor((W-40)/64)));
 function boPick(L){
   for(let k=0;k<40;k++){
     const q0=rnd(L.qs), q=!mxStandard() ? mxMap(q0) : blast.barry ? (BARRY_SWAP[q0]??q0) : q0;
@@ -122,7 +130,9 @@ function boPick(L){
 }
 function boWall(){
   blast.bricks.forEach(b=>b.el.remove()); blast.bricks=[];
-  const L=BO_LEVELS[blast.level], rows=Math.min(5, 3+Math.floor(blast.level/2)), cols=8; blast.cols=cols;
+  // fewer across makes up some of it in rows, as many as leave the ball room below
+  const L=BO_LEVELS[blast.level], cols=boCols(blast.W||600), rows0=Math.min(5, 3+Math.floor(blast.level/2));
+  const rows=Math.max(rows0, Math.min(Math.ceil(rows0*8/cols), Math.floor(((blast.H||400)*.55-56)/36))); blast.cols=cols;
   if(L.barry && !blast.barry && canWrite()){ blast.barry=true; borrow(33,1); modPill(); }       // Barry Harris mode, for the sixths
   for(let r=0;r<rows;r++) for(let c=0;c<cols;c++){
     const ch=boPick(L), bonus=Math.random()<.07, power=!bonus && Math.random()<.09, cap=!bonus && !power ? boCapChance() : null;
