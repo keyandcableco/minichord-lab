@@ -680,7 +680,7 @@ function krLabel1(x, y, size, text, col, done){
   const g=blast.lg; if(!g || !g.fillText || size<4) return;
   const px=PX, fs=Math.round(size*px);
   if(fs<9 || y*px<92) return;
-  g.font=`400 ${Math.min(fs, 46)}px "Minichord Lab Accidentals","Press Start 2P",monospace`;
+  g.font=`400 ${Math.min(fs, 46)}px "Press Start 2P","Minichord Lab Accidentals",monospace`;
   if(col){ g.fillStyle="#000"; g.fillText(text, x*px+2, y*px+2); g.fillStyle=col; } else g.fillStyle="#FFF";
   g.fillText(text, x*px, y*px);
   if(done){ g.strokeStyle="#7FE08A"; g.lineWidth=2; }
