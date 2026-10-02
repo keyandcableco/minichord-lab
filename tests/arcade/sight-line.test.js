@@ -61,5 +61,12 @@ const t=require("./harness").load("sight-line");
     if(a.notes.some(n=>n.done && !n.change && n.x<a.ph-40)) carried=true; if(!d.querySelector(".field .demo")) break; }
   check("the demo scrolls like play: notes read at the line carry on past it", carried);
   check("the demo shows chords, a key change and an inversion", ["CHORDS","KEY CHANGE","INVERSIONS"].every(c=>caps.has(c)), [...caps].join(" | "));
+  // at Wild speed with slow frames, a note can step clean over the line: it's still read, and the demo still ends
+  if(d.querySelector(".field .demo")) d.querySelector(".field .demo .demoskip").click(); await sleep(50);
+  const sp=w.eval("saved.speed"); w.eval("saved.speed=4; slMenu(); slDemo()");
+  const chop=setInterval(()=>{ try{ w.eval("blast && (blast.last-=95)"); }catch(e){} }, 16);
+  let back=false; for(let i=0;i<150 && !back;i++){ await sleep(100); back=!d.querySelector(".field .demo"); }
+  clearInterval(chop); w.eval(`saved.speed=${JSON.stringify(sp)}`);
+  check("with slow frames at Wild speed, the demo reads every note and returns to the title", back && a.phase==="menu", `${w.eval("blast.demoLeft")} left unread`);
   t.done();
 })();

@@ -198,7 +198,7 @@ function slTick(now){
     for(const n of blast.notes){ if(n.gone) continue;
       n.x-=slSpeed()*dt; n.el && n.el.setAttribute("transform",`translate(${n.x},0)`);
       if(n.change && !n.done && n.x<=blast.ph){ n.done=true; slKeyChange(n.f, n); }
-      if(blast.phase==="demo" && !n.done && !n.change && Math.abs(n.x-blast.ph)<=4) slDemoHit(n);
+      if(blast.phase==="demo" && !n.done && !n.change && n.x-blast.ph<=4) slDemoHit(n);     // reached or passed: a slow frame can step clean over the line, and a note never read would leave the demo running forever
       if(blast.phase==="play" && !n.done && !n.change && n.x < blast.ph-SL_WIN) slMiss(n);
       if(n.x < -40){ n.gone=true; n.el && n.el.remove(); } }
     blast.notes=blast.notes.filter(n=>!n.gone);
