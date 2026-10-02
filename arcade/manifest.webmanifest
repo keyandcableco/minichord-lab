@@ -5,7 +5,7 @@
   "description": "Thirteen arcade games played on the minichord itself. From Minichord Lab.",
   "start_url": "/arcade/",
   "scope": "/",
-  "display": "standalone",
+  "display": "fullscreen",
   "background_color": "#07060C",
   "theme_color": "#07060C",
   "categories": ["games", "music", "education"],

@@ -170,9 +170,13 @@ function tdPhone(){
   if(td.inCab){ td.inCab=false; td.leftCab=true; }               // the player went back to the page
   if(!td.leftCab && tdPhoneWanted() && blast && blast.field && typeof toggleFull==="function") toggleFull(blast.field, {auto:true});
 }
+// The installed app already has the whole screen (its manifest asks for it), so it isn't asked again:
+// asking there only redraws the screen and has Android say once more how to leave full screen.
+const tdInstalled=()=> !!(window.matchMedia && matchMedia("(display-mode: fullscreen), (display-mode: standalone)").matches);
 function tdFullAtTap(){
   const cab=document.querySelector(".fscab.phone.pseudo"); if(!cab || td.askedFull) return;
   td.askedFull=true;
+  if(tdInstalled()) return;
   const req=cab.requestFullscreen || cab.webkitRequestFullscreen;
   try{ const p=req && req.call(cab); p && p.catch && p.catch(()=>{}); }catch(e){}
 }
