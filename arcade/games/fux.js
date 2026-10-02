@@ -47,6 +47,9 @@ const FU_LEVELS=[
   {n:"Two against one: all of it", species:2, rules:FU_SP2, errors:4, both:true},
   {n:"Two Ships: two against one", ships:true, species:2},
   {n:"Two Ships: two against one, below", ships:true, species:2, below:true},
+  {n:"Suspensions", species:4, rules:["resolution","suspension","dissonance","upbeats"], errors:2},
+  {n:"Two Ships: suspensions", ships:true, species:4},
+  {n:"Two Ships: suspensions below", ships:true, species:4, below:true},
 ];
 const FU_LINES=3;                                                   // lines a level
 const FU_RUSH=10;                                                   // how much faster a line goes once all its faults are found
@@ -59,7 +62,8 @@ const fuShowIv=()=> blast && blast.kind==="fux" && blast.phase==="play" && blast
 const FU_NAMES={parallel5:"PARALLEL 5THS", parallel8:"PARALLEL OCTAVES", dissonance:"DISSONANCE", passing:"NOT PASSING",
   direct:"HIDDEN {I}", antiparallel:"{I}S BY CONTRARY MOTION", downbeats:"{I}S ON THE DOWNBEATS", unison:"UNISON", melodic:"BAD LEAP",
   unrecovered:"LEAP NOT TURNED BACK", crossing:"VOICES CROSS", overlap:"OVERLAP", chromatic:"OUTSIDE THE MODE", start:"WRONG START",
-  end:"WRONG ENDING", cadence:"NO CADENCE", repeat:"REPEATED NOTE"};
+  end:"WRONG ENDING", cadence:"NO CADENCE", repeat:"REPEATED NOTE", resolution:"SUSPENSION NOT RESOLVED", suspension:"BAD SUSPENSION",
+  upbeats:"{I}S ON THE UPBEATS", untied:"TIE BROKEN", ninth:"9–8 SUSPENSION"};
 // Aloysius: caught, when a wrong bar is shot; missed, when one gets away. In his manner, not Fux's words.
 const FU_SAYS={
   parallel5:  ["Two fifths running. The voices have stopped being two.", "Fifths after fifths: you heard them hollow out."],
@@ -79,13 +83,17 @@ const FU_SAYS={
   cadence:    ["The cadence: a sixth to the octave, a third to the unison, by step.", "No cadence. Where was the leading tone?"],
   repeat:     ["Two notes against one, and you repeat one? Move.", "A repeated note. Two halves should be two notes."],
   chromatic:  ["A note outside the mode.", "That note isn't in the mode."],
+  resolution: ["A suspension falls, by step, to a consonance. That one didn't.", "The dissonance hung there, unresolved. Step down!"],
+  suspension: ["Not that suspension. Above me: 7–6 or 4–3. Below me: 2–3.", "A suspension Fux would not allow."],
+  upbeats:    ["Fifths from upbeat to upbeat. The ties don't hide them.", "Listen to the upbeats alone: fifths."],
 };
 const FU_WRONG=["That bar was correct. Look before you shoot.", "Nothing wrong there. Be sure first.", "A good bar, wasted shot."];
 const FU_CLEAN=["Bene. Every fault found, and no shot wasted.", "Clean. Fux would nod.", "Every one. Good."];
 const FU_DONE=["Some got past you. Again, more slowly in your head.", "Listen to each bar as it arrives."];
 // a finding's name, with the fifth or octave it's about where that matters
 function fuName(f, bar){
-  const I = bar && bar.p.length ? CP.interval(blast.line.mode, bar.c, f.beat && bar.p.length>1 ? bar.p[f.beat] : bar.p[0]) : null;
+  const q = bar ? (bar.p[f.beat||0] ?? bar.p.find(x=>x!=null)) : null;
+  const I = q!=null ? CP.interval(blast.line.mode, bar.c, q) : null;
   return (FU_NAMES[f.rule]||f.rule.toUpperCase()).replace("{I}", I && I.simple===5 ? "5TH" : "OCTAVE");
 }
 
@@ -217,7 +225,7 @@ function fuSign(){
   const el=blast && blast.signEl; if(!el) return;
   const ln=blast.line; el.hidden=!ln; if(!ln) return;
   const final=CP.MODES[ln.modeName].final;
-  el.innerHTML=`${SHARP_NAMES[final]} <b>${ln.modeName.toUpperCase()}</b> · ${ln.species===2?"2ND":"1ST"} SPECIES · COUNTERPOINT <b>${ln.above?"ABOVE":"BELOW"}</b>`;
+  el.innerHTML=`${SHARP_NAMES[final]} <b>${ln.modeName.toUpperCase()}</b> · ${["","1ST","2ND","3RD","4TH","5TH"][ln.species]} SPECIES · COUNTERPOINT <b>${ln.above?"ABOVE":"BELOW"}</b>`;
 }
 
 const FUMENU_G={key:"fux", title:"FUX",
@@ -303,12 +311,13 @@ function fuBarDraw(b){
   const name=p=>SHARP_NAMES[mod(p,12)];                             // the modes sit on the white keys; ficta sharpens
   const cy=fuYOf(b.c);
   let h=`<span class="funote c" style="left:0;top:${cy}px;width:${Math.round(w*.78)}px">${name(b.c)}</span>`;
-  const ivs=[];
+  const ivs=[], before=blast.bars[b.i-1], tiedFrom=before ? before.p[before.p.length-1] : null;
   b.p.forEach((p,j)=>{
-    const dx = n>1 ? (j? 1 : -1)*w*.2 : 0, py=fuYOf(p), I=CP.interval(ln.mode, b.c, p);
+    if(p==null) return;                                             // the fourth species' opening rest
+    const dx = n>1 ? (j? 1 : -1)*w*.2 : 0, py=fuYOf(p), I=CP.interval(ln.mode, b.c, p), tie=ln.species===4 && j===0 && p===tiedFrom;
     ivs.push(I.number);
     h+=`<span class="fubeam" style="left:${dx}px;top:${Math.min(cy,py)}px;height:${Math.abs(cy-py)}px"></span>`;
-    h+=`<span class="funote p" style="left:${dx}px;top:${py}px;width:${Math.round(w*(n>1?.36:.6))}px">${name(p)}</span>`;
+    h+=`<span class="funote p${tie?" tied":""}" style="left:${dx}px;top:${py}px;width:${Math.round(w*(n>1?.36:.6))}px;--tie:${Math.round(w*.62)}px">${name(p)}</span>`;
   });
   if(fuShowIv()) h+=`<span class="fuiv" style="top:${L.bottom+8}px">${ivs.join(" ")}</span>`;   // along the foot, over the cannons
   b.el.innerHTML=h;
@@ -340,8 +349,13 @@ function fuTick(now){
 // a bar as it comes on: the two voices together (the counterpoint's half notes one after the other)
 function fuHear(b){
   if(!settings.sounds || !piano.ctx) return;
-  const secs=(blast.line.secs||fuSecs()), half=secs/b.p.length;
-  const go=()=>{ piano.play([b.c],{when:.02, dur:secs*.95, vel:70}); b.p.forEach((p,j)=>piano.play([p],{when:.02+j*half, dur:half*.95, vel:84})); };
+  const secs=(blast.line.secs||fuSecs()), half=secs/b.p.length, ln=blast.line;
+  const before=blast.bars[b.i-1], after=blast.bars[b.i+1];
+  const go=()=>{ piano.play([b.c],{when:.02, dur:secs*.95, vel:70});
+    b.p.forEach((p,j)=>{ if(p==null) return;
+      if(ln.species===4 && j===0 && before && before.p[before.p.length-1]===p) return;   // tied: still sounding from the upbeat
+      const held=ln.species===4 && j===b.p.length-1 && after && after.p[0]===p;
+      piano.play([p],{when:.02+j*half, dur:half*(held?1.95:.95), vel:84}); }); };
   piano.ctx.state==="running" ? go() : piano.ctx.resume().then(go).catch(()=>{});
   heardAt=performance.now();
 }
@@ -369,7 +383,7 @@ function fuShoot(i){
   if(blast.phase==="play" && ln.shells<=0){ heard(`STRING ${i+1}`, false, "OUT OF SHELLS"); buzz(blast.field,true); return; }
   if(blast.phase==="play"){ ln.shells--; fuBar(); }
   sfx("shoot");
-  const y=(fuYOf(b.c)+fuYOf(b.p[0]))/2;
+  const y=(fuYOf(b.c)+fuYOf(b.p.find(x=>x!=null)))/2;
   blast.fx.missiles.push({x0:c.x/PX, y0:(L.H-30)/PX, x1:b.x/PX, y1:y/PX, t0:performance.now(), dur:150, hit:()=>fuLand(b, y)});
 }
 function fuLand(b, y){
@@ -379,7 +393,7 @@ function fuLand(b, y){
     b.shot=true; b.el.classList.add("shot");
     if(!demo) ln.shells++;                                          // a hit gives its shell back
     const name=fuName(b.bad[0], b);
-    b.el.insertAdjacentHTML("beforeend", `<span class="futag" style="top:${Math.min(fuYOf(b.c),fuYOf(b.p[0]))-14}px">${name}</span>`);
+    b.el.insertAdjacentHTML("beforeend", `<span class="futag" style="top:${Math.min(fuYOf(b.c),fuYOf(b.p.find(x=>x!=null)))-14}px">${name}</span>`);
     explode(b.x, y, 16, ["#FF4B3E","#FFD35A","#FFF4C2"]); sfx("hit");
     heard(name, true);
     fuSay(FU_SAYS[b.bad[0].rule] ? FU_SAYS[b.bad[0].rule][0] : name);

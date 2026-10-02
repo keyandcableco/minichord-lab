@@ -673,12 +673,20 @@ html.arcadepage .gamebar{align-items:flex-end}
 .fubeam.perfect{background:#FFD35A}.fubeam.imperfect{background:#7FE08A}.fubeam.dissonant{background:#FF4B3E}
 .fubar.ship.now .fubeam{width:3px;margin-left:-1.5px}
 .fubeam.lock,.funote.lock{animation:fulock .3s steps(2) infinite}
+/* the fourth species: a tie over the bar line, and a suspension glowing until it's resolved */
+.funote.tied::before{content:"";position:absolute;right:100%;top:-9px;width:var(--tie);height:8px;border:2px solid #FFD35A;border-bottom:0;border-radius:50% 50% 0 0/100% 100% 0 0;box-sizing:border-box;margin-right:-4px}
+.fubeam.susp,.funote.susp{animation:fususp .5s ease-in-out infinite alternate}
+.funote.susp{background:#FF4B3E;color:#FFF4C2}
+@keyframes fususp{from{filter:brightness(1)}to{filter:brightness(1.8) drop-shadow(0 0 6px #FF4B3E)}}
+.fususp{position:absolute;transform:translate(-50%,-100%);display:flex;flex-direction:column;align-items:center;gap:3px;font:400 .42rem "Press Start 2P",monospace;color:#FF8A7A;white-space:nowrap}
+.fususp i{display:block;width:60px;height:5px;background:#3A1010;box-shadow:0 0 0 2px #000}
+.fususp u{display:block;height:100%;width:100%;background:#FF4B3E}   /* the clock, running down */
 @keyframes fulock{50%{opacity:.25}}
 .fureview{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:6;min-width:min(380px,80%);display:flex;flex-direction:column;align-items:center;gap:8px;padding:14px 18px;background:#16132A;border:3px solid #000;box-shadow:0 0 0 3px #FFD35A,6px 6px 0 #000;font:400 .5rem "Press Start 2P",monospace;color:#F1E8D2;text-align:center}
 .fureview b{font:400 1.4rem "Press Start 2P",monospace;color:#FFD35A}.fureview b.no{color:#FF4B3E}
 .fureview em{font:italic 400 .9rem "Source Serif 4",Georgia,serif;color:#F1E8D2}
 .fureview ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:5px;color:#B9C7E6}
-@media (prefers-reduced-motion:reduce){.fubar.ship.now .funote.p.now,.fubeam.lock,.funote.lock{animation:none}}
+@media (prefers-reduced-motion:reduce){.fubar.ship.now .funote.p.now,.fubeam.lock,.funote.lock,.fubeam.susp,.funote.susp{animation:none}}
 @media (max-width:700px){.fusign{display:none}.fusay{max-width:70%;font-size:.75rem}}
 
 /* Chord Hunt: the sky, the ducks, the grass in front of them, the dog, the panel at the foot */

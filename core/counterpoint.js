@@ -8,8 +8,9 @@
  * cadence (musica ficta, C♯ in D Dorian) is the seventh degree raised, not a new letter.
  *
  * A counterpoint is a list of bars, one per cantus note: in the first species a note per bar (a
- * plain number will do), in the second two, [downbeat, upbeat], with null for the half rest a line
- * may open with and a single note in the last bar.
+ * plain number will do), in the second and fourth two, [downbeat, upbeat], with null for the half
+ * rest a line may open with (the fourth always does) and a single note in the last bar. In the fourth
+ * species a downbeat the same as the upbeat before it is that note tied over the bar line.
  * ========================================================================== */
 
 const mod=(a,n)=>((a%n)+n)%n;
@@ -128,7 +129,13 @@ export const RULES={
   spacing:      {severity:"style", text:"The voices more than a tenth apart"},
   climax:       {severity:"style", text:"The highest note comes more than once"},
   outline:      {severity:"style", text:"A tritone outlined"},
+  resolution:   {severity:"fatal", text:"A suspension must resolve down by step to a consonance"},
+  suspension:   {severity:"fault", text:"A suspension Fux doesn't allow"},
+  upbeats:      {severity:"fault", text:"Fifths or octaves on successive upbeats"},
+  untied:       {severity:"style", text:"The tie broken"},
+  ninth:        {severity:"style", text:"A ninth suspended to the octave"},
   contrary:     {severity:"praise", text:"Contrary motion"},
+  suspended:    {severity:"praise", text:"A suspension, resolved"},
 };
 // in the second species a note repeated is a fault: it undoes the point of two notes to one
 const SEVERITY_2={repeat:"fault"};
@@ -153,11 +160,28 @@ export function check({cantus, cp, mode, species=1, above=true}){
   const iv=t=>interval(mode,t.c,t.p), mel=(a,b)=>interval(mode,a.p,b.p);
   const strong=t=>species===1 || t.beat===0;
   const cadenceNote=t=>t.bar===n-2 && t.last;   // the note that steps to the final
-  let run=0, runKind=0, lastDown=null;
+  // the fourth species' ties: a downbeat held over from the upbeat before it. The line as sung (for
+  // its leaps, repeats, climax) has each tied note once.
+  L.forEach((t,k)=>{ const q=L[k-1]; t.tied = species===4 && t.beat===0 && !!q && q.bar===t.bar-1 && q.p===t.p; });
+  const ML=L.filter(t=>!t.tied), mAt=new Map(ML.map((t,i)=>[t,i]));
+  let run=0, runKind=0, lastDown=null, lastUp=null;
   L.forEach((t,k)=>{
-    const I=iv(t), prev=L[k-1], prev2=L[k-2], next=L[k+1], first=k===0, final=complete && k===L.length-1;
+    const I=iv(t), prev=L[k-1], next=L[k+1], first=k===0, final=complete && k===L.length-1;
     // the sound itself
-    if(I.class==="dissonant"){
+    if(species===4){
+      // A tied downbeat may clash, as a suspension: prepared by the tie, it must step down to a
+      // consonance on the upbeat. Above the cantus, 7–6 and 4–3 (9–8 grudgingly; 2–1 not at all);
+      // below it, 2–3 (or 9–10). Any other note, an upbeat or a downbeat not tied, must be consonant.
+      if(t.tied && I.class==="dissonant"){
+        const sp=I.simple, ok = above ? sp===7 || sp===4 || (sp===2 && I.number>8) : sp===2;
+        if(!ok) add(t,"suspension"); else if(above && sp===2) add(t,"ninth");
+        if(next || complete){
+          const res = next && next.bar===t.bar && next.p<t.p && mel(t,next).steps===1 && iv(next).class!=="dissonant";
+          if(!res) add(t,"resolution"); else if(ok) add(t,"suspended");
+        }
+      } else if(I.class==="dissonant") add(t,"dissonance");
+      if(t.beat===0 && !t.tied && t.bar>0 && t.bar<n-1) add(t,"untied");
+    } else if(I.class==="dissonant"){
       if(strong(t)) add(t,"dissonance");
       else if(next || complete){
         const by=(a,b)=>mel(a,b).steps===1;
@@ -183,20 +207,28 @@ export function check({cantus, cp, mode, species=1, above=true}){
       if(run===4) add(t,"run");
     }
     if(prev){
-      // how the voices move
+      // how the voices move (in the fourth species, mostly one at a time: the ties)
       const Ip=iv(prev), m=motion(prev.c,t.c,prev.p,t.p);
       if(I.class==="perfect" && Ip.class==="perfect" && I.simple===Ip.simple && m!=="oblique" && m!=="none")
         add(t, m==="contrary" ? "antiparallel" : I.simple===5 ? "parallel5" : "parallel8");
       else if(I.class==="perfect" && (m==="similar" || m==="parallel")) add(t,"direct");
       if(m==="contrary") add(t,"contrary");
       if(prev.bar!==t.bar && (above ? t.p<prev.c || t.c>prev.p : t.p>prev.c || t.c<prev.p)) add(t,"overlap");
-      // the line itself
-      const M=mel(prev,t), dir=Math.sign(t.p-prev.p);
+    }
+    // the line itself, as sung: a tied note is one note
+    const mi=mAt.get(t), mp=mi>0 ? ML[mi-1] : null, mp2=mi>1 ? ML[mi-2] : null;
+    if(mp){
+      const M=mel(mp,t), dir=Math.sign(t.p-mp.p);
       if(!dir) add(t,"repeat");
       else if(M.quality!=="P" && M.quality!=="M" && M.quality!=="m" || M.simple===7 || M.number>8 ||
               (M.number===6 && (M.quality==="M" || dir<0))) add(t,"melodic");
       // a leap of a fourth or more is followed by a turn the other way
-      if(prev2){ const before=mel(prev2,prev); if(before.number>=4 && Math.sign(t.p-prev.p)!==-Math.sign(prev.p-prev2.p)) add(prev,"unrecovered"); }
+      if(mp2){ const before=mel(mp2,mp); if(before.number>=4 && Math.sign(t.p-mp.p)!==-Math.sign(mp.p-mp2.p)) add(mp,"unrecovered"); }
+    }
+    // the fourth species: fifths or octaves from one upbeat to the next, the ties between them no help
+    if(species===4 && t.beat===1){
+      if(lastUp && lastUp.bar===t.bar-1){ const Iu=iv(lastUp); if(I.class==="perfect" && Iu.class==="perfect" && I.simple===Iu.simple) add(t,"upbeats"); }
+      lastUp=t;
     }
     // fifths or octaves from one downbeat to the next, not saved by the upbeat between unless it leaps
     // a fourth or more
@@ -209,15 +241,15 @@ export function check({cantus, cp, mode, species=1, above=true}){
     }
   });
   if(complete){
-    // one highest note
-    const top=Math.max(...L.map(t=>t.p)), tops=L.filter(t=>t.p===top);
+    // one highest note (a tied one counts once)
+    const top=Math.max(...ML.map(t=>t.p)), tops=ML.filter(t=>t.p===top);
     if(tops.length>1) add(tops[1],"climax");
     // a run in one direction whose ends are a tritone apart
     let s=0;
-    for(let k=1;k<L.length;k++){
-      const d=Math.sign(L[k].p-L[k-1].p), on=k+1<L.length ? Math.sign(L[k+1].p-L[k].p) : 0;
+    for(let k=1;k<ML.length;k++){
+      const d=Math.sign(ML[k].p-ML[k-1].p), on=k+1<ML.length ? Math.sign(ML[k+1].p-ML[k].p) : 0;
       if(d && d===on) continue;                                     // the run goes on
-      if(d && k-s>=2){ const q=interval(mode,L[s].p,L[k].p); if(q.name==="A4" || q.name==="d5") add(L[k],"outline"); }
+      if(d && k-s>=2){ const q=interval(mode,ML[s].p,ML[k].p); if(q.name==="A4" || q.name==="d5") add(ML[k],"outline"); }
       s=k;
     }
     found.sort((x,y)=>x.bar-y.bar || x.beat-y.beat);
@@ -245,7 +277,11 @@ export function solve(opts){
 }
 function solveWith({cantus, mode, species=1, above=true, pitches, seed=1}, wholePenult, budget){
   const n=cantus.length, r=rand(seed);
-  const slots=[]; for(let b=0;b<n;b++) for(let j=0;j<(species===2 && b<n-1 && !(wholePenult && b===n-2) ? 2 : 1);j++) slots.push({bar:b, beat:j});
+  const slots=[];
+  for(let b=0;b<n;b++){
+    if(species===4){ if(b===0) slots.push({bar:0, beat:0, fixed:null}, {bar:0, beat:1}); else if(b<n-1) slots.push({bar:b, beat:0}, {bar:b, beat:1}); else slots.push({bar:b, beat:0}); continue; }
+    for(let j=0;j<(species===2 && b<n-1 && !(wholePenult && b===n-2) ? 2 : 1);j++) slots.push({bar:b, beat:j});
+  }
   const raised=pitches.filter(p=>mode.ficta!=null && mod(p-mode.final,12)===mode.ficta).map(p=>p+1);
   const shape=flat=>{ const cp=[]; flat.forEach((p,i)=>{ const s=slots[i]; if(species===1) cp[s.bar]=p; else (cp[s.bar]||(cp[s.bar]=[])).push(p); }); return cp; };
   const styleOf=fs=>fs.filter(f=>f.severity==="style").length;
@@ -267,8 +303,10 @@ function solveWith({cantus, mode, species=1, above=true, pitches, seed=1}, whole
       const key=i+":"+flat.slice(Math.max(0,i-3),i).join(",")+":"+spent;
       if(dead.has(key)) return null;
       const s=slots[i], prev=flat[i-1];
-      const pool = i===slots.length-1 ? finals : s.bar===n-2 && slots[i+1].bar===n-1 ? cadences : pitches;
-      const cands=pool.map(p=>({p, k:r()+(prev==null ? 0 : .12*Math.abs(degree(mode,p).pos-degree(mode,prev).pos))})).sort((x,y)=>x.k-y.k);
+      if(s.fixed!==undefined){ flat[i]=s.fixed; const got=go(i+1,spent); if(got) return got; flat.length=i; return null; }   // the fourth species' opening rest
+      const pool = i===slots.length-1 ? finals : s.bar===n-2 && slots[i+1].bar===n-1 ? cadences
+        : species===4 && s.beat===0 && prev!=null ? [prev].concat(pitches.filter(p=>p!==prev)) : pitches;   // the tie first
+      const cands=pool.map(p=>({p, k:r()+(prev==null ? 0 : .12*Math.abs(degree(mode,p).pos-degree(mode,prev).pos))-(species===4 && s.beat===0 && p===prev ? 1 : 0)})).sort((x,y)=>x.k-y.k);
       for(const {p} of cands){
         if(++checks>budget) return null;
         flat[i]=p;

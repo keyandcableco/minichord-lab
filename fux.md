@@ -345,9 +345,21 @@ Line's staff drawing and Bravura glyphs (`drawStaff` in `practice/games.js`).
 
 - **Species 3, four against one:** passing and neighbour tones, the cambiata. Turn-based gets tiring at
   four plucks a bar, so tempo mode is probably the default.
-- **Species 4, syncopation:** hold a strip across the bar line (`harpoff`). The suspended dissonance
-  glows, and releasing to the strip a step below before the timer runs out resolves it. Releasing early
-  or stepping up breaks the suspension.
+- **Species 4, syncopation: built.**
+  - **Rules** (in `check()`): a downbeat tied from the upbeat before may clash, as a suspension, if it
+    resolves down by step to a consonance on the upbeat. Allowed: 7–6 and 4–3 above (9–8 as style),
+    2–3 below (fault otherwise). Upbeats must be consonant. Fifths and octaves on successive upbeats
+    are a fault. A broken tie is style. The line's melodic rules read it with ties merged.
+  - **The solver** opens on a rest and prefers ties.
+  - **Patrol:** a Suspensions level.
+  - **Two Ships:** levels 15–16. Strike the upbeat, then hold the string as you commit; still held at
+    the bar line, the note ties over (`harpoff` tracked; let go first and the tie breaks, the downbeat
+    chosen again).
+    - A tied clash glows, with a clock (2.6 s at Brisk, scaled by speed). Plucking a step down
+      commits at once.
+    - A wrong resolution is a crash, and the suspension still waits. Too late is a crash, and the
+      resolution is made for you.
+    - LOCK-ON warns of a suspension that isn't allowed, or whose step down would still clash.
 - **Species 5, florid:** the boss stage. Aloysius is more lenient here, since Fux leaves much of it to
   taste.
 - **Three voices.** The engine's per-pair checks already generalize.

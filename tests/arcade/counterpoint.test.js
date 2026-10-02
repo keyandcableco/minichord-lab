@@ -72,10 +72,25 @@ const path=require("path"), {pathToFileURL}=require("url");
   { const cp=two.map(b=>b.slice()); cp[0]=[62,62];
     check("a repeated note is a fault here", rules2(cp).some(f=>f.rule==="repeat" && f.severity==="fault")); }
 
+  // ---------- the fourth species: suspensions ----------
+  const rules4=(cp, above=true)=>C.check({cantus, cp, mode:D, species:4, above}).filter(f=>f.severity!=="praise");
+  const four=[[null,69],[69,74],[74,72],[72,71],[71,74],[74,81],[81,77],[77,76],[76,74],[74,73],[74]];   // 7–6s, checked by hand
+  check("a line of tied suspensions has nothing forbidden, and its ties aren't repeats", !rules4(four).some(C.forbidden) && !rules4(four).some(f=>f.rule==="repeat"), rules4(four).map(f=>f.rule+f.bar).join());
+  check("each 7–6 resolved is praised", C.check({cantus, cp:four, mode:D, species:4}).filter(f=>f.rule==="suspended").length>=4);
+  check("a suspension stepping up doesn't resolve", at(rules4([[null,69],[69,74],[74,76]]),"resolution")==="2");
+  check("nor one waiting for its resolution, yet", !rules4([[null,69],[69,74],[74]]).some(f=>f.rule==="resolution"));
+  check("2–1 above the cantus isn't allowed", at(rules4([[null,69],[69,65],[65,64]]),"suspension")==="2");
+  check("nor 7–8 below it", at(rules4([[null,50],[50,53],[53,55]],false),"suspension")==="2");
+  check("fifths on successive upbeats", at(rules4([[null,69],[69,72],[72,74]]),"upbeats")==="1");
+  check("a tie broken is noted, no more", rules4([[null,69],[69,74],[72,71]]).map(f=>f.rule+f.bar).join()==="untied2", rules4([[null,69],[69,74],[72,71]]).map(f=>f.rule+f.bar).join());
+
   // ---------- the solver ----------
   const clean=(c,o)=>{ const cp=C.solve({cantus:c.cantus, mode:C.MODES[c.mode], ...o, pitches:C.harpWindow(C.MODES[c.mode],c.cantus,o.above)});
     return cp && !C.check({cantus:c.cantus, cp, mode:C.MODES[c.mode], ...o}).some(C.forbidden) && cp.flat().every(p=>C.harpWindow(C.MODES[c.mode],c.cantus,o.above).includes(p) || C.degree(C.MODES[c.mode],p).alt); };
   for(const c of C.CANTUS) check(`first species in ${c.mode}, above and below`, clean(c,{species:1, above:true}) && clean(c,{species:1, above:false}));
+  check("fourth species in every mode, above and below (the window moved down where it must)", C.CANTUS.every(c=>[true,false].every(above=>{ const mode=C.MODES[c.mode];
+    for(let sh=0;sh<=2;sh++){ const cp=C.solve({cantus:c.cantus, mode, species:4, above, pitches:C.harpWindow(mode,c.cantus,above,sh)}); if(cp) return !C.check({cantus:c.cantus, cp, mode, species:4, above}).some(C.forbidden) && cp[0][0]===null; }
+    return false; })));
   check("second species, Dorian above and Ionian below", clean(C.CANTUS[0],{species:2, above:true}) && clean(C.CANTUS[5],{species:2, above:false}));
   check("the penultimate bar whole when two notes won't go (Aeolian above)", (()=>{ const c=C.CANTUS[4], cp=C.solve({cantus:c.cantus, mode:C.MODES.aeolian, species:2, above:true, pitches:C.harpWindow(C.MODES.aeolian,c.cantus,true)}); return cp && cp[cp.length-2].length===1; })());
   { const o={cantus, mode:D, pitches:C.harpWindow(D,cantus,true)};
