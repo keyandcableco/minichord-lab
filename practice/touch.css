@@ -17,7 +17,10 @@
 .tdmod{grid-area:mod;width:44px;padding:0;background:#16132A;border:2px solid #3D3656;font-size:1.1rem}
 .tdmod.on{background:#FFD35A;color:#16132A;border-color:#FFD35A}
 .tdmod.locked{background:#7FE9FF;color:#16132A;border-color:#7FE9FF}
-.tdgrid.keymode .tdcell{font-size:.5rem}
+.td-key-banner{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:1000;background:#FFD35A;color:#16132A;
+  padding:8px 16px;border-radius:4px;font-size:.7rem;font-weight:bold;white-space:nowrap;opacity:0;
+  transition:opacity .2s;pointer-events:none}
+.td-key-banner.show{opacity:1}
 /* the top row: the harp or d-pad, the knob, and the chord that's playing */
 .tdtop{grid-area:top;display:flex;gap:6px;align-items:stretch;height:44px;min-width:0}
 .tdnow{flex:0 0 auto;min-width:5.5em;align-self:center;text-align:right;font-size:.7rem;color:#7FE9FF;white-space:nowrap}
