@@ -229,9 +229,9 @@ function tdModButton(modBtn){
 function tdGrid(g){
   for(let r=0;r<3;r++) for(let c=0;c<7;c++){ const b=document.createElement("span"); b.className="tdcell"; b.dataset.r=r; b.dataset.c=c; g.appendChild(b); }
   const touchTimings=new Map();
-  g.addEventListener("pointerdown", e=>{ e.preventDefault(); tdCapture(g, e); const z=tdZone(g.getBoundingClientRect(), e.clientX, e.clientY); touchTimings.set(e.pointerId, {at:performance.now(), zone:z, moved:false}); tdFinger(e.pointerId, z); });
-  g.addEventListener("pointermove", e=>{ const t=touchTimings.get(e.pointerId); if(t) t.moved=true; if(td.touches.has(e.pointerId)) tdFinger(e.pointerId, tdZone(g.getBoundingClientRect(), e.clientX, e.clientY)); });
-  const end=e=>{ const t=touchTimings.get(e.pointerId); if(!t) return; const elapsed=performance.now()-t.at; tdFinger(e.pointerId, null); if(!t.moved && elapsed>=500 && t.zone) tdChangeKey(t.zone); touchTimings.delete(e.pointerId); };
+  g.addEventListener("pointerdown", e=>{ e.preventDefault(); tdCapture(g, e); const z=tdZone(g.getBoundingClientRect(), e.clientX, e.clientY); touchTimings.set(e.pointerId, {at:performance.now(), zone:z, moved:false, pressed:false}); });
+  g.addEventListener("pointermove", e=>{ const t=touchTimings.get(e.pointerId); if(t) { t.moved=true; if(!t.pressed) tdFinger(e.pointerId, t.zone); t.pressed=true; tdFinger(e.pointerId, tdZone(g.getBoundingClientRect(), e.clientX, e.clientY)); } });
+  const end=e=>{ const t=touchTimings.get(e.pointerId); if(!t) return; const elapsed=performance.now()-t.at; if(!t.moved && elapsed>=500) { if(t.zone) tdChangeKey(t.zone); } else { if(!t.pressed) tdFinger(e.pointerId, t.zone); tdFinger(e.pointerId, null); } touchTimings.delete(e.pointerId); };
   g.addEventListener("pointerup", end); g.addEventListener("pointercancel", end); g.addEventListener("lostpointercapture", end);
 }
 // a finger's buttons: the new ones pressed first, then the old let go, so moving to the next chord
