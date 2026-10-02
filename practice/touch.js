@@ -31,6 +31,10 @@ const TD_EVERYTHING={chords:1, harp:"notes"};                // the Practice Roo
 function tdProfile(){
   const p=(blast && blast.field && TD_PROFILES[blast.kind]) || TD_EVERYTHING;
   if(blast && blast.kind==="asteroids" && (blast.aimManual || saved.asAim)) return {...p, knob:2};
+  // a knob where the game wants one now: Chord Invaders' manual aim steers the ship on one, and a
+  // bonus round tuned by a knob (TUNE IT) has one while it plays, whatever the game
+  if(blast && blast.kind==="blaster" && (blast.aimManual || saved.invAim)) return {...p, knob:1};
+  if(blast && blast.bonus && !blast.bonus.over && blast.bonus.g && blast.bonus.g.knob && !p.knob) return {...p, knob:1};
   return p;
 }
 // what the deck is built for: when it changes (another game, or manual aim chosen), the deck's built again
@@ -72,6 +76,8 @@ function touchMinichord(on=true){
     vmKnobs(false);
   }
   const b=document.getElementById("touchBtn"); if(b) b.textContent = on ? "Put the screen minichord away" : "Play on the screen";
+  if(typeof cabPress==="function") document.querySelectorAll(".cabpress").forEach(p=>p.textContent=cabPress());   // what wakes a title screen
+  if(on) tdTip();
   if(typeof arcadeRelayout==="function") setTimeout(arcadeRelayout, 60);
 }
 let tdTimer=0;
@@ -100,7 +106,7 @@ function tdBuild(){
   else if(p.knob) top.appendChild(tdKnob("KNOB", ()=> blast && blast.kind==="chopper" ? 0 : steerKnob()));
   const now=document.createElement("span"); now.className="tdnow"; top.appendChild(now);
   if(p.chords){ const g=document.createElement("div"); g.className="tdgrid"; deck.appendChild(g); tdGrid(g); }
-  tdPlace(); tdDraw(); tdHeight();
+  tdPlace(); tdDraw(); tdHeight(); td.hintEls=null; tdWatchHints();
 }
 // the deck goes where the game is: on the page, or in the full-screen cabinet
 function tdPlace(){
@@ -118,7 +124,41 @@ function tdHeight(){ if(td.deck) document.documentElement.style.setProperty("--t
 function tdSync(){
   if(!td.on) return;
   if(tdShape()!==td.shape) tdBuild(); else tdPlace();
-  tdPhone(); tdHeight();
+  tdPhone(); tdHeight(); tdWatchHints();
+}
+// Beginner mode and the demos light what to press on the game's own minichord. Played on the screen
+// that one isn't shown (touch.css): the deck lights instead, the chord buttons, the modifier, a slash's
+// bass, the string or the d-pad, as the game's lights them, the moment it does.
+function tdWatchHints(){
+  const els=[blast && blast.helpBoard && blast.helpBoard.el, blast && blast.helpHarp && blast.helpHarp.el].filter(e=>e && e.nodeType===1);
+  if(td.hintEls && td.hintEls.length===els.length && td.hintEls.every((e,i)=>e===els[i])) return;
+  td.hintObs && td.hintObs.disconnect(); td.hintEls=els;
+  if(window.MutationObserver && els.length){
+    td.hintObs=new MutationObserver(()=>{ if(!td.hintQueued){ td.hintQueued=true; requestAnimationFrame(()=>{ td.hintQueued=false; tdHints(); }); } });
+    els.forEach(e=>td.hintObs.observe(e, {subtree:true, attributes:true, attributeFilter:["class"]}));
+  }
+  tdHints();
+}
+function tdHints(){
+  const deck=td.deck; if(!deck) return;
+  const hb=blast && blast.helpBoard, hh=blast && blast.helpHarp;
+  const cell=(c,r)=> hb && hb.cells && hb.cells[c] && hb.cells[c][r];
+  deck.querySelectorAll(".tdcell").forEach(b=>{ const c=cell(+b.dataset.c, +b.dataset.r);
+    b.classList.toggle("hint", !!c && c.classList.contains("lit")); b.classList.toggle("slashhint", !!c && c.classList.contains("slashlit")); });
+  const m=deck.querySelector(".tdmod"); if(m) m.classList.toggle("hint", !!(hb && hb.mod && hb.mod.classList.contains("lit")));
+  const lit=new Set(); if(hh && hh.cells) hh.cells.forEach((c,i)=>{ if(c && c.classList.contains("lit")) lit.add(i); });
+  deck.querySelectorAll(".tdharp span").forEach(s=>s.classList.toggle("hint", lit.has(+s.dataset.i)));
+  const zones=new Set(); if(hb && hb.pad) hb.pad.querySelectorAll(".lit,.demo-on").forEach(e=>{ if(e.dataset.zone) zones.add(e.dataset.zone); });
+  deck.querySelectorAll(".tdz").forEach(b=>b.classList.toggle("hint", zones.has(b.dataset.zone)));
+}
+// the first time on this device, a word on what isn't plain to see
+function tdTip(){
+  if(saved.tdTip) return; saved.tdTip=true; save();
+  const tip=document.createElement("div"); tip.className="tdtip";
+  tip.innerHTML="TAP THE CHORDS. A THUMB ON THE LINE BETWEEN TWO ROWS PLAYS BOTH: DIM, OR m7. DOUBLE-TAP ♯ TO FLIP SHARP AND FLAT.";
+  (document.querySelector(".fscab") || document.body).appendChild(tip);
+  const go=()=>{ tip.classList.add("gone"); setTimeout(()=>tip.remove(), 400); document.removeEventListener("pointerdown", go, true); };
+  setTimeout(go, 8000); document.addEventListener("pointerdown", go, true);
 }
 // On a phone the game plays in the phone's cabinet: its screen and the minichord drawn round it, filling
 // the window, and full screen from the first tap where the browser allows it. Left for the page (SCREEN),
@@ -209,18 +249,23 @@ function tdKnob(name, which){
   return k;
 }
 
-// what the deck shows: each button's chord in the key, the ones held lit, the chord playing
+// What the deck shows: each button's chord in the key (or nothing, played bare, as on the instrument:
+// a quarter more points), the ones held lit, the chord playing, and the modifier's way, sharp or flat.
+// Again whenever the minichord's settings change: a key set, the modifier double-tapped.
 vmListen(()=>tdDraw());
+mc.addEventListener("device", ()=>tdDraw());
+const tdBare=()=> !!saved.tdBare;
 function tdDraw(){
   const deck=td.deck; if(!deck || !td.on) return;
-  const f=devFifths(), sharp=vmSharp(), names=f<0?FLAT_NAMES:SHARP_NAMES;
-  const labels=f+"|"+sharp+"|"+(mc.params[31]??0);
+  const f=devFifths(), sharp=vmSharp(), names=f<0?FLAT_NAMES:SHARP_NAMES, bare=tdBare();
+  const labels=f+"|"+sharp+"|"+(mc.params[31]??0)+"|"+bare;
+  const m=deck.querySelector(".tdmod"); if(m) m.textContent = mc.params[31]===1 ? "♭" : "♯";
   const held=new Set([...vm.presses.values()].map(p=>p.r+":"+p.c));
   deck.querySelectorAll(".tdcell").forEach(b=>{
     const r=+b.dataset.r, c=+b.dataset.c;
     if(td.sharpLabels!==labels){ const li=LETTERS.indexOf(VM_COLS[c]); let pc=mod(NAT[li]+keyAcc(li,f),12);
       if(sharp) pc=mod(pc+(mc.params[31]===1?-1:1),12);
-      b.textContent=names[pc]+["","m","7"][r]; }
+      b.textContent = bare ? "" : names[pc]+["","m","7"][r]; }
     b.classList.toggle("on", held.has(r+":"+c));
   });
   td.sharpLabels=labels;

@@ -39,8 +39,9 @@ function snReady(){
 }
 // the board: a grid of cells, beside the controller strip
 function snLayout(){
-  // room on the right: for the controller strip, or for the on-screen minichord when it's shown (beginner mode, the demo)
-  const f=blast.field, side = (saved.beginner || blast.phase==="demo") ? Math.ceil(Math.min(f.clientWidth*.4, 380))+20 : !kmStripShown() ? 16 : (kmLayout().cols===3 ? 150 : 84);
+  // room on the right: for the controller strip, or for the on-screen minichord when it's shown (beginner mode, the
+  // demo); played on the screen, neither is (the deck under the game is both)
+  const f=blast.field, side = !kmStripShown() ? 16 : (saved.beginner || blast.phase==="demo") ? Math.ceil(Math.min(f.clientWidth*.4, 380))+20 : (kmLayout().cols===3 ? 150 : 84);
   const W=f.clientWidth-side, H=f.clientHeight-64;
   let cell;
   if(blast.phase==="play" && blast.cols){ cell=Math.max(12, Math.floor(Math.min(W/blast.cols, H/blast.rows))); }   // mid-game the board keeps its cells and only scales
@@ -86,7 +87,7 @@ function snBar(){
   blast.hud.innerHTML=`<span>SCORE ${blast.score}${multTag()}</span><span class="lvl">LEVEL ${blast.level+1} · LOAD ${load}/${max}${mxTag()}</span><span class="lives">${livesHtml()}</span>`;
 }
 const SNMENU_G={key:"snake", title:"CHORD SNAKE",
-  rules:()=>`<p>EAT NOTES. WHEN THE ONES YOU CARRY SPELL A CHORD, PLAY IT TO CASH THEM IN.</p><p>STEER ON THE HARP OR THE ARROW KEYS. B DROPS YOUR OLDEST NOTE.</p>`,
+  rules:()=>`<p>EAT NOTES. WHEN THE ONES YOU CARRY SPELL A CHORD, PLAY IT TO CASH THEM IN.</p><p>${playOnScreen() ? "STEER WITH THE ARROWS UNDER THE GAME" : "STEER ON THE HARP OR THE ARROW KEYS"}. B DROPS YOUR OLDEST NOTE.</p>`,
   rows:row=>{
     mxRow(row, ()=>menuRebuild(()=>snMenu()));
     row("SPEED", SPEEDS.map(x=>x[0].toUpperCase()), ()=>+saved.speed||0, i=>{ saved.speed=i; save(); });
@@ -283,7 +284,7 @@ function snDemo(){
       demoPlay([52,56,59,64]);                                                   // E major, heard and lit on the buttons
       snDemoCash(); await step(2600);
       say("WATCH YOUR LOAD","WALLS, YOUR OWN TAIL AND CARRYING TOO MUCH COST A LIFE."); await step(3200);
-      say("READY?","CHOOSE A LEVEL. STEER ON THE HARP OR THE ARROW KEYS."); sfx("level"); await step(2800);
+      say("READY?",`CHOOSE A LEVEL. ${playOnScreen() ? "STEER WITH THE ARROWS UNDER THE GAME" : "STEER ON THE HARP OR THE ARROW KEYS"}.`); sfx("level"); await step(2800);
       endSnDemo(token);
     }catch(e){ /* skipped */ }
   })();

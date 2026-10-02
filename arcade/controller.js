@@ -56,8 +56,10 @@ function kmPlate(el, label){
   return dots;
 }
 // played on a touch screen the deck under the game is the controller (practice/touch.js), so the one
-// beside the field isn't shown, and the games that leave room for it needn't
-const kmStripShown=()=> !(typeof tdOn==="function" && tdOn());
+// beside the field isn't shown, and the games that leave room for it needn't; and the rules speak of
+// what's on the screen, not the keys and the mouse
+const playOnScreen=()=> typeof tdOn==="function" && tdOn();
+const kmStripShown=()=> !playOnScreen();
 /** the controller drawn beside the field, as the harp is laid out, lit as it's touched */
 function kmStrip(field){
   const L=kmLayout(), el=document.createElement("div"); el.setAttribute("aria-label","The harp as a controller");

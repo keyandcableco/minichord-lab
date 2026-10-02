@@ -155,7 +155,7 @@ function swBar(){
   blast.hud.innerHTML=`<span>SCORE ${blast.score}${multTag()}</span><span class="lvl">LEVEL ${blast.level+1} · FIELD ${blast.fields+1}</span><span class="lives">${livesHtml()}</span>`;
 }
 const SWMENU_G={key:"sweeper", title:"CHORD SWEEPER",
-  rules:()=>`<p>A GAME OF TENSION AND RELEASE. EACH MINE IS A KEY'S HOME. SWEPT SQUARES SHOW THE TENSION POINTING THERE: NEXT TO A MINE, ITS V7; TWO AWAY, V OF V; THREE AWAY, V OF V OF V. FURTHER OUT IT'S CALM.</p><p>LATER, TRITONE SUBSTITUTES, DIMINISHED SEVENTHS AND BARE TRITONES POINT HOME TOO.</p><p>STEER ON THE HARP OR THE ARROW KEYS. A SWEEPS, B FLAGS. WITH A MOUSE, CLICK TO SWEEP AND RIGHT-CLICK TO FLAG.</p><p>TO DEFUSE A MINE, PUT THE CURSOR ON IT AND PLAY ITS KEY'S HOME CHORD. SWEEP A MINE, OR PLAY THE WRONG CHORD ON IT, AND IT GOES OFF, AND THE WHOLE FIELD IS SHOWN.</p>`,
+  rules:()=>`<p>A GAME OF TENSION AND RELEASE. EACH MINE IS A KEY'S HOME. SWEPT SQUARES SHOW THE TENSION POINTING THERE: NEXT TO A MINE, ITS V7; TWO AWAY, V OF V; THREE AWAY, V OF V OF V. FURTHER OUT IT'S CALM.</p><p>LATER, TRITONE SUBSTITUTES, DIMINISHED SEVENTHS AND BARE TRITONES POINT HOME TOO.</p><p>${playOnScreen() ? "STEER WITH THE ARROWS UNDER THE GAME. A SWEEPS, B FLAGS. OR TAP A SQUARE TO SWEEP IT, AND HOLD ONE TO FLAG IT." : "STEER ON THE HARP OR THE ARROW KEYS. A SWEEPS, B FLAGS. WITH A MOUSE, CLICK TO SWEEP AND RIGHT-CLICK TO FLAG."}</p><p>TO DEFUSE A MINE, PUT THE CURSOR ON IT AND PLAY ITS KEY'S HOME CHORD. SWEEP A MINE, OR PLAY THE WRONG CHORD ON IT, AND IT GOES OFF, AND THE WHOLE FIELD IS SHOWN.</p>`,
   stat:()=>`FIELDS ${blast.fields}`,
   rows:row=>{
     row("HARP", HARP_LAYOUTS.map(([t])=>t), harpLayoutIndex, i=>{ saved.harpLayout=HARP_LAYOUTS[i][1]; save(); kmRestrip(); });
@@ -280,7 +280,7 @@ function swBoom(m, why, label){
 function swNextPrompt(){
   blast.phase="next";
   const p=document.createElement("div"); p.className="swnext";
-  p.innerHTML=`<b>NEXT FIELD ▶</b><span>A ON THE HARP, ANY CHORD, A CLICK OR ENTER</span>`;
+  p.innerHTML=`<b>NEXT FIELD ▶</b><span>${playOnScreen() ? "A, ANY CHORD, OR A TAP" : "A ON THE HARP, ANY CHORD, A CLICK OR ENTER"}</span>`;
   p.onclick=()=>swGoOn();
   blast.field.appendChild(p); blast.nextEl=p;
 }

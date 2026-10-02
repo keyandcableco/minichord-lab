@@ -187,6 +187,7 @@ function diffMult(kind=cabKind()){
   if(kind==="hunt") m*=MULT_GUIDE[saved.hdGuide||0]??1;
   if((kind==="asteroids" && saved.asAim) || (kind==="blaster" && saved.invAim)) m*=2;   // manual aim: harder, so double
   if(MOD_GAMES.has(kind) && !autoMod()) m*=1.25;                              // the modifier set by hand: a quarter more
+  if(kind!=="command" && saved.tdBare && typeof playOnScreen==="function" && playOnScreen()) m*=1.25;   // the screen's chord buttons bare: a quarter more
   return Math.round(m*100)/100;
 }
 const mulPts=p=>Math.round(p*(blast.mult||1));
@@ -214,6 +215,7 @@ function multRows(kind){
   if(kind==="command") rows.push(["NOTES AT ONCE", ["FEW","SOME","MANY","SWARM"].map((n,i)=>`${n} ×${MULT_DENSITY[i]}`)]);
   if(kind==="breakout") rows.push(["PADDLE", ["NARROW","NORMAL","WIDE"].map((n,i)=>`${n} ×${MULT_PADDLE[i]}`)]);
   if(kind==="hunt") rows.push(["FIELD GUIDE", ["NAMES","NUMERALS","NONE"].map((n,i)=>`${n} ×${MULT_GUIDE[i]}`)]);
+  if(kind!=="command" && typeof playOnScreen==="function" && playOnScreen()) rows.push(["BUTTONS", ["LABELLED ×1","BARE ×1.25"]]);
   return rows;
 }
 // the points screen in the title loop: the table filling in line by line, then the multipliers
@@ -281,6 +283,7 @@ function arcadeSettings(){
   if(k==="command") choice("NOTES AT ONCE", ["FEW","SOME","MANY","SWARM"], ()=>saved.hcDensity??1, i=>{ saved.hcDensity=i; save(); }, "FROM THE NEXT GAME");
   if(k==="breakout") choice("PADDLE", ["NARROW","NORMAL","WIDE"], ()=>saved.boPaddle??1, i=>{ saved.boPaddle=i; save(); }, "FROM THE NEXT GAME");
   if(k==="hunt") choice("FIELD GUIDE", ["NAMES","NUMERALS","NONE"], ()=>saved.hdGuide||0, i=>{ saved.hdGuide=i; save(); }, "FROM THE NEXT GAME · LESS TO READ SCORES MORE");
+  if(k!=="command" && typeof playOnScreen==="function" && playOnScreen()) choice("BUTTONS", ["LABELLED","BARE ×1.25"], ()=>saved.tdBare?1:0, i=>{ saved.tdBare=!!i; save(); if(typeof tdDraw==="function") tdDraw(); }, "THE CHORD BUTTONS ON THE SCREEN · BARE SCORES MORE");
   choice("BEGINNER", ["OFF","SHOW WHAT TO PRESS"], ()=>saved.beginner?1:0, i=>{ saved.beginner=!!i; save(); helperSync(true); }, "NO HIGH SCORES WITH IT ON");
   choice("SCREEN", ["FLAT","CRT"], ()=>saved.crt?1:0, i=>{ saved.crt=!!i; save(); crtSync(); });
   choice("FULL SCREEN", ["AUTO","CABINET","PLAIN"], ()=>FS_MODES.indexOf(fsMode()), i=>fsModeSet(i), "AUTO GOES PLAIN WHERE THE GRAPHICS CAN'T KEEP UP");
@@ -463,7 +466,9 @@ function hsEntry(slug, score, next){
   const finish=async()=>{
     if(st.done) return; st.done=true; blast.hsEntry=null; clearInterval(st.timer);
     const initials=st.letters.join(""); saved.hsInitials=initials;
-    const entry={initials, score, level:blast.level+1, speed:+saved.speed||0, created:Date.now()/1000};
+    // played without a minichord: kept with how, so these can have a board of their own one day
+    const played = typeof kbOn==="function" && kbOn() ? "keys" : typeof tdOn==="function" && tdOn() ? "touch" : undefined;
+    const entry={initials, score, level:blast.level+1, speed:+saved.speed||0, created:Date.now()/1000, ...(played ? {played} : {})};
     // this browser's board
     const local=[...hsLocal(slug), entry].sort((a,b)=>b.score-a.score).slice(0,10);
     (saved.hiscores||(saved.hiscores={}))[slug]=local; save();
@@ -478,7 +483,7 @@ function hsEntry(slug, score, next){
         if(r.ok){ rank=j.rank; shared=true; hsCache[slug]={at:performance.now(), scores:j.scores}; } else blast.hsNote=(j.error||"").toUpperCase();
       }catch(e){ blast.hsNote="THE SHARED BOARD COULDN'T BE REACHED: KEPT ON THIS COMPUTER"; }
     }
-    blast.hsResult=`${initials} · #${rank} ON ${shared?"THE BOARD":"THIS COMPUTER'S BOARD"}${mc.virtual?" · KEYBOARD PLAY":""}`;
+    blast.hsResult=`${initials} · #${rank} ON ${shared?"THE BOARD":played==="touch"?"THIS DEVICE'S BOARD":"THIS COMPUTER'S BOARD"}${played==="touch"?" · TOUCH PLAY":mc.virtual?" · KEYBOARD PLAY":""}`;
     sfx("level"); ov.remove(); next();
   };
   // declined (or left alone): nothing is sent or kept, and the game over screen says so

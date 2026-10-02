@@ -117,7 +117,7 @@ const BONUS_GAMES=[
   // a piano tech's job: A 440 and a second note a little off, beating against it; tune the second
   // until the beats stop. The beats show as a pulsing ring, as fast as they sound.
   {id:"tune", name:"TUNE IT", secs:16,
-   instr:"A 440 SOUNDS, AND A SECOND A A LITTLE OFF. TURN A KNOB, OR PRESS THE ARROW KEYS, UNTIL THE BEATING STOPS. PLAY A CHORD TO LOCK IT IN.",
+   get instr(){ return `A 440 SOUNDS, AND A SECOND A A LITTLE OFF. ${typeof playOnScreen==="function" && playOnScreen() ? "DRAG THE KNOB UNDER THE GAME" : "TURN A KNOB, OR PRESS THE ARROW KEYS,"} UNTIL THE BEATING STOPS. PLAY A CHORD TO LOCK IT IN.`; },
    start(b){
      b.cents=(Math.random()<.5?-1:1)*(18+Math.random()*27); b.base=null; b.startCents=b.cents;
      b.stage.innerHTML=`<div class="bobeat"><i></i></div><p class="bosmall">THE RING PULSES WITH THE BEATS</p>`;

@@ -110,3 +110,17 @@ body.tdplay .field .kmstrip{display:none}                      /* the deck is th
   .fscab.phone:has(.tdeck[data-chords=""]){padding-left:max(0px,env(safe-area-inset-left,0px))}
   .fscab.phone .fsplate{padding-left:10px;padding-right:10px}
 }
+
+/* ---- beginner mode and the demos: the deck lights what to press, the game's own minichord hidden ---- */
+body.tdplay .field .helper{display:none}
+@keyframes tdhint{50%{box-shadow:inset 0 0 0 3px #FFD35A,0 0 0 2px #FFD35A}}
+.tdcell.hint,.tdmod.hint,.tdz.hint{box-shadow:inset 0 0 0 3px #FFD35A;animation:tdhint .7s steps(2) infinite}
+.tdcell.slashhint{box-shadow:inset 0 0 0 3px #7FE9FF}
+.tdharp span.hint{background:#3A3150;color:#FFD35A;box-shadow:inset 0 0 0 2px #FFD35A}
+.tdcell.on.hint{animation:none}
+@media (prefers-reduced-motion:reduce){.tdcell.hint,.tdmod.hint,.tdz.hint{animation:none}}
+/* the first time on this device: a word on what isn't plain to see */
+.tdtip{position:fixed;left:50%;top:38%;transform:translate(-50%,-50%);z-index:10001;width:min(86vw,420px);box-sizing:border-box;padding:12px 14px;
+  background:rgba(7,6,12,.94);border:3px solid #FFD35A;box-shadow:0 0 0 3px #000;color:#F1E8D2;text-align:center;pointer-events:none;
+  font:400 .5rem/1.9 "Minichord Lab Accidentals","Press Start 2P",monospace;transition:opacity .4s}
+.tdtip.gone{opacity:0}

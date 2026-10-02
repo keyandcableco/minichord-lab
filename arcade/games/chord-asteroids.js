@@ -100,7 +100,7 @@ function asBar(){
   blast.hud.innerHTML=`<span>SCORE ${blast.score}${multTag()}</span><span class="lvl">LEVEL ${blast.level+1}${mxTag()}${asPowerHud()}</span><span class="lives">${livesHtml()}</span>`;
 }
 const ASMENU_G={key:"asteroids", title:"CHORD ASTEROIDS",
-  rules:()=>`<p>PLAY A ROCK'S CHORD TO CRACK IT INTO ITS NOTES.</p><p>PLUCK EACH NOTE ON THE HARP TO SHOOT IT DOWN.</p><p>FLY ROUND YOUR ORBIT TO DODGE: THE MOD KNOB, OR THE ARROW KEYS. HOLD A KNOB AT ITS END AND IT KEEPS GOING ROUND.</p><p>MANUAL AIM SCORES DOUBLE: SPIN THE SHIP WITH ANOTHER KNOB (OR ↑ ↓). A CHORD OR A PLUCK FIRES WHERE IT POINTS.</p><p class="starline">${PIXEL_STAR}ROCKS SCORE BIG AND NEVER HURT.</p><p>NOW AND THEN A POWER-UP ROCK: CRACK IT WITH ITS CHORD TO TAKE IT.</p>`,
+  rules:()=>`<p>PLAY A ROCK'S CHORD TO CRACK IT INTO ITS NOTES.</p><p>PLUCK EACH NOTE ON THE HARP TO SHOOT IT DOWN.</p>${playOnScreen() ? "<p>FLY ROUND YOUR ORBIT TO DODGE: DRAG THE KNOB UNDER THE GAME.</p><p>MANUAL AIM SCORES DOUBLE: SPIN THE SHIP WITH THE AIM KNOB. A CHORD OR A PLUCK FIRES WHERE IT POINTS.</p>" : "<p>FLY ROUND YOUR ORBIT TO DODGE: THE MOD KNOB, OR THE ARROW KEYS. HOLD A KNOB AT ITS END AND IT KEEPS GOING ROUND.</p><p>MANUAL AIM SCORES DOUBLE: SPIN THE SHIP WITH ANOTHER KNOB (OR ↑ ↓). A CHORD OR A PLUCK FIRES WHERE IT POINTS.</p>"}<p class="starline">${PIXEL_STAR}ROCKS SCORE BIG AND NEVER HURT.</p><p>NOW AND THEN A POWER-UP ROCK: CRACK IT WITH ITS CHORD TO TAKE IT.</p>`,
   rows:row=>{
     mxRow(row, ()=>menuRebuild(()=>asMenu()));
     row("AIM", ["AUTO","MANUAL ×2"], ()=>saved.asAim?1:0, i=>{ saved.asAim=i; save(); });
@@ -366,7 +366,7 @@ function asDemo(){
       }
       await step(1000); say("","EVERY NOTE OF A CHORD SHOT DOWN SCORES A BONUS. A WRONG STRING JAMS YOUR GUN."); await step(3400);
       // dodging: a rock comes straight for the ship, and the ship swings round its orbit out of the way
-      say("DODGE","YOUR SHIP FLIES AN ORBIT. SWING ROUND IT TO DODGE: THE MOD KNOB, OR THE ARROW KEYS.");
+      say("DODGE",`YOUR SHIP FLIES AN ORBIT. SWING ROUND IT TO DODGE: ${playOnScreen() ? "THE KNOB UNDER THE GAME" : "THE MOD KNOB, OR THE ARROW KEYS"}.`);
       const W2=blast.field.clientWidth, incoming=asRock("chord", W2-50, blast.cy, "Am", {root:"A", q:"m", tones:["A","C","E"], rootPc:9});
       incoming.vx=-(W2-50-blast.cx)/2.6; incoming.vy=0; await step(1100);
       blast.orbitWant=(blast.orbitA??Math.PI/2)-Math.PI*.55; sfx("press"); await step(1900);   // swung clear: the rock sails through where it was

@@ -215,7 +215,7 @@ function cabinet(ov){
   const isRule=c=> (c.tagName==="P" && !c.classList.contains("blink") && !/^BEST /.test(c.textContent)) || c.classList.contains("padhint");
   const rules=kids.filter(c=>isRule(c) && !c.classList.contains("credit")), credit=kids.find(c=>c.classList.contains("credit"));
   const title=document.createElement("div"); title.className="cab-title";
-  title.innerHTML=`<h3 class="cabtitle">${TITLE_FOR[cabKind()]||"MINICHORD LAB"}</h3><p class="cabpress blink">PLAY A CHORD · PLUCK THE HARP · PRESS ANY KEY</p>`;
+  title.innerHTML=`<h3 class="cabtitle">${TITLE_FOR[cabKind()]||"MINICHORD LAB"}</h3><p class="cabpress blink">${cabPress()}</p>`;
   const roll=document.createElement("div"); roll.className="cab-rules";
   const inner=document.createElement("div"); inner.className="cabscroll";
   inner.innerHTML=`<h3>${TITLE_FOR[cabKind()]||""}</h3><p class="cabhead">HOW TO PLAY</p>`;
@@ -251,6 +251,8 @@ function cabinet(ov){
     blast.cabT=gameLater(()=>{ if(blast && blast.overlay===ov && ov.dataset.stage==="rules" && blast.phase==="menu") cabStage(ov,"points"); }, 4200); });
   cabStage(ov, "title");
 }
+// what wakes a title screen, as the player can do it
+const cabPress=()=> playOnScreen() ? "PLAY A CHORD · TAP THE SCREEN" : "PLAY A CHORD · PLUCK THE HARP · PRESS ANY KEY";
 function cabStage(ov, stage){
   if(!blast) return;
   clearTimeout(blast.cabT); clearTimeout(blast.attract);
@@ -382,6 +384,16 @@ function beginnerRow(opts){
       b.title = v ? "The game sets sharp or flat for the chord you need next." : "You set sharp or flat yourself, double-tapping the modifier: a quarter more points.";
       b.onclick=()=>{ saved.autoMod=v; save(); mmark(b); }; mg.appendChild(b); });
     mr.append(ml,mg); opts.insertBefore(mr, sr.isConnected ? sr : r);
+  }
+  // played on the screen: the chord buttons labelled, or bare as the instrument's are, for a quarter more
+  if(playOnScreen() && cabKind()!=="command"){
+    const br=document.createElement("div"); br.className="optrow"; const bl=document.createElement("span"); bl.className="optlabel"; bl.textContent="BUTTONS";
+    const bg=document.createElement("div"); bg.className="levels";
+    const bmark=b=>{ [...bg.children].forEach(x=>{ x.style.background=""; x.style.color=""; }); b.style.background="#F1E8D2"; b.style.color="#16132A"; };
+    [["LABELLED",false],["BARE ×1.25",true]].forEach(([t,v])=>{ const b=document.createElement("button"); b.textContent=t; if(!!saved.tdBare===v) bmark(b);
+      b.title = v ? "The chord buttons blank, as on the instrument: a quarter more points." : "Each chord button shows its chord.";
+      b.onclick=()=>{ saved.tdBare=v; save(); bmark(b); if(typeof tdDraw==="function") tdDraw(); }; bg.appendChild(b); });
+    br.append(bl,bg); opts.insertBefore(br, r);
   }
 }
 function helperSync(rebuild){
