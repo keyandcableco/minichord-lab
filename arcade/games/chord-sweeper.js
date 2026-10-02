@@ -91,7 +91,14 @@ function buildSweeperField(box){
       blast.cur=[+c.dataset.x,+c.dataset.y]; swSweep(); });
     // a right-click flags it (or takes the flag off), as in any minesweeper
     grid.addEventListener("contextmenu", e=>{ const c=e.target.closest(".swcell"); if(!c || !blast) return; e.preventDefault();
-      if(blast.phase!=="play") return; blast.cur=[+c.dataset.x,+c.dataset.y]; swFlag(); });
+      if(blast.phase!=="play" || grid._pressed) return; blast.cur=[+c.dataset.x,+c.dataset.y]; swFlag(); });
+    // on a touch screen, a long press flags it, and the tap that ends it doesn't sweep
+    // (_pressed: the long press has flagged, so neither a contextmenu nor the click that follow do more)
+    grid.addEventListener("pointerdown", e=>{ if(e.pointerType!=="touch") return; const c=e.target.closest(".swcell"); if(!c) return;
+      clearTimeout(grid._press); grid._pressed=false;
+      grid._press=gameLater(()=>{ if(blast.phase!=="play") return; grid._pressed=true; blast.cur=[+c.dataset.x,+c.dataset.y]; swFlag(); try{ navigator.vibrate && navigator.vibrate(15); }catch(x){} }, 450); });
+    for(const ev of ["pointerup","pointercancel","pointerleave"]) grid.addEventListener(ev, ()=>clearTimeout(grid._press));
+    grid.addEventListener("click", e=>{ if(grid._pressed){ grid._pressed=false; e.stopImmediatePropagation(); } }, true);
   }
   swBar(); setTimeout(helperSync);
 }

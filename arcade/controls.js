@@ -47,8 +47,9 @@ mc.addEventListener("knob", e=>{
   if(blast.kind!=="breakout") return;
   const W=blast.W||blast.field.clientWidth; blast.paddle.target=v*(W-blast.paddle.w); blast.steer="knob";
 });
-// the mouse steers only when the knobs can't: no minichord sending them, and none turned lately
-const mouseMaySteer=()=> !knobsReady() && performance.now()-(blast?.knobAt||0)>4000;
+// the mouse steers only when the knobs can't: no minichord sending them, and none turned lately (on a
+// virtual minichord a finger on the field steers as well as its knob, but not straight after the knob)
+const mouseMaySteer=()=> (!knobsReady() || !!mc.virtual) && performance.now()-(blast?.knobAt||0)>4000;
 // the knob games' title screens: which knob steers
 function knobRow(opts){
   const r=document.createElement("div"); r.className="optrow"; const l=document.createElement("span"); l.className="optlabel"; l.textContent="STEER WITH";

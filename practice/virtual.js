@@ -19,7 +19,9 @@ const VM_QUALITY={"0":"", "1":"m", "2":"7", "0,2":"maj7", "1,2":"m7", "0,1":"°"
 //            column's root; shorter, it's a hand moving from one chord to the next (slash_grace)
 //   RELEASE  letting go of a slash chord, the hands lift apart; within this, it ends as itself, not
 //            as the bass's chord or the chord without its bass (slash_release_grace)
-const VM_GRACE=60, VM_SLASH=60, VM_RELEASE=80;
+//   TAP      a chord tapped and let go at once still sounds this long, so the Lab hears it: a finger's
+//            tap is shorter than the moment a chord takes to settle (a button's press never is)
+const VM_GRACE=60, VM_SLASH=60, VM_RELEASE=80, VM_TAP=100;
 
 const vm={
   on:false,
@@ -31,7 +33,7 @@ const vm={
   col:-1, rows:"", slash:-1, believedAt:0,
   pend:null,               // a change to the chord's buttons waiting out the grace: {rows, since, grow}
   overlap:{col:-1, since:0}, bassGone:0, chordGone:0,
-  sounding:"", timer:0,
+  sounding:"", soundAt:0, timer:0,
   listeners:new Set(),
 };
 const vmOn=()=> vm.on && !!(typeof mc!=="undefined" && mc.virtual);
@@ -62,6 +64,7 @@ function virtualMinichord(front, on=true){
   } else if(!vm.fronts.size && vm.on){
     vmReset();
     vm.on=false; mc.virtual=false; mc.virtualKnobs=false; mc.out=null; mc.sysex=false; mc.params.length=0;
+    for(const k of ["writeParam","requestDump","control","probePushPop"]) delete mc[k];   // the real minichord's own again
     mc.dispatchEvent(new Event("device"));
   }
   vmTell();
@@ -72,7 +75,7 @@ function vmKnobs(on){ mc.virtualKnobs=!!on; }
 function vmReset(){
   vm.presses.clear(); vm.mod.clear(); vm.strings.clear(); vm.pend=null; clearTimeout(vm.timer);
   vm.col=-1; vm.rows=""; vm.slash=-1; vm.overlap={col:-1, since:0}; vm.bassGone=vm.chordGone=0;
-  vmSound();
+  vm.soundAt=0; vmSound();                                     // silent at once, not after a tap's moment
 }
 // a front end that shows the instrument hears of every change
 function vmListen(fn){ vm.listeners.add(fn); }
@@ -89,8 +92,8 @@ function vmPluck(id, i){
   if(!vmOn()) return;
   vm.strings.set(id, i);
   const note=60+i;
-  piano.start(); piano.play([note], {dur:.9, vel:70});
   mc.dispatchEvent(new CustomEvent("harp",{detail:{note, pitch:note, string:i, ch:0}}));
+  vmPlay([note], {dur:.9, vel:70});
   vmTell();
 }
 function vmLetGo(id){
@@ -181,20 +184,29 @@ function vmChordName(){
 // in as a minichord's notes do, so the Lab reads them the same way: settled into a "chord" a moment
 // after the last change, and "voices" while they sound.
 function vmSound(){
-  const ch=vmChordNow();
+  const ch=vmChordNow(), now=performance.now();
   const key=ch ? `${ch.pc}|${ch.q}|${ch.bass}` : "";
   if(key===vm.sounding) return;
-  vm.sounding=key;
+  if(!ch && now-vm.soundAt<VM_TAP){ clearTimeout(vm.timer); vm.timer=setTimeout(vmUpdate, vm.soundAt+VM_TAP-now+1); return; }   // a tap: it sounds a moment yet
+  vm.sounding=key; if(ch) vm.soundAt=now;
   let v=[];
   if(ch){
     const tones=(VL_TONES[ch.q]||FORM[ch.q].map(f=>f[1]));
     v=firmwareVoicing(ch.pc, tones, null, mc.params[112]??12).map(x=>x+48);
     if(ch.bass!=null){ const rest=v.slice(1), low=Math.min(...rest); let b=low-mod(low-ch.bass,12); if(b===low) b-=12; v=[b, ...rest]; }
-    piano.start(); piano.play(v, {dur:1.4});
   }
   mc.notes.clear();
   v.forEach(note=>mc.notes.set("0:"+note, {ch:0, note, vel:100, t:performance.now()}));
   if(!v.length) mc._lastChordKey="";                         // the same chord again is a new press
   mc._changed(true);
+  if(v.length) vmPlay(v, {dur:1.4});
 }
+// the Lab's piano, heard if it can be: a browser that won't make a sound yet mustn't stop the chord
+function vmPlay(notes, opts){ try{ piano.start(); piano.play(notes, opts); }catch(e){} }
 addEventListener("blur", ()=>{ if(vmOn()){ vmReset(); vmTell(); } });
+// a real minichord connected: the virtual one steps aside first, every front end put away
+document.getElementById("connect")?.addEventListener("click", ()=>{
+  if(!vm.on) return;
+  if(typeof kbOn==="function" && kbOn()) document.getElementById("keysBtn")?.click();
+  if(typeof touchMinichord==="function") touchMinichord(false);
+}, true);

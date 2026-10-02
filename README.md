@@ -68,7 +68,9 @@ opens it with `?game=<name>&solo`). Its code is plain scripts, loaded in order a
 - `practice/games.js`: the Practice Room's own games
 - `practice/virtual.js`: a minichord without a minichord, its chord buttons following the firmware's
   own rules (slash chords, and the grace that keeps C to C7 from passing through Cmaj7), heard by the
-  Lab as a real one is; `practice/keyboard.js` plays it from the computer keyboard
+  Lab as a real one is; `practice/keyboard.js` plays it from the computer keyboard, and
+  `practice/touch.js` (with `touch.css`) from a touch screen: the chord buttons, the modifier, and the
+  harp's strings, a d-pad or a knob as each game needs, drawn under the game, on by itself on a phone
 - `arcade/`: the arcade. One file per game in `arcade/games/`; `controller.js` (the harp as a d-pad),
   `cabinet.js` (title loop, beginner mode, full screen), `kit.js` (menus, demos, settings, high scores),
   `sounds.js` (the shared cabinet sounds; each game's own are in `arcade/games/<game>-sounds.js`, loaded
