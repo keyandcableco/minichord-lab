@@ -125,12 +125,14 @@ function buildStackField(box){
   setTimeout(helperSync);
 }
 function stLayout(){
-  const f=blast.field, H=f.clientHeight-70, cell=Math.max(16, Math.min(30, Math.floor(H/ST_ROWS)));
+  // a narrow field (a phone held upright): the well as wide as it can be, the next piece beside it on the right
+  const f=blast.field, FW=f.clientWidth, narrow=FW<480, H=f.clientHeight-70;
+  const cell=Math.max(narrow ? 12 : 16, Math.min(30, Math.floor(H/ST_ROWS), narrow ? Math.floor((FW-100)/ST_W) : 30));
   blast.cell=cell;
-  const W=ST_W*cell, left=Math.max(130, Math.floor((f.clientWidth-W)/2));
+  const W=ST_W*cell, left=narrow ? 10 : Math.max(130, Math.floor((f.clientWidth-W)/2));
   blast.bx=left; blast.by=46;
   blast.boardEl.style.cssText=`left:${left}px;top:${blast.by}px;width:${W}px;height:${ST_ROWS*cell}px`;
-  blast.nextEl.style.cssText=`left:${Math.max(10,left-120)}px;top:${blast.by}px`;
+  blast.nextEl.style.cssText = narrow ? `left:${left+W+8}px;top:${blast.by}px` : `left:${Math.max(10,left-120)}px;top:${blast.by}px`;
 }
 function stBar(){
   if(!blast || blast.kind!=="stack" || !blast.hud) return;

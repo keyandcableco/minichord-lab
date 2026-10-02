@@ -40,7 +40,7 @@ function snReady(){
 // the board: a grid of cells, beside the controller strip
 function snLayout(){
   // room on the right: for the controller strip, or for the on-screen minichord when it's shown (beginner mode, the demo)
-  const f=blast.field, side = (saved.beginner || blast.phase==="demo") ? Math.ceil(Math.min(f.clientWidth*.4, 380))+20 : (kmLayout().cols===3 ? 150 : 84);
+  const f=blast.field, side = (saved.beginner || blast.phase==="demo") ? Math.ceil(Math.min(f.clientWidth*.4, 380))+20 : !kmStripShown() ? 16 : (kmLayout().cols===3 ? 150 : 84);
   const W=f.clientWidth-side, H=f.clientHeight-64;
   let cell;
   if(blast.phase==="play" && blast.cols){ cell=Math.max(12, Math.floor(Math.min(W/blast.cols, H/blast.rows))); }   // mid-game the board keeps its cells and only scales

@@ -55,6 +55,9 @@ function kmPlate(el, label){
   KM_PLATE_DOTS.forEach(([x,y],sI)=>{ const d=document.createElement("span"); d.className="kdot"; d.dataset.pc=sI; d.style.left=x+"%"; d.style.top=y+"%"; d.innerHTML=label(sI); el.appendChild(d); dots[sI]=d; });
   return dots;
 }
+// played on a touch screen the deck under the game is the controller (practice/touch.js), so the one
+// beside the field isn't shown, and the games that leave room for it needn't
+const kmStripShown=()=> !(typeof tdOn==="function" && tdOn());
 /** the controller drawn beside the field, as the harp is laid out, lit as it's touched */
 function kmStrip(field){
   const L=kmLayout(), el=document.createElement("div"); el.setAttribute("aria-label","The harp as a controller");

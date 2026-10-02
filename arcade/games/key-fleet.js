@@ -129,6 +129,14 @@ function buildFleetField(box){
 }
 function kfLayout(){
   const f=blast.field, W=f.clientWidth, H=f.clientHeight;
+  // a narrow field (a phone held upright): the chart across the top, what's afloat and the calls under it
+  const narrow=W<560; blast.sideEl.classList.toggle("narrow", narrow);
+  if(narrow){
+    const left=50, right=W-30, top=70;
+    blast.cw=(right-left)/KF_COLS.length; blast.rh=Math.min(80, (H-top)*.55/3); blast.sx=left; blast.sy=top;
+    blast.sideEl.style.cssText=`left:14px;right:14px;top:${top+3*blast.rh+40}px`;
+    return;
+  }
   const left=70, right=W-Math.max(230, W*.26), top=90, bottom=H-50;
   blast.cw=(right-left)/KF_COLS.length; blast.rh=Math.min(110,(bottom-top)/3); blast.sx=left; blast.sy=top+((bottom-top)-3*blast.rh)/2;
   blast.sideEl.style.cssText=`left:${right+44}px;top:${top}px;width:${W-right-56}px`;   // clear of the row counts

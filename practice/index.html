@@ -217,6 +217,7 @@ const PAGE_SCRIPTS=(function(){
 .field.arcade .fkey small{font:400 .55rem "Press Start 2P",monospace;color:#B9C7E6;margin-top:4px}
 .field.arcade .ground{z-index:1;background:#FF4B3E;opacity:.7;height:2px}
 .hud{position:absolute;top:8px;left:10px;right:10px;display:flex;justify-content:space-between;align-items:center;z-index:3;font:400 .62rem "Press Start 2P",monospace;color:#F1E8D2;pointer-events:none}
+@media (max-width:480px){.field.arcade .hud{font-size:.5rem;gap:8px}}   /* a phone held upright: the score, level and lives on one line */
 /* the lives: pixel hearts, larger than the HUD's text; lost ones dark and empty; the one just lost shakes as it drains */
 .hud .lives{display:inline-flex;align-items:center;gap:.3rem;color:#FF4B3E;line-height:1}
 .hud .lives .heart{width:1.75rem;height:1.62rem;display:block;filter:drop-shadow(0 0 6px rgba(255,75,62,.55))}
@@ -810,6 +811,7 @@ html.arcadepage .gamebar{align-items:flex-end}
 .kfcount{position:absolute;transform:translate(-50%,-50%);font:400 .7rem "Press Start 2P",monospace;color:#FFD35A;text-shadow:2px 2px 0 #000}
 .kfcount.done{color:#6E6890;text-shadow:none}
 .kfside .kfhow{color:#9A93B5;margin-top:14px;font-size:.92em}
+.kfside.narrow .kfhow{display:none}                            /* a narrow field: the rules are on the title screen */
 
 /* Chord Sweeper: the minefield's squares, their notes, the cursor, mines and flags */
 .swgrid{position:absolute;inset:0;z-index:2}
@@ -844,6 +846,10 @@ html.arcadepage .gamebar{align-items:flex-end}
 .swside b{color:#FFD35A;font-weight:400}
 .swside .swhow{color:#9A93B5;margin-top:12px}
 .swside .swfind{color:#7FE9FF}
+/* a narrow field (a phone held upright): what's to find across the top, in a line or two, the rules left to the title screen */
+.swside.narrow{display:flex;flex-wrap:wrap;align-items:baseline;gap:0 12px;line-height:1.7}
+.swside.narrow p,.swside.narrow ul{margin:0}.swside.narrow ul{display:flex;flex-wrap:wrap;gap:0 8px;padding:0;list-style:none}
+.swside.narrow .swhow{display:none}
 .swkeys{list-style:none;margin:4px 0 12px;padding:0;display:grid;gap:8px}
 .swkeys li{display:flex;align-items:center;gap:8px}.swkeys li b{color:#FFD35A;font-weight:400}
 .swkeys li.found{opacity:.4;text-decoration:line-through}

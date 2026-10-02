@@ -58,8 +58,11 @@ const fullToggle=()=>{ const f=fullField || (blast && blast.field); if(f) toggle
 // in a bezel with its nameplate, under a lit marquee with the game's name, side art either side. The
 // game's field moves into it and back out again, so nothing about the game changes. Where the browser
 // can't make a page full screen (an iPhone), the same cabinet fills the window instead.
+// Played on a touch screen (practice/touch.js) it's the phone's cabinet: the game's screen and the
+// minichord drawn round it, nothing else, plain, with its buttons along the top. {auto} puts it up
+// without asking for full screen, which a browser grants only to a tap: it fills the window.
 let fsHome=null;
-function toggleFull(field){
+function toggleFull(field, {auto=false}={}){
   field = field || (blast && blast.field); if(!field) return;
   if(document.querySelector(".fscab")) return fsExit();
   const cab=document.createElement("div"); cab.className="fscab";
@@ -74,9 +77,11 @@ function toggleFull(field){
   fsConn(cab);
   fsHome={parent:field.parentNode, next:field.nextSibling, field};
   cab.querySelector(".fsscreen").appendChild(field); document.body.appendChild(cab);
-  field.classList.add("crt","fscrt"); fxFresh(); if(fsPlainWanted()) fsPlain(true);
+  const phone=typeof tdOn==="function" && tdOn(); cab.classList.toggle("phone", phone);
+  field.classList.add("crt","fscrt"); fxFresh(); if(fsPlainWanted() || phone) fsPlain(true);
   const req=cab.requestFullscreen || cab.webkitRequestFullscreen, pseudo=()=>cab.classList.add("pseudo");
-  try{ const p=req ? req.call(cab) : null; if(!req) pseudo(); else if(p && p.catch) p.catch(pseudo); }catch(e){ pseudo(); }
+  if(auto) pseudo();
+  else try{ const p=req ? req.call(cab) : null; if(!req) pseudo(); else if(p && p.catch) p.catch(pseudo); }catch(e){ pseudo(); }
   field._fullLabel && field._fullLabel(); setTimeout(arcadeRelayout,60);
 }
 // ---------- the plain cabinet ----------
@@ -131,8 +136,11 @@ function fsAdopt(){
   if(old) old.remove(); scr.appendChild(blast.field); blast.field.classList.add("fscrt"); blast.field.classList.toggle("crt", !cab.classList.contains("plain")); setTimeout(arcadeRelayout,60);
 }
 function fsExit(){
-  if(document.fullscreenElement || document.webkitFullscreenElement) (document.exitFullscreen || document.webkitExitFullscreen).call(document);
-  else fsRestore();
+  const fs=document.fullscreenElement || document.webkitFullscreenElement;
+  if(fs) (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+  // a cabinet that filled the window (and then went full screen at a tap, as the phone's does) comes
+  // down at once; otherwise the browser leaving full screen takes it down
+  if(!fs || document.querySelector(".fscab.pseudo")) fsRestore();
 }
 function fsRestore(){
   const cab=document.querySelector(".fscab"); if(!cab || !fsHome) return;

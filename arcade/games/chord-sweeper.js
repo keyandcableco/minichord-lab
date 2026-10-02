@@ -104,10 +104,14 @@ function buildSweeperField(box){
 }
 function swLayout(){
   const f=blast.field, W=f.clientWidth, H=f.clientHeight;
-  const left=Math.max(170, W*.2), right=W-Math.max(170, W*.18), top=86, bottom=H-34;
+  // a narrow field (a phone held upright): what's to find goes across the top, the minefield under it
+  const narrow=W<560; blast.sideEl.classList.toggle("narrow", narrow);
+  if(narrow) blast.sideEl.style.cssText=`left:12px;right:12px;top:36px`;
+  const band=narrow ? Math.max(48, blast.sideEl.offsetHeight||0)+44 : 0;
+  const left=narrow ? 10 : Math.max(170, W*.2), right=narrow ? W-10 : W-Math.max(170, W*.18), top=narrow ? band : 86, bottom=H-(narrow ? 12 : 34);
   const s=Math.min((right-left)/SW_W, (bottom-top)/SW_H);
   blast.cs=s; blast.gx=left+((right-left)-SW_W*s)/2; blast.gy=top+((bottom-top)-SW_H*s)/2;
-  blast.sideEl.style.cssText=`left:18px;top:${top}px;width:${left-36}px`;
+  if(!narrow) blast.sideEl.style.cssText=`left:18px;top:${top}px;width:${left-36}px`;
 }
 const swXY=(x,y)=>[blast.gx+(x+.5)*blast.cs, blast.gy+(y+.5)*blast.cs];
 const swMineAt=(x,y)=>blast.mines.find(m=>m.x===x && m.y===y);

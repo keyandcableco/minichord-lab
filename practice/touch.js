@@ -16,7 +16,7 @@ const TD_PROFILES={
   command:  {chords:0, harp:"notes"},
   snake:    {chords:1, harp:"dpad"},
   asteroids:{chords:1, harp:"notes", knob:1},
-  stack:    {chords:1, harp:"dpad", knob:1},
+  stack:    {chords:1, harp:"dpad"},                 // its knob slides the piece, as the d-pad does
   breakout: {chords:1, harp:"notes", knob:1},
   fifths:   {chords:1, harp:"notes", knob:1},
   chopper:  {chords:1, harp:"notes", knob:1},
@@ -55,9 +55,11 @@ function touchMinichord(on=true){
   document.body.classList.toggle("tdplay", on);
   if(on){
     if(!document.getElementById("tdcss")){ const l=document.createElement("link"); l.id="tdcss"; l.rel="stylesheet"; l.href="touch.css"; document.head.appendChild(l); }
-    tdBuild(); tdTimer=setInterval(tdSync, 400);
+    tdBuild(); tdTimer=setInterval(tdSync, 400); td.leftCab=false; setTimeout(tdSync, 50);
   } else {
     clearInterval(tdTimer); td.touches.clear();
+    const cab=document.querySelector(".fscab.phone"); if(cab){ cab.classList.remove("phone"); td.inCab=false; if(cab.classList.contains("pseudo")) fsExit(); else fsPlain(fsPlainWanted()); }
+    tdWake();
     if(td.deck){ td.deck.remove(); td.deck=null; }
     document.documentElement.style.removeProperty("--td-h");
     vmKnobs(false);
@@ -76,15 +78,15 @@ function tdBuild(){
   if(!td.deck){
     td.deck=document.createElement("div"); td.deck.id="tdeck"; td.deck.className="tdeck";
     td.deck.addEventListener("contextmenu", e=>e.preventDefault());
-    td.deck.addEventListener("pointerup", ()=>piano.start());        // sound may only start from a touch
+    td.deck.addEventListener("pointerup", ()=>{ piano.start(); tdFullAtTap(); tdWake(); });   // sound, full screen and staying awake may only start from a touch
     if(window.ResizeObserver) new ResizeObserver(()=>tdHeight()).observe(td.deck);
   }
   const deck=td.deck; deck.innerHTML=""; deck.dataset.harp=p.harp||""; deck.dataset.chords=p.chords?"1":""; deck.dataset.knob=p.knob?"1":"";
-  const top=document.createElement("div"); top.className="tdtop"; deck.appendChild(top);
-  // the modifier, held like the instrument's
+  // the modifier, held like the instrument's, beside the chord buttons
   const modBtn=document.createElement("button"); modBtn.type="button"; modBtn.className="tdmod"; modBtn.textContent="♯"; modBtn.setAttribute("aria-label","The modifier: hold it");
   tdHold(modBtn, id=>{ tdBuzz(); vmModifier("m"+id, true); }, id=>vmModifier("m"+id, false));
-  if(p.chords) top.appendChild(modBtn);
+  if(p.chords) deck.appendChild(modBtn);
+  const top=document.createElement("div"); top.className="tdtop"; deck.appendChild(top);
   if(p.harp==="notes") top.appendChild(tdHarp());
   if(p.harp==="dpad") top.appendChild(tdDpad());
   if(p.knob) top.appendChild(tdKnob());
@@ -98,13 +100,42 @@ function tdPlace(){
   const home=document.querySelector(".fscab") || document.body;
   if(td.deck.parentNode!==home) home.appendChild(td.deck);
 }
-function tdHeight(){ if(td.deck) document.documentElement.style.setProperty("--td-h", td.deck.offsetHeight+"px"); }
+// Held sideways (a short, wide screen) the deck stands either side of the game, chords on the left and
+// the harp and knob on the right; otherwise it lies along the bottom, and its height is what the game
+// makes room for. touch.css has the same query.
+const TD_SIDE="(orientation: landscape) and (max-height: 520px)";
+const tdSide=()=> !!(window.matchMedia && matchMedia(TD_SIDE).matches);
+function tdHeight(){ if(td.deck) document.documentElement.style.setProperty("--td-h", (tdSide() ? 0 : td.deck.offsetHeight)+"px"); }
 // the game changed, or the cabinet went up or down: the deck follows
 function tdSync(){
   if(!td.on) return;
   const kind=blast && blast.field ? blast.kind : null;
   if(kind!==td.kind) tdBuild(); else tdPlace();
+  tdPhone(); tdHeight();
 }
+// On a phone the game plays in the phone's cabinet: its screen and the minichord drawn round it, filling
+// the window, and full screen from the first tap where the browser allows it. Left for the page (SCREEN),
+// it stays left until asked for again.
+const tdPhoneWanted=()=> !!(window.matchMedia && matchMedia("(pointer: coarse)").matches) && document.documentElement.classList.contains("arcadepage");
+function tdPhone(){
+  const cab=document.querySelector(".fscab");
+  if(cab){ cab.classList.add("phone"); td.inCab=true; return; }
+  if(td.inCab){ td.inCab=false; td.leftCab=true; }               // the player went back to the page
+  if(!td.leftCab && tdPhoneWanted() && blast && blast.field && typeof toggleFull==="function") toggleFull(blast.field, {auto:true});
+}
+function tdFullAtTap(){
+  const cab=document.querySelector(".fscab.phone.pseudo"); if(!cab || td.askedFull) return;
+  td.askedFull=true;
+  const req=cab.requestFullscreen || cab.webkitRequestFullscreen;
+  try{ const p=req && req.call(cab); p && p.catch && p.catch(()=>{}); }catch(e){}
+}
+// the screen stays awake while the phone's cabinet is up
+async function tdWake(){
+  const want=td.on && !!document.querySelector(".fscab.phone") && !document.hidden;
+  if(want && !td.lock && navigator.wakeLock){ try{ td.lock=await navigator.wakeLock.request("screen"); td.lock.addEventListener("release", ()=>{ td.lock=null; }); }catch(e){} }
+  else if(!want && td.lock){ td.lock.release().catch(()=>{}); td.lock=null; }
+}
+document.addEventListener("visibilitychange", ()=>tdWake());
 // a button held by a finger: down and up, however the finger leaves
 function tdHold(el, down, up){
   el.addEventListener("pointerdown", e=>{ e.preventDefault(); tdCapture(el, e); el.classList.add("on"); down(e.pointerId); });
@@ -134,7 +165,11 @@ function tdFinger(id, zone){
 function tdHarp(){
   const h=document.createElement("div"); h.className="tdharp"; h.setAttribute("aria-label","The harp");
   for(let i=0;i<12;i++){ const s=document.createElement("span"); s.dataset.i=i; s.textContent=SHARP_NAMES[i]; h.appendChild(s); }
-  const at=e=>{ const r=h.getBoundingClientRect(); if(!r.width) return -1; const f=(e.clientX-r.left)/r.width; return f<0||f>=1 ? -1 : Math.floor(f*12); };
+  // lying along the bottom, low on the left; standing beside the game (a phone held sideways), high at
+  // the top, as the instrument's
+  const at=e=>{ const r=h.getBoundingClientRect(); if(!r.width || !r.height) return -1;
+    if(r.height>r.width){ const f=(e.clientY-r.top)/r.height; return f<0||f>=1 ? -1 : 11-Math.floor(f*12); }
+    const f=(e.clientX-r.left)/r.width; return f<0||f>=1 ? -1 : Math.floor(f*12); };
   const on=new Map();
   const go=(id,i)=>{ if(on.get(id)===i) return; if(on.has(id)) vmLetGo("h"+id); if(i<0){ on.delete(id); return; } on.set(id,i); tdBuzz(); vmPluck("h"+id, i); };
   h.addEventListener("pointerdown", e=>{ e.preventDefault(); tdCapture(h, e); go(e.pointerId, at(e)); });
