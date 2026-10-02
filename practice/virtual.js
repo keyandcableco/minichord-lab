@@ -11,6 +11,10 @@
 // (major, minor, seventh); two or three held in a column make the rest.
 const VM_COLS=["F","C","G","D","A","E","B"];
 const VM_QUALITY={"0":"", "1":"m", "2":"7", "0,2":"maj7", "1,2":"m7", "0,1":"°", "0,1,2":"+"};
+// Barry Harris mode (address 33), as the firmware has it: the major, minor and diminished buttons
+// play 6, m6 and °7 instead, so a game that switches it on gets its sixths from the screen as well
+const VM_BARRY={"":"6", "m":"m6", "°":"°7"};
+const vmQuality=rows=>{ const q=VM_QUALITY[rows]; return q!=null && mc.params[33]===1 ? (VM_BARRY[q]??q) : q; };
 // The firmware's timings (firmware/src/main.cpp), so a hand moves on this one as on the instrument:
 //   GRACE    a change to an established chord's buttons stands this long before it's believed, so
 //            going from C to C7 (the seventh down a moment before the major's up) never sounds Cmaj7,
@@ -223,7 +227,7 @@ function vmUpdate(){
 // classes, sharpened or flattened by the key signature and by the modifier, as on the instrument
 function vmChordNow(){
   if(vm.col<0) return null;
-  const q=VM_QUALITY[vm.rows]; if(q==null) return null;
+  const q=vmQuality(vm.rows); if(q==null) return null;
   const f=devFifths(), sharp=vmSharp() ? (mc.params[31]===1 ? -1 : 1) : 0;
   const pcOf=c=>{ const li=LETTERS.indexOf(VM_COLS[c]); return mod(NAT[li]+keyAcc(li,f)+sharp, 12); };
   return {pc:pcOf(vm.col), q, bass: vm.slash>=0 ? pcOf(vm.slash) : null};

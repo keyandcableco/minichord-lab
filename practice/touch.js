@@ -289,14 +289,14 @@ const tdBare=()=> !!saved.tdBare, tdHarpBare=()=> !!saved.tdHarpBare;
 function tdDraw(){
   const deck=td.deck; if(!deck || !td.on) return;
   const f=devFifths(), sharp=vmSharp(), names=f<0?FLAT_NAMES:SHARP_NAMES, bare=tdBare();
-  const labels=f+"|"+sharp+"|"+(mc.params[31]??0)+"|"+bare;
+  const labels=f+"|"+sharp+"|"+(mc.params[31]??0)+"|"+bare+"|"+(mc.params[33]??0);
   const m=deck.querySelector(".tdmod"); if(m) m.textContent = mc.params[31]===1 ? "♭" : "♯";
   const held=new Set([...vm.presses.values()].map(p=>p.r+":"+p.c));
   deck.querySelectorAll(".tdcell").forEach(b=>{
     const r=+b.dataset.r, c=+b.dataset.c;
     if(td.sharpLabels!==labels){ const li=LETTERS.indexOf(VM_COLS[c]); let pc=mod(NAT[li]+keyAcc(li,f),12);
       if(sharp) pc=mod(pc+(mc.params[31]===1?-1:1),12);
-      b.textContent = bare ? "" : names[pc]+["","m","7"][r]; }
+      b.textContent = bare ? "" : names[pc]+vmQuality(String(r)); }
     b.classList.toggle("on", held.has(r+":"+c));
   });
   td.sharpLabels=labels;
