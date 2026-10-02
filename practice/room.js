@@ -890,7 +890,7 @@ mc.addEventListener("ports", ()=>{
 });
 $("input").onchange=e=>mc.selectInput(e.target.value);
 $("keysBtn").onclick=e=>{                                   // the computer keyboard as a minichord, for anyone without one
-  const on=!mc.virtual;
+  const on=!kbOn();
   keyboardMinichord(on);
   e.target.textContent = on ? "Put the keyboard away" : "No minichord? Use the keyboard";
   if(on){ piano.start(); feedback("The keyboard is your minichord: the three letter rows are its chord buttons, 1 to = its harp.",""); }

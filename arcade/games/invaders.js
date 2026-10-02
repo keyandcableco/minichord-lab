@@ -21,7 +21,7 @@ const BLAST_LEVELS=[{q:["","m"],acc:false},{q:["","m","7"],acc:false},{q:["","m"
   {q:["","m","7","maj7","m7","°","+"],acc:true,slash:"any"},            // D/C, G/F: any button under the chord
   {q:["","m","7","maj7","m7","°","+"],acc:true,slash:"any",barry:true}]; // 6, m6 and °7 join, mid-round
 // slash chords need the slash note in the bass: firmware 13's slash voice set to Bass
-const slashReady=()=>!canWrite() || (mc.params[7]??0)>=13;
+const slashReady=()=>!canWrite() || (mc.params[7]??0)>=13 || !!mc.virtual;   // a virtual minichord plays slashes as firmware 13 does, the slash note in the bass
 const levelOk=l=> !(BLAST_LEVELS[l].slash && !slashReady()) && !(BLAST_LEVELS[l].barry && (!canWrite() || settings.set==="barry"))
   && !((BLAST_LEVELS[l].slash || BLAST_LEVELS[l].barry) && typeof mxChoice==="function" && mxChoice()!=="standard");   // standard-matrix lessons
 const blastLevelName=i=> typeof mxLevelName==="function" ? mxLevelName(LEVEL_NAMES[i], j=>BLAST_LEVELS[j].q, i) : LEVEL_NAMES[i];

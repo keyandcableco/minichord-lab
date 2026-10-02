@@ -1,5 +1,6 @@
 // Playing with no minichord: the computer keyboard becomes one. Its three letter rows are the chord
-// buttons (two held in a column give the sevenths and the rest), shift is the modifier, the number row
+// buttons (two held in a column give the sevenths and the rest, another column under a chord a slash),
+// shift is the modifier, the number row
 // plucks the harp; a game plays unaltered and sets its settings on the virtual instrument; its letter
 // controls step aside; and a score made this way stays on this computer's board.
 const t=require("./harness").load("chord-snake");
@@ -10,16 +11,16 @@ const t=require("./harness").load("chord-snake");
   check("with no minichord, the keyboard is one", mc.virtual===true && w.eval("canWrite()")===true && !!d.getElementById("kbcard"));
   w.eval("window.__heard=[]; mc.addEventListener('chord', e=>window.__heard.push(e.detail.map(v=>v.pitch).join()))");
   const said=()=>(d.querySelector(".kbnow")||{}).textContent;
-  t.key("KeyW"); await sleep(40);
+  t.key("KeyW"); await sleep(80);
   check("a key in the major row plays that column's chord", said()==="C" && w.eval("window.__heard.length")===1, `${said()} · ${w.eval("window.__heard[0]")}`);
-  t.key("KeyX"); await sleep(40);
+  t.key("KeyX"); await sleep(100);
   check("held with the seventh row, a major seventh", said()==="Cmaj7", said());
-  w.eval("document.dispatchEvent(new KeyboardEvent('keyup',{code:'KeyX'})); document.dispatchEvent(new KeyboardEvent('keyup',{code:'KeyW'}))"); await sleep(30);
-  t.key("KeyS"); await sleep(40);
+  w.eval("document.dispatchEvent(new KeyboardEvent('keyup',{code:'KeyX'})); document.dispatchEvent(new KeyboardEvent('keyup',{code:'KeyW'}))"); await sleep(80);
+  t.key("KeyS"); await sleep(100);
   check("the minor row, the same column", said()==="Cm", said());
-  t.key("KeyA"); await sleep(40);
-  check("a second column is ignored, so a stray key can't spoil a chord", said()==="Cm" || said()==="Fm", said());
-  w.eval("document.dispatchEvent(new KeyboardEvent('keyup',{code:'KeyA'})); document.dispatchEvent(new KeyboardEvent('keyup',{code:'KeyS'}))"); await sleep(30);
+  t.key("KeyA"); await sleep(120);
+  check("a second column held under it makes a slash chord, as on the instrument", said()==="Cm/F", said());
+  w.eval("document.dispatchEvent(new KeyboardEvent('keyup',{code:'KeyA'})); document.dispatchEvent(new KeyboardEvent('keyup',{code:'KeyS'}))"); await sleep(80);
   // the harp
   w.eval("window.__plucked=null; mc.addEventListener('harp', e=>window.__plucked=e.detail.note)");
   t.key("Digit1"); await sleep(40);

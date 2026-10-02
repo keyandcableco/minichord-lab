@@ -6,7 +6,8 @@
 
 // ---------- the knobs ----------
 // whether the minichord can send its knobs as MIDI: the setting, on firmware that has it
-const knobsReady=()=>canWrite() && hasSetting(238) && (mc.params[7]??0)>=10;
+// (or a virtual one, practice/virtual.js, played with knobs: on a touch screen)
+const knobsReady=()=>canWrite() && hasSetting(238) && ((mc.params[7]??0)>=10 || !!mc.virtualKnobs);
 // a knob: it wakes a title screen; in the games that use one, it steers
 // Only the chosen knob steers (the modulation knob unless the player picks another on the title
 // screen), so brushing a neighbour mid-game doesn't throw the paddle or the aim across the screen.
