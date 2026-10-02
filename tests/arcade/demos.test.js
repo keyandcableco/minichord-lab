@@ -1,7 +1,7 @@
 // Every game's demo starts from HOW TO PLAY, shows its captions as it plays, shows the on-screen
 // minichord (beginner mode off), and SKIP brings the title screen back, the minichord gone again.
 const {spawnSync}=require("child_process");
-const SLUGS=["invaders","harp-command","chord-snake","chord-asteroids","chord-stack","chord-breakout","fifths-defender","chopper-rescue","key-fleet","chord-sweeper","between-the-frets","sight-line","chord-hunt"];
+const SLUGS=["invaders","harp-command","chord-snake","chord-asteroids","chord-stack","chord-breakout","fifths-defender","chopper-rescue","key-fleet","chord-sweeper","between-the-frets","sight-line","chord-hunt","key-racer"];
 if(process.argv[2]){
   const t=require("./harness").load(process.argv[2]);
   (async()=>{

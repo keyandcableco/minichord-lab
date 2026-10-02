@@ -127,6 +127,16 @@ function fxPaintBackground(kind, W, H){
     for(let y=0;y<H;y+=8) for(let x=0;x<W;x+=8){ g.fillStyle=greens[Math.floor(rand()*greens.length)]; g.fillRect(x,y,8,8); }
     g.fillStyle="#123A55"; for(let x=0;x<W;x++){ const y=Math.floor(H*.55+Math.sin(x/17)*H*.12+Math.sin(x/5)*2); g.fillRect(x,y,1,5); }
     for(let i=0;i<W*H/260;i++){ g.fillStyle=rand()<.5?"#1E4A26":"#0A1E10"; g.fillRect(Math.floor(rand()*W),Math.floor(rand()*H),2,2); }
+  } else if(kind==="racer"){
+    // dusk over the track: the sky in bands from deep blue to the sunset at the horizon, a striped
+    // sun going down (the road and the mountains are drawn over it, every frame, by the game)
+    const hz=Math.floor(H/2)+2, bands=["#0E0B24","#1A1238","#2A1648","#45195A","#6E1F62","#A23662","#D9585A","#F08A4B"], bh=Math.ceil(hz/bands.length);
+    bands.forEach((c,i)=>{ g.fillStyle=c; g.fillRect(0,i*bh,W,bh+1); if(i){ g.fillStyle=bands[i-1]; for(let x=i%2;x<W;x+=2) g.fillRect(x,i*bh,1,1); } });
+    for(let i=0;i<W*H/500;i++){ g.fillStyle=rand()<.3?"#FFFFFF":"#8F8AB8"; g.fillRect(Math.floor(rand()*W),Math.floor(rand()*hz*.4),1,1); }
+    const sx=Math.floor(W*.5), sy=hz-Math.floor(H*.05), r=Math.max(10,Math.floor(W*.09));
+    for(let y=-r;y<=0;y++) for(let x=-r;x<=r;x++){ if(x*x+y*y>r*r) continue; if(y>-r*.55 && Math.floor((y+r)/3)%2) continue;
+      g.fillStyle = y<-r*.6 ? "#FFE27A" : "#FFB347"; g.fillRect(sx+x, sy+y, 1, 1); }
+    g.fillStyle="#1A4F1A"; g.fillRect(0,hz,W,H-hz);
   } else if(kind==="hunt"){
     // evening over the marsh: the sky in bands, darkest at the top (where the HUD reads), a few early
     // stars, far hills on the horizon, a tree on the left and a bush on the right; the grass in front
@@ -194,6 +204,7 @@ function fxDraw(now, dt){
   const g=fx.g, W=fx.w, H=fx.h;
   fxBackground(g, W, H, now, dt);
   if(blast.kind==="fifths") fdDraw(g, now);
+  else if(blast.kind==="racer") krDraw(g, now);
   else if(blast.asteroids) asDraw(g, now);
   else if(blast.noShip){ /* the snake's board has no ship */ }
   else if(blast.cannons){
@@ -348,10 +359,10 @@ function blastKill(hit, how){
 }
 // the arcade games' generators are looked up only when asked for: a game opened on its own
 // (?game=…&solo) loads only its own file, so the others aren't there
-const GENS={spell:genSpell, command:()=>genCommand(), snake:()=>genSnake(), asteroids:()=>genAsteroids(), stack:()=>genStack(), breakout:()=>genBreakout(), fifths:()=>genFifths(), chopper:()=>genChopper(), fleet:()=>genFleet(), sweeper:()=>genSweeper(), frets:()=>genFrets(), sight:()=>genSight(), hunt:()=>genHunt(), hidden:genHidden, oddone:genOddOne, shades:genShades, reshape:genReshape, blaster:genBlaster, diatonic:genDiatonic, numeral:genNumeral, staff:genStaff, slash:genSlash, key:genKey, harp:genHarp, missing:genMissing,
+const GENS={spell:genSpell, command:()=>genCommand(), snake:()=>genSnake(), asteroids:()=>genAsteroids(), stack:()=>genStack(), breakout:()=>genBreakout(), fifths:()=>genFifths(), chopper:()=>genChopper(), fleet:()=>genFleet(), sweeper:()=>genSweeper(), frets:()=>genFrets(), sight:()=>genSight(), hunt:()=>genHunt(), racer:()=>genRacer(), hidden:genHidden, oddone:genOddOne, shades:genShades, reshape:genReshape, blaster:genBlaster, diatonic:genDiatonic, numeral:genNumeral, staff:genStaff, slash:genSlash, key:genKey, harp:genHarp, missing:genMissing,
   melody:()=>genMelody(false), solfa:()=>genMelody(true), chordscale:genChordScale, smooth:genSmooth, whichvoice:genWhichVoice, simon:genSimon, directions:genDirections, pluckchord:genPluckChord, buildscale:genBuildScale,
   scale:genScale, transpose:genTranspose, temper:genTemper, tune:genTune};
 const MYSTERY=new Set(["scale","transpose","temper","tune"]);
-const LABELS={spell:"Spell it", hidden:"Hidden layout", oddone:"Odd one out", shades:"Shades of the third", reshape:"Reshape", blaster:"Chord Invaders", command:"Harp Command", snake:"Chord Snake", asteroids:"Chord Asteroids", stack:"Chord Stack", breakout:"Chord Breakout", fifths:"Fifths Defender", chopper:"Chopper Rescue", fleet:"Key Fleet", sweeper:"Chord Sweeper", frets:"Between the Frets", sight:"Sight Line", hunt:"Chord Hunt", diatonic:"Seven chords", numeral:"Numerals", staff:"On the staff", slash:"Slash chords", key:"Key detective", harp:"Harp hunt", missing:"Missing note", mix:"Mix",
+const LABELS={spell:"Spell it", hidden:"Hidden layout", oddone:"Odd one out", shades:"Shades of the third", reshape:"Reshape", blaster:"Chord Invaders", command:"Harp Command", snake:"Chord Snake", asteroids:"Chord Asteroids", stack:"Chord Stack", breakout:"Chord Breakout", fifths:"Fifths Defender", chopper:"Chopper Rescue", fleet:"Key Fleet", sweeper:"Chord Sweeper", frets:"Between the Frets", sight:"Sight Line", hunt:"Chord Hunt", racer:"Key Racer", diatonic:"Seven chords", numeral:"Numerals", staff:"On the staff", slash:"Slash chords", key:"Key detective", harp:"Harp hunt", missing:"Missing note", mix:"Mix",
   melody:"Play by number", solfa:"Play by solfège", chordscale:"Chord scales", smooth:"Smooth moves", whichvoice:"Which voice moved?", simon:"Simon says", directions:"Follow the directions", pluckchord:"Pluck the chord", buildscale:"Build the scale",
   scale:"Scale detective", transpose:"Transpose detective", temper:"Temperament taster", tune:"Tune up"};

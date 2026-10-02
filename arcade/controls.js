@@ -41,6 +41,7 @@ mc.addEventListener("knob", e=>{
   if(blast.kind==="stack") return stKnob(v);
   if(blast.kind==="asteroids") return asKnob(v);
   if(blast.kind==="sight") return sightKnob(v);
+  if(blast.kind==="racer") return krKnob(v);
   // Chord Invaders' ship, in manual aim; an in-field bonus round is steered the same way
   if(blast.kind==="blaster"){ if(blast.aimManual && (blast.phase==="play" || bonusPlaying())) blast.shipWant=.06+v*.88; return; }
   if(blast.kind==="fifths") return fdKnob(v);
