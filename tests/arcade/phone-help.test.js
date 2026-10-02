@@ -59,7 +59,26 @@ const t=inv, {check, sleep}=t;
     // the choice, on a title screen's options
     const opts=d.createElement("div"); opts.innerHTML='<div class="levels"></div>'; w.eval("window.__opts=null"); w.__opts=opts;
     w.eval("beginnerRow(window.__opts)");
-    check("the options offer the buttons labelled or bare", [...opts.querySelectorAll(".optlabel")].some(l=>l.textContent==="BUTTONS") && /BARE ×1.25/.test(opts.textContent)); }
+    check("the options offer the buttons labelled or bare", [...opts.querySelectorAll(".optlabel")].some(l=>l.textContent==="BUTTONS") && /BARE ×1.25/.test(opts.textContent));
+    check("but not the strings, with no harp on the deck", ![...opts.querySelectorAll(".optlabel")].some(l=>l.textContent==="STRINGS")); }
+
+  // ---------- the harp's strings bare ----------
+  { const {w, d}=bo;
+    w.eval("touchMinichord(true)"); await sleep(50);
+    const strings=()=>[...d.querySelectorAll(".tdharp span")].map(s=>s.textContent);
+    check("the harp's strings on the screen are named, C to B", strings().join()===w.eval("SHARP_NAMES.join()"), strings().join());
+    const m0=w.eval("diffMult('breakout')");
+    w.eval("saved.tdHarpBare=true; tdDraw()"); await sleep(20);
+    check("played bare, they show nothing, as on the instrument", strings().length===12 && strings().every(t=>t===""));
+    check("and score a quarter more", Math.abs(w.eval("diffMult('breakout')")-m0*1.25)<.02, `${m0} → ${w.eval("diffMult('breakout')")}`);
+    check("but not in Chord Hunt, whose harp is only low or high", w.eval("HARP_BY_NAME.has('hunt')")===false && w.eval("harpBareWord('hunt')")==="BARE");
+    const opts=d.createElement("div"); opts.innerHTML='<div class="levels"></div>'; w.__opts=opts;
+    w.eval("beginnerRow(window.__opts)");
+    check("the options offer the strings labelled or bare", [...opts.querySelectorAll(".optlabel")].some(l=>l.textContent==="STRINGS"));
+    check("the points page lists it", w.eval("multRows('breakout').some(([n])=>n==='STRINGS')"));
+    w.eval("saved.tdHarpBare=false; tdDraw()"); await sleep(20);
+    check("labelled again, they say their notes", strings()[0]==="C");
+    w.eval("touchMinichord(false)"); }
 
   // ---------- the first time ----------
   { const {w, d}=inv;

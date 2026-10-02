@@ -395,6 +395,16 @@ function beginnerRow(opts){
       b.onclick=()=>{ saved.tdBare=v; save(); bmark(b); if(typeof tdDraw==="function") tdDraw(); }; bg.appendChild(b); });
     br.append(bl,bg); opts.insertBefore(br, r);
   }
+  // and the harp's strings, named or bare: a quarter more where the game asks for notes by name
+  if(harpOnScreen(cabKind())){
+    const hr=document.createElement("div"); hr.className="optrow"; const hl=document.createElement("span"); hl.className="optlabel"; hl.textContent="STRINGS";
+    const hg=document.createElement("div"); hg.className="levels";
+    const hmark=b=>{ [...hg.children].forEach(x=>{ x.style.background=""; x.style.color=""; }); b.style.background="#F1E8D2"; b.style.color="#16132A"; };
+    [["LABELLED",false],[harpBareWord(cabKind()),true]].forEach(([t,v])=>{ const b=document.createElement("button"); b.textContent=t; if(!!saved.tdHarpBare===v) hmark(b);
+      b.title = v ? (HARP_BY_NAME.has(cabKind()) ? "The harp's strings blank, as on the instrument: a quarter more points." : "The harp's strings blank, as on the instrument.") : "Each harp string shows its note.";
+      b.onclick=()=>{ saved.tdHarpBare=v; save(); hmark(b); if(typeof tdDraw==="function") tdDraw(); }; hg.appendChild(b); });
+    hr.append(hl,hg); opts.insertBefore(hr, r);
+  }
 }
 function helperSync(rebuild){
   if(!blast || !blast.field) return;

@@ -180,6 +180,12 @@ const MULT_SPEED=[1,1.25,1.5,1.75,2];                      // Relaxed … Wild
 const MULT_DENSITY=[.8,1,1.25,1.5];                        // Harp Command: few, some, many, swarm
 const MULT_PADDLE=[1.3,1,.8];                              // Chord Breakout: narrow, normal, wide
 const MULT_GUIDE=[1,1.25,1.5];                             // Chord Hunt: the field guide with names, numerals only, none
+// Played on the screen, the harp's strings named, or bare as the instrument's are: offered wherever the
+// deck draws the twelve strings, and a quarter more where the game asks for notes by name (not Chord
+// Hunt, whose harp is only low or high, nor Between the Frets, whose harp goes in quarter-tones)
+const HARP_BY_NAME=new Set(["command","asteroids","breakout","fifths","chopper","fleet","sight"]);
+const harpOnScreen=kind=> typeof playOnScreen==="function" && playOnScreen() && typeof TD_PROFILES!=="undefined" && TD_PROFILES[kind]?.harp==="notes";
+const harpBareWord=kind=> HARP_BY_NAME.has(kind) ? "BARE ×1.25" : "BARE";
 function diffMult(kind=cabKind()){
   let m = kind==="sweeper" ? 1 : MULT_SPEED[+saved.speed||0]||1;            // Chord Sweeper has no speed
   if(kind==="command") m*=MULT_DENSITY[saved.hcDensity??1]??1;
@@ -188,6 +194,7 @@ function diffMult(kind=cabKind()){
   if((kind==="asteroids" && saved.asAim) || (kind==="blaster" && saved.invAim)) m*=2;   // manual aim: harder, so double
   if(MOD_GAMES.has(kind) && !autoMod()) m*=1.25;                              // the modifier set by hand: a quarter more
   if(kind!=="command" && saved.tdBare && typeof playOnScreen==="function" && playOnScreen()) m*=1.25;   // the screen's chord buttons bare: a quarter more
+  if(saved.tdHarpBare && HARP_BY_NAME.has(kind) && harpOnScreen(kind)) m*=1.25;   // and its harp's strings: a quarter more again
   return Math.round(m*100)/100;
 }
 const mulPts=p=>Math.round(p*(blast.mult||1));
@@ -216,6 +223,7 @@ function multRows(kind){
   if(kind==="breakout") rows.push(["PADDLE", ["NARROW","NORMAL","WIDE"].map((n,i)=>`${n} ×${MULT_PADDLE[i]}`)]);
   if(kind==="hunt") rows.push(["FIELD GUIDE", ["NAMES","NUMERALS","NONE"].map((n,i)=>`${n} ×${MULT_GUIDE[i]}`)]);
   if(kind!=="command" && typeof playOnScreen==="function" && playOnScreen()) rows.push(["BUTTONS", ["LABELLED ×1","BARE ×1.25"]]);
+  if(HARP_BY_NAME.has(kind) && harpOnScreen(kind)) rows.push(["STRINGS", ["LABELLED ×1","BARE ×1.25"]]);
   return rows;
 }
 // the points screen in the title loop: the table filling in line by line, then the multipliers
@@ -284,6 +292,7 @@ function arcadeSettings(){
   if(k==="breakout") choice("PADDLE", ["NARROW","NORMAL","WIDE"], ()=>saved.boPaddle??1, i=>{ saved.boPaddle=i; save(); }, "FROM THE NEXT GAME");
   if(k==="hunt") choice("FIELD GUIDE", ["NAMES","NUMERALS","NONE"], ()=>saved.hdGuide||0, i=>{ saved.hdGuide=i; save(); }, "FROM THE NEXT GAME · LESS TO READ SCORES MORE");
   if(k!=="command" && typeof playOnScreen==="function" && playOnScreen()) choice("BUTTONS", ["LABELLED","BARE ×1.25"], ()=>saved.tdBare?1:0, i=>{ saved.tdBare=!!i; save(); if(typeof tdDraw==="function") tdDraw(); }, "THE CHORD BUTTONS ON THE SCREEN · BARE SCORES MORE");
+  if(harpOnScreen(k)) choice("STRINGS", ["LABELLED",harpBareWord(k)], ()=>saved.tdHarpBare?1:0, i=>{ saved.tdHarpBare=!!i; save(); if(typeof tdDraw==="function") tdDraw(); }, HARP_BY_NAME.has(k) ? "THE HARP'S STRINGS ON THE SCREEN · BARE SCORES MORE" : "THE HARP'S STRINGS ON THE SCREEN");
   choice("BEGINNER", ["OFF","SHOW WHAT TO PRESS"], ()=>saved.beginner?1:0, i=>{ saved.beginner=!!i; save(); helperSync(true); }, "NO HIGH SCORES WITH IT ON");
   choice("SCREEN", ["FLAT","CRT"], ()=>saved.crt?1:0, i=>{ saved.crt=!!i; save(); crtSync(); });
   choice("FULL SCREEN", ["AUTO","CABINET","PLAIN"], ()=>FS_MODES.indexOf(fsMode()), i=>fsModeSet(i), "AUTO GOES PLAIN WHERE THE GRAPHICS CAN'T KEEP UP");

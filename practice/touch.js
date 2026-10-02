@@ -250,11 +250,12 @@ function tdKnob(name, which){
 }
 
 // What the deck shows: each button's chord in the key (or nothing, played bare, as on the instrument:
-// a quarter more points), the ones held lit, the chord playing, and the modifier's way, sharp or flat.
+// a quarter more points), the harp's strings named (or bare too), the ones held lit, the chord playing,
+// and the modifier's way, sharp or flat.
 // Again whenever the minichord's settings change: a key set, the modifier double-tapped.
 vmListen(()=>tdDraw());
 mc.addEventListener("device", ()=>tdDraw());
-const tdBare=()=> !!saved.tdBare;
+const tdBare=()=> !!saved.tdBare, tdHarpBare=()=> !!saved.tdHarpBare;
 function tdDraw(){
   const deck=td.deck; if(!deck || !td.on) return;
   const f=devFifths(), sharp=vmSharp(), names=f<0?FLAT_NAMES:SHARP_NAMES, bare=tdBare();
@@ -269,8 +270,8 @@ function tdDraw(){
     b.classList.toggle("on", held.has(r+":"+c));
   });
   td.sharpLabels=labels;
-  const lit=new Set(vm.strings.values());
-  deck.querySelectorAll(".tdharp span").forEach(s=>s.classList.toggle("on", lit.has(+s.dataset.i)));
+  const lit=new Set(vm.strings.values()), hb=tdHarpBare();
+  deck.querySelectorAll(".tdharp span").forEach(s=>{ s.classList.toggle("on", lit.has(+s.dataset.i)); s.textContent = hb ? "" : SHARP_NAMES[+s.dataset.i]; });
   deck.querySelectorAll(".tdknob").forEach(k=>{ k.querySelector("i").style.width=((td.knobV[k.dataset.name] ?? .5)*100)+"%"; });
   const now=deck.querySelector(".tdnow"); if(now) now.textContent=vmChordName();
 }
