@@ -48,7 +48,7 @@ const tdShape=()=>{ const p=tdProfile(); return (blast && blast.field ? blast.ki
 // buttons in a column and lie next to each other: major and minor (diminished), minor and seventh
 // (minor seventh). The edge is this much of a button's height, on each side of the line.
 const TD_EDGE=.22;
-const td={on:false, deck:null, shape:null, touches:new Map(), knobV:{}, sharpLabels:""};
+const td={on:false, deck:null, shape:null, touches:new Map(), knobV:{}, sharpLabels:"", modLocked:false, keyMode:false, keyModeTimeoutId:null};
 const tdOn=()=> td.on && vmOn();
 
 // where a finger on the chord buttons is: its column, and the row or rows it presses
@@ -79,6 +79,7 @@ function touchMinichord(on=true){
     if(td.deck){ td.deck.remove(); td.deck=null; }
     document.documentElement.style.removeProperty("--td-h");
     vmKnobs(false);
+    td.modLocked=false; tdExitKeyMode();
   }
   const b=document.getElementById("touchBtn"); if(b) b.textContent = on ? "Put the screen minichord away" : "Play on the screen";
   if(typeof cabPress==="function") document.querySelectorAll(".cabpress").forEach(p=>p.textContent=cabPress());   // what wakes a title screen
@@ -101,9 +102,11 @@ function tdBuild(){
   }
   const deck=td.deck; deck.innerHTML=""; deck.dataset.harp=p.harp||""; deck.dataset.chords=p.chords?"1":""; deck.dataset.knob=p.knob?"1":""; deck.dataset.piano=p.harp==="notes" && tdPianoOn()?"1":"";
   // the modifier, held like the instrument's, beside the chord buttons
-  const modBtn=document.createElement("button"); modBtn.type="button"; modBtn.className="tdmod"; modBtn.textContent="♯"; modBtn.setAttribute("aria-label","The modifier: hold it");
-  tdHold(modBtn, id=>{ tdBuzz(); vmModifier("m"+id, true); }, id=>vmModifier("m"+id, false));
-  if(p.chords) deck.appendChild(modBtn);
+  const modBtn=document.createElement("button"); modBtn.type="button"; modBtn.className="tdmod"; modBtn.textContent="♯"; modBtn.setAttribute("aria-label","The modifier: hold it or long-press to lock");
+  if(p.chords){
+    tdModButton(modBtn);
+    deck.appendChild(modBtn);
+  }
   const top=document.createElement("div"); top.className="tdtop"; deck.appendChild(top);
   if(p.harp==="notes") top.appendChild(tdHarp());
   if(p.harp==="dpad") top.appendChild(tdDpad());
@@ -198,6 +201,59 @@ function tdHold(el, down, up){
   const end=e=>{ if(!el.classList.contains("on")) return; el.classList.remove("on"); up(e.pointerId); };
   el.addEventListener("pointerup", end); el.addEventListener("pointercancel", end); el.addEventListener("lostpointercapture", end);
 }
+// the modifier button: hold to activate modifier, long-press to enter key-change mode
+function tdModButton(modBtn){
+  let downAt=null;
+  modBtn.addEventListener("pointerdown", e=>{
+    e.preventDefault(); tdCapture(modBtn, e); downAt=performance.now();
+    modBtn.classList.add("on"); tdBuzz(); vmModifier("m"+e.pointerId, !td.modLocked);
+    clearTimeout(td.keyModeTimeoutId);
+  });
+  const end=e=>{
+    if(!downAt) return;
+    const elapsed=performance.now()-downAt;
+    if(elapsed>=500){
+      tdEnterKeyMode(modBtn);
+    } else if(elapsed>=300 && td.modLocked){
+      td.modLocked=false; vmModifier("m"+e.pointerId, false);
+    } else if(!td.modLocked){
+      vmModifier("m"+e.pointerId, false);
+    }
+    modBtn.classList.remove("on"); downAt=null;
+  };
+  modBtn.addEventListener("pointerup", end); modBtn.addEventListener("pointercancel", end);
+  modBtn.addEventListener("lostpointercapture", end);
+}
+// enter key-change mode: show the grid in key mode (sharp/natural/flat rows)
+function tdEnterKeyMode(modBtn){
+  if(td.keyMode) return;
+  td.keyMode=true; tdBuzz();
+  const grid=modBtn.closest(".tdeck").querySelector(".tdgrid");
+  if(grid) grid.classList.add("keymode");
+  grid?.addEventListener("pointerdown", tdKeyModeSelect, {once:true, capture:true});
+  grid?.addEventListener("pointerup", tdExitKeyMode, {once:true, capture:true});
+  grid?.addEventListener("pointercancel", tdExitKeyMode, {once:true, capture:true});
+  clearTimeout(td.keyModeTimeoutId);
+  td.keyModeTimeoutId=setTimeout(()=>{ if(td.keyMode) tdExitKeyMode(); }, 3000);
+}
+function tdExitKeyMode(){
+  if(!td.keyMode) return;
+  td.keyMode=false; tdBuzz();
+  const grid=document.querySelector(".tdgrid.keymode");
+  if(grid) grid.classList.remove("keymode");
+  clearTimeout(td.keyModeTimeoutId);
+}
+function tdKeyModeSelect(e){
+  if(!td.keyMode || !e.target.classList.contains("tdcell")) return;
+  const c=+e.target.dataset.c, r=+e.target.dataset.r;
+  if(!(c>=0 && c<7 && r>=0 && r<3)) return;
+  const bases=[4, 0, 1, 2, 3, 5, -1];
+  const offset=r===0 ? 2 : r===1 ? 0 : -2;
+  const fifths=bases[c]+offset;
+  const idx=keyIndexOf(fifths);
+  if(idx>=0 && idx<15) ensure(35, idx);
+  tdExitKeyMode();
+}
 
 // the chord buttons: each finger presses the buttons under it, and sliding moves to the next
 function tdGrid(g){
@@ -289,14 +345,26 @@ const tdBare=()=> !!saved.tdBare, tdHarpBare=()=> !!saved.tdHarpBare;
 function tdDraw(){
   const deck=td.deck; if(!deck || !td.on) return;
   const f=devFifths(), sharp=vmSharp(), names=f<0?FLAT_NAMES:SHARP_NAMES, bare=tdBare();
-  const labels=f+"|"+sharp+"|"+(mc.params[31]??0)+"|"+bare+"|"+(mc.params[33]??0);
-  const m=deck.querySelector(".tdmod"); if(m) m.textContent = mc.params[31]===1 ? "♭" : "♯";
+  const labels=f+"|"+sharp+"|"+(mc.params[31]??0)+"|"+bare+"|"+(mc.params[33]??0)+"|"+td.keyMode+"|"+td.modLocked;
+  const m=deck.querySelector(".tdmod");
+  if(m){
+    m.textContent = mc.params[31]===1 ? "♭" : "♯";
+    m.classList.toggle("locked", td.modLocked);
+    m.setAttribute("aria-label", td.modLocked ? "Modifier locked: tap to unlock" : "Modifier: hold it or long-press to lock");
+  }
   const held=new Set([...vm.presses.values()].map(p=>p.r+":"+p.c));
   deck.querySelectorAll(".tdcell").forEach(b=>{
     const r=+b.dataset.r, c=+b.dataset.c;
-    if(td.sharpLabels!==labels){ const li=LETTERS.indexOf(VM_COLS[c]); let pc=mod(NAT[li]+keyAcc(li,f),12);
-      if(sharp) pc=mod(pc+(mc.params[31]===1?-1:1),12);
-      b.textContent = bare ? "" : names[pc]+vmQuality(String(r)); }
+    if(td.sharpLabels!==labels){
+      if(td.keyMode){
+        const key_text=["♯","","♭"], fifths=[0, 1, 2, 3, 4, 5, -1];
+        b.textContent=VM_COLS[c]+key_text[r];
+      } else {
+        const li=LETTERS.indexOf(VM_COLS[c]); let pc=mod(NAT[li]+keyAcc(li,f),12);
+        if(sharp) pc=mod(pc+(mc.params[31]===1?-1:1),12);
+        b.textContent = bare ? "" : names[pc]+vmQuality(String(r));
+      }
+    }
     b.classList.toggle("on", held.has(r+":"+c));
   });
   td.sharpLabels=labels;

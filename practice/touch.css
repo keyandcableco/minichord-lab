@@ -9,13 +9,15 @@
   grid-template-columns:auto 1fr;grid-template-areas:"mod top" "grid grid";
   padding:6px max(8px,env(safe-area-inset-right,0px)) calc(6px + env(safe-area-inset-bottom,0px)) max(8px,env(safe-area-inset-left,0px));
   background:#0E0A16;border-top:3px solid #2F2342;box-shadow:0 -6px 18px rgba(0,0,0,.6);
-  font-family:"Minichord Lab Accidentals","Press Start 2P",ui-monospace,monospace;color:#F1E8D2;
+  font-family:"Press Start 2P","Minichord Lab Accidentals",ui-monospace,monospace;color:#F1E8D2;
   touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
 .tdeck button{font:inherit;color:inherit;-webkit-tap-highlight-color:transparent;touch-action:none}
 .tdeck[data-chords=""]{grid-template-areas:"top top"}
 /* the modifier */
 .tdmod{grid-area:mod;width:44px;padding:0;background:#16132A;border:2px solid #3D3656;font-size:1.1rem}
 .tdmod.on{background:#FFD35A;color:#16132A;border-color:#FFD35A}
+.tdmod.locked{background:#7FE9FF;color:#16132A;border-color:#7FE9FF}
+.tdgrid.keymode .tdcell{font-size:.5rem}
 /* the top row: the harp or d-pad, the knob, and the chord that's playing */
 .tdtop{grid-area:top;display:flex;gap:6px;align-items:stretch;height:44px;min-width:0}
 .tdnow{flex:0 0 auto;min-width:5.5em;align-self:center;text-align:right;font-size:.7rem;color:#7FE9FF;white-space:nowrap}
@@ -137,5 +139,5 @@ body.tdplay .field .helper{display:none}
 /* the first time on this device: a word on what isn't plain to see */
 .tdtip{position:fixed;left:50%;top:38%;transform:translate(-50%,-50%);z-index:10001;width:min(86vw,420px);box-sizing:border-box;padding:12px 14px;
   background:rgba(7,6,12,.94);border:3px solid #FFD35A;box-shadow:0 0 0 3px #000;color:#F1E8D2;text-align:center;pointer-events:none;
-  font:400 .5rem/1.9 "Minichord Lab Accidentals","Press Start 2P",monospace;transition:opacity .4s}
+  font:400 .5rem/1.9 "Press Start 2P","Minichord Lab Accidentals",monospace;transition:opacity .4s}
 .tdtip.gone{opacity:0}
