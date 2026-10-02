@@ -9,4 +9,6 @@ import {Piano} from "../core/sound.js";
 import {SCORES_API as SCORES_HOST} from "../core/scores.js";
 
 Object.assign(window, {Minichord, spell, chordName, chordId, isChord, hzOf, spellTones, TEMPERAMENT_TABLE, tune, Piano, SCORES_HOST});
+// Fux's rules and solver, only for a page that has Fux on it: as CP, so their names don't meet the page's
+if(PAGE_SCRIPTS.some(s=>/\/fux\.js$/.test(s))) window.CP=await import("../core/counterpoint.js");
 for(const src of PAGE_SCRIPTS){ const s=document.createElement("script"); s.src=src; s.async=false; document.body.appendChild(s); }   // in order, each after the one before

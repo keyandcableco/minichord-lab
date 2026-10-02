@@ -6,8 +6,8 @@
 // A game's own page opens this page with ?game=<name>&solo (or ?game=<mode>&solo, as the arcade's
 // switch does). Dress it for the arcade before the first paint, and keep it hidden until the arcade's
 // set up, so the Practice Room never flashes up first.
-const GAME_SLUGS={invaders:"blaster", "chord-invaders":"blaster", "harp-command":"command", harpcommand:"command", "chord-snake":"snake", "chord-asteroids":"asteroids", asteroids:"asteroids", "chord-stack":"stack", "chord-breakout":"breakout", breakout:"breakout", "fifths-defender":"fifths", fifths:"fifths", "chopper-rescue":"chopper", chopper:"chopper", "key-fleet":"fleet", fleet:"fleet", "chord-sweeper":"sweeper", sweeper:"sweeper", "between-the-frets":"frets", frets:"frets", "sight-line":"sight", sight:"sight", "chord-hunt":"hunt", hunt:"hunt", sevenchords:"diatonic", layout:"hidden"};
-const ARCADE_KINDS=["blaster","command","snake","asteroids","stack","breakout","fifths","chopper","fleet","sweeper","frets","sight","hunt"];
+const GAME_SLUGS={invaders:"blaster", "chord-invaders":"blaster", "harp-command":"command", harpcommand:"command", "chord-snake":"snake", "chord-asteroids":"asteroids", asteroids:"asteroids", "chord-stack":"stack", "chord-breakout":"breakout", breakout:"breakout", "fifths-defender":"fifths", fifths:"fifths", "chopper-rescue":"chopper", chopper:"chopper", "key-fleet":"fleet", fleet:"fleet", "chord-sweeper":"sweeper", sweeper:"sweeper", "between-the-frets":"frets", frets:"frets", "sight-line":"sight", sight:"sight", "chord-hunt":"hunt", hunt:"hunt", fux:"fux", sevenchords:"diatonic", layout:"hidden"};
+const ARCADE_KINDS=["blaster","command","snake","asteroids","stack","breakout","fifths","chopper","fleet","sweeper","frets","sight","hunt","fux"];
 (function(){ var u=new URLSearchParams(location.search), g=(u.get("game")||"").toLowerCase(), h=document.documentElement;
   if(!u.has("solo") || !g) return; h.classList.add("solo");
   if(ARCADE_KINDS.includes(GAME_SLUGS[g]||g)){
@@ -29,13 +29,13 @@ const ALL_SCRIPTS=[
   ["../arcade/games/chopper-rescue-power.js","chopper"], ["../arcade/games/key-fleet.js","fleet"],
   ["../arcade/games/chord-sweeper.js","sweeper"], ["../arcade/games/between-the-frets.js","frets"],
   ["../arcade/games/sight-line.js","sight"], ["../arcade/games/chord-hunt.js","hunt"],
-  ["../arcade/games/chord-hunt-power.js","hunt"], "../arcade/sounds.js",
+  ["../arcade/games/chord-hunt-power.js","hunt"], ["../arcade/games/fux.js","fux"], "../arcade/sounds.js",
   ["../arcade/games/harp-command-sounds.js","command"], ["../arcade/games/chord-snake-sounds.js","snake"],
   ["../arcade/games/chord-asteroids-sounds.js","asteroids"], ["../arcade/games/chord-stack-sounds.js","stack"],
   ["../arcade/games/chord-breakout-sounds.js","breakout"], ["../arcade/games/fifths-defender-sounds.js","fifths"],
   ["../arcade/games/chopper-rescue-sounds.js","chopper"], ["../arcade/games/key-fleet-sounds.js","fleet"],
   ["../arcade/games/chord-sweeper-sounds.js","sweeper"], ["../arcade/games/between-the-frets-sounds.js","frets"],
-  ["../arcade/games/sight-line-sounds.js","sight"], ["../arcade/games/chord-hunt-sounds.js","hunt"],
+  ["../arcade/games/sight-line-sounds.js","sight"], ["../arcade/games/chord-hunt-sounds.js","hunt"], ["../arcade/games/fux-sounds.js","fux"],
   "../arcade/games/invaders-demo.js", "../arcade/games/invaders-power.js", "../arcade/screen.js",
   "../arcade/bonus.js", "room.js"];
 const PAGE_SCRIPTS=(function(){
@@ -635,6 +635,36 @@ html.arcadepage .gamebar{align-items:flex-end}
 .boot .bootlines div{white-space:pre}   /* the dot leaders line up */
 .boot .bootlines b{color:#7FE08A;font-weight:400}
 
+/* Fux: a two-voice line scrolling over twelve cannons, on a ladder of the mode's degrees */
+.fuladder{position:absolute;inset:0;z-index:1;pointer-events:none}
+.fuladder i{position:absolute;left:0;right:0;height:1px;background:rgba(241,232,210,.13)}
+.fuladder i.fin{background:rgba(255,211,90,.4)}
+.fuladder b{position:absolute;left:6px;transform:translateY(-120%);font:400 .45rem "Press Start 2P",monospace;color:#FFD35A;opacity:.8}
+.fubar{position:absolute;left:0;top:0;bottom:0;width:0;z-index:2;pointer-events:none;will-change:transform}
+.funote{position:absolute;height:14px;min-width:20px;transform:translate(-50%,-50%);box-sizing:border-box;border:2px solid #000;display:flex;align-items:center;justify-content:center;font:400 .4rem "Minichord Lab Accidentals","Press Start 2P",monospace;color:#16132A;white-space:nowrap}
+.funote.c{background:#7FB2FF;z-index:1}
+.funote.p{background:#FFD35A;z-index:2}
+.fubeam{position:absolute;width:2px;margin-left:-1px;background:rgba(241,232,210,.4)}
+.fubar.shot .fubeam{background:#FF4B3E;box-shadow:0 0 6px #FF4B3E;width:3px}
+.fubar.shot .funote.p{background:#FF4B3E;color:#FFF4C2}
+.fubar.escaped .fubeam{background:#FF8FB8}.fubar.escaped .funote.p{background:#FF8FB8}
+.fubar.wrong .funote{opacity:.45}
+.fuiv{position:absolute;transform:translateX(-50%);font:400 .5rem "Press Start 2P",monospace;color:#B9C7E6;white-space:nowrap}
+.futag{position:absolute;transform:translate(-50%,-100%);padding:3px 5px;background:#16132A;border:2px solid #FF4B3E;font:400 .42rem "Press Start 2P",monospace;color:#FFD35A;white-space:nowrap}
+.field.fux .heard{left:auto;right:12px;bottom:auto;top:62px;text-align:right;z-index:4}
+.fusign{position:absolute;right:12px;top:32px;z-index:4;font:400 .45rem "Minichord Lab Accidentals","Press Start 2P",monospace;color:#F1E8D2;background:#16132A;border:3px solid #000;box-shadow:0 0 0 2px #3A3570;padding:5px 8px;pointer-events:none}
+.fusign b{color:#FFD35A;font-weight:400}
+.fusay{position:absolute;left:12px;top:32px;z-index:4;max-width:min(430px,52%);display:flex;flex-direction:column;gap:4px;padding:6px 9px;background:#F1E8D2;color:#16132A;border:3px solid #000;box-shadow:3px 3px 0 #000;font:italic 400 .85rem "Source Serif 4",Georgia,serif;pointer-events:none}
+.fusay[hidden]{display:none}
+.fusay b{font:400 .42rem "Press Start 2P",monospace;color:#8B0000}
+.fusay.new{animation:hdsign .4s steps(4)}
+.field.fux.demoing .fusay,.field.fux.demoing .fusign{top:118px}
+.field.fux.demoing .heard{top:148px}
+.fushells{display:inline-flex;gap:3px;vertical-align:middle;margin-left:6px}
+.fushells i{display:block;width:5px;height:10px;background:#FFD35A;box-shadow:inset 0 -6px 0 #FF4B3E}
+.fushells i.spent{opacity:.15}
+@media (max-width:700px){.fusign{display:none}.fusay{max-width:70%;font-size:.75rem}}
+
 /* Chord Hunt: the sky, the ducks, the grass in front of them, the dog, the panel at the foot */
 .field.hunt .heard{left:auto;right:12px;bottom:auto;top:34px;text-align:right;z-index:4}
 .hdtint{position:absolute;inset:0;z-index:1;background:#FF8FB8;opacity:0;transition:opacity .25s;pointer-events:none}   /* the sky flushing pink as a duck gets away */
@@ -1141,7 +1171,8 @@ details.fold[open] .nowplaying{display:none}
     <button data-mode="frets">Between the Frets</button>
     <button data-mode="sight">Sight Line</button>
     <button data-mode="hunt">Chord Hunt</button>
-    <span class="arcadelinks"><a href="../arcade/">The arcade lobby</a> · or on their own pages: <a href="../invaders/">Chord Invaders</a> · <a href="../harp-command/">Harp Command</a> · <a href="../chord-snake/">Chord Snake</a> · <a href="../chord-asteroids/">Chord Asteroids</a> · <a href="../chord-stack/">Chord Stack</a> · <a href="../chord-breakout/">Chord Breakout</a> · <a href="../fifths-defender/">Fifths Defender</a> · <a href="../chopper-rescue/">Chopper Rescue</a> · <a href="../key-fleet/">Key Fleet</a> · <a href="../chord-sweeper/">Chord Sweeper</a> · <a href="../between-the-frets/">Between the Frets</a> · <a href="../sight-line/">Sight Line</a> · <a href="../chord-hunt/">Chord Hunt</a></span>
+    <button data-mode="fux">Fux</button>
+    <span class="arcadelinks"><a href="../arcade/">The arcade lobby</a> · or on their own pages: <a href="../invaders/">Chord Invaders</a> · <a href="../harp-command/">Harp Command</a> · <a href="../chord-snake/">Chord Snake</a> · <a href="../chord-asteroids/">Chord Asteroids</a> · <a href="../chord-stack/">Chord Stack</a> · <a href="../chord-breakout/">Chord Breakout</a> · <a href="../fifths-defender/">Fifths Defender</a> · <a href="../chopper-rescue/">Chopper Rescue</a> · <a href="../key-fleet/">Key Fleet</a> · <a href="../chord-sweeper/">Chord Sweeper</a> · <a href="../between-the-frets/">Between the Frets</a> · <a href="../sight-line/">Sight Line</a> · <a href="../chord-hunt/">Chord Hunt</a> · <a href="../fux/">Fux</a></span>
   </div>
   <div class="modes" role="group" aria-label="Read and play">
     <span class="grp">Read and play</span>

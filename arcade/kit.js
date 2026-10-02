@@ -179,7 +179,8 @@ new MutationObserver(()=>{ if(saved.crt) crtSync(); }).observe(document.getEleme
 const MULT_SPEED=[1,1.25,1.5,1.75,2];                      // Relaxed … Wild
 const MULT_DENSITY=[.8,1,1.25,1.5];                        // Harp Command: few, some, many, swarm
 const MULT_PADDLE=[1.3,1,.8];                              // Chord Breakout: narrow, normal, wide
-const MULT_GUIDE=[1,1.25,1.5];                             // Chord Hunt: the field guide with names, numerals only, none
+const MULT_GUIDE=[1,1.25,1.5];
+const MULT_IV=[1,1.5];                                     // Fux: the intervals over the bars as numbers, or hidden                             // Chord Hunt: the field guide with names, numerals only, none
 // Played on the screen, the harp's strings named, or bare as the instrument's are: offered wherever the
 // deck draws the twelve strings, and a quarter more where the game asks for notes by name (not Chord
 // Hunt, whose harp is only low or high, nor Between the Frets, whose harp goes in quarter-tones)
@@ -191,6 +192,7 @@ function diffMult(kind=cabKind()){
   if(kind==="command") m*=MULT_DENSITY[saved.hcDensity??1]??1;
   if(kind==="breakout") m*=MULT_PADDLE[saved.boPaddle??1]??1;
   if(kind==="hunt") m*=MULT_GUIDE[saved.hdGuide||0]??1;
+  if(kind==="fux") m*=MULT_IV[saved.fuIv?1:0];
   if((kind==="asteroids" && saved.asAim) || (kind==="blaster" && saved.invAim)) m*=2;   // manual aim: harder, so double
   if(MOD_GAMES.has(kind) && !autoMod()) m*=1.25;                              // the modifier set by hand: a quarter more
   if(kind!=="command" && saved.tdBare && typeof playOnScreen==="function" && playOnScreen()) m*=1.25;   // the screen's chord buttons bare: a quarter more
@@ -213,6 +215,7 @@ const POINTS_FOR={
   sweeper:[["SQUARE SWEPT","5"],["MINE DEFUSED","100"],["SQUARES LEFT UNSWEPT","+2 EACH"],["QUICK CLEAR","UP TO +270"]],
   fleet:[["HIT","10"],["SHIP SUNK","50 A CHORD"],["SUNK BY DEDUCTION","+40 A CHORD UNHIT"],["NO MISSES","× 2"],["TORPEDO LEFT OVER","20"]],
   chopper:()=>[["RESCUE","20"],["FAST RESCUE","UP TO +30"],["WAYPOINT","15"],["WHOLE ROUTE","× 2"],["WRONG PLACE","−2 SECONDS"],powerRow(CH_POWERS)],
+  fux:[["WRONG BAR SHOT","25"],["SHOT EARLY","UP TO +25"],["CLEAN SWEEP","100"],["GOOD BAR SHOT","A SHELL"],["WRONG BAR MISSED","A LIFE"]],
   hunt:()=>[["DUCK","20"],["QUICK SHOT","UP TO +30"],["FIRST SHOT","× 2"],["PURE EAR","UP TO × 4"],["GOLDEN DUCK","× 3"],["WHOLE FLOCK","+25 A DUCK"],["PERFECT ROUND","100"],powerRow(HD_POWERS)],
 };
 // the POINTS page's line for a game's power-ups (or capsules): their icons, then their names
@@ -221,6 +224,7 @@ function multRows(kind){
   const rows = kind==="sweeper" ? [] : [["SPEED", SPEEDS.map((x,i)=>`${x[0].toUpperCase()} ×${MULT_SPEED[i]}`)]];
   if(kind==="command") rows.push(["NOTES AT ONCE", ["FEW","SOME","MANY","SWARM"].map((n,i)=>`${n} ×${MULT_DENSITY[i]}`)]);
   if(kind==="breakout") rows.push(["PADDLE", ["NARROW","NORMAL","WIDE"].map((n,i)=>`${n} ×${MULT_PADDLE[i]}`)]);
+  if(kind==="fux") rows.push(["INTERVALS", ["NUMBERS","HIDDEN"].map((n,i)=>`${n} ×${MULT_IV[i]}`)]);
   if(kind==="hunt") rows.push(["FIELD GUIDE", ["NAMES","NUMERALS","NONE"].map((n,i)=>`${n} ×${MULT_GUIDE[i]}`)]);
   if(kind!=="command" && typeof playOnScreen==="function" && playOnScreen()) rows.push(["BUTTONS", ["LABELLED ×1","BARE ×1.25"]]);
   if(HARP_BY_NAME.has(kind) && harpOnScreen(kind)) rows.push(["STRINGS", ["LABELLED ×1","BARE ×1.25"]]);
@@ -290,6 +294,7 @@ function arcadeSettings(){
   if(k!=="sweeper") choice("SPEED", SPEEDS.map(x=>x[0].toUpperCase()), ()=>+saved.speed||0, i=>{ saved.speed=i; save(); }, "FROM THE NEXT GAME");
   if(k==="command") choice("NOTES AT ONCE", ["FEW","SOME","MANY","SWARM"], ()=>saved.hcDensity??1, i=>{ saved.hcDensity=i; save(); }, "FROM THE NEXT GAME");
   if(k==="breakout") choice("PADDLE", ["NARROW","NORMAL","WIDE"], ()=>saved.boPaddle??1, i=>{ saved.boPaddle=i; save(); }, "FROM THE NEXT GAME");
+  if(k==="fux") choice("INTERVALS", ["NUMBERS","HIDDEN"], ()=>saved.fuIv?1:0, i=>{ saved.fuIv=i; save(); }, "FROM THE NEXT GAME · HIDDEN SCORES MORE");
   if(k==="hunt") choice("FIELD GUIDE", ["NAMES","NUMERALS","NONE"], ()=>saved.hdGuide||0, i=>{ saved.hdGuide=i; save(); }, "FROM THE NEXT GAME · LESS TO READ SCORES MORE");
   if(k!=="command" && typeof playOnScreen==="function" && playOnScreen()) choice("BUTTONS", ["LABELLED","BARE ×1.25"], ()=>saved.tdBare?1:0, i=>{ saved.tdBare=!!i; save(); if(typeof tdDraw==="function") tdDraw(); }, "THE CHORD BUTTONS ON THE SCREEN · BARE SCORES MORE");
   if(harpOnScreen(k)) choice("HARP AS", ["STRINGS","PIANO KEYS"], ()=>saved.tdPiano?1:0, i=>{ saved.tdPiano=!!i; save(); if(typeof tdSync==="function") tdSync(); }, "THE HARP ON THE SCREEN: THE MINICHORD'S TWELVE STRINGS, OR AN OCTAVE OF A PIANO");
@@ -405,7 +410,7 @@ const HS_SECONDS=20;        // the countdown on the initials, as a cabinet has
 // what's shown if the shared one can't be reached.
 const SCORES_API=String(SCORES_HOST||"").replace(/\/+$/,"");   // the Funnel address of arcade-scores (core/scores.js), no trailing slash
 const scoresOnline=()=> !!SCORES_API && !SCORES_API.includes("SCORES-HOST");
-const HS_SLUG={blaster:"invaders", command:"harp-command", snake:"chord-snake", asteroids:"chord-asteroids", stack:"chord-stack", breakout:"chord-breakout", fifths:"fifths-defender", chopper:"chopper-rescue", fleet:"key-fleet", sweeper:"chord-sweeper", frets:"between-the-frets", sight:"sight-line", hunt:"chord-hunt"};
+const HS_SLUG={blaster:"invaders", command:"harp-command", snake:"chord-snake", asteroids:"chord-asteroids", stack:"chord-stack", breakout:"chord-breakout", fifths:"fifths-defender", chopper:"chopper-rescue", fleet:"key-fleet", sweeper:"chord-sweeper", frets:"between-the-frets", sight:"sight-line", hunt:"chord-hunt", fux:"fux"};
 const HS_CHARS="ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 const hsCache={};                                        // the shared boards, as last fetched
 const hsSlug=()=> HS_SLUG[cabKind()];

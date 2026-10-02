@@ -217,7 +217,17 @@ It has three jobs:
 A finished two-voice line scrolls along the staff. Some bars are wrong; shoot them before they
 reach the left edge.
 
-- **Aim:** pluck strip *n* to fire at bar *n*. A hit flashes the rule's name ("PARALLEL 5THS") with
+- **As built:** the line scrolls in from the right over twelve cannons, Harp Command's, one under
+  each string. A bar is as wide as the gap between two cannons, so the string under a wrong bar shoots
+  it. A click or tap fires the nearest cannon. The harp is chromatic for this (`asHarp()`).
+  - A line has two shells more than it has wrong bars. A hit gives its shell back.
+  - Three lines a level.
+  - Nine levels: parallel 5ths and 8ves; dissonances; hidden 5ths and 8ves; the line itself; the
+    cadence and all of it; counterpoint below; then the second species: passing, downbeats, all.
+  - Interval numbers shown along the foot, or hidden for ×1.5.
+  - Errors are put in one bar at a time. A change is kept only if the checker finds the wanted
+    rule, exactly one more wrong bar, and nothing outside the level's rules.
+- **Aim (the earlier idea):** pluck strip *n* to fire at bar *n*. A hit flashes the rule's name ("PARALLEL 5THS") with
   the offending interval drawn as a red beam.
 - **Shells:** a miss on a clean bar costs a shell. An error that scrolls away unshot costs a heart, and
   Aloysius names it.
@@ -312,7 +322,8 @@ Line's staff drawing and Bravura glyphs (`drawStaff` in `practice/games.js`).
 3. ~~Harp `harpoff` in the kit, with tests.~~ The full note for Fux's harp dispatch comes with the game.
 4. ~~Rule engine for species 1 and 2, the solver, tested in Node.~~ Still open: verify the cantus
    firmi against a facsimile.
-5. Parallel Patrol, species 1 then 2.
+5. ~~Parallel Patrol, species 1 then 2.~~ Built as the game's first nine levels (`arcade/games/fux.js`).
+   Its harp is chromatic (each string a cannon), so the full note isn't needed yet; Two Ships needs it.
 6. Two Ships, species 1 then 2, with Aloysius.
 7. Arcade integration: demo, bonus round, power-ups, registration, card.
 
