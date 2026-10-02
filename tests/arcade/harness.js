@@ -72,7 +72,7 @@ function load(slug, {storage}={}){
     mc.dispatchEvent(new w.Event("device"));
   }
   const IV={"":[0,4,7], m:[0,3,7], "7":[0,4,7,10], maj7:[0,4,7,11], m7:[0,3,7,10], "°":[0,3,6], "+":[0,4,8]};
-  const PC={C:0,"C♯":1,"D♭":1,D:2,"D♯":3,"E♭":3,E:4,F:5,"F♯":6,"G♭":6,G:7,"G♯":8,"A♭":8,A:9,"A♯":10,"B♭":10,B:11};
+  const PC={C:0,"C♯":1,"D♭":1,D:2,"D♯":3,"E♭":3,E:4,"F♭":4,"E♯":5,F:5,"F♯":6,"G♭":6,G:7,"G♯":8,"A♭":8,A:9,"A♯":10,"B♭":10,B:11,"C♭":11,"B♯":0};
   const chord=(root, q="")=>sb.answerChord(IV[q].map((x,i)=>({pitch:48+(typeof root==="number"?root:PC[root])+x, voice:i})));
   const note=pc=>sb.answerNote(pc);
   const knob=(v,cc=22)=>mc.handle([0xBF,cc,v]);

@@ -17,40 +17,54 @@
 const CH_COLS="FCGDAEB", CH_ROWS=[["","MAJ"],["m","MIN"],["7","7"]];
 const CH_DEG=[[0,""],[2,"m"],[4,"m"],[5,""],[7,""],[9,"m"]];            // I ii iii IV V vi in a major key
 const CH_NUM=["I","ii","iii","IV","V","vi"];
-const CH_KEYS_NEAR=["C","G","F","D"], CH_KEYS_ALL=["C","G","D","A","E","F","B♭","E♭","A♭"];
+const CH_KEYS_NEAR=["C","G","F","D"], CH_KEYS_ALL=["C","G","D","A","E","B","F","B♭","E♭","A♭","D♭"];
+// Keys and degrees are dealt from shuffled bags, each used once before any comes round again, so no
+// one call (vi in C, say) turns up more than its share; a bag is dealt afresh when a level changes it.
+function chDeal(name, items){
+  const bags=blast.bags||(blast.bags={}), id=name+":"+items.join(",");
+  let b=bags[name]; if(!b || b.id!==id || !b.left.length) b=bags[name]={id, left:[...items].sort(()=>Math.random()-.5)};
+  return b.left.pop();
+}
+// a call answers with chords the map and the harp can name plainly: no C♭, F♭, E♯ or B♯ roots, nothing doubly sharp or flat
+const chPlain=call=>call.legs.every(l=>!/^[CF]♭|^[EB]♯|[𝄪𝄫]|♭♭|♯♯/.test(l.root) && !!spellChord(l.root, l.q));
 // Every call now begins and ends with music. It comes in through static, over a station tone: tune
 // the radio to it (a knob turns the dial, the arrow keys nudge it, or pluck the station's note on the
 // harp) until the beating stops, and only then does the call come through and its clock start. And at
 // the right place the survivors won't come up the winch until they're answered with their signal:
 // the chord's notes plucked on the harp in order, root upward, and at the top level from the 3rd, the
 // first inversion.
+// Supply crates, flown out for by their chord, hold the power-ups: chopper-rescue-power.js.
 const CH_LEVELS=[
   {n:"Flight school", keys:["C"], hint:true, arp:"root"},
   {n:"Nearby keys", keys:CH_KEYS_NEAR, hint:true, arp:"root"},
   {n:"Every key", keys:CH_KEYS_ALL, arp:"root"},
-  {n:"Sevenths and V of V", keys:CH_KEYS_NEAR, sevenths:true, arp:"root"},
-  {n:"Borrowed chords and routes", keys:CH_KEYS_NEAR, sevenths:true, borrowed:true, routes:true, arp:"inv1"},
+  {n:"Sevenths and V of V", keys:CH_KEYS_ALL, sevenths:true, arp:"root"},
+  {n:"Borrowed chords and routes", keys:CH_KEYS_ALL, sevenths:true, borrowed:true, routes:true, arp:"inv1"},
 ];
 const CH_TUNE_SECS=10, CH_TUNED=12;                 // seconds to tune in before the signal comes through weak; cents close enough
 // a scale degree of a key, spelled: the root name
 const chRoot=(key, semis)=>{ const letters={0:0,2:1,4:2,5:3,7:4,9:5,10:6,11:6,3:2,8:5}; return above(key, letters[semis]??0, semis) || key; };
 // one call: what the radio says, and the chord (or chords, for a route) that answers it
 function chCall(L){
-  const key=rnd(L.keys), kind=Math.random();
+  for(let k=0;k<30;k++){ const c=chCallOnce(L); if(chPlain(c)) return c; }
+  return chCallOnce({...L, keys:["C"]});
+}
+function chCallOnce(L){
+  const key=chDeal("key", L.keys), kind=Math.random();
   if(L.routes && kind<.22){   // a route: ii–V–I, or I–vi–IV–V's first three
     const route = Math.random()<.5 ? [[2,"m","ii"],[7,"","V"],[0,"","I"]] : [[0,"","I"],[9,"m","vi"],[5,"","IV"]];
-    return {text:`ROUTE ${route.map(r=>r[2]).join("–")} IN ${key}`, legs:route.map(([st,q])=>({root:chRoot(key,st), q})), what:"WAYPOINTS"};
+    return {key, text:`ROUTE ${route.map(r=>r[2]).join("–")} IN ${key}`, legs:route.map(([st,q])=>({root:chRoot(key,st), q})), what:"WAYPOINTS"};
   }
   if(L.borrowed && kind<.4){
     const b=rnd([[10,"","♭VII"],[8,"","♭VI"],[5,"m","iv"]]);
-    return {text:`FUEL AT ${b[2]} IN ${key}`, legs:[{root:chRoot(key,b[0]), q:b[1]}], what:"FUEL"};
+    return {key, text:`FUEL AT ${b[2]} IN ${key}`, legs:[{root:chRoot(key,b[0]), q:b[1]}], what:"FUEL"};
   }
   if(L.sevenths && kind<.6){
-    if(Math.random()<.5) return {text:`MEDIC AT V7 IN ${key}`, legs:[{root:chRoot(key,7), q:"7"}], what:"MEDIC"};
-    return {text:`SUPPLIES AT V OF V IN ${key}`, legs:[{root:chRoot(key,2), q:"7"}], what:"SUPPLIES"};
+    if(Math.random()<.5) return {key, text:`MEDIC AT V7 IN ${key}`, legs:[{root:chRoot(key,7), q:"7"}], what:"MEDIC"};
+    return {key, text:`SUPPLIES AT V OF V IN ${key}`, legs:[{root:chRoot(key,2), q:"7"}], what:"SUPPLIES"};
   }
-  const i=Math.floor(Math.random()*CH_DEG.length), [st,q]=CH_DEG[i];
-  return {text:`SURVIVORS AT ${CH_NUM[i]} IN ${key}`, legs:[{root:chRoot(key,st), q}], what:"SURVIVORS"};
+  const i=chDeal("deg", CH_DEG.map((_,j)=>j)), [st,q]=CH_DEG[i];
+  return {key, text:`SURVIVORS AT ${CH_NUM[i]} IN ${key}`, legs:[{root:chRoot(key,st), q}], what:"SURVIVORS"};
 }
 // where a chord lands: its root letter's column, its quality's row
 function chPad(root, q){ const col=CH_COLS.indexOf(root[0]); const row = q==="7" ? 2 : /^m/.test(q)&&q!=="maj7" ? 1 : 0; return {col, row}; }
@@ -156,6 +170,7 @@ function chDrawMap(){
   const f=blast.found;
   for(const e of (blast.emerg||[])){ if(f && !f.empty && e.real) continue;
     const [x,y]=chXY(e.col,e.row); h+=`<span class="chem ${e.k}" style="left:${x}px;top:${y}px">${CH_SPRITES[e.k]}</span>`; }
+  const c=blast.crate; if(c){ const [x,y]=chXY(c.col,c.row); h+=`<span class="chcrateat" style="left:${x}px;top:${y}px">${chCrateLook(c.k, c.root+c.q)}</span>`; }
   if(f){ const [x,y]=chXY(f.col,f.row);
     h += f.empty ? `<span class="chnobody" style="left:${x}px;top:${y}px">?</span>`
       : `<span class="chsurv${f.saved?" saved":""}${f.ben?" ben":""}" style="left:${x}px;top:${y}px">${f.ben?CH_BEN:CH_PEOPLE}</span>`; }
@@ -180,10 +195,10 @@ function chPlace(instant){
 }
 function chBar(){
   if(!blast || blast.kind!=="chopper" || !blast.hud) return;
-  blast.hud.innerHTML=`<span>SCORE ${blast.score}${multTag()}</span><span class="lvl">LEVEL ${blast.level+1} · RESCUES ${blast.rescues}</span><span class="lives">${livesHtml()}</span>`;
+  blast.hud.innerHTML=`<span>SCORE ${blast.score}${multTag()}</span><span class="lvl">LEVEL ${blast.level+1} · RESCUES ${blast.rescues}${chPowerHud()}</span><span class="lives">${livesHtml()}</span>`;
 }
 const CHMENU_G={key:"chopper", title:"CHOPPER RESCUE",
-  rules:()=>`<p>THE RADIO CALLS COORDINATES IN THEORY. DECODE THEM: "SURVIVORS AT vi IN G" IS Em.</p><p>TROUBLE BREAKS OUT IN MORE THAN ONE PLACE, AND ONLY THE RADIO SAYS WHICH. PLAY THE CHORD AND THE CHOPPER FLIES THERE.</p><p>A WRONG CHORD FLIES SOMEWHERE EMPTY AND BURNS TIME. DON'T LET THE FLARE BURN OUT.</p>`,
+  rules:()=>`<p>THE RADIO CALLS COORDINATES IN THEORY. DECODE THEM: "SURVIVORS AT vi IN G" IS Em.</p><p>TROUBLE BREAKS OUT IN MORE THAN ONE PLACE, AND ONLY THE RADIO SAYS WHICH. PLAY THE CHORD AND THE CHOPPER FLIES THERE.</p><p>A WRONG CHORD FLIES SOMEWHERE EMPTY AND BURNS TIME. DON'T LET THE FLARE BURN OUT.</p><p>NOW AND THEN A SUPPLY CRATE LANDS, MARKED WITH ITS CHORD. PLAY IT TO FLY OUT FOR A POWER-UP, IF THERE'S TIME.</p>`,
   stat:()=>`RESCUES ${blast.rescues}`,
   rows:row=>{
     row("SPEED", SPEEDS.map(x=>x[0].toUpperCase()), ()=>+saved.speed||0, i=>{ saved.speed=i; save(); });
@@ -195,7 +210,7 @@ function beginChopper(level){
   newRun();
   piano.start(); stopDemo(); clearTimeout(blast.attract); clearTimeout(blast.cabT);
   if(blast.overlay){ blast.overlay.remove(); blast.overlay=null; }
-  Object.assign(blast,{score:0, lives:3, level, startLevel:level, rescues:0, phase:"play", over:false, call:null, leg:0, modFor:null, pos:{base:true}, found:null, busy:false, recentCalls:[], lastAnswer:null,
+  Object.assign(blast,{score:0, lives:3, level, startLevel:level, rescues:0, phase:"play", over:false, call:null, leg:0, modFor:null, pos:{base:true}, found:null, busy:false, recentCalls:[], lastAnswer:null, bags:null, crate:null, chPower:null,
     timeFor:11000*speedMul()*Math.pow(.93,level)});
   saved.chopperStart=level; save();
   stats.streak=0; scoreboard(); chLayout(); chPlace(true);
@@ -259,14 +274,15 @@ function chTuned(how){
   chCallStart(call, how==="weak");
 }
 function chCallStart(call, weak){
-  blast.call=call; blast.leg=0; blast.callAt=performance.now(); blast.deadline=blast.callAt+blast.timeFor*(blast.call.legs.length>1?1.8:1)*(weak?.7:1);
+  blast.call=call; call.weak=!!weak; blast.leg=0; blast.callAt=performance.now(); blast.deadline=blast.callAt+blast.timeFor*(blast.call.legs.length>1?1.8:1)*(weak?.7:1);
   const t=blast.radioEl.querySelector(".chtext"), txt=(weak?"(WEAK) ":"")+blast.call.text; t.textContent="";
   let i=0; const type=()=>{ if(!blast || blast.call===null || !t.isConnected) return; t.textContent=txt.slice(0,++i); if(i<txt.length) setTimeout(type, 28); };
   type(); sfx("key");
-  blast.found=null; chDrawMap(); chHelp();
+  blast.found=null; chCrateDrop(call); chDrawMap(); chHelp();
   const L=CH_LEVELS[blast.level];
+  if(chRadar(call)) return;                                          // decoded by radar: no need of the training hint
   if(L.hint){ const call=blast.call; gameLater(()=>{ if(blast && blast.call===call && blast.phase==="play"){   // training: the answer, half way through
-    const l=call.legs[blast.leg]; const h=document.createElement("em"); h.className="chhint"; h.textContent=` … THAT'S ${l.root}${l.q}`; t.appendChild(h); } }, (blast.deadline-blast.callAt)*.5); }
+    if(call.decoded) return; const l=call.legs[blast.leg]; const h=document.createElement("em"); h.className="chhint"; h.textContent=` … THAT'S ${l.root}${l.q}`; t.appendChild(h); } }, (blast.deadline-blast.callAt)*.5); }
 }
 function chHelp(){
   const l=blast.call && blast.call.legs[blast.leg];
@@ -281,6 +297,7 @@ function chTick(now){
     else if(now-blast.tune.at>CH_TUNE_SECS*1000) chTuned("weak");                   // never found: it comes through weak, less fuel
   }
   if(blast.phase==="play" && blast.signal && now>=blast.signal.until) chSignalLost();
+  if(blast.phase==="play") chPowerTick(now, dt);
   if(blast.phase==="play" && blast.call){
     const left=Math.max(0,(blast.deadline-now)/(blast.deadline-blast.callAt));
     const bar=blast.fuelEl||(blast.fuelEl=blast.radioEl.querySelector(".chfuel i")), q=Math.round(left*200)/200;
@@ -293,7 +310,7 @@ function chQuiet(){ if(blast && blast.tune && blast.tune.audio){ try{ const a=bl
 function chMissed(){
   sfx("miss"); buzz(blast.field,true); blast.lives--; chBar();
   banner("TOO LATE", blast.lives>0 ? "THE FLARE BURNED OUT" : "");
-  blast.call=null; blast.found=null; blast.emerg=[]; chDrawMap();
+  blast.call=null; blast.found=null; blast.emerg=[]; blast.crate=null; chDrawMap();
   if(blast.lives<=0){ chQuiet(); blast.phase="over"; blast.over=true; const best=Math.max(saved.best.chopper||0, blast.score); saved.best.chopper=best; save(); chMenu(true); return; }
   gameLater(()=>{ if(blast && blast.kind==="chopper" && blast.phase==="play") chNewCall(); }, 1400);
 }
@@ -310,26 +327,32 @@ function chopperNote(pc){
   if(blast.tune){ if(pc===blast.tune.pc){ heard(SHARP_NAMES[pc],true); chTuned("ear"); } else { heard(SHARP_NAMES[pc],false,"NOT THE STATION'S NOTE"); sfx("miss"); chDial(blast.tune.dial+(Math.random()<.5?-.05:.05)); } return; }
   const sg=blast.signal; if(!sg) return;
   if(pc===pcOfName(sg.tones[sg.i])){ sg.i++; heard(sg.tones[sg.i-1],true); sfx("key"); chSignalDraw(); if(sg.i>=sg.tones.length) chSignalled(); }
-  else { heard(SHARP_NAMES[pc],false,`NOT THEIR SIGNAL: ${sg.order==="inv1"?"FROM THE 3RD":"ROOT UP"}`); sfx("miss"); buzz(blast.field,true); sg.until-=800; }
+  else { heard(SHARP_NAMES[pc],false,`NOT THEIR SIGNAL: NEXT IS THE ${sg.roles[sg.i]}`); sfx("miss"); buzz(blast.field,true); sg.until-=800; }
 }
 // ---------- the signal: the chord's notes, in order, before the winch comes down ----------
 function chSignal(chord, pad, then){
-  const L=CH_LEVELS[blast.level], t=spellChord(chord.root, chord.q)||[chord.root];
-  const tones = L.arp==="inv1" ? [...t.slice(1), t[0]] : t;
-  blast.signal={tones, i:0, order:L.arp, pad, then, until:performance.now()+4500+1400*tones.length};
+  const L=CH_LEVELS[blast.level], t=spellChord(chord.root, chord.q)||[chord.root], inv=L.arp==="inv1";
+  const degs=["ROOT","3RD","5TH","7TH"].slice(0,t.length);
+  const tones = inv ? [...t.slice(1), t[0]] : t, roles = inv ? [...degs.slice(1), degs[0]] : degs;
+  if(chWinch(tones.length, then)) return;
+  blast.signal={tones, roles, i:0, order:L.arp, pad, then, until:performance.now()+4500+1400*tones.length};
   const [x,y]=chXY(pad.col,pad.row), el=document.createElement("div"); el.className="chsignal"; blast.field.appendChild(el); blast.signal.el=el;
   el.style.left=`${x}px`; el.style.top=`${y-58}px`;
-  banner("SIGNAL THEM", L.arp==="inv1" ? `PLUCK ${chord.root}${chord.q} FROM THE 3RD` : `PLUCK ${chord.root}${chord.q} ROOT UP`);
+  // what to pluck stays on the radio, in place of the call, until they're up: the inversion said plainly
+  const name=chord.root+chord.q, how = inv ? `${name}, 1ST INVERSION: START ON THE 3RD, THEN ${roles.slice(1).join(", ")}` : `${name}, ROOT UP: ${roles.join(", ")}`;
+  const rt=blast.radioEl.querySelector(".chtext"); rt.innerHTML=`<b class="chsigtext">SIGNAL THEM ON THE HARP · ${how}</b>`;
+  banner(inv ? "1ST INVERSION" : "SIGNAL THEM", inv ? `PLUCK ${name} FROM ITS 3RD, THE ROOT LAST` : `PLUCK ${name} ROOT UP`);
   chSignalDraw(); helpString(pcOfName(tones[0]));
 }
 function chSignalDraw(){
   const sg=blast.signal; if(!sg) return;
-  sg.el.innerHTML=sg.tones.map((n,i)=>`<b class="${i<sg.i?"got":i===sg.i?"next":""}">${i<sg.i?n:"?"}</b>`).join("");
+  sg.el.innerHTML=sg.tones.map((n,i)=>`<b class="${i<sg.i?"got":i===sg.i?"next":""}">${i<sg.i?n:"?"}<small>${sg.roles[i]}</small></b>`).join("");
   if(sg.i<sg.tones.length) helpString(pcOfName(sg.tones[sg.i]));
 }
-function chSignalled(){ const sg=blast.signal; blast.signal=null; sg.el.remove(); helpChord(null);
+function chSignalDone(){ const t=blast.radioEl && blast.radioEl.querySelector(".chtext"); if(t && t.querySelector(".chsigtext")) t.textContent="RADIO QUIET"; }
+function chSignalled(){ const sg=blast.signal; blast.signal=null; sg.el.remove(); helpChord(null); chSignalDone();
   const pts=mulPts(10*sg.tones.length*(blast.level+1)); blast.score+=pts; sg.then(pts); }
-function chSignalLost(){ const sg=blast.signal; blast.signal=null; sg.el.remove(); helpChord(null);
+function chSignalLost(){ const sg=blast.signal; blast.signal=null; sg.el.remove(); helpChord(null); chSignalDone();
   blast.found=null; blast.pos={base:true}; chPlace(false); blast.busy=false;
   sfx("miss"); buzz(blast.field,true); blast.lives--; chBar(); banner("THEY COULDN'T HOLD ON", blast.lives>0?"ANSWER THEIR SIGNAL IN TIME":"");
   blast.emerg=[]; chDrawMap();
@@ -349,6 +372,8 @@ function chopperChord(voices){
   if(!l){ heard(name,false,"NO CALL YET"); return; }
   if(pad.col<0) return;
   const right=isChord(pitches, pcOfName(l.root), l.q);
+  if(!right && chCrateFly(pitches, name)) return;                 // a detour for the supply crate
+  if(right) Object.assign(pad, chPad(l.root, l.q));            // D♭ played in C spells as C♯: it still lands where D♭ is
   const decoy=!right && (blast.emerg||[]).some(e=>!e.real && e.col===pad.col && e.row===pad.row);
   heard(name, right, right ? "" : decoy ? "NOT THIS ONE" : "NOBODY THERE");
   blast.busy=true; blast.pos=pad; blast.found=null; chDrawMap(); chPlace(false); sfx("shoot");
@@ -371,7 +396,7 @@ function chopperChord(voices){
     const ben=l && blast.lastBen; blast.found={...pad, ben}; chDrawMap(); sfx("bonus");   // there they are: answer their signal
     // Ben takes a moment to appreciate: a card, him waving his minichord, before the signal starts
     const signal=()=>chSignal(l, pad, sigPts=>gameLater(()=>{ if(!blast || blast.kind!=="chopper") return;
-      blast.found={...pad, saved:true, ben}; blast.emerg=[]; chDrawMap();   // aboard, and the other alarms were false
+      blast.found={...pad, saved:true, ben}; blast.emerg=[]; blast.crate=null; chDrawMap();   // aboard, and the other alarms were false
       let benPts=0; if(ben){ blast.benDone=true; benPts=mulPts(500); chBenCard("MERCI, BEN!", `BEN IS SAFE · +${benPts}`); sfx("level"); }
       blast.score+=pts; blast.rescues++; stats.streak=blast.rescues; scoreboard();
       blast.score+=benPts; popup(x,y-34,`${ben?"BEN":what} +${pts+sigPts+benPts}`,"#FFD35A"); chBar(); helpChord(null);

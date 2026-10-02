@@ -202,7 +202,7 @@ const POINTS_FOR={
   frets:[["RIGHT BY EAR","20"],["FOUND IT WITH THE MODIFIER","30"]],
   sweeper:[["SQUARE SWEPT","5"],["MINE DEFUSED","100"],["SQUARES LEFT UNSWEPT","+2 EACH"],["QUICK CLEAR","UP TO +270"]],
   fleet:[["HIT","10"],["SHIP SUNK","50 A CHORD"],["SUNK BY DEDUCTION","+40 A CHORD UNHIT"],["NO MISSES","× 2"],["TORPEDO LEFT OVER","20"]],
-  chopper:[["RESCUE","20"],["FAST RESCUE","UP TO +30"],["WAYPOINT","15"],["WHOLE ROUTE","× 2"],["WRONG PLACE","−2 SECONDS"]],
+  chopper:()=>[["RESCUE","20"],["FAST RESCUE","UP TO +30"],["WAYPOINT","15"],["WHOLE ROUTE","× 2"],["WRONG PLACE","−2 SECONDS"],powerRow(CH_POWERS)],
 };
 // the POINTS page's line for a game's power-ups (or capsules): their icons, then their names
 const powerRow=(table, word="POWER-UPS")=>{ const P=Object.values(table); return [P.map(p=>p.icon).join(" ")+" "+word, P.map(p=>p.name).join(" · ")]; };
@@ -222,11 +222,12 @@ const POWERS_FOR={
   asteroids:()=>Object.entries(AS_POWERS).map(([k,P])=>({look:`<span class="fchord power pu-${k}">${asPowerLook(k,"F")}</span>`, name:P.name, text:P.page})),
   breakout:()=>[{look:`<span class="bobrick power row1 pwbrick">G</span>`, name:"ARPEGGIO", text:"A GLOWING BRICK: BREAK IT AND ITS CHORD'S TONES RAIN DOWN, THE PADDLE A CANNON. PLUCK EACH TONE ON THE HARP FOR A BONUS, ALL OF THEM FOR THE WHOLE CHORD."},
     ...Object.entries(BO_POWERS).map(([k,P])=>({look:boCapLook(k), name:P.name, text:P.page}))],
+  chopper:()=>Object.entries(CH_POWERS).map(([k,P])=>({look:chCrateLook(k,"F"), name:P.name, text:P.page})),
 };
 const powersFor=k=> POWERS_FOR[k] ? POWERS_FOR[k]() : [];
 function powersRender(el){
   let i=0; const d=()=>`style="animation-delay:${(i++)*.6}s"`;
-  el.innerHTML=`<h3>POWER-UPS</h3><p class="ptsub">${cabKind()==="blaster" ? "PLAY A POWER-UP'S CHORD TO TAKE IT" : cabKind()==="command" ? "PLUCK A POWER-UP'S STRING TO TAKE IT" : cabKind()==="asteroids" ? "CRACK A POWER-UP ROCK WITH ITS CHORD TO TAKE IT" : cabKind()==="breakout" ? "BREAK A BRICK THAT HOLDS ONE AND CATCH ITS CAPSULE" : "THEY TURN UP NOW AND THEN"}</p>
+  el.innerHTML=`<h3>POWER-UPS</h3><p class="ptsub">${cabKind()==="blaster" ? "PLAY A POWER-UP'S CHORD TO TAKE IT" : cabKind()==="command" ? "PLUCK A POWER-UP'S STRING TO TAKE IT" : cabKind()==="asteroids" ? "CRACK A POWER-UP ROCK WITH ITS CHORD TO TAKE IT" : cabKind()==="breakout" ? "BREAK A BRICK THAT HOLDS ONE AND CATCH ITS CAPSULE" : cabKind()==="chopper" ? "PLAY A SUPPLY CRATE'S CHORD TO FLY OUT FOR IT" : "THEY TURN UP NOW AND THEN"}</p>
     <ul class="pwtable">${powersFor(cabKind()).map(p=>`<li ${d()}><span class="pwlook">${p.look}</span><div><b>${p.name}</b><em>${p.text}</em></div></li>`).join("")}</ul>`;
 }
 // The lives, as pixel hearts in the HUD: a full heart for each life left, a dark empty one for each

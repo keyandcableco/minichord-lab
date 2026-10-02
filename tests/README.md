@@ -31,6 +31,7 @@ key presses, checking what should happen.
 | `chord-breakout-catch` | Chord Breakout's own bonus round: notes fall and the paddle, steered by the knob, catches the called chord's; a wrong one costs two seconds; a full chord calls the next; fair chords at every level; the field clean after |
 | `fifths-defender` | the knob's centred, endless dial; the aimed key's chord fires, another doesn't |
 | `chopper-rescue` | the knobs switched on; tuning in by harp, keys or knob; Ben; the radio decodes right; decoys; the survivors' signal in order; no repeated calls |
+| `chopper-rescue-power` | the later levels call in every key, dealt so no call comes round more than its share; a first inversion's instruction held on the radio, each note marked with its place in the chord; a right chord lands where the called one lies; supply crates flown out for by their chord: TAILWIND, RADAR, WINCH and DA CAPO; the POWER-UPS page |
 | `chord-sweeper` | each key's chain of tension, spelled; every square's chord fits its distance from the nearest mine; the harp steers; a key's chord defuses its mine |
 | `between-the-frets` | the speaker silenced; only recognisable quarter-tones asked for; answering by ear, finding it with the modifier; riffs |
 | `between-the-frets-firmware` | on firmware 18: 24-EDO and MPE, any letter, the quarter-tone read from the minichord's own bend |
