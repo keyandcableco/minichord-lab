@@ -14,6 +14,8 @@
 //   FERMATA     fifteen seconds of the paddle catching the ball and holding it where it landed: aim,
 //               then pluck any string (or click, or ↑, or space) to let it go; it goes by itself
 //               after a couple of seconds
+//   DA CAPO     a life back, or one more with every heart full (powers.js: it's every game's); caught
+//               with every heart there can be, it gives nothing
 // The Power Brick's ARPEGGIO (the chord's tones raining for the cannon) is chord-breakout.js's own.
 // What runs is kept as blast.boPower = {k, powerUntil}, one key the bonus round's pause moves on.
 const BO_POWERS={
@@ -21,9 +23,10 @@ const BO_POWERS={
   ritard:   {name:"RITARDANDO", icon:"🐢",   secs:12, say:"THE BALL SLOWS DOWN",                            page:"FOR 12 SECONDS EVERY BALL RUNS AT TWO THIRDS SPEED: MORE TIME TO PLAY A CRACKED BRICK."},
   divisi:   {name:"DIVISI",     icon:"∴",    secs:0,  say:"THE BALL SPLITS IN THREE",                       page:"THE BALL SPLITS IN THREE. ONLY THE LAST ONE PAST THE PADDLE COSTS A LIFE."},
   fermata:  {name:"FERMATA",    icon:"⏸",    secs:15, say:"THE PADDLE HOLDS THE BALL: PLUCK TO LET IT GO",  page:"FOR 15 SECONDS THE PADDLE CATCHES THE BALL AND HOLDS IT: AIM, THEN PLUCK ANY STRING TO LET IT GO."},
+  dacapo:   DA_CAPO,
 };
 const BO_CAP_CHANCE=.08, BO_GROW=1.5, BO_SLOW=.66, BO_HOLD_MS=2400, BO_MAX_BALLS=5;
-const boCapChance=()=> Math.random()<BO_CAP_CHANCE ? rnd(Object.keys(BO_POWERS)) : null;
+const boCapChance=()=> Math.random()<BO_CAP_CHANCE ? powerPick(BO_POWERS) : null;
 const boCapIcon=k=>`<i class="puicon">${BO_POWERS[k].icon}</i>`;
 const boCapLook=k=>`<span class="bocap pu-${k}">${boCapIcon(k)}${BO_POWERS[k].name}</span>`;
 const boPowerOn=k=>{ const p=blast && blast.kind==="breakout" && blast.boPower; return !!(p && p.k===k && performance.now()<p.powerUntil); };
@@ -56,6 +59,7 @@ function boCapTake(c){
   c.el.remove(); blast.caps=blast.caps.filter(x=>x!==c);
   const P=BO_POWERS[c.k], p=blast.paddle;
   explode(c.x, blast.padY-6, 18, ["#FFD35A","#FFFFFF","#7FE9FF"]);
+  if(P.instant){ popup(p.x+p.w/2, blast.padY-28, daCapo() ? "+1 ♥" : "HEARTS FULL", "#FF4B3E"); boBar(); return; }   // the wall was dealt it with room for a heart
   if(c.k==="divisi") boSplit();
   else { if(blast.boPower && blast.boPower.k!==c.k) boPowerEnd(); blast.boPower={k:c.k, powerUntil:performance.now()+P.secs*1000}; }
   if(blast.phase==="play") banner(P.name+"!", P.say);

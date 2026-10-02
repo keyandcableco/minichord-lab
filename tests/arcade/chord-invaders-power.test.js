@@ -73,6 +73,6 @@ const t=require("./harness").load("invaders");
   check("a new game starts with its own three hearts, not the last game's four", d.querySelectorAll(".hud .lives .heart").length===3);
   w.eval("blast.phase='menu'; blast.items.forEach(i=>i.el.remove()); blast.items=[]; blastMenu(); cabStage(blast.overlay,'powers')"); await sleep(50);
   check("the title screen has a POWER-UPS page: each power-up as it looks, its name, what it does", d.querySelectorAll(".cab-powers .pwtable li").length===4 && /OMNI BEAM/.test(d.querySelector(".cab-powers").textContent) && /DA CAPO/.test(d.querySelector(".cab-powers").textContent) && !!d.querySelector(".cab-powers .fchord.pu-slow"));
-  check("a game without power-ups skips it (Breakout has its arpeggio brick and four capsules)", w.eval("powersFor('snake').length")===0 && w.eval("powersFor('breakout').length")===5);
+  check("a game without power-ups skips it (Breakout has its arpeggio brick and five capsules)", w.eval("powersFor('snake').length")===0 && w.eval("powersFor('breakout').length")===6);
   t.done();
 })();

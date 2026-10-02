@@ -196,7 +196,7 @@ const POINTS_FOR={
   snake:[["CHORD CASHED IN","15 A NOTE"],["★ NOTE","50"],["NOTE DROPPED","−5"]],
   asteroids:()=>[...BLAST_TIERS.map(([,n,sp,v])=>[n,String(v),sp]), ["NEEDS THE MODIFIER","× 1.5"], ["★ ROCK","× 3"], ["NOTE SHOT","10"], ["CHORD CLEARED","25"], ["MANUAL AIM","EVERYTHING × 2"], powerRow(AS_POWERS)],
   stack:()=>[...BLAST_TIERS.map(([,n,sp,v])=>[n,`${v} A NOTE`,sp]), ["ITS NOTES SIDE BY SIDE","× 2"], ["A WHOLE ROW OF ONE CHORD","× 5"], ["CHORDS AT ONCE","× CHORDS"]],
-  breakout:()=>[...BLAST_TIERS.map(([,n,sp,v])=>[n,String(v),sp]), ["NEEDS THE MODIFIER","× 1.5"], ["SLASH CHORD","× 1.5"], ["★ BRICK","× 5"], ["RALLY","UP TO × 4"], ["ARPEGGIO TONE SHOT","20"], ["WHOLE CHORD SHOT","× 2"], ["CODA","50 A BRICK, DRAINING"], ["&lt; 🐢 ∴ ⏸ CAPSULES","CRESCENDO · RITARDANDO · DIVISI · FERMATA"]],
+  breakout:()=>[...BLAST_TIERS.map(([,n,sp,v])=>[n,String(v),sp]), ["NEEDS THE MODIFIER","× 1.5"], ["SLASH CHORD","× 1.5"], ["★ BRICK","× 5"], ["RALLY","UP TO × 4"], ["ARPEGGIO TONE SHOT","20"], ["WHOLE CHORD SHOT","× 2"], ["CODA","50 A BRICK, DRAINING"], powerRow(BO_POWERS, "CAPSULES")],
   fifths:[["ENEMY","10"],["HIT FAR OUT","UP TO +10"],["★ ENEMY","50"]],
   sight:[["NOTE READ","10"],["DEAD ON THE LINE","× 2"],["STREAK","UP TO × 4"],["A TUNE READ","100"]],
   frets:[["RIGHT BY EAR","20"],["FOUND IT WITH THE MODIFIER","30"]],
@@ -204,8 +204,8 @@ const POINTS_FOR={
   fleet:[["HIT","10"],["SHIP SUNK","50 A CHORD"],["SUNK BY DEDUCTION","+40 A CHORD UNHIT"],["NO MISSES","× 2"],["TORPEDO LEFT OVER","20"]],
   chopper:[["RESCUE","20"],["FAST RESCUE","UP TO +30"],["WAYPOINT","15"],["WHOLE ROUTE","× 2"],["WRONG PLACE","−2 SECONDS"]],
 };
-// the POINTS page's line for a game's power-ups: their icons, then their names
-const powerRow=table=>{ const P=Object.values(table); return [P.map(p=>p.icon).join(" ")+" POWER-UPS", P.map(p=>p.name).join(" · ")]; };
+// the POINTS page's line for a game's power-ups (or capsules): their icons, then their names
+const powerRow=(table, word="POWER-UPS")=>{ const P=Object.values(table); return [P.map(p=>p.icon).join(" ")+" "+word, P.map(p=>p.name).join(" · ")]; };
 function multRows(kind){
   const rows = kind==="sweeper" ? [] : [["SPEED", SPEEDS.map((x,i)=>`${x[0].toUpperCase()} ×${MULT_SPEED[i]}`)]];
   if(kind==="command") rows.push(["NOTES AT ONCE", ["FEW","SOME","MANY","SWARM"].map((n,i)=>`${n} ×${MULT_DENSITY[i]}`)]);

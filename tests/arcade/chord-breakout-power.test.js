@@ -1,7 +1,8 @@
 // Chord Breakout's capsules: a brick holding one shows its sign, and broken by its chord it drops the
 // capsule, which the paddle catches. CRESCENDO widens the paddle from its middle and narrows it back;
 // RITARDANDO slows the ball; DIVISI splits it in three, and only the last one past costs a life;
-// FERMATA catches the ball and holds it till a pluck lets it go (or a moment passes); a capsule that
+// FERMATA catches the ball and holds it till a pluck lets it go (or a moment passes); DA CAPO gives a
+// heart back, or one more, and nothing at five; a capsule that
 // falls past costs nothing; losing a life ends a power; the bonus round's pause moves a power's end
 // on; the title screen's POWER-UPS page and POINTS page name them.
 const t=require("./harness").load("chord-breakout");
@@ -58,6 +59,16 @@ const t=require("./harness").load("chord-breakout");
   Object.assign(a.ball,{x:p.x+p.w/2, y:a.padY-60, vx:0, vy:300}); await sleep(300);
   a.boPower.powerUntil=now()-1; await sleep(100);
   check("when FERMATA ends, a held ball goes", !a.ball.caught && !a.boPower);
+  // DA CAPO: a heart back, or one more; at five, nothing
+  park(); a.lives=2; w.eval("boBar()");
+  const catchCap=()=>w.eval(`(()=>{ const k=blast.bricks.find(x=>x.alive && !x.power); k.cap="dacapo"; boCapDrop(k); boCapTake(blast.caps[blast.caps.length-1]); })()`);
+  catchCap(); await sleep(30);
+  check("DA CAPO: caught, it gives a lost heart back", a.lives===3 && !a.boPower && !!d.querySelector(".hud .lives .heart.won"));
+  catchCap(); await sleep(30);
+  check("with every heart full it gives one heart more", a.lives===4 && d.querySelectorAll(".hud .lives .heart:not(.gone)").length===4);
+  a.lives=5; catchCap(); await sleep(30);
+  check("caught with five hearts, it gives nothing", a.lives===5 && [...Array(300)].every(()=>w.eval("powerPick(BO_POWERS)")!=="dacapo"));
+  a.lives=3; w.eval("boBar()");
   // losing a life ends a power; the bonus round's pause moves its end on
   w.eval("blast.boPower={k:'crescendo', powerUntil:performance.now()+8000}"); w.eval("boLost(100)"); await sleep(30);
   check("losing a life ends a power", !a.boPower);
@@ -68,7 +79,7 @@ const t=require("./harness").load("chord-breakout");
   check("walls hold capsules now and then, each brick marked with its sign", n>10 && d.querySelectorAll(".bobrick.capbrick .puicon").length===a.bricks.filter(b=>b.cap).length, `${n} in 20 walls`);
   // the title screen
   w.eval("blast.phase='menu'; boPowersClear(); boMenu(); cabStage(blast.overlay,'powers')"); await sleep(50);
-  check("the POWER-UPS page lists the arpeggio brick and the four capsules, as they look", d.querySelectorAll(".cab-powers .pwtable li").length===5 && /DIVISI/.test(d.querySelector(".cab-powers").textContent) && !!d.querySelector(".cab-powers .bocap.pu-fermata") && /CAPSULE/.test(d.querySelector(".cab-powers").textContent));
-  check("and the POINTS page names them, and the coda", w.eval("pointsFor('breakout').some(r=>/RITARDANDO/.test(r[1])) && pointsFor('breakout').some(r=>r[0]==='CODA')"));
+  check("the POWER-UPS page lists the arpeggio brick and the five capsules, as they look", d.querySelectorAll(".cab-powers .pwtable li").length===6 && /DA CAPO/.test(d.querySelector(".cab-powers").textContent) && /DIVISI/.test(d.querySelector(".cab-powers").textContent) && !!d.querySelector(".cab-powers .bocap.pu-fermata") && /CAPSULE/.test(d.querySelector(".cab-powers").textContent));
+  check("and the POINTS page names them, and the coda", w.eval("pointsFor('breakout').some(r=>/RITARDANDO.*DA CAPO/.test(r[1]) && /CAPSULES/.test(r[0])) && pointsFor('breakout').some(r=>r[0]==='CODA')"));
   t.done();
 })();
