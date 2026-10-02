@@ -185,7 +185,7 @@ function blastHomeKey(){
   if(!blast || !canWrite() || !hasSetting(35) || mc.params[35]===keyIndexOf(0)) return;
   borrow(35, keyIndexOf(0)); modPill();
 }
-function stopBlaster(){ if(blast){ blast.fx?.ro?.disconnect(); if(blast.kind==="chopper") chQuiet(); stopDemo(); clearTimeout(blast.attract); clearTimeout(blast.cabT); clearTimeout(blast.overT); blast.over=true; cancelAnimationFrame(blast.raf); poll(false); } blast=null; }
+function stopBlaster(){ if(blast){ blast.fx?.ro?.disconnect(); if(blast.kind==="chopper") chQuiet(); if(blast.kind==="hunt") hdQuiet(); stopDemo(); clearTimeout(blast.attract); clearTimeout(blast.cabT); clearTimeout(blast.overT); blast.over=true; cancelAnimationFrame(blast.raf); poll(false); } blast=null; }
 function blastBar(){
   if(!blast || !blast.hud) return;
   const key = blast.keyTarget ? ` · KEY ${blast.keyTarget.name}` : "";

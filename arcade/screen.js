@@ -124,6 +124,27 @@ function fxPaintBackground(kind, W, H){
     for(let y=0;y<H;y+=8) for(let x=0;x<W;x+=8){ g.fillStyle=greens[Math.floor(rand()*greens.length)]; g.fillRect(x,y,8,8); }
     g.fillStyle="#123A55"; for(let x=0;x<W;x++){ const y=Math.floor(H*.55+Math.sin(x/17)*H*.12+Math.sin(x/5)*2); g.fillRect(x,y,1,5); }
     for(let i=0;i<W*H/260;i++){ g.fillStyle=rand()<.5?"#1E4A26":"#0A1E10"; g.fillRect(Math.floor(rand()*W),Math.floor(rand()*H),2,2); }
+  } else if(kind==="hunt"){
+    // evening over the marsh: the sky in bands, darkest at the top (where the HUD reads), a few early
+    // stars, far hills on the horizon, a tree on the left and a bush on the right; the grass in front
+    // is the game's own, drawn over the ducks
+    const horizon=Math.floor(H*((blast.L && blast.L.grassF) || .7));
+    const bands=["#0B1030","#101A42","#152452","#1C3166","#243F7C","#2E5192","#3A64A8"], bh=Math.ceil(horizon/bands.length);
+    bands.forEach((c,i)=>{ g.fillStyle=c; g.fillRect(0,i*bh,W,bh+1);
+      if(i){ g.fillStyle=bands[i-1]; for(let x=(i%2);x<W;x+=2) g.fillRect(x,i*bh,1,1); } });
+    for(let i=0;i<W*H/420;i++){ const x=Math.floor(rand()*W), y=Math.floor(rand()*horizon*.35); g.fillStyle=rand()<.25?"#FFFFFF":"#7C86B8"; g.fillRect(x,y,1,1); }
+    g.fillStyle="#1B2F3A";
+    for(let x=0;x<W;x++){ const h=Math.floor(6+Math.sin(x/23)*4+Math.sin(x/9+1.3)*2); g.fillRect(x,horizon-h,1,h+2); }
+    g.fillStyle="#152430";
+    for(let x=0;x<W;x++){ const h=Math.floor(3+Math.sin(x/15+2)*2); g.fillRect(x,horizon-h,1,h+2); }
+    // the tree: a trunk and a dark crown, leaves picked out
+    const tx=Math.floor(W*.1), crownY=Math.floor(horizon*.42), r=Math.max(10, Math.floor(W*.07));
+    g.fillStyle="#3B2616"; g.fillRect(tx-2, crownY, 5, horizon-crownY+2); g.fillRect(tx+2, crownY+r*.6, 6, 2);
+    for(let y=-r;y<=r;y++) for(let x=-r;x<=r;x++){ const d=(x*x)/(r*r)+(y*y)/(r*r*.7); if(d<=1){ g.fillStyle = rand()<.12 ? "#2F6B2A" : d<.55 && rand()<.3 ? "#245622" : "#173E18"; g.fillRect(tx+x, crownY+y, 1, 1); } }
+    // the bush
+    const bx=Math.floor(W*.84), br=Math.max(6, Math.floor(W*.035));
+    for(let y=-br;y<=0;y++) for(let x=-br*1.6;x<=br*1.6;x++){ if((x*x)/(br*br*2.6)+(y*y)/(br*br)<=1){ g.fillStyle=rand()<.15?"#2F6B2A":"#1A4419"; g.fillRect(Math.floor(bx+x), horizon+y, 1, 1); } }
+    g.fillStyle="#1F4A1C"; g.fillRect(0,horizon,W,H-horizon);
   } else if(kind==="fifths"){
     g.fillStyle="#040308"; g.fillRect(0,0,W,H);
     for(let i=0;i<W*H/300;i++){ g.fillStyle=rand()<.3?"#4B4670":"#221F3A"; g.fillRect(Math.floor(rand()*W),Math.floor(rand()*H),1,1); }
@@ -322,10 +343,10 @@ function blastKill(hit, how){
   }
   blastBar();
 }
-const GENS={spell:genSpell, command:genCommand, snake:genSnake, asteroids:genAsteroids, stack:genStack, breakout:genBreakout, fifths:genFifths, chopper:genChopper, fleet:genFleet, sweeper:genSweeper, frets:genFrets, sight:genSight, hidden:genHidden, oddone:genOddOne, shades:genShades, reshape:genReshape, blaster:genBlaster, diatonic:genDiatonic, numeral:genNumeral, staff:genStaff, slash:genSlash, key:genKey, harp:genHarp, missing:genMissing,
+const GENS={spell:genSpell, command:genCommand, snake:genSnake, asteroids:genAsteroids, stack:genStack, breakout:genBreakout, fifths:genFifths, chopper:genChopper, fleet:genFleet, sweeper:genSweeper, frets:genFrets, sight:genSight, hunt:genHunt, hidden:genHidden, oddone:genOddOne, shades:genShades, reshape:genReshape, blaster:genBlaster, diatonic:genDiatonic, numeral:genNumeral, staff:genStaff, slash:genSlash, key:genKey, harp:genHarp, missing:genMissing,
   melody:()=>genMelody(false), solfa:()=>genMelody(true), chordscale:genChordScale, smooth:genSmooth, whichvoice:genWhichVoice, simon:genSimon, directions:genDirections, pluckchord:genPluckChord, buildscale:genBuildScale,
   scale:genScale, transpose:genTranspose, temper:genTemper, tune:genTune};
 const MYSTERY=new Set(["scale","transpose","temper","tune"]);
-const LABELS={spell:"Spell it", hidden:"Hidden layout", oddone:"Odd one out", shades:"Shades of the third", reshape:"Reshape", blaster:"Chord Invaders", command:"Harp Command", snake:"Chord Snake", asteroids:"Chord Asteroids", stack:"Chord Stack", breakout:"Chord Breakout", fifths:"Fifths Defender", chopper:"Chopper Rescue", fleet:"Key Fleet", sweeper:"Chord Sweeper", frets:"Between the Frets", sight:"Sight Line", diatonic:"Seven chords", numeral:"Numerals", staff:"On the staff", slash:"Slash chords", key:"Key detective", harp:"Harp hunt", missing:"Missing note", mix:"Mix",
+const LABELS={spell:"Spell it", hidden:"Hidden layout", oddone:"Odd one out", shades:"Shades of the third", reshape:"Reshape", blaster:"Chord Invaders", command:"Harp Command", snake:"Chord Snake", asteroids:"Chord Asteroids", stack:"Chord Stack", breakout:"Chord Breakout", fifths:"Fifths Defender", chopper:"Chopper Rescue", fleet:"Key Fleet", sweeper:"Chord Sweeper", frets:"Between the Frets", sight:"Sight Line", hunt:"Chord Hunt", diatonic:"Seven chords", numeral:"Numerals", staff:"On the staff", slash:"Slash chords", key:"Key detective", harp:"Harp hunt", missing:"Missing note", mix:"Mix",
   melody:"Play by number", solfa:"Play by solfège", chordscale:"Chord scales", smooth:"Smooth moves", whichvoice:"Which voice moved?", simon:"Simon says", directions:"Follow the directions", pluckchord:"Pluck the chord", buildscale:"Build the scale",
   scale:"Scale detective", transpose:"Transpose detective", temper:"Temperament taster", tune:"Tune up"};

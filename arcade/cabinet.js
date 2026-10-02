@@ -9,7 +9,7 @@
 // buttons' columns, F C G D A E B from the left, count 1 to 7: a column's major row starts that
 // level, its minor row sets that speed, and its 7 row switches to that arcade game. The key
 // signature's sharps and flats don't matter; the column is read from the chord's letter.
-const ARCADE_GAMES=["blaster","command","snake","asteroids","stack","breakout","fifths","chopper","fleet","sweeper","frets","sight"];
+const ARCADE_GAMES=["blaster","command","snake","asteroids","stack","breakout","fifths","chopper","fleet","sweeper","frets","sight","hunt"];
 const COLUMN_LETTERS="FCGDAEB";
 function arcadeMenuChord(voices){
   if(cabWaiting()){ cabWake(); return true; }
@@ -158,6 +158,7 @@ function arcadeRelayout(){
   else if(k==="sweeper"){ swLayout(); swDraw(); }
   else if(k==="sight"){ slLayout(); slDrawStaff(); }
   else if(k==="command"){ hcLayout(); hcLabels(); }
+  else if(k==="hunt"){ hdLayout(); hdPanel(); }
 }
 for(const ev of ["fullscreenchange","webkitfullscreenchange"]) document.addEventListener(ev, ()=>setTimeout(arcadeRelayout,60));
 window.addEventListener("resize", ()=>setTimeout(arcadeRelayout,60));
@@ -174,7 +175,7 @@ document.addEventListener("keydown", e=>{
 // set when that chord changes, so a double tap to flip it yourself holds until the next one.
 // The games whose chords can need the modifier, and whether it's set for the player (the default, a
 // help) or left to them: by hand scores a quarter more, the double tap flipping it.
-const MOD_GAMES=new Set(["blaster","breakout","asteroids","chopper","stack","snake","fifths"]);
+const MOD_GAMES=new Set(["blaster","breakout","asteroids","chopper","stack","snake","fifths","hunt"]);
 const autoMod=()=> saved.autoMod!==false;
 function arcadeMod(rootName){
   if(!autoMod()) return;
@@ -198,8 +199,8 @@ function arcadeModNote(ov){
 // roll up the screen like credits; then the demo; then round again, until someone plays a chord,
 // plucks the harp, presses a key or clicks. That brings up the options (speed, levels and the rest),
 // which go back to the title if they're left alone. Game over goes straight to its options.
-const DEMO_FOR={blaster:()=>runDemo(true), command:()=>commandDemo(), snake:()=>snDemo(), asteroids:()=>asDemo(), stack:()=>stDemo(), breakout:()=>boDemo(), fifths:()=>fdDemo(), chopper:()=>chDemo(), fleet:()=>kfDemo(), sweeper:()=>swDemo(), frets:()=>frDemo(), sight:()=>slDemo()};
-const TITLE_FOR={blaster:"CHORD INVADERS", command:"HARP COMMAND", snake:"CHORD SNAKE", asteroids:"CHORD ASTEROIDS", stack:"CHORD STACK", breakout:"CHORD BREAKOUT", fifths:"FIFTHS DEFENDER", chopper:"CHOPPER RESCUE", fleet:"KEY FLEET", sweeper:"CHORD SWEEPER", frets:"BETWEEN THE FRETS", sight:"SIGHT LINE"};
+const DEMO_FOR={blaster:()=>runDemo(true), command:()=>commandDemo(), snake:()=>snDemo(), asteroids:()=>asDemo(), stack:()=>stDemo(), breakout:()=>boDemo(), fifths:()=>fdDemo(), chopper:()=>chDemo(), fleet:()=>kfDemo(), sweeper:()=>swDemo(), frets:()=>frDemo(), sight:()=>slDemo(), hunt:()=>hdDemo()};
+const TITLE_FOR={blaster:"CHORD INVADERS", command:"HARP COMMAND", snake:"CHORD SNAKE", asteroids:"CHORD ASTEROIDS", stack:"CHORD STACK", breakout:"CHORD BREAKOUT", fifths:"FIFTHS DEFENDER", chopper:"CHOPPER RESCUE", fleet:"KEY FLEET", sweeper:"CHORD SWEEPER", frets:"BETWEEN THE FRETS", sight:"SIGHT LINE", hunt:"CHORD HUNT"};
 const cabKind=()=> blast && (blast.kind||"blaster");
 function cabinet(ov){
   const kids=[...ov.children];
@@ -309,7 +310,7 @@ document.addEventListener("keydown", e=>{
 // buttons (and the modifier, and a slash's bass) for the chord that matters now, and in the harp
 // games the string for the note that matters now, drawn as the standard strip or the keymaster's
 // four rows of three. It sits behind the play, a little see-through, so nothing falling is hidden.
-const helpUsesChords=k=>["blaster","snake","asteroids","stack","breakout","fifths","chopper","sight"].includes(k);
+const helpUsesChords=k=>["blaster","snake","asteroids","stack","breakout","fifths","chopper","sight","hunt"].includes(k);
 const helpUsesHarp=k=>["command","asteroids","fifths","breakout","sight","chopper"].includes(k);
 // the games whose on-screen minichord carries the harp too, as the strip or the keymaster plate, its
 // strings named: they ask for chords on the buttons and notes on the harp (Chopper Rescue's signal)

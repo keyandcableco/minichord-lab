@@ -7,7 +7,7 @@
 // paint, and keep it hidden until the arcade's set up, so the Practice Room never flashes up first.
 (function(){ var u=new URLSearchParams(location.search), g=u.get("game"), h=document.documentElement;
   if(!u.has("solo") || !g) return; h.classList.add("solo");
-  if(/^(invaders|chord-invaders|harp-command|harpcommand|chord-snake|chord-asteroids|chord-stack|chord-breakout|fifths-defender|chopper-rescue|key-fleet|chord-sweeper|between-the-frets|sight-line)$/.test(g)){
+  if(/^(invaders|chord-invaders|harp-command|harpcommand|chord-snake|chord-asteroids|chord-stack|chord-breakout|fifths-defender|chopper-rescue|key-fleet|chord-sweeper|between-the-frets|sight-line|chord-hunt)$/.test(g)){
     h.classList.add("arcadepage","arcadeboot"); setTimeout(function(){ h.classList.remove("arcadeboot"); }, 4000); }   // never hidden for long, whatever happens
 })();
 </script>
@@ -586,6 +586,92 @@ html.arcadepage .gamebar{align-items:flex-end}
 .boot .bootlines div{white-space:pre}   /* the dot leaders line up */
 .boot .bootlines b{color:#7FE08A;font-weight:400}
 
+/* Chord Hunt: the sky, the ducks, the grass in front of them, the dog, the panel at the foot */
+.field.hunt .heard{left:auto;right:12px;bottom:auto;top:34px;text-align:right;z-index:4}
+.hdtint{position:absolute;inset:0;z-index:1;background:#FF8FB8;opacity:0;transition:opacity .25s;pointer-events:none}   /* the sky flushing pink as a duck gets away */
+.hdtint.on{opacity:.38}
+.hdflash{position:absolute;inset:0;z-index:7;background:#FFFFFF;opacity:0;pointer-events:none}   /* the zapper's flash, soft */
+.hdflash.on{animation:hdflash .16s steps(2) 1}
+@keyframes hdflash{0%{opacity:.4}100%{opacity:0}}
+@media (prefers-reduced-motion:reduce){.hdflash.on{animation:none}}
+.hdgrass{position:absolute;left:0;width:100%;z-index:3;image-rendering:pixelated;pointer-events:none}
+.hdkey{position:absolute;left:12px;top:32px;z-index:4;font:400 .55rem "Minichord Lab Accidentals","Press Start 2P",monospace;color:#F1E8D2;background:#16132A;border:3px solid #000;box-shadow:0 0 0 2px #6B4226;padding:6px 9px;pointer-events:none}
+.hdkey b{color:#FFD35A;font-weight:400}
+.hdkey.new{animation:hdsign .5s steps(5)}
+.field.hunt.demoing .hdkey{top:118px}   /* clear of the demo's caption */
+.field.hunt .helper.hboard{top:64px;bottom:auto;right:10px;width:min(300px,32%)}   /* the on-screen minichord up in the sky's corner, clear of the grass and the guide; the ducks fly in front of it */
+.field.hunt.demoing .helper.hboard{top:118px;width:min(340px,38%)}
+@keyframes hdsign{from{transform:translateY(-30px);opacity:0}to{transform:none;opacity:1}}
+.hdguide{position:absolute;left:10px;right:10px;z-index:4;display:flex;flex-wrap:wrap;justify-content:center;gap:6px;pointer-events:none}
+.hdguide span{display:inline-flex;align-items:baseline;gap:6px;padding:4px 7px;background:rgba(7,6,12,.8);border:2px solid #000;box-shadow:0 0 0 1px #3C8A2E;font:400 .55rem "Minichord Lab Accidentals","Press Start 2P",monospace;color:#F1E8D2}
+.hdguide span b{font-weight:400;color:#FFD35A}
+.hdguide span i{font-style:normal;color:#B9C7E6}
+.hdguide span.lit{background:#FFD35A}.hdguide span.lit b,.hdguide span.lit i{color:#16132A}
+.hdguide.inbonus{position:static;margin:10px 0 0}
+.hdpanel{position:absolute;left:0;right:0;bottom:0;height:46px;z-index:4;display:flex;align-items:center;gap:10px;padding:0 10px;background:#2A1C10;border-top:3px solid #000;box-shadow:inset 0 3px 0 #4E3420;font:400 .5rem "Press Start 2P",monospace;color:#F1E8D2}
+.hdpanel>div{display:flex;align-items:center;gap:6px;padding:4px 7px;border:2px solid #7FE08A;border-radius:3px;background:#0E0A06;white-space:nowrap}
+.hdround b{color:#7FE08A;font-weight:400}
+.hdshells{display:inline-flex;gap:3px}.hdshells i{display:block}.hdshells svg{width:8px;height:16px;display:block}.hdshells i.spent{opacity:.15}
+.hdhits{flex:1;min-width:0;justify-content:center}
+.hdtally{display:inline-flex;gap:3px}
+.hdtally i{position:relative;display:block}
+.hdtally svg{width:19px;height:12px;display:block}
+.hdtally svg rect{fill:#F1E8D2;opacity:.28}
+.hdtally i.hit svg rect{fill:#FF4B3E;opacity:1}
+.hdtally i.miss svg rect{fill:#6B6358;opacity:.7}
+.hdtally i.now svg rect{opacity:1;animation:blink .5s steps(2) infinite}
+.hdtally i.quota::after{content:"";position:absolute;right:-3px;top:-4px;bottom:-4px;border-right:2px solid #FFD35A}   /* the line to reach */
+.hdear b{color:#9A93B5;font-weight:400}.hdear.hot b{color:#FFD35A}
+.hdpanel>.hdbtns{border:0;background:none;padding:0;gap:6px}
+.hdbtns button{font:400 .45rem "Press Start 2P",monospace;color:#16132A;background:#F1E8D2;border:2px solid #000;padding:5px 6px;cursor:pointer;box-shadow:2px 2px 0 #000}
+@media (max-width:700px){.hdpanel>.hdear,.hdpanel>.hdbtns{display:none}.hdtally svg{width:13px;height:9px}.hdtally{gap:2px}}
+/* the ducks: two frames of wingbeat, their colours from variables (a golden duck, or PLUMAGE's tint) */
+.hdduck{position:absolute;left:0;top:0;width:64px;height:48px;z-index:2;pointer-events:none;--dbody:#8B5A2B;--dwing:#D9B27A;--dhead:#2E8B57}
+.hdduck .hdfr{position:absolute;inset:0}
+.hdduck svg{width:100%;height:100%;display:block}
+.hdduck.left .hdfr{transform:scaleX(-1)}
+.hdduck .hdfr.f1,.hddog .hdfr.f1{animation:emf1 .32s steps(1) infinite}.hdduck .hdfr.f2,.hddog .hdfr.f2{animation:emf2 .32s steps(1) infinite}
+.hdduck .pB{fill:var(--dbody)}.hdduck .pW{fill:var(--dwing)}.hdduck .pG{fill:var(--dhead)}.hdduck .pO{fill:#FFB238}.hdduck .pE{fill:#FFFFFF}.hdduck .pC{fill:#F1E8D2}.hdduck .pT{fill:#3A2D2A}
+.hdduck.gold{--dbody:#FFD35A;--dwing:#FFF0B0;--dhead:#E9A23B;filter:drop-shadow(0 0 6px rgba(255,211,90,.9))}
+.hdduck.shot .hdfr{animation:none}.hdduck.shot .hdfr.f1{visibility:visible}.hdduck.shot .hdfr.f2{visibility:hidden}.hdduck.shot svg{filter:brightness(1.6)}
+.hdduck.falling .hdfr{animation:none}.hdduck.falling .hdfr.f1{visibility:hidden}.hdduck.falling .hdfr.f2{visibility:visible}
+.hdduck.falling svg{animation:hdspin .24s steps(2) infinite}
+@keyframes hdspin{0%{transform:rotate(90deg)}50%{transform:rotate(90deg) scaleY(-1)}}
+.hdnum{position:absolute;left:50%;top:-16px;transform:translateX(-50%);font:400 .55rem "Press Start 2P",monospace;color:#16132A;background:#FFD35A;border:2px solid #000;padding:2px 4px}
+/* the dog: walking in front of the grass, or up from behind it */
+.hddog{position:absolute;z-index:4;width:104px;height:81px;pointer-events:none}
+.hddog.walk{width:120px;height:78px}
+.hddog.behind{z-index:2}
+.hddog>svg,.hddog .hdfr svg{width:100%;height:100%;display:block}
+.hddog .hdfr{position:absolute;inset:0}
+.hddog .pD,.hddog .pT{fill:#C27C3E}.hddog .pE{fill:#6B4226}.hddog .pW{fill:#F1E8D2}.hddog .pN,.hddog .pK{fill:#16132A}
+.hddog.laugh .hdfr.f1,.hddog.laugh .hdfr.f2{animation-duration:.2s}
+.hddog.leap{transition:transform .45s ease-out!important;transform:translate(26px,-44px)!important}
+.hddog.dive{transition:transform .4s ease-in!important;transform:translate(48px,46px)!important;z-index:2}
+.hdhand{position:absolute;left:74%;bottom:60%;display:flex;gap:0;align-items:flex-end}
+.hdheld{display:block;width:36px;height:54px;overflow:visible}
+.hdheld svg{width:54px;height:40px;display:block;transform:translate(-9px,7px) rotate(90deg)}   /* held up by the neck, hanging */
+.hdheld .pB{fill:#8B5A2B}.hdheld .pW{fill:#D9B27A}.hdheld .pG{fill:#2E8B57}.hdheld .pO{fill:#FFB238}.hdheld .pE{fill:#FFFFFF}.hdheld .pC{fill:#F1E8D2}.hdheld .pT{fill:#3A2D2A}
+.hddog.gold .hdheld .pB{fill:#FFD35A}.hddog.gold .hdheld .pW{fill:#FFF0B0}.hddog.gold .hdheld .pG{fill:#E9A23B}
+.hdcard{position:absolute;left:50%;bottom:calc(100% + 34px);transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:5px;padding:7px 10px;background:#16132A;border:3px solid #000;box-shadow:0 0 0 2px #F1E8D2;white-space:nowrap;font:400 .5rem "Minichord Lab Accidentals","Press Start 2P",monospace;color:#F1E8D2;text-align:center}
+.hdcard b{font:700 1.5rem "Minichord Lab Accidentals","Source Serif 4",serif;color:#FFD35A;line-height:1}
+.hdcard i{font-style:normal;font-size:.8rem}
+.hdcard small{font-size:.42rem;color:#9A93B5}
+.hddog.gold .hdcard{box-shadow:0 0 0 2px #FFD35A,0 0 18px rgba(255,211,90,.6)}
+.hddog.laugh .hdcard{box-shadow:0 0 0 2px #FF8FB8}
+.hdtag{display:inline-flex;align-items:center;gap:5px;padding:4px 8px;background:#F1E8D2;color:#16132A;border:3px solid #000;font:400 .55rem "Minichord Lab Accidentals","Press Start 2P",monospace;box-shadow:0 0 12px rgba(255,90,160,.7);white-space:nowrap}
+.hdtag .puicon{font-style:normal;font-family:system-ui,sans-serif}
+.hdtag.pu-dacapo{box-shadow:0 0 12px rgba(255,75,62,.8)}
+.hddog.fetch .hdcard{bottom:calc(100% + 30px)}
+/* Clay shooting, its bonus round: two clays a cadence */
+.hdclays{display:flex;gap:40px;justify-content:center;margin:12px 0}
+.hdclay{width:70px;height:26px;border-radius:50%;background:#E9A23B;border:3px solid #000;display:flex;align-items:center;justify-content:center;font:400 .7rem "Minichord Lab Accidentals","Press Start 2P",monospace;color:#16132A;animation:hdclay 1.2s ease-in-out infinite alternate}
+.hdclay:nth-child(2){animation-delay:-.6s}
+.hdclay.hit{background:#7FE08A;animation:none}.hdclay.lost{background:#FF4B3E;animation:none}
+@keyframes hdclay{from{transform:translateY(6px) rotate(-6deg)}to{transform:translateY(-6px) rotate(6deg)}}
+.hdcadence b{color:#FFD35A;font-weight:400}
+@media (prefers-reduced-motion:reduce){.hdclay,.hdduck .hdfr,.hddog .hdfr,.hdduck.falling svg{animation:none!important}.hdduck .hdfr.f2,.hddog .hdfr.f2{visibility:hidden}}
+
 /* Chopper Rescue: the radio, the chopper */
 .chem{position:absolute;transform:translate(-50%,-70%);width:40px;height:40px;z-index:2;filter:drop-shadow(2px 3px 0 rgba(0,0,0,.5))}
 .chem svg{width:100%;height:100%;display:block}
@@ -998,7 +1084,8 @@ details.fold[open] .nowplaying{display:none}
     <button data-mode="sweeper">Chord Sweeper</button>
     <button data-mode="frets">Between the Frets</button>
     <button data-mode="sight">Sight Line</button>
-    <span class="arcadelinks"><a href="../arcade/">The arcade lobby</a> · or on their own pages: <a href="../invaders/">Chord Invaders</a> · <a href="../harp-command/">Harp Command</a> · <a href="../chord-snake/">Chord Snake</a> · <a href="../chord-asteroids/">Chord Asteroids</a> · <a href="../chord-stack/">Chord Stack</a> · <a href="../chord-breakout/">Chord Breakout</a> · <a href="../fifths-defender/">Fifths Defender</a> · <a href="../chopper-rescue/">Chopper Rescue</a> · <a href="../key-fleet/">Key Fleet</a> · <a href="../chord-sweeper/">Chord Sweeper</a> · <a href="../between-the-frets/">Between the Frets</a> · <a href="../sight-line/">Sight Line</a></span>
+    <button data-mode="hunt">Chord Hunt</button>
+    <span class="arcadelinks"><a href="../arcade/">The arcade lobby</a> · or on their own pages: <a href="../invaders/">Chord Invaders</a> · <a href="../harp-command/">Harp Command</a> · <a href="../chord-snake/">Chord Snake</a> · <a href="../chord-asteroids/">Chord Asteroids</a> · <a href="../chord-stack/">Chord Stack</a> · <a href="../chord-breakout/">Chord Breakout</a> · <a href="../fifths-defender/">Fifths Defender</a> · <a href="../chopper-rescue/">Chopper Rescue</a> · <a href="../key-fleet/">Key Fleet</a> · <a href="../chord-sweeper/">Chord Sweeper</a> · <a href="../between-the-frets/">Between the Frets</a> · <a href="../sight-line/">Sight Line</a> · <a href="../chord-hunt/">Chord Hunt</a></span>
   </div>
   <div class="modes" role="group" aria-label="Read and play">
     <span class="grp">Read and play</span>
@@ -1146,6 +1233,8 @@ details.fold[open] .nowplaying{display:none}
 <script defer src="../arcade/games/chord-sweeper.js"></script>
 <script defer src="../arcade/games/between-the-frets.js"></script>
 <script defer src="../arcade/games/sight-line.js"></script>
+<script defer src="../arcade/games/chord-hunt.js"></script>
+<script defer src="../arcade/games/chord-hunt-power.js"></script>
 <script defer src="../arcade/sounds.js"></script>
 <script defer src="../arcade/games/invaders-demo.js"></script>
 <script defer src="../arcade/games/invaders-power.js"></script>

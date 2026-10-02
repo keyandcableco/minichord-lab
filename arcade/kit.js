@@ -179,10 +179,12 @@ new MutationObserver(()=>{ if(saved.crt) crtSync(); }).observe(document.getEleme
 const MULT_SPEED=[1,1.25,1.5,1.75,2];                      // Relaxed … Wild
 const MULT_DENSITY=[.8,1,1.25,1.5];                        // Harp Command: few, some, many, swarm
 const MULT_PADDLE=[1.3,1,.8];                              // Chord Breakout: narrow, normal, wide
+const MULT_GUIDE=[1,1.25,1.5];                             // Chord Hunt: the field guide with names, numerals only, none
 function diffMult(kind=cabKind()){
   let m = kind==="sweeper" ? 1 : MULT_SPEED[+saved.speed||0]||1;            // Chord Sweeper has no speed
   if(kind==="command") m*=MULT_DENSITY[saved.hcDensity??1]??1;
   if(kind==="breakout") m*=MULT_PADDLE[saved.boPaddle??1]??1;
+  if(kind==="hunt") m*=MULT_GUIDE[saved.hdGuide||0]??1;
   if((kind==="asteroids" && saved.asAim) || (kind==="blaster" && saved.invAim)) m*=2;   // manual aim: harder, so double
   if(MOD_GAMES.has(kind) && !autoMod()) m*=1.25;                              // the modifier set by hand: a quarter more
   return Math.round(m*100)/100;
@@ -203,6 +205,7 @@ const POINTS_FOR={
   sweeper:[["SQUARE SWEPT","5"],["MINE DEFUSED","100"],["SQUARES LEFT UNSWEPT","+2 EACH"],["QUICK CLEAR","UP TO +270"]],
   fleet:[["HIT","10"],["SHIP SUNK","50 A CHORD"],["SUNK BY DEDUCTION","+40 A CHORD UNHIT"],["NO MISSES","× 2"],["TORPEDO LEFT OVER","20"]],
   chopper:()=>[["RESCUE","20"],["FAST RESCUE","UP TO +30"],["WAYPOINT","15"],["WHOLE ROUTE","× 2"],["WRONG PLACE","−2 SECONDS"],powerRow(CH_POWERS)],
+  hunt:()=>[["DUCK","20"],["QUICK SHOT","UP TO +30"],["FIRST SHOT","× 2"],["PURE EAR","UP TO × 4"],["GOLDEN DUCK","× 3"],["WHOLE FLOCK","+25 A DUCK"],["PERFECT ROUND","100"],powerRow(HD_POWERS)],
 };
 // the POINTS page's line for a game's power-ups (or capsules): their icons, then their names
 const powerRow=(table, word="POWER-UPS")=>{ const P=Object.values(table); return [P.map(p=>p.icon).join(" ")+" "+word, P.map(p=>p.name).join(" · ")]; };
@@ -210,6 +213,7 @@ function multRows(kind){
   const rows = kind==="sweeper" ? [] : [["SPEED", SPEEDS.map((x,i)=>`${x[0].toUpperCase()} ×${MULT_SPEED[i]}`)]];
   if(kind==="command") rows.push(["NOTES AT ONCE", ["FEW","SOME","MANY","SWARM"].map((n,i)=>`${n} ×${MULT_DENSITY[i]}`)]);
   if(kind==="breakout") rows.push(["PADDLE", ["NARROW","NORMAL","WIDE"].map((n,i)=>`${n} ×${MULT_PADDLE[i]}`)]);
+  if(kind==="hunt") rows.push(["FIELD GUIDE", ["NAMES","NUMERALS","NONE"].map((n,i)=>`${n} ×${MULT_GUIDE[i]}`)]);
   return rows;
 }
 // the points screen in the title loop: the table filling in line by line, then the multipliers
@@ -223,11 +227,12 @@ const POWERS_FOR={
   breakout:()=>[{look:`<span class="bobrick power row1 pwbrick">G</span>`, name:"ARPEGGIO", text:"A GLOWING BRICK: BREAK IT AND ITS CHORD'S TONES RAIN DOWN, THE PADDLE A CANNON. PLUCK EACH TONE ON THE HARP FOR A BONUS, ALL OF THEM FOR THE WHOLE CHORD."},
     ...Object.entries(BO_POWERS).map(([k,P])=>({look:boCapLook(k), name:P.name, text:P.page}))],
   chopper:()=>Object.entries(CH_POWERS).map(([k,P])=>({look:chCrateLook(k,"F"), name:P.name, text:P.page})),
+  hunt:()=>Object.entries(HD_POWERS).map(([k,P])=>({look:hdTagLook(k,"G"), name:P.name, text:P.page})),
 };
 const powersFor=k=> POWERS_FOR[k] ? POWERS_FOR[k]() : [];
 function powersRender(el){
   let i=0; const d=()=>`style="animation-delay:${(i++)*.6}s"`;
-  el.innerHTML=`<h3>POWER-UPS</h3><p class="ptsub">${cabKind()==="blaster" ? "PLAY A POWER-UP'S CHORD TO TAKE IT" : cabKind()==="command" ? "PLUCK A POWER-UP'S STRING TO TAKE IT" : cabKind()==="asteroids" ? "CRACK A POWER-UP ROCK WITH ITS CHORD TO TAKE IT" : cabKind()==="breakout" ? "BREAK A BRICK THAT HOLDS ONE AND CATCH ITS CAPSULE" : cabKind()==="chopper" ? "PLAY A SUPPLY CRATE'S CHORD TO FLY OUT FOR IT" : "THEY TURN UP NOW AND THEN"}</p>
+  el.innerHTML=`<h3>POWER-UPS</h3><p class="ptsub">${cabKind()==="blaster" ? "PLAY A POWER-UP'S CHORD TO TAKE IT" : cabKind()==="command" ? "PLUCK A POWER-UP'S STRING TO TAKE IT" : cabKind()==="asteroids" ? "CRACK A POWER-UP ROCK WITH ITS CHORD TO TAKE IT" : cabKind()==="breakout" ? "BREAK A BRICK THAT HOLDS ONE AND CATCH ITS CAPSULE" : cabKind()==="chopper" ? "PLAY A SUPPLY CRATE'S CHORD TO FLY OUT FOR IT" : cabKind()==="hunt" ? "THE DOG FETCHES THEM: PLAY THE CHORD ON THE TAG" : "THEY TURN UP NOW AND THEN"}</p>
     <ul class="pwtable">${powersFor(cabKind()).map(p=>`<li ${d()}><span class="pwlook">${p.look}</span><div><b>${p.name}</b><em>${p.text}</em></div></li>`).join("")}</ul>`;
 }
 // The lives, as pixel hearts in the HUD: a full heart for each life left, a dark empty one for each
@@ -275,6 +280,7 @@ function arcadeSettings(){
   if(k!=="sweeper") choice("SPEED", SPEEDS.map(x=>x[0].toUpperCase()), ()=>+saved.speed||0, i=>{ saved.speed=i; save(); }, "FROM THE NEXT GAME");
   if(k==="command") choice("NOTES AT ONCE", ["FEW","SOME","MANY","SWARM"], ()=>saved.hcDensity??1, i=>{ saved.hcDensity=i; save(); }, "FROM THE NEXT GAME");
   if(k==="breakout") choice("PADDLE", ["NARROW","NORMAL","WIDE"], ()=>saved.boPaddle??1, i=>{ saved.boPaddle=i; save(); }, "FROM THE NEXT GAME");
+  if(k==="hunt") choice("FIELD GUIDE", ["NAMES","NUMERALS","NONE"], ()=>saved.hdGuide||0, i=>{ saved.hdGuide=i; save(); }, "FROM THE NEXT GAME · LESS TO READ SCORES MORE");
   choice("BEGINNER", ["OFF","SHOW WHAT TO PRESS"], ()=>saved.beginner?1:0, i=>{ saved.beginner=!!i; save(); helperSync(true); }, "NO HIGH SCORES WITH IT ON");
   choice("SCREEN", ["FLAT","CRT"], ()=>saved.crt?1:0, i=>{ saved.crt=!!i; save(); crtSync(); });
   choice("FULL SCREEN", ["AUTO","CABINET","PLAIN"], ()=>FS_MODES.indexOf(fsMode()), i=>fsModeSet(i), "AUTO GOES PLAIN WHERE THE GRAPHICS CAN'T KEEP UP");
@@ -386,7 +392,7 @@ const HS_SECONDS=20;        // the countdown on the initials, as a cabinet has
 // what's shown if the shared one can't be reached.
 const SCORES_API=String(SCORES_HOST||"").replace(/\/+$/,"");   // the Funnel address of arcade-scores (core/scores.js), no trailing slash
 const scoresOnline=()=> !!SCORES_API && !SCORES_API.includes("SCORES-HOST");
-const HS_SLUG={blaster:"invaders", command:"harp-command", snake:"chord-snake", asteroids:"chord-asteroids", stack:"chord-stack", breakout:"chord-breakout", fifths:"fifths-defender", chopper:"chopper-rescue", fleet:"key-fleet", sweeper:"chord-sweeper", frets:"between-the-frets", sight:"sight-line"};
+const HS_SLUG={blaster:"invaders", command:"harp-command", snake:"chord-snake", asteroids:"chord-asteroids", stack:"chord-stack", breakout:"chord-breakout", fifths:"fifths-defender", chopper:"chopper-rescue", fleet:"key-fleet", sweeper:"chord-sweeper", frets:"between-the-frets", sight:"sight-line", hunt:"chord-hunt"};
 const HS_CHARS="ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 const hsCache={};                                        // the shared boards, as last fetched
 const hsSlug=()=> HS_SLUG[cabKind()];

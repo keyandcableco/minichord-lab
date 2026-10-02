@@ -42,7 +42,7 @@ const bSym=c=>c.root+c.q;
 // A game's own bonus rounds, which come before the shared ones: they use that game's controls and
 // get harder as the game does, so a player who reaches level nine meets a harder round than one who
 // reached level three.
-const BONUS_OWN={blaster:["oddout"], command:["spell"], asteroids:["salvage"], breakout:["catch"]};
+const BONUS_OWN={blaster:["oddout"], command:["spell"], asteroids:["salvage"], breakout:["catch"], hunt:["clay"]};
 function arcadeBonus(id){
   if(!blast || blast.bonus) return;
   blast.bonusAt=blast.level+BONUS_EVERY;
@@ -97,7 +97,7 @@ function bonusEnd(b){
     if(!blast || blast.bonus!==b) return;
     bonusShift(blast, performance.now()-blast.bonusStart);
     blast.bonus=null; blast.phase=blast.bonusPhase||"play"; blast.last=performance.now();
-    const bar=window[({blaster:"blastBar", command:"blastBarCommand", snake:"snBar", asteroids:"asBar", stack:"stBar", breakout:"boBar", fifths:"fdBar", chopper:"chBar", fleet:"kfBar", sweeper:"swBar"})[blast.kind]];
+    const bar=window[({blaster:"blastBar", command:"blastBarCommand", snake:"snBar", asteroids:"asBar", stack:"stBar", breakout:"boBar", fifths:"fdBar", chopper:"chBar", fleet:"kfBar", sweeper:"swBar", hunt:"hdBar"})[blast.kind]];
     if(typeof bar==="function") bar();                        // the score, with the bonus in it
     stats.streak=stats.streak; scoreboard();
   }, b.tally && b.tally.length ? 3400 : 1800);
@@ -518,6 +518,47 @@ const BONUS_GAMES=[
      b.tally=[["CHORDS CAUGHT", b.built], ["NOTES CAUGHT", b.caught], ...(b.junk?[["WRONG NOTES", `−${b.junk*2} SECONDS`]]:[])];
      if(!b.result) b.result = b.built ? `${b.built} OF 4 CAUGHT` : "NONE CAUGHT";
    } },
+  // Chord Hunt' own: clay pigeons, two at a time, and each pair a cadence. Home sounds, then the
+  // cadence's two chords; shoot both clays by playing them in order, and the cadence is named:
+  // authentic, plagal, half or deceptive. A wrong chord and the pair's lost (it's said what it was).
+  // Later in the game the keys widen, and V7, the minor iv and the deceptive V7 come in.
+  {id:"clay", name:"CLAY SHOOTING", secs:24,
+   instr:"HOME SOUNDS, THEN A CADENCE: TWO CHORDS. SHOOT BOTH CLAYS BY PLAYING THEM IN ORDER.",
+   start(b){ b.pairs=0; b.named={}; this.next(b); },
+   next(b){
+     const late=(blast.level||0)>=4, key=hdKey(rnd(late ? ["C","G","F","D","B♭","A","E♭"] : ["C","G","F"]));
+     const C=[["V","I","AUTHENTIC"],["IV","I","PLAGAL"],["I","V","HALF"],["IV","V","HALF"],["ii","V","HALF"],["V","vi","DECEPTIVE"],
+       ...(late ? [["V7","I","AUTHENTIC"],["iv","I","PLAGAL, MINOR iv"],["V7","vi","DECEPTIVE"]] : [])];
+     const c=rnd(C.filter(x=>x!==b.last)); b.last=c;
+     b.pair=[hdChord(key,c[0]), hdChord(key,c[1])]; b.kind=c[2]; b.i=0; b.listen=false; b.key=key;
+     b.stage.innerHTML=`<p class="bosmall">KEY OF ${key.label}</p><div class="hdclays">${b.pair.map(()=>`<span class="hdclay">?</span>`).join("")}</div>
+       <div class="hdguide inbonus">${["I","ii","IV","V","vi"].map(n=>`<span><b>${n}</b><i>${hdChord(key,n).sym}</i></span>`).join("")}</div><p class="bosmall hdcadence">LISTEN…</p>`;
+     const home=hdChord(key,"I"), hv=hdVoice(home.pc, home.q), v1=hdVoice(b.pair[0].pc, b.pair[0].q, {near:hv.upper}), v2=hdVoice(b.pair[1].pc, b.pair[1].q, {near:v1.upper});
+     b.voiced=[hv,v1,v2];
+     const ms=hdPlay([{at:0, notes:hv.notes, dur:.8},{at:1.05, notes:v1.notes, dur:.8},{at:1.95, notes:v2.notes, dur:1.1}]);
+     const pair=b.pair; setTimeout(()=>{ if(b.over || b.pair!==pair) return; b.listen=true; const p=b.stage.querySelector(".hdcadence"); if(p) p.textContent="SHOOT!"; }, Math.min(ms, 1100));
+   },
+   chord(b, pitches){
+     if(!b.listen) return; clearTimeout(b.pend);
+     const c=b.pair[b.i], clays=b.stage.querySelectorAll(".hdclay");
+     if(isChord(pitches, c.pc, c.q)){ clays[b.i].textContent=c.num; clays[b.i].classList.add("hit"); b.i++; b.add(30);
+       if(b.i<2) return;
+       b.listen=false; b.pairs++; b.named[b.kind]=(b.named[b.kind]||0)+1; b.add(40);
+       b.stage.querySelector(".hdcadence").innerHTML=`<b>${b.kind}</b> · ${b.pair.map(x=>x.num).join("–")} · ${b.pair.map(x=>x.sym).join(" ")}`;
+       const pair=b.pair; setTimeout(()=>{ if(!b.over && b.pair===pair) this.next(b); }, 1500); return; }
+     if(!chordId(pitches)) return;
+     const pair=b.pair;
+     b.pend=setTimeout(()=>{ if(b.over || b.pair!==pair || !b.listen) return;            // a chord of two buttons passes through one: wait for it
+       b.listen=false; sfx("miss"); buzz(b.stage,true);
+       clays.forEach((x,i)=>{ if(i>=b.i){ x.textContent=b.pair[i].num; x.classList.add("lost"); } });
+       b.stage.querySelector(".hdcadence").innerHTML=`MISSED: <b>${b.kind}</b> · ${b.pair.map(x=>x.num).join("–")} · ${b.pair.map(x=>x.sym).join(" ")}`;
+       hdPlay([{at:0, notes:b.voiced[0].notes, dur:.7},{at:.9, notes:b.voiced[1].notes, dur:.7},{at:1.7, notes:b.voiced[2].notes, dur:1}]);
+       setTimeout(()=>{ if(!b.over && b.pair===pair) this.next(b); }, 2900); }, 450);
+   },
+   stop(b){ clearTimeout(b.pend);
+     b.tally=[["CADENCES SHOT", b.pairs], ...Object.entries(b.named).map(([k,n])=>[k, n])];
+     if(!b.result) b.result = b.pairs ? `${b.pairs} CADENCE${b.pairs>1?"S":""} NAMED` : "NO CADENCES THIS TIME"; } },
+
   {id:"odd", name:"ODD ONE OUT", secs:20,
    instr:"THREE OF THESE CHORDS ARE FROM ONE KEY. PLAY THE ONE THAT DOESN'T BELONG.",
    start(b){ b.n=0; this.next(b); },
