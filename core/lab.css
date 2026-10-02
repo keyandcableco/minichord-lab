@@ -1,7 +1,7 @@
 /* Minichord Lab: ivory and ebony. The Key & Cable Company's colours: key ivory and ebony from
  * the logo, the dark red of piano felt, a little brass. Square-cornered like keys, ruled rather
  * than boxed, and Garamond like keyandcable.com, the Lab's own name set large and plain. */
-@import url("https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400..800;1,400..800&display=swap");
+@import url("fonts/fonts.css");   /* the Lab's web fonts, served from here */
 /* Accidentals in text (♭ ♮ ♯ 𝄫 𝄪) from Bravura Text, so chord symbols get real music signs whatever the
  * main font: unicode-range keeps it to those five characters. A subset of Steinberg's Bravura Text under the
  * SIL Open Font License, renamed as its Reserved Font Name requires; see fonts/OFL-lab-music.txt. */
