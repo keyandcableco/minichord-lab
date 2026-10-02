@@ -1,7 +1,8 @@
 // Chord Asteroids' power-ups: a power-up rock is cracked by its chord and bursts into its power, not its
 // notes; PEDAL POINT holds the last string plucked and shoots every rock of that note, a string with no
 // rock moving the pedal instead of jamming; FERMATA holds every rock still and sends none; RESOLUTION
-// waits for the key's home chord and blows up the screen; one that reaches the ship costs nothing;
+// waits for the key's home chord and blows up the screen; DA CAPO gives a heart back, or one more, and is
+// spent at once; one that reaches the ship costs nothing;
 // the bonus round's pause moves a power's end on; the title screen's pages.
 const t=require("./harness").load("chord-asteroids");
 (async()=>{
@@ -44,6 +45,14 @@ const t=require("./harness").load("chord-asteroids");
   check("a chord that isn't home leaves it held", w.eval("asPowerOn('resolve')") && !R(r1).dead);
   const s0=a.score; chord("G"); await sleep(80);
   check("the home chord blows up every rock on the screen, and scores", [r1,r2,n1].every(id=>!R(id) || R(id).dead) && a.score>s0 && !a.asPower, `+${a.score-s0}`);
+  // DA CAPO: a heart back, or one more with every heart full; spent at once
+  reset(); a.lives=2; w.eval("asBar()");
+  rock("C","",["C","E","G"],", power:'dacapo'"); chord("C"); await sleep(80);
+  check("DA CAPO: cracked by its chord, it gives a lost heart back, and no notes", a.lives===3 && !a.rocks.some(r=>!r.dead && r.kind==="note") && !!d.querySelector(".hud .lives .heart.won"));
+  rock("D","",["D","F♯","A"],", power:'dacapo'"); chord("D"); await sleep(80);
+  check("with every heart full it gives one heart more, and runs for no time", a.lives===4 && !a.asPower && d.querySelectorAll(".hud .lives .heart:not(.gone)").length===4);
+  a.lives=5; check("with five hearts it never comes", [...Array(300)].every(()=>w.eval("powerPick(AS_POWERS)")!=="dacapo"));
+  a.lives=3;
   // one that reaches the ship costs nothing
   reset(); const lives=a.lives; w.eval(`asHitShip(blast.rocks.find(r=>r.id===${rock("A","",["A","C♯","E"],", power:'fermata'")}))`);
   check("a power-up rock that reaches the ship costs nothing", a.lives===lives);
@@ -57,7 +66,7 @@ const t=require("./harness").load("chord-asteroids");
   check("now and then a spawned rock carries a power", spawned && spawned.power && !spawned.star);
   // the title screen
   w.eval("blast.phase='menu'; blast.rocks.forEach(r=>r.el.remove()); blast.rocks=[]; asMenu(); cabStage(blast.overlay,'powers')"); await sleep(50);
-  check("the title screen's POWER-UPS page lists all three, as they look", d.querySelectorAll(".cab-powers .pwtable li").length===3 && /PEDAL POINT/.test(d.querySelector(".cab-powers").textContent) && !!d.querySelector(".cab-powers .fchord.pu-resolve") && /CRACK/.test(d.querySelector(".cab-powers").textContent));
-  check("and the POINTS page names them", w.eval("pointsFor('asteroids').some(r=>/FERMATA/.test(r[1]))"));
+  check("the title screen's POWER-UPS page lists all four, as they look", d.querySelectorAll(".cab-powers .pwtable li").length===4 && /DA CAPO/.test(d.querySelector(".cab-powers").textContent) && /PEDAL POINT/.test(d.querySelector(".cab-powers").textContent) && !!d.querySelector(".cab-powers .fchord.pu-resolve") && /CRACK/.test(d.querySelector(".cab-powers").textContent));
+  check("and the POINTS page names them", w.eval("pointsFor('asteroids').some(r=>/FERMATA.*DA CAPO/.test(r[1]))"));
   t.done();
 })();

@@ -68,6 +68,7 @@ const t=require("./harness").load("invaders");
   check("with five hearts it never comes", !picked.has("dacapo") && picked.size===3);
   a.lives=3; let n=0; for(let k=0;k<2000;k++) if(w.eval("powerPick(POWERS)")==="dacapo") n++;
   check("and it's rarer than the rest", n>60 && n<400, `${n} of 2000`);
+  check("the POINTS page names it with the rest", w.eval("pointsFor('blaster').some(r=>/SHIELD · DA CAPO/.test(r[1]))"));
   w.eval("newRun(); blast.lives=3; blastBar()");
   check("a new game starts with its own three hearts, not the last game's four", d.querySelectorAll(".hud .lives .heart").length===3);
   w.eval("blast.phase='menu'; blast.items.forEach(i=>i.el.remove()); blast.items=[]; blastMenu(); cabStage(blast.overlay,'powers')"); await sleep(50);

@@ -10,24 +10,27 @@
 //              comes, scoring as if plucked
 //   SLOW TIME  everything falls at half speed for ten seconds
 //   SHIELD     the next note that lands costs no life; it glows over the cannons until then
+//   DA CAPO    a life back, or one more with every heart full (kit.js: it's every game's)
 // What runs is kept as blast.hcPower = {k, powerUntil}: one key, so the bonus round's pause moves
 // its end on with the rest of the game's clocks (powerUntil is one of BONUS_TIME_KEYS).
 const HC_POWERS={
   multi: {name:"MULTISHOT", icon:"💥", secs:6,  say:"EVERY CANNON FIRES AT WILL", page:"FOR 6 SECONDS EVERY CANNON FIRES AT WILL: EVERY NOTE THAT FALLS IS SHOT DOWN, AND SCORES."},
   slow:  {name:"SLOW TIME", icon:"⏳", secs:10, say:"THE NOTES FALL AT HALF SPEED",  page:"FOR 10 SECONDS, THE NOTES FALL AT HALF SPEED."},
   shield:{name:"SHIELD",    icon:"🛡", secs:0,  say:"THE NEXT NOTE THAT LANDS COSTS NOTHING", page:"THE NEXT NOTE THAT LANDS COSTS NO LIFE."},
+  dacapo:DA_CAPO,
 };
 const HC_POWER_CHANCE=.07, HC_SPRAY_MS=280;
 const hcPowerOn=k=>{ const p=blast && blast.kind==="command" && blast.hcPower; return !!(p && p.k===k && (!HC_POWERS[k].secs || performance.now()<p.powerUntil)); };
 // a power-up to drop with this note, now and then: never in the demo or a bonus round, never two
 function hcPowerChance(){
   if(!blast || blast.phase!=="play" || blast.hcPower || blast.items.some(i=>!i.done && i.power)) return null;
-  return Math.random()<HC_POWER_CHANCE ? rnd(Object.keys(HC_POWERS)) : null;
+  return Math.random()<HC_POWER_CHANCE ? powerPick(HC_POWERS) : null;
 }
 // the capsule's look, in the field and on the title screen's POWER-UPS page
 const hcPowerLook=(k, inner)=>`<i class="puicon">${HC_POWERS[k].icon}</i>${inner}`;
 function hcPowerGet(it){
   const P=HC_POWERS[it.power];
+  if(P.instant){ daCapo(); blastBarCommand(); return; }
   blast.hcPower={k:it.power, powerUntil: P.secs ? performance.now()+P.secs*1000 : 0};
   if(it.power==="multi") blast.sprayAt=0;                      // the first volley straight away
   banner(P.name+"!", P.say); sfx("level"); blastBarCommand();

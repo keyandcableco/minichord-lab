@@ -12,12 +12,14 @@
 //   FERMATA      everything holds still for six seconds: the rocks stop where they are, and none come
 //   RESOLUTION   held until used: play the home chord of the minichord's key and every rock on the
 //                screen is blown up, scoring as if cracked or shot
+//   DA CAPO      a life back, or one more with every heart full (kit.js: it's every game's)
 // What runs is kept as blast.asPower = {k, powerUntil, pc}: one key, so the bonus round's pause moves
 // its end on with the rest of the game's clocks (powerUntil is one of BONUS_TIME_KEYS).
 const AS_POWERS={
   pedal:   {name:"PEDAL POINT", icon:"📌", secs:10, say:"PLUCK A NOTE AND IT'S HELD: EVERY ROCK OF IT IS SHOT", page:"FOR 10 SECONDS THE LAST NOTE YOU PLUCK IS HELD: EVERY ROCK OF THAT NOTE IS SHOT DOWN AS IT COMES."},
   fermata: {name:"FERMATA",     icon:"⏸", secs:6,  say:"EVERYTHING HOLDS STILL",                              page:"FOR 6 SECONDS EVERYTHING HOLDS STILL: THE ROCKS STOP WHERE THEY ARE, AND NO MORE COME."},
   resolve: {name:"RESOLUTION",  icon:"🏠", secs:0,  get say(){ return `PLAY ${asHomeChord()} WHEN YOU NEED IT: EVERY ROCK GOES`; }, page:"KEEP IT FOR A TIGHT SPOT: PLAY THE HOME CHORD OF YOUR KEY AND EVERY ROCK ON THE SCREEN IS BLOWN UP."},
+  dacapo:  DA_CAPO,
 };
 const AS_POWER_CHANCE=.08, AS_PEDAL_MS=260;
 const asPowerOn=k=>{ const p=blast && blast.kind==="asteroids" && blast.asPower; return !!(p && p.k===k && (!AS_POWERS[k].secs || performance.now()<p.powerUntil)); };
@@ -28,12 +30,13 @@ const asPedalName=pc=> spell(pc, devFifths());
 // a power-up to send in with this rock, now and then: never in the demo or a bonus round, never two
 function asPowerChance(){
   if(!blast || blast.phase!=="play" || blast.asPower || blast.rocks.some(r=>!r.dead && r.power)) return null;
-  return Math.random()<AS_POWER_CHANCE ? rnd(Object.keys(AS_POWERS)) : null;
+  return Math.random()<AS_POWER_CHANCE ? powerPick(AS_POWERS) : null;
 }
 // the capsule's look, in the field and on the title screen's POWER-UPS page
 const asPowerLook=(k, inner)=>`<i class="puicon">${AS_POWERS[k].icon}</i>${inner}`;
 function asPowerGet(rock){
   const P=AS_POWERS[rock.power];
+  if(P.instant){ daCapo(); asBar(); return; }
   blast.asPower={k:rock.power, powerUntil: P.secs ? performance.now()+P.secs*1000 : 0, pc:null};
   if(rock.power==="pedal") blast.sprayAt=0;
   banner(P.name+"!", P.say); sfx("level"); asBar();

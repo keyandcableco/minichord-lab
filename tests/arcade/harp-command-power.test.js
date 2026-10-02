@@ -1,6 +1,6 @@
 // Harp Command's power-ups: a capsule is taken by plucking its string; MULTISHOT shoots down every note
-// in the sky, scoring them; SLOW TIME halves the fall; a SHIELD saves a life and is spent; a capsule
-// that lands costs nothing; the bonus round's pause moves a power's end on; the title screen's pages.
+// in the sky, scoring them; SLOW TIME halves the fall; a SHIELD saves a life and is spent; DA CAPO gives a
+// heart back, or one more, and is spent at once; a capsule that lands costs nothing; the bonus round's pause moves a power's end on; the title screen's pages.
 const t=require("./harness").load("harp-command");
 (async()=>{
   const {w, d, sleep, note, check}=t;
@@ -35,6 +35,14 @@ const t=require("./harness").load("harp-command");
   check("the one after costs as ever", a.lives===lives-1);
   const capLands=place(1, {power:"slow"}), l3=a.lives; w.eval("hcMiss(blast.items[blast.items.length-1])");
   check("a power-up that lands costs nothing", a.lives===l3 && !w.eval("blast.hcPower"));
+  // DA CAPO: a heart back, or one more with every heart full; spent at once
+  reset(); a.lives=2; w.eval("blastBarCommand()");
+  const dc1=place(5, {power:"dacapo"}); note(5); await sleep(60);
+  check("DA CAPO: taken by its string, it gives a lost heart back", dc1.done && a.lives===3 && !!d.querySelector(".hud .lives .heart.won"));
+  const dc2=place(6, {power:"dacapo"}); note(6); await sleep(60);
+  check("with every heart full it gives one heart more, and runs for no time", dc2.done && a.lives===4 && !a.hcPower && d.querySelectorAll(".hud .lives .heart:not(.gone)").length===4);
+  a.lives=5; check("with five hearts it never comes", [...Array(300)].every(()=>w.eval("powerPick(HC_POWERS)")!=="dacapo"));
+  a.lives=3;
   // the bonus round's pause moves a power's end on
   reset(); a.hcPower={k:"slow", powerUntil:w.performance.now()+5000}; const end=a.hcPower.powerUntil;
   w.eval("bonusShift(blast, 3000)");
@@ -47,7 +55,7 @@ const t=require("./harness").load("harp-command");
   check("none falls while one runs", w.eval("hcPowerChance()")===null);
   // the title screen
   w.eval("blast.phase='menu'; blast.items.forEach(i=>i.el.remove()); blast.items=[]; commandMenu(); cabStage(blast.overlay,'powers')"); await sleep(50);
-  check("the title screen's POWER-UPS page lists all three, as they look", d.querySelectorAll(".cab-powers .pwtable li").length===3 && /MULTISHOT/.test(d.querySelector(".cab-powers").textContent) && !!d.querySelector(".cab-powers .fchord.pu-multi") && /PLUCK/.test(d.querySelector(".cab-powers").textContent));
-  check("and the POINTS page names them", w.eval("pointsFor('command').some(r=>/MULTISHOT/.test(r[1]))"));
+  check("the title screen's POWER-UPS page lists all four, as they look", d.querySelectorAll(".cab-powers .pwtable li").length===4 && /DA CAPO/.test(d.querySelector(".cab-powers").textContent) && /MULTISHOT/.test(d.querySelector(".cab-powers").textContent) && !!d.querySelector(".cab-powers .fchord.pu-multi") && /PLUCK/.test(d.querySelector(".cab-powers").textContent));
+  check("and the POINTS page names them", w.eval("pointsFor('command').some(r=>/MULTISHOT.*DA CAPO/.test(r[1]))"));
   t.done();
 })();
