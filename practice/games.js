@@ -14,6 +14,15 @@ document.addEventListener("visibilitychange", ()=>{
   if(document.hidden){ if(ctx.state==="running"){ pianoAway=true; ctx.suspend().catch(()=>{}); } }
   else if(pianoAway){ pianoAway=false; ctx.resume().catch(()=>{}); }
 });
+// Sound may only start from a touch, a click or a key, and on a phone that's true again after a call
+// or an alarm has taken it away ("interrupted"): any of them, while the page is showing, brings it
+// back. The first one starts it, which on an iPhone is what lets the page make a sound at all.
+for(const ev of ["pointerup","touchend","click","keydown"]) document.addEventListener(ev, ()=>{
+  if(document.hidden || pianoAway) return;
+  if(!piano.ctx || piano.ctx.state!=="running") piano.start().catch(()=>{});
+}, {capture:true, passive:true});
+// the piano's samples, fetched while the page settles, so its first notes are the piano's own
+setTimeout(()=>piano.prefetch(), 2000);
 const $=id=>document.getElementById(id);
 const mod=(a,n)=>((a%n)+n)%n;
 const rnd=a=>a[Math.floor(Math.random()*a.length)];

@@ -8,9 +8,20 @@ const SAMPLE_NOTES=[]; for(let m=36;m<=88;m+=2) SAMPLE_NOTES.push(m);
 const BASE=new URL("../samples/piano/", import.meta.url);
 
 export class Piano {
-  constructor(){ this.ctx=null; this.out=null; this.buffers=new Map(); this.ready=false; this.failed=false; }
+  constructor(){ this.ctx=null; this.out=null; this.buffers=new Map(); this.ready=false; this.failed=false; this._bytes=null; }
+  /** fetch the samples ahead of time, quietly: they need no sound to arrive, only to be decoded, which
+   *  start() does, so the first notes are the piano's own rather than the stand-in tone */
+  prefetch(){
+    if(!this._bytes) this._bytes=Promise.all(SAMPLE_NOTES.map(m=>fetch(new URL(`${m}.mp3`,BASE), {priority:"low"})
+      .then(r=>{ if(!r.ok) throw new Error(r.status); return r.arrayBuffer(); })));
+    const got=this._bytes; got.catch(()=>{ if(this._bytes===got) this._bytes=null; });   // failed: the next asking tries again
+    return got;
+  }
   /** call from a click or key press: browsers only allow sound after one */
   async start(){
+    // On an iPhone, sound made in the page is silenced by the ring/silent switch unless it says it's
+    // music to be played (Safari 16.4 on); this is an instrument, so it is
+    try{ if(navigator.audioSession && navigator.audioSession.type!=="playback") navigator.audioSession.type="playback"; }catch(e){}
     if(!this.ctx){
       // Chrome on desktop Linux drops out with the smallest buffer
       const linux=/Linux/.test(navigator.userAgent) && !/Android/.test(navigator.userAgent);
@@ -24,8 +35,8 @@ export class Piano {
   }
   async _load(){
     try{
-      await Promise.all(SAMPLE_NOTES.map(m=>fetch(new URL(`${m}.mp3`,BASE)).then(r=>{ if(!r.ok) throw new Error(r.status); return r.arrayBuffer(); })
-        .then(a=>this.ctx.decodeAudioData(a)).then(b=>this.buffers.set(m,b))));
+      const bytes=await this.prefetch();
+      await Promise.all(bytes.map((a,i)=>this.ctx.decodeAudioData(a).then(b=>this.buffers.set(SAMPLE_NOTES[i],b))));
       this.ready=true;
     }catch(e){ this.failed=true; }
   }
