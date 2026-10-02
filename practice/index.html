@@ -542,6 +542,14 @@ body.kbplay #connect{opacity:.5}
 .field.arcade.lowfx .fchord,.field.arcade.lowfx .overlay h3,.field.arcade.lowfx .overlay p,.field.arcade.lowfx .banner,.field.arcade.lowfx .popup{text-shadow:none!important}
 .field.arcade.lowfx.crt::before,.field.arcade.lowfx.crt::after{display:none}   /* the CRT's scanlines and roll too */
 .field.arcade.lowfx *{text-shadow:none!important}
+/* and the glows on what moves every frame, a blur to draw again each time: gone, or a crisp outline
+   where the glow says something (the ball held or caught, the tone aimed at). Also in the plain
+   cabinet, which the phone's always is. */
+:is(.field.arcade.lowfx,.fscab.plain .field.arcade) :is(.fchord.power,.sntile.star,.snseg.ready,.stcell.ready,.boball,.bocap,.botone){box-shadow:none}
+:is(.field.arcade.lowfx,.fscab.plain .field.arcade) .boball.held{box-shadow:0 0 0 2px #7FE9FF}
+:is(.field.arcade.lowfx,.fscab.plain .field.arcade) .boball.caught{box-shadow:0 0 0 2px #7FE08A}
+:is(.field.arcade.lowfx,.fscab.plain .field.arcade) .botone.aimed{box-shadow:0 0 0 2px #FFD35A}
+:is(.field.arcade.lowfx,.fscab.plain .field.arcade) :is(.chheli,.hdduck.gold,.slstaff .shead){filter:none}
 
 /* the points screen, Pac-Man style: each line appears in turn, a dotted leader to its value */
 .cab-points{display:flex;flex-direction:column;align-items:center;gap:10px;width:100%}

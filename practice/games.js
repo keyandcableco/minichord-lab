@@ -6,6 +6,14 @@
 
 const mc=new Minichord(); window.mc=mc;
 const piano=new Piano();
+// A page put away (another tab, the phone's home screen, its screen locked) goes quiet: the sound is
+// paused where it is, held notes and noise included, and picks up again when the page comes back.
+let pianoAway=false;
+document.addEventListener("visibilitychange", ()=>{
+  const ctx=piano.ctx; if(!ctx) return;
+  if(document.hidden){ if(ctx.state==="running"){ pianoAway=true; ctx.suspend().catch(()=>{}); } }
+  else if(pianoAway){ pianoAway=false; ctx.resume().catch(()=>{}); }
+});
 const $=id=>document.getElementById(id);
 const mod=(a,n)=>((a%n)+n)%n;
 const rnd=a=>a[Math.floor(Math.random()*a.length)];

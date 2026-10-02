@@ -20,9 +20,12 @@ const DT_MAX=.1;
 // A canvas at the screen's own resolution, over the shared pixel canvas: for a game whose lines and
 // shapes should be sharp (the shared canvas is deliberately low-resolution, right for the stars).
 function sharpLayer(fx){ const cv=document.createElement("canvas"); cv.className="fxsharp"; fx.cv.after(cv); return cv; }
-// ready to draw in the field's own pixels: sized to it (and the screen's density), cleared
+// ready to draw in the field's own pixels: sized to it (and the screen's density), cleared. At most
+// twice the field's pixels each way: a phone's screen is often three times as dense, and the half
+// again in each direction is twice the pixels to fill every frame for lines no eye can tell apart
+const SHARP_MAX=2;
 function sharpBegin(cv){
-  const dpr=blast.fx.light ? 1 : window.devicePixelRatio||1, W=blast.fx.fw, H=blast.fx.fh;   // light: the screen's pixels, not its density's
+  const dpr=blast.fx.light ? 1 : Math.min(SHARP_MAX, window.devicePixelRatio||1), W=blast.fx.fw, H=blast.fx.fh;   // light: the screen's pixels, not its density's
   if(cv.width!==Math.round(W*dpr) || cv.height!==Math.round(H*dpr)){ cv.width=Math.round(W*dpr); cv.height=Math.round(H*dpr); }
   const g=cv.getContext("2d"); g.setTransform(dpr,0,0,dpr,0,0); g.clearRect(0,0,W,H); g.lineJoin="round"; g.lineCap="round";
   return g;
