@@ -654,9 +654,21 @@ html.arcadepage .gamebar{align-items:flex-end}
 .field.fux .heard{left:auto;right:12px;bottom:auto;top:62px;text-align:right;z-index:4}
 .fusign{position:absolute;right:12px;top:32px;z-index:4;font:400 .45rem "Minichord Lab Accidentals","Press Start 2P",monospace;color:#F1E8D2;background:#16132A;border:3px solid #000;box-shadow:0 0 0 2px #3A3570;padding:5px 8px;pointer-events:none}
 .fusign b{color:#FFD35A;font-weight:400}
-.fusay{position:absolute;left:12px;top:32px;z-index:4;max-width:min(430px,52%);display:flex;flex-direction:column;gap:4px;padding:6px 9px;background:#F1E8D2;color:#16132A;border:3px solid #000;box-shadow:3px 3px 0 #000;font:italic 400 .85rem "Source Serif 4",Georgia,serif;pointer-events:none}
+.fusay{position:absolute;left:12px;top:32px;z-index:4;max-width:min(470px,56%);display:flex;flex-direction:row;align-items:center;gap:9px;padding:6px 9px;background:#F1E8D2;color:#16132A;border:3px solid #000;box-shadow:3px 3px 0 #000;font:italic 400 .85rem "Source Serif 4",Georgia,serif;pointer-events:none}
 .fusay[hidden]{display:none}
 .fusay b{font:400 .42rem "Press Start 2P",monospace;color:#8B0000}
+.fusay>div{display:flex;flex-direction:column;gap:4px}
+/* Aloysius's face: the portrait in his box, its speaking frame shown in turn while he talks */
+.fuport{flex:none;display:block;width:40px;height:48px;border:2px solid #16132A;background:#6E5A86;box-shadow:inset 0 -10px 0 #4E3F66}
+.fuport.big{width:60px;height:72px;margin-bottom:2px}
+.fuface{position:relative;display:block;width:100%;height:100%}
+.fuface svg{position:absolute;inset:0;width:100%;height:100%;display:block}
+.fuface svg.talk{visibility:hidden}
+.fusay.talking .fuface svg.talk{animation:futalk .36s steps(1) infinite}
+@keyframes futalk{0%{visibility:visible}50%{visibility:hidden}}
+.fuface .aW{fill:#EDE6D6}.fuface .aw{fill:#B9AE98}.fuface .aS{fill:#E8B48A}.fuface .as{fill:#C98B63}.fuface .aB{fill:#6B5A48}.fuface .aE{fill:#16132A}
+.fuface .aM{fill:#8B2A2A}.fuface .aO{fill:#3A0E0E}.fuface .aC{fill:#2E2350}.fuface .ac{fill:#1C1534}.fuface .aJ{fill:#F7F3EA}.fuface .aj{fill:#C9C2B2}.fuface .aR{fill:#8B0000}
+@media (prefers-reduced-motion:reduce){.fusay.talking .fuface svg.talk{animation:none}}
 .fusay.new{animation:hdsign .4s steps(4)}
 .field.fux.demoing .fusay,.field.fux.demoing .fusign{top:118px}
 .field.fux.demoing .heard{top:148px}

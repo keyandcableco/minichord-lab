@@ -90,6 +90,28 @@ const FU_SAYS={
 const FU_WRONG=["That bar was correct. Look before you shoot.", "Nothing wrong there. Be sure first.", "A good bar, wasted shot."];
 const FU_CLEAN=["Bene. Every fault found, and no shot wasted.", "Clean. Fux would nod.", "Every one. Good."];
 const FU_DONE=["Some got past you. Again, more slowly in your head.", "Listen to each bar as it arrives."];
+// ---------- Aloysius's face ----------
+// Fux's master, in pixels: a powdered wig, a dark coat, a white jabot. Three faces, chosen by what
+// he's speaking about (pleased: a fault found, a suspension resolved, a line he'd sign; appalled: a
+// crash, a fault let past; neutral: the rest), each with a frame of his mouth open, which he moves
+// while he speaks. Rows of letters, a letter a colour (classes in practice/index.html), a dot clear.
+const FU_FACE={
+  neutral:["....wwWWWWWWWWww....","...wWWWWWWWWWWWWw...","..wWWWwWWWWWWwWWWw..","..WWWwSSSSSSSSwWWW..",".wWWWSSSSSSSSSSWWWw.",".WWWwSBBSSSSBBSwWWW.",".WWWwSSESSSSESSwWWW.",".wWWwSSSSSsSSSSwWWw.",".WWWwSSSSSsSSSSwWWW.",".WWWwsSSSssSSSswWWW.",".wWWWsSSMMMMSSswWWw.",".WWWWsSSSSSSSSswWWW.",".WWWwWssSSSSSssWwWWW","..WWwWWsssssssWwWW..",".wWWwRcCJJJJJJCcRwWw","wWWw.cCCJjJJjJCCc.wW","WWw.cCCCJJjjJJCCCc.w","Ww.cCCCCCJJJJCCCCCc.","w.cCCCCCCJjjJCCCCCCc",".cCCCCCCCCJJCCCCCCCc","cCCCCCCCCCJJCCCCCCCC","cCCCCCCCCCCCCCCCCCCC"],
+  pleased:["....wwWWWWWWWWww....","...wWWWWWWWWWWWWw...","..wWWWwWWWWWWwWWWw..","..WWWwSSSSSSSSwWWW..",".wWWWSBBSSSSBBSWWWw.",".WWWwSSSSSSSSSSwWWW.",".WWWwSsEsSSsEsSwWWW.",".wWWwSSSSSsSSSSwWWw.",".WWWwSSSSSsSSSSwWWW.",".WWWwsSSSssSSSswWWW.",".wWWWsSMSSSSMSswWWw.",".WWWWsSSMMMMSSswWWW.",".WWWwWssSSSSSssWwWWW","..WWwWWsssssssWwWW..",".wWWwRcCJJJJJJCcRwWw","wWWw.cCCJjJJjJCCc.wW","WWw.cCCCJJjjJJCCCc.w","Ww.cCCCCCJJJJCCCCCc.","w.cCCCCCCJjjJCCCCCCc",".cCCCCCCCCJJCCCCCCCc","cCCCCCCCCCJJCCCCCCCC","cCCCCCCCCCCCCCCCCCCC"],
+  appalled:["....wwWWWWWWWWww....","...wWWWWWWWWWWWWw...","..wWWWwWWWWWWwWWWw..","..WWWwSSSSSSSSwWWW..",".wWWWSBSSSSSSBSWWWw.",".WWWwSSBBSSBBSSwWWW.",".WWWwSSESSSSESSwWWW.",".wWWwSSSSSsSSSSwWWw.",".WWWwSSSSSsSSSSwWWW.",".WWWwsSSSssSSSswWWW.",".wWWWsSSMMMMSSswWWw.",".WWWWsSMOOOOMSswWWW.",".WWWwWssSSSSSssWwWWW","..WWwWWsssssssWwWW..",".wWWwRcCJJJJJJCcRwWw","wWWw.cCCJjJJjJCCc.wW","WWw.cCCCJJjjJJCCCc.w","Ww.cCCCCCJJJJCCCCCc.","w.cCCCCCCJjjJCCCCCCc",".cCCCCCCCCJJCCCCCCCc","cCCCCCCCCCJJCCCCCCCC","cCCCCCCCCCCCCCCCCCCC"],
+  talk_neutral:["....wwWWWWWWWWww....","...wWWWWWWWWWWWWw...","..wWWWwWWWWWWwWWWw..","..WWWwSSSSSSSSwWWW..",".wWWWSSSSSSSSSSWWWw.",".WWWwSBBSSSSBBSwWWW.",".WWWwSSESSSSESSwWWW.",".wWWwSSSSSsSSSSwWWw.",".WWWwSSSSSsSSSSwWWW.",".WWWwsSSSssSSSswWWW.",".wWWWsSSMMMMSSswWWw.",".WWWWsSSMOOMSSswWWW.",".WWWwWssSSSSSssWwWWW","..WWwWWsssssssWwWW..",".wWWwRcCJJJJJJCcRwWw","wWWw.cCCJjJJjJCCc.wW","WWw.cCCCJJjjJJCCCc.w","Ww.cCCCCCJJJJCCCCCc.","w.cCCCCCCJjjJCCCCCCc",".cCCCCCCCCJJCCCCCCCc","cCCCCCCCCCJJCCCCCCCC","cCCCCCCCCCCCCCCCCCCC"],
+  talk_pleased:["....wwWWWWWWWWww....","...wWWWWWWWWWWWWw...","..wWWWwWWWWWWwWWWw..","..WWWwSSSSSSSSwWWW..",".wWWWSBBSSSSBBSWWWw.",".WWWwSSSSSSSSSSwWWW.",".WWWwSsEsSSsEsSwWWW.",".wWWwSSSSSsSSSSwWWw.",".WWWwSSSSSsSSSSwWWW.",".WWWwsSSSssSSSswWWW.",".wWWWsSMSSSSMSswWWw.",".WWWWsSSMOOMSSswWWW.",".WWWwWssSSSSSssWwWWW","..WWwWWsssssssWwWW..",".wWWwRcCJJJJJJCcRwWw","wWWw.cCCJjJJjJCCc.wW","WWw.cCCCJJjjJJCCCc.w","Ww.cCCCCCJJJJCCCCCc.","w.cCCCCCCJjjJCCCCCCc",".cCCCCCCCCJJCCCCCCCc","cCCCCCCCCCJJCCCCCCCC","cCCCCCCCCCCCCCCCCCCC"],
+  talk_appalled:["....wwWWWWWWWWww....","...wWWWWWWWWWWWWw...","..wWWWwWWWWWWwWWWw..","..WWWwSSSSSSSSwWWW..",".wWWWSBSSSSSSBSWWWw.",".WWWwSSBBSSBBSSwWWW.",".WWWwSSESSSSESSwWWW.",".wWWwSSSSSsSSSSwWWw.",".WWWwSSSSSsSSSSwWWW.",".WWWwsSSSssSSSswWWW.",".wWWWsSSMOOMSSswWWw.",".WWWWsSMOOOOMSswWWW.",".WWWwWssSSSSSssWwWWW","..WWwWWsssssssWwWW..",".wWWwRcCJJJJJJCcRwWw","wWWw.cCCJjJJjJCCc.wW","WWw.cCCCJJjjJJCCCc.w","Ww.cCCCCCJJJJCCCCCc.","w.cCCCCCCJjjJCCCCCCc",".cCCCCCCCCJJCCCCCCCc","cCCCCCCCCCJJCCCCCCCC","cCCCCCCCCCCCCCCCCCCC"]
+};
+function fuSvg(rows, cls=""){
+  const w=rows[0].length, h=rows.length; let r="";
+  rows.forEach((row,y)=>{ for(let x=0;x<w;x++){ const c=row[x]; if(c===".") continue; let e=x; while(row[e+1]===c) e++; r+=`<rect class="a${c}" x="${x}" y="${y}" width="${e-x+1}" height="1"/>`; x=e; } });
+  return `<svg class="${cls}" viewBox="0 0 ${w} ${h}" shape-rendering="crispEdges" aria-hidden="true">${r}</svg>`;
+}
+const FU_MOODS=["neutral","pleased","appalled"];
+// his face in a mood: the face, and its speaking frame over it (shown in turn while he talks)
+const fuFace=(mood="neutral")=>{ const m=FU_MOODS.includes(mood) ? mood : "neutral"; return `<span class="fuface ${m}">${fuSvg(FU_FACE[m],"rest")}${fuSvg(FU_FACE["talk_"+m],"talk")}</span>`; };
+
 // a finding's name, with the fifth or octave it's about where that matters
 function fuName(f, bar){
   const q = bar ? (bar.p[f.beat||0] ?? bar.p.find(x=>x!=null)) : null;
@@ -177,7 +199,7 @@ function buildFuxField(box){
   const field=document.createElement("div"); field.className="field arcade fux"; field.setAttribute("aria-label","A two-voice line scrolling over twelve cannons");
   const hud=document.createElement("div"); hud.className="hud"; field.appendChild(hud); fullButton(field);
   const hd=document.createElement("div"); hd.className="heard"; field.appendChild(hd);
-  field.insertAdjacentHTML("beforeend", `<div class="fuladder"></div><div class="fusign" hidden></div><div class="fusay" hidden><b>ALOYSIUS</b><span></span></div>`);
+  field.insertAdjacentHTML("beforeend", `<div class="fuladder"></div><div class="fusign" hidden></div><div class="fusay" hidden><span class="fuport"></span><div><b>ALOYSIUS</b><span class="futext"></span></div></div>`);
   box.append(field);
   if(blast && blast.kind==="fux"){
     Object.assign(blast, {field, hud, heard:hd, fx:fxInit(field), ladderEl:field.querySelector(".fuladder"), signEl:field.querySelector(".fusign"), sayEl:field.querySelector(".fusay")});
@@ -213,12 +235,16 @@ function fuBar(){
   const count = sh ? ` · CANTUS ${blast.lineNo} OF ${SH_ROUNDS}${sh.combo>1?` · CONTRARY ×${sh.combo}`:""}` : blast.lineNo ? ` · LINE ${blast.lineNo} OF ${FU_LINES}` : "";
   blast.hud.innerHTML=`<span>SCORE ${blast.score}${multTag()}</span><span class="lvl">LEVEL ${blast.level+1} · ${L.n.toUpperCase()}${count} ${shells}</span><span class="lives">${livesHtml()}</span>`;
 }
-// Aloysius speaks: a line in his box for a few seconds
-function fuSay(text, ms=3600){
+// Aloysius speaks: a line in his box for a few seconds, with his face for it, his mouth moving for
+// as long as the line takes to say
+function fuSay(text, ms=3600, mood="neutral"){
   const el=blast && blast.sayEl; if(!el) return;
-  el.hidden=false; el.querySelector("span").textContent=text;
+  el.hidden=false; el.querySelector(".futext").textContent=text;
+  el.querySelector(".fuport").innerHTML=fuFace(mood);
   el.classList.remove("new"); void el.offsetWidth; el.classList.add("new");
   const said=blast.said=(blast.said||0)+1;
+  el.classList.add("talking");
+  gameLater(()=>{ if(blast.said===said) el.classList.remove("talking"); }, Math.min(2400, 300+text.length*38));
   gameLater(()=>{ if(blast.said===said) el.hidden=true; }, ms);      // the run's own timer; a newer line keeps its time
 }
 function fuSign(){
@@ -396,7 +422,7 @@ function fuLand(b, y){
     b.el.insertAdjacentHTML("beforeend", `<span class="futag" style="top:${Math.min(fuYOf(b.c),fuYOf(b.p.find(x=>x!=null)))-14}px">${name}</span>`);
     explode(b.x, y, 16, ["#FF4B3E","#FFD35A","#FFF4C2"]); sfx("hit");
     heard(name, true);
-    fuSay(FU_SAYS[b.bad[0].rule] ? FU_SAYS[b.bad[0].rule][0] : name);
+    fuSay(FU_SAYS[b.bad[0].rule] ? FU_SAYS[b.bad[0].rule][0] : name, 3600, "pleased");
     if(demo) return;
     const early=Math.max(0, Math.min(1, (b.x-blast.L.m)/(blast.L.W-2*blast.L.m)));
     const pts=mulPts(Math.round((25+25*early)*(blast.level+1)));
@@ -408,7 +434,7 @@ function fuLand(b, y){
     b.wrong=true; b.el.classList.add("wrong");
     sfx("miss"); buzz(blast.field,true);
     heard(`BAR ${b.i+1}`, false, "A GOOD BAR");
-    fuSay(rnd(FU_WRONG));
+    fuSay(rnd(FU_WRONG), 3600, "appalled");
     if(demo) return;
     ln.misses++;
   }
@@ -420,7 +446,7 @@ function fuGone(b){
   b.el.classList.add("escaped");
   const name=fuName(b.bad[0], b);
   heard(name, false, "IT GOT PAST");
-  fuSay(FU_SAYS[b.bad[0].rule] ? FU_SAYS[b.bad[0].rule][1] : name, 4200);
+  fuSay(FU_SAYS[b.bad[0].rule] ? FU_SAYS[b.bad[0].rule][1] : name, 4200, "appalled");
   popup(blast.L.m, blast.L.top+20, name, "#FF8FB8");
   blast.lives--; sfx("away"); buzz(blast.field,true); fuBar();
   if(blast.lives<=0){ blast.line.done=true; gameLater(()=>fuOver(), 1600); }
@@ -430,7 +456,7 @@ function fuLineEnd(){
   ln.done=true;
   if(blast.phase!=="play") return;
   let bonus=0;
-  if(ln.caught===ln.wrong && !ln.misses){ bonus=mulPts(100*(blast.level+1)); blast.score+=bonus; fuSay(rnd(FU_CLEAN)); }
+  if(ln.caught===ln.wrong && !ln.misses){ bonus=mulPts(100*(blast.level+1)); blast.score+=bonus; fuSay(rnd(FU_CLEAN), 3600, "pleased"); }
   else if(ln.caught<ln.wrong) fuSay(rnd(FU_DONE));
   banner(bonus ? "CLEAN SWEEP" : "LINE DONE", `${ln.caught} OF ${ln.wrong} FOUND${bonus?` · +${bonus}`:""}`);
   fuBar();

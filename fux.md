@@ -270,7 +270,12 @@ Line's staff drawing and Bravura glyphs (`drawStaff` in `practice/games.js`).
   during play when something Fatal happens.
 - **The approval meter is the score shown as a face,** from a scowl up to a rare "Bene."
 - **Verdicts are tied to bars:** each line highlights the bar it's about.
-- **He remembers repeated faults.** Lines come in three levels of exasperation per rule, chosen by how
+- **Built: his portrait.** A 20×24 pixel sprite (powdered wig, dark coat, white jabot) in his speech
+  box and, larger, on the review. Three faces, picked by the event: pleased (a fault found, a
+  suspension resolved, a line approved at 70+), appalled (a crash, a fault let past, a wasted shot,
+  approval under 50) and neutral. Each has a speaking frame, his mouth moving while the line is
+  said. The sprites are rows of letters in `FU_FACE` (`arcade/games/fux.js`).
+- **He remembers repeated faults** (not yet). Lines come in three levels of exasperation per rule, chosen by how
   often you've made that mistake this session.
 - Chord Hunt's dog and its readout ("Am: ii") are the nearest precedent for a game character.
 - **An LLM layer is possible later:** the checker decides *what's* wrong, and a model only phrases it.
@@ -343,6 +348,8 @@ Line's staff drawing and Bravura glyphs (`drawStaff` in `practice/games.js`).
 
 ## 11. Later
 
+- **Skipped so far:** species 3 (built after 4, since its turn-based input needed thought) and
+  species 5.
 - **Species 3, four against one:** passing and neighbour tones, the cambiata. Turn-based gets tiring at
   four plucks a bar, so tempo mode is probably the default.
 - **Species 4, syncopation: built.**

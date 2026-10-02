@@ -175,7 +175,7 @@ function shCommit(){
     explode(x, y, 22, ["#FF4B3E","#FFD35A","#FFF4C2"]); sfx("crash"); buzz(blast.field,true);
     const name=shName(s, f, flat);
     heard(name, false, "CRASH");
-    fuSay(FU_SAYS[f.rule] ? FU_SAYS[f.rule][1] : name, 4200);
+    fuSay(FU_SAYS[f.rule] ? FU_SAYS[f.rule][1] : name, 4200, "appalled");
     fuBar();
     if(!demo && blast.lives<=0){ s.done=true; gameLater(()=>fuOver(), 1600); return; }
     if(s.susp){ s.pick=null; shDrawAll(); return; }                 // a wrong resolution: the suspension's still waiting, its clock running
@@ -187,7 +187,7 @@ function shCommit(){
   s.flat=flat;
   if(faults.length){ s.faults+=faults.length; s.combo=1; sfx("miss"); heard(shName(s, faults[0], flat), false, "OFF BALANCE");
     fuSay(FU_SAYS[faults[0].rule] ? FU_SAYS[faults[0].rule][0] : shName(s, faults[0], flat)); }
-  else if(fresh.some(f=>f.rule==="suspended")){ s.contrary++; s.combo=Math.min(4, s.combo+1); sfx("hit"); heard("RESOLVED", true, ""); }
+  else if(fresh.some(f=>f.rule==="suspended")){ s.contrary++; s.combo=Math.min(4, s.combo+1); sfx("hit"); heard("RESOLVED", true, ""); if(s.contrary===1 || Math.random()<.25) fuSay(rnd(["Resolved, as it should be.","Down by step. Good.","Tension, then rest. That is a suspension."]), 2800, "pleased"); }
   else if(contrary){ s.contrary++; s.combo=Math.min(4, s.combo+1); sfx("hit"); heard(`CONTRARY MOTION`, true, ""); }
   else sfx("shoot");
   s.susp=null;
@@ -224,7 +224,7 @@ function shTie(s){
 function shSuspLate(s){
   const r=shBelow(s, s.susp.from, s.at), ok=r!=null && CP.interval(s.mode, s.cantus[s.susp.bar], r).class!=="dissonant";
   s.crashes++; s.combo=1; if(blast.phase!=="demo") blast.lives--;
-  sfx("crash"); buzz(blast.field,true); heard("TOO LATE", false, "THE SUSPENSION HUNG"); fuSay(FU_SAYS.resolution[1], 4200); fuBar();
+  sfx("crash"); buzz(blast.field,true); heard("TOO LATE", false, "THE SUSPENSION HUNG"); fuSay(FU_SAYS.resolution[1], 4200, "appalled"); fuBar();
   if(blast.phase!=="demo" && blast.lives<=0){ s.done=true; gameLater(()=>fuOver(), 1600); return; }
   if(ok){ s.susp=null; s.held=true; shCommitAs(s, r); return; }     // resolved for you, and held on, so the line goes on as it would have
   s.susp=null; s.flat.length=Math.max(0, s.at-2); s.at=s.flat.length; shNow(s);
@@ -238,7 +238,7 @@ function shDock(s){
   s.done=true; s.pick=null; shDrawAll();
   const all=shCheck(s, s.flat), style=all.filter(f=>f.severity==="style");
   const approval=Math.max(0, Math.min(100, 100-15*s.crashes-10*s.faults-4*style.length+2*s.contrary));
-  const [,word,say]=SH_VERDICTS.find(v=>approval>=v[0]);
+  const [,word,say]=SH_VERDICTS.find(v=>approval>=v[0]), mood = approval>=70 ? "pleased" : approval>=50 ? "neutral" : "appalled";
   sfx("dock"); explode(fuShipX(), fuYOf(s.flat[s.flat.length-1]), 18, ["#FFD35A","#7FB2FF","#FFF4C2"]);
   // the whole line, both voices, as it was written
   const per=.55, cp=shShape(s,s.flat);
@@ -251,9 +251,9 @@ function shDock(s){
   if(bonus){ blast.score+=bonus; scoreboard(); }
   const notes=all.filter(f=>CP.forbidden(f) || f.severity==="style").slice(0,4).map(f=>`<li>BAR ${f.bar+1}: ${shName(s, f, s.flat)}</li>`).join("");
   const el=document.createElement("div"); el.className="fureview";
-  el.innerHTML=`<b class="${pass?"":"no"}">${word}</b><span>APPROVAL ${approval}${bonus?` · +${bonus}`:""}</span><em>${say}</em>${notes?`<ul>${notes}</ul>`:""}`;
+  el.innerHTML=`<span class="fuport big">${fuFace(mood)}</span><b class="${pass?"":"no"}">${word}</b><span>APPROVAL ${approval}${bonus?` · +${bonus}`:""}</span><em>${say}</em>${notes?`<ul>${notes}</ul>`:""}`;
   blast.field.appendChild(el); s.reviewEl=el;
-  fuSay(say, 6000); fuBar();
+  fuSay(say, 6000, mood); fuBar();
   if(demo) return;                                                    // the demo says what comes next itself
   gameLater(()=>{ el.remove();
     if(!pass){ blast.lives--; fuBar(); buzz(blast.field,true); if(blast.lives<=0){ fuOver(); return; } blast.lineNo--; banner("AGAIN", "A NEW CANTUS"); gameLater(()=>shStart(), 2000); return; }
