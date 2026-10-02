@@ -30,10 +30,12 @@
 // power-up, a tag with a chord on it: play the chord to take it. Power-ups are ways of listening:
 // chord-hunt-power.js.
 //
-// The minichord is set to each round's key signature, so the key's own chords are plain buttons, and
-// for the levels with borrowed chords (♭III, ♭VI, ♭VII) the modifier is set to flatten, unless the
-// player sets it by hand. Neither gives an answer away: the game never sets anything for the chord a
-// duck is.
+// The minichord's key signature stays at C, so its buttons play the letters they're marked with, as in
+// the other arcade games: a chord with a sharp or flat root is its letter and the modifier. The game
+// sets the modifier's way once for the key, sharpening in a sharp key and flattening in a flat one
+// (unless the player sets it by hand), which helps every duck in that key alike and so names none of
+// them; the keys a level deals are only those whose chords all lean the same way (D major's F♯ and its
+// borrowed B♭ never meet).
 
 // ---------- the chords a duck can be ----------
 // Each is a place in the key: its numeral, its root's distance above the tonic (letters, then
@@ -134,7 +136,14 @@ function hdChord(key, num){
   return {num, root, q:d.q, sym:root+d.q, pc:pcOfName(root), fn:d.fn, to:d.to||null, tones};
 }
 // the keys a level can use: every chord it could ask for, spelled plainly
-function hdKeyOk(key, nums){ return nums.every(n=>!!hdChord(key, n)); }
+function hdKeyOk(key, nums){ return nums.every(n=>!!hdChord(key, n)) && hdLean(key, nums)!=null; }
+// which way the modifier goes for a key's chords: 1 sharpening, -1 flattening, 0 for neither (C major's
+// own); null if some need it each way, which can't be set once for the key
+function hdLean(key, nums){
+  let up=false, down=false;
+  for(const n of nums){ const c=hdChord(key,n); if(!c) continue; const a=parse(c.root).acc; if(a>0) up=true; if(a<0) down=true; }
+  return up && down ? null : up ? 1 : down ? -1 : 0;
+}
 // keys dealt from a shuffled bag, each used once before any comes round again
 function hdDeal(name, items){
   const bags=blast.hdBags||(blast.hdBags={}), id=items.join(",");
@@ -289,13 +298,13 @@ function hdKeySign(key){
   el.innerHTML=`KEY OF <b>${key.label}</b>`;
   el.classList.remove("new"); void el.offsetWidth; el.classList.add("new");
 }
-// the minichord follows the key: its signature, so the key's chords are plain buttons; and for the
-// borrowed chords the modifier flattening (unless the player sets it), which helps every such chord
-// alike and so names none of them
+// the minichord follows the key: its signature held at C, so the buttons play their letters, and the
+// modifier's way set for the key's sharps or flats (unless the player sets it by hand)
 function hdApplyKey(key){
   blast.key=key; blast.hdLastKey=key.name;
-  if(canWrite() && hasSetting(35)) borrow(35, keyIndexOf(key.f));
-  if(hdLevel().flats && autoMod() && canWrite() && hasSetting(31)) ensure(31,1);
+  const L=hdLevel(), lean=hdLean(key, key.minor ? (L.minorPool||HD_MINOR) : L.pool);
+  if(canWrite() && hasSetting(35) && mc.params[35]!==keyIndexOf(0)) borrow(35, keyIndexOf(0));
+  if(lean && autoMod() && canWrite() && hasSetting(31)) ensure(31, lean>0 ? 0 : 1);
   modPill(); hdKeySign(key); hdGuideDraw();
   helpChord(null); const home=hdChord(key, hdHome(key)); if(home) helpChord(home.root, home.q);   // beginner mode lights home: where it is, not what the duck is
 }
@@ -354,7 +363,8 @@ function hdNextDuck(){
   const gold = !r.gold && L.gold && r.n>=3 && (key.minor===!!L.minor) && (Math.random()<.16 || (r.n===HD_ROUND-1 && Math.random()<.5));
   let targets=null, flock=null;
   if(gold){
-    const opts=L.gold.map(n=>hdChord(key,n)).filter(Boolean);
+    const pool=key.minor ? (L.minorPool||HD_MINOR) : L.pool, lean=hdLean(key, pool);
+    const opts=L.gold.filter(n=>{ const g=hdLean(key,[n]); return g===0 || g===lean; }).map(n=>hdChord(key,n)).filter(Boolean);   // never one the modifier's way can't reach
     if(opts.length){ r.gold=true; targets=[rnd(opts)]; }
   }
   if(!targets && L.flocks && HD_ROUND-r.n>=2){

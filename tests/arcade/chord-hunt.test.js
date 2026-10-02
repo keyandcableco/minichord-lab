@@ -27,7 +27,7 @@ const t=require("./harness").load("chord-hunt");
   w.eval("hdFetchMaybe=()=>false");                            // no tags turning up by chance: the tag has its own check below
   const open=async()=>{ for(let i=0;i<300 && !(a.duck && a.duck.open && !a.duck.done);i++) await sleep(50); return a.duck; };
   let d=await open();
-  check("a round sets the minichord to its key", a.key && mc.params[35]===w.eval(`keyIndexOf(${a.key.f})`), a.key && a.key.label);
+  check("a round holds the key signature at C, the buttons playing their letters", a.key && mc.params[35]===0, a.key && a.key.label);
   check("the first level's ducks are I, IV or V", d && ["I","IV","V"].includes(d.targets[0].num), d && d.targets[0].num);
   // the right chord shoots it
   const s0=a.score, tg=d.targets[0];
@@ -71,10 +71,21 @@ const t=require("./harness").load("chord-hunt");
   // minor keys
   w.eval(`newRun(); blast.level=3; blast.duck=null; const k=hdKey("E",true); hdApplyKey(k); blast.rnd={slots:[], n:0, last:null}; hdLaunch([{...hdChord(k,"V"), slot:0}])`);
   d=await open();
-  check("a minor key sets its relative major's signature", mc.params[35]===w.eval("keyIndexOf(1)"));
+  check("a minor key holds the signature at C too", mc.params[35]===0);
   chord("B",""); await sleep(30);
   check("V in E minor is B major", d.done && d.targets[0].hit, `${d.targets[0].num} ${d.targets[0].sym} open=${d.open} done=${d.done} · ${t.heard()}`);
   await sleep(2600);
+  // the modifier set for the key: sharpening in A, so C♯m is the C button and the modifier; flattening in E♭
+  w.eval(`newRun(); blast.level=2; blast.duck=null; const k=hdKey("A"); hdApplyKey(k); blast.rnd={slots:[], n:0, last:null}; hdLaunch([{...hdChord(k,"iii"), slot:0}])`);
+  check("in A the modifier sharpens", mc.params[31]===0 && mc.params[35]===0);
+  d=await open(); chord(1,"m"); await sleep(30);
+  check("C♯m, the C button and the modifier, shoots iii in A", d.done && d.targets[0].hit, t.heard());
+  await sleep(2600);
+  w.eval(`newRun(); blast.duck=null; hdApplyKey(hdKey("E♭"))`);
+  check("in E♭ the modifier flattens", mc.params[31]===1);
+  const leanBad=w.eval(`(()=>{ const out=[]; for(const L of HD_LEVELS) for(const n of [...L.keys, ...HD_KEYS_MIN]){ for(const minor of [false,true]){ const k=hdKey(n,minor); const pool=minor?(L.minorPool||HD_MINOR):L.pool; if(!minor===!L.minor || L.roam){ if(hdKeyOk(k,pool) && hdLean(k,pool)==null) out.push(L.n+": "+k.label); } } } return out; })()`);
+  check("no key a level deals needs the modifier both ways", !leanBad.length, leanBad.slice(0,3).join(" · "));
+  check("D major's borrowed B♭ and its F♯m never meet: no D at the migration level, A and B♭ there", !w.eval(`hdKeyOk(hdKey("D"), HD_LEVELS[9].pool)`) && w.eval(`hdKeyOk(hdKey("A"), HD_LEVELS[9].pool) && hdKeyOk(hdKey("B♭"), HD_LEVELS[9].pool)`));
   // the dog's tag: its chord takes the power-up
   w.eval(`blast.duck=null; blast.hdPower=null; blast.key=hdKey("C"); blast.tag={k:"drone", chord:hdChord(blast.key,"IV"), left:5, then:()=>{ window.__then=1; }}`);
   chord("F",""); await sleep(30);

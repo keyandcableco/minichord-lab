@@ -531,6 +531,8 @@ const BONUS_GAMES=[
        ...(late ? [["V7","I","AUTHENTIC"],["iv","I","PLAGAL, MINOR iv"],["V7","vi","DECEPTIVE"]] : [])];
      const c=rnd(C.filter(x=>x!==b.last)); b.last=c;
      b.pair=[hdChord(key,c[0]), hdChord(key,c[1])]; b.kind=c[2]; b.i=0; b.listen=false; b.key=key;
+     const lean=hdLean(key, ["I","ii","IV","V","vi",c[0],c[1]]);                 // the modifier's way for the key, as in the game
+     if(lean && autoMod() && canWrite() && hasSetting(31)) ensure(31, lean>0 ? 0 : 1);
      b.stage.innerHTML=`<p class="bosmall">KEY OF ${key.label}</p><div class="hdclays">${b.pair.map(()=>`<span class="hdclay">?</span>`).join("")}</div>
        <div class="hdguide inbonus">${["I","ii","IV","V","vi"].map(n=>`<span><b>${n}</b><i>${hdChord(key,n).sym}</i></span>`).join("")}</div><p class="bosmall hdcadence">LISTEN…</p>`;
      const home=hdChord(key,"I"), hv=hdVoice(home.pc, home.q), v1=hdVoice(b.pair[0].pc, b.pair[0].q, {near:hv.upper}), v2=hdVoice(b.pair[1].pc, b.pair[1].q, {near:v1.upper});
