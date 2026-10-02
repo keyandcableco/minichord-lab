@@ -14,6 +14,7 @@
  *   "status"  connection text for the page to show
  *   "harp"    a harp string was plucked: detail {note, ch}, from the harp port
  *             (Port 2), or from the harp channels of the chord port in single port mode
+ *   "harpoff" a harp string was let go: detail {note, ch}, from the same places
  * ========================================================================== */
 
 export const KEY_NAMES = ["C","G","D","A","E","B","F","B♭","E♭","A♭","D♭","G♭",
@@ -207,6 +208,7 @@ export class Minichord extends EventTarget {
     if(t===0xE0){ (this.harpBend||(this.harpBend=[]))[ch]=((d[2]<<7|d[1])-8192)/8192; return; }   // a string's bend, arriving before its note
     const bend=(this.mpe && this.harpBend && this.harpBend[ch]) || 0;
     if(t===0x90 && d[2]>0) this.dispatchEvent(new CustomEvent("harp",{detail:{note:d[1], ch, pitch:d[1]+bend*48}}));
+    else if(t===0x80 || t===0x90) this.dispatchEvent(new CustomEvent("harpoff",{detail:{note:d[1], ch}}));
   }
   _on(ch,note,vel){
     if(!this._chordChannel(ch)){ const c=this.chans[ch]; this.dispatchEvent(new CustomEvent("harp",{detail:{note, ch, pitch:note+(this.mpe?c.bend*c.range:0)}})); return; }
@@ -222,6 +224,7 @@ export class Minichord extends EventTarget {
   // chord button pressed gently can flicker its contact, sending the chord off and on again and again,
   // and without this the chord never holds still long enough to be read, however clearly it sounds.
   _off(ch,note){
+    if(!this._chordChannel(ch)){ this.dispatchEvent(new CustomEvent("harpoff",{detail:{note, ch}})); return; }
     const key=ch+":"+note; if(!this.notes.has(key)) return;
     const offs=this._offs||(this._offs=new Map()); clearTimeout(offs.get(key));
     // Once every note has really gone (past the debounce), the press is over: the same chord played

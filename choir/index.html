@@ -285,6 +285,11 @@ footer p{margin:0;max-width:80ch}
   </footer>
 </main>
 
+<script type="module">
+// the parallels check, shared with Fux; the score below calls it once MIDI arrives, long after this has run
+import {findParallels} from "../core/counterpoint.js";
+window.findParallels=findParallels;
+</script>
 <script>
 "use strict";
 // ---------- singing voices ----------
@@ -796,20 +801,7 @@ function commitMotion(){
 const scoreCols=[];                 // {notes: Map(slot -> midi), flags: [{a, b, kind}]}
 const SCORE_COLS=8;
 const RANK_NAMES={4:["bass","tenor","alto","soprano"], 3:["bass","middle voice","top voice"]};
-function findParallels(prev, next){
-  const both=[...next.keys()].filter(i=>prev.has(i)).sort((a,b)=>next.get(a)-next.get(b));
-  const flags=[];
-  for(let x=0;x<both.length;x++) for(let y=x+1;y<both.length;y++){
-    const a=both[x], b=both[y];                                     // a sounds below b now
-    const ma=next.get(a)-prev.get(a), mb=next.get(b)-prev.get(b);
-    if(!ma || !mb || (ma>0)!==(mb>0)) continue;
-    const before=(((prev.get(b)-prev.get(a))%12)+12)%12, after=(((next.get(b)-next.get(a))%12)+12)%12;
-    if(after!==0 && after!==7) continue;
-    if(before===after) flags.push({a,b,kind:after===7?"P5":"P8"});
-    else if(x===0 && y===both.length-1 && Math.abs(mb)>2) flags.push({a,b,kind:after===7?"H5":"H8"});
-  }
-  return flags;
-}
+// findParallels: core/counterpoint.js, put on window by the module before this script
 function recordScore(){
   const notes=new Map();
   slots.forEach((s,i)=>{ if(s.key && s.note!=null) notes.set(i,s.note); });

@@ -45,6 +45,8 @@ its own before it counts: the checks keep real time, and a busy machine can make
 | `chord-invaders-aim` | manual aim: the knobs inert, the ship steered by a knob, a chord above the ship hits and one elsewhere goes wide, the multiplier doubled |
 | `chord-invaders-power` | the beam destroys that chord above the ship, on energy; omni beam destroys anything and sweeps in auto aim; power-ups taken by their chord; slow time; the shield; DA CAPO gives a heart back, or one more up to five, rarer than the rest |
 | `minichord-contact` | a gentle press whose contact flickers is read as its one chord, quickly; firm presses, new chords and letting go as before |
+| `harp-off` | a harp string let go is a `harpoff`, from the harp's port and its channel in single port mode; a chord note's release stays the chord's |
+| `counterpoint` | `core/counterpoint.js` on its own: Choir's parallels as they were; intervals by degree in the mode (d5, A4, ficta); the first and second species' rules, each caught at its bar; the solver's lines break no rule, in every mode, above and below |
 | `pixel-minichord` | what's made from the pixel minichord's grid is up to date; Ben holds it |
 | `chord-matrix-stack` | the alternate matrix sets the layout and deals sus chords that light and clear; the helper's buttons; the custom matrix follows the preset's slots |
 | `chord-matrix-invaders` | the chords option is offered; the alternate matrix drops sus chords that shoot down |
