@@ -270,14 +270,14 @@ function chTuned(how){
   if(t.audio){ try{ t.audio.a.stop(); t.audio.b.stop(); t.audio.n.stop(); t.audio.g.disconnect(); t.audio.ng.disconnect(); }catch(e){} }
   blast.radioEl.classList.remove("tuning"); blast.radioEl.querySelectorAll(".chmeter i").forEach(x=>x.classList.add("on"));
   const call=blast.pending; blast.pending=null; if(!call) return;
-  if(how!=="weak"){ const pts=mulPts((how==="ear"?25:15)*(blast.level+1)); blast.score+=pts; const [bx,by]=chBase(); popup(bx,by-60,`TUNED IN +${pts}`,"#7FE9FF"); sfx("key"); chBar(); }
+  if(how!=="weak"){ const pts=mulPts((how==="ear"?25:15)*(blast.level+1)); blast.score+=pts; const [bx,by]=chBase(); popup(bx,by-60,`TUNED IN +${pts}`,"#7FE9FF"); sfx("tuned"); chBar(); }
   chCallStart(call, how==="weak");
 }
 function chCallStart(call, weak){
   blast.call=call; call.weak=!!weak; blast.leg=0; blast.callAt=performance.now(); blast.deadline=blast.callAt+blast.timeFor*(blast.call.legs.length>1?1.8:1)*(weak?.7:1);
   const t=blast.radioEl.querySelector(".chtext"), txt=(weak?"(WEAK) ":"")+blast.call.text; t.textContent="";
   let i=0; const type=()=>{ if(!blast || blast.call===null || !t.isConnected) return; t.textContent=txt.slice(0,++i); if(i<txt.length) setTimeout(type, 28); };
-  type(); sfx("key");
+  type(); sfx("radio");
   blast.found=null; chCrateDrop(call); chDrawMap(); chHelp();
   const L=CH_LEVELS[blast.level];
   if(chRadar(call)) return;                                          // decoded by radar: no need of the training hint
@@ -326,7 +326,7 @@ function chopperNote(pc){
   pc=mod(pc,12);
   if(blast.tune){ if(pc===blast.tune.pc){ heard(SHARP_NAMES[pc],true); chTuned("ear"); } else { heard(SHARP_NAMES[pc],false,"NOT THE STATION'S NOTE"); sfx("miss"); chDial(blast.tune.dial+(Math.random()<.5?-.05:.05)); } return; }
   const sg=blast.signal; if(!sg) return;
-  if(pc===pcOfName(sg.tones[sg.i])){ sg.i++; heard(sg.tones[sg.i-1],true); sfx("key"); chSignalDraw(); if(sg.i>=sg.tones.length) chSignalled(); }
+  if(pc===pcOfName(sg.tones[sg.i])){ sg.i++; heard(sg.tones[sg.i-1],true); sfx("signal"); chSignalDraw(); if(sg.i>=sg.tones.length) chSignalled(); }
   else { heard(SHARP_NAMES[pc],false,`NOT THEIR SIGNAL: NEXT IS THE ${sg.roles[sg.i]}`); sfx("miss"); buzz(blast.field,true); sg.until-=800; }
 }
 // ---------- the signal: the chord's notes, in order, before the winch comes down ----------
@@ -376,24 +376,24 @@ function chopperChord(voices){
   if(right) Object.assign(pad, chPad(l.root, l.q));            // D♭ played in C spells as C♯: it still lands where D♭ is
   const decoy=!right && (blast.emerg||[]).some(e=>!e.real && e.col===pad.col && e.row===pad.row);
   heard(name, right, right ? "" : decoy ? "NOT THIS ONE" : "NOBODY THERE");
-  blast.busy=true; blast.pos=pad; blast.found=null; chDrawMap(); chPlace(false); sfx("shoot");
+  blast.busy=true; blast.pos=pad; blast.found=null; chDrawMap(); chPlace(false); sfx("fly");
   const [x,y]=chXY(pad.col,pad.row);
   if(!right){                                                   // somewhere empty: a look round, and back to base
     blast.deadline-=1800;
-    gameLater(()=>{ if(!blast || blast.kind!=="chopper") return; blast.found={...pad, empty:true}; chDrawMap(); sfx("miss"); buzz(blast.field,true);
+    gameLater(()=>{ if(!blast || blast.kind!=="chopper") return; blast.found={...pad, empty:true}; chDrawMap(); sfx("empty"); buzz(blast.field,true);
       gameLater(()=>{ if(!blast || blast.kind!=="chopper") return; blast.found=null; blast.pos={base:true}; chDrawMap(); chPlace(false); blast.busy=false; }, 700); }, 600);
     return;
   }
   if(blast.leg<blast.call.legs.length-1){                         // a waypoint on a route: on to the next
     blast.leg++; const pts=mulPts(15*(blast.level+1)); blast.score+=pts;
-    gameLater(()=>{ if(!blast || blast.kind!=="chopper") return; popup(x,y-30,`WAYPOINT +${pts}`,"#7FE9FF"); sfx("key"); chHelp(); chBar(); blast.busy=false; }, 600);
+    gameLater(()=>{ if(!blast || blast.kind!=="chopper") return; popup(x,y-30,`WAYPOINT +${pts}`,"#7FE9FF"); sfx("waypoint"); chHelp(); chBar(); blast.busy=false; }, 600);
     return;
   }
   const left=Math.max(0,(blast.deadline-performance.now())/(blast.deadline-blast.callAt));
   const pts=mulPts(Math.round((20+30*left)*(blast.level+1))*(blast.call.legs.length>1?2:1));
   const what=blast.call.what; blast.lastBen=!!blast.call.ben; blast.call=null;   // the clock stops: they're found
   gameLater(()=>{ if(!blast || blast.kind!=="chopper") return;
-    const ben=l && blast.lastBen; blast.found={...pad, ben}; chDrawMap(); sfx("bonus");   // there they are: answer their signal
+    const ben=l && blast.lastBen; blast.found={...pad, ben}; chDrawMap(); sfx("found");   // there they are: answer their signal
     // Ben takes a moment to appreciate: a card, him waving his minichord, before the signal starts
     const signal=()=>chSignal(l, pad, sigPts=>gameLater(()=>{ if(!blast || blast.kind!=="chopper") return;
       blast.found={...pad, saved:true, ben}; blast.emerg=[]; blast.crate=null; chDrawMap();   // aboard, and the other alarms were false
@@ -431,16 +431,16 @@ function chDemo(){
   blast.phase="demo"; blast.level=0; chLayout(); blast.pos={base:true}; blast.found=null; chPlace(true); chDrawMap();
   const {el, token, say, sleep, step}=demoShell(endChDemo);
   const play=demoPlay;
-  const radio=txt=>{ blast.radioEl.querySelector(".chtext").textContent=txt; sfx("key"); };
+  const radio=txt=>{ blast.radioEl.querySelector(".chtext").textContent=txt; sfx("radio"); };
   sfx("attract");
   (async()=>{
     const trouble=(k,col,row)=>{ blast.emerg=chEmergencies(k,{col,row}); chDrawMap(); };
     // flying there, and, when asked, the survivors' signal plucked note by note before the winch
-    const fly=async(col,row,notes,signal)=>{ play(notes); blast.pos={col,row}; chPlace(false); sfx("shoot"); await step(700); blast.emerg=[];
-      blast.found={col,row}; chDrawMap(); sfx("bonus"); await step(800);
+    const fly=async(col,row,notes,signal)=>{ play(notes); blast.pos={col,row}; chPlace(false); sfx("fly"); await step(700); blast.emerg=[];
+      blast.found={col,row}; chDrawMap(); sfx("found"); await step(800);
       if(signal){ const [x,y]=chXY(col,row), sg=document.createElement("div"); sg.className="chsignal"; sg.style.left=`${x}px`; sg.style.top=`${y-58}px`; blast.field.appendChild(sg);
         const draw=i=>{ sg.innerHTML=signal.map((n,k)=>`<b class="${k<i?"got":k===i?"next":""}">${k<i?n:"?"}</b>`).join(""); };
-        for(let i=0;i<=signal.length;i++){ draw(i); if(i<signal.length){ await step(700); play([60+pcOfName(signal[i])]); sfx("key"); } }
+        for(let i=0;i<=signal.length;i++){ draw(i); if(i<signal.length){ await step(700); play([60+pcOfName(signal[i])]); sfx("signal"); } }
         await step(500); sg.remove(); }
       blast.found={col,row,saved:true}; chDrawMap();
       blast.pos={base:true}; chPlace(false); await step(700); blast.found=null; chDrawMap(); };
@@ -451,7 +451,7 @@ function chDemo(){
       blast.radioEl.classList.add("tuning"); radio("▒▒ STATIC ▒▒  TUNE IN: A KNOB, ←→, OR PLUCK THE STATION'S NOTE");
       const bars=blast.radioEl.querySelectorAll(".chmeter i");
       for(const [j,n] of [0,1,1,2,3,2,3,4,4,5].entries()){ bars.forEach((b,i)=>b.classList.toggle("on", i<n)); helpKnob(steerKnob(), .2+j*.05); await step(420); }   // the dial coming round on a knob
-      blast.radioEl.classList.remove("tuning"); sfx("key"); await step(900);
+      blast.radioEl.classList.remove("tuning"); sfx("tuned"); await step(900);
       radio("FIRE AT V IN C"); trouble("fire",2,0); say("DECODE","FIRES IN THREE PLACES, BUT THE RADIO SAYS WHICH: V IN C IS G."); await step(3800);
       say("SIGNAL THEM","FOUND! THEY ONLY COME UP WHEN YOU PLUCK THEIR CHORD ON THE HARP, ROOT UP: G, B, D.");
       await fly(2,0,[55,59,62,67],["G","B","D"]); await step(1200);

@@ -442,7 +442,7 @@ function hdBirdNew(x, speed, {gold=false, n=0, tint=null, target=0}={}){
   blast.field.appendChild(el);
   const a=-Math.PI/2+(Math.random()<.5?-1:1)*(.35+Math.random()*.4);
   const b={el, x, y:blast.L.grassTop+16, vx:Math.cos(a)*speed, vy:Math.sin(a)*speed, speed, state:"rise", turn:.9+Math.random(), target};
-  blast.birds.push(b); hdBirdDraw(b); sfx("press");
+  blast.birds.push(b); hdBirdDraw(b); sfx("flap");
   return b;
 }
 function hdBirdDraw(b){ b.el.style.transform=`translate(${Math.round(b.x-32)}px,${Math.round(b.y-24)}px)`; b.el.classList.toggle("left", b.vx<0); }
@@ -500,7 +500,7 @@ function hdWrong(d, pitches, name){
   d.shells--; d.first=false; blast.ear=0; hdPanel();
   const num=hdNumeralOf(pitches, blast.key);
   heard(name,false, num ? `THAT'S ${num}` : "NOT IN THIS KEY");
-  sfx("shoot"); hdFlash(); buzz(blast.field,true);
+  sfx("bang"); hdFlash(); buzz(blast.field,true);
   if(d.shells<=0) hdAway("OUT OF SHELLS");
 }
 // the zapper's flash: the screen goes white for a moment as the shot fires (dimmed, and gone with
@@ -509,7 +509,7 @@ function hdFlash(){ const f=blast.flashEl; if(!f) return; f.classList.remove("on
 function hdHit(d){
   const t=d.targets[d.i], b=blast.birds.find(x=>x.target===d.i && (x.state==="fly"||x.state==="rise"));
   t.hit=true; d.i++;
-  sfx("boom"); hdFlash();
+  sfx("hit"); hdFlash();
   const quick=d.total ? Math.max(0, d.left/d.total) : 0;
   const unaided=d.first && !d.aided && !hdPowerAny(d);
   if(unaided) blast.ear=(blast.ear||0)+1;
@@ -540,7 +540,7 @@ function hdAway(why){
   blast.birds.forEach(b=>{ if(b.state==="fly"||b.state==="rise") b.state="away"; });
   d.targets.forEach(t=>{ if(!t.hit && t.slot!=null) blast.rnd.slots[t.slot]="miss"; });
   if(!d.gold){ blast.ear=0; }
-  sfx("miss"); hdPanel(); hdBar();
+  sfx("away"); hdPanel(); hdBar();
   blast.tintEl && blast.tintEl.classList.add("on");
   const left=d.targets.filter(t=>!t.hit);
   heard(left.map(t=>t.sym).join(" "), false, `${why}: ${d.gold ? "THE GOLDEN DUCK GOT AWAY, NO HARM DONE" : "IT GOT AWAY"}`);
@@ -569,7 +569,7 @@ function hdRoundEnd(){
   blast.key && hdKeySign(null);
   if(hits>=q){
     let bonus=0; if(hits===HD_ROUND){ bonus=mulPts(100*(blast.level+1)); blast.score+=bonus; }
-    banner(hits===HD_ROUND ? "PERFECT!" : "ROUND CLEAR", `${hits} OF ${HD_ROUND}${bonus?` · +${bonus}`:""}`); sfx("level");
+    banner(hits===HD_ROUND ? "PERFECT!" : "ROUND CLEAR", `${hits} OF ${HD_ROUND}${bonus?` · +${bonus}`:""}`); sfx("level", blast.key && {pc:pcOfName(blast.key.name), minor:blast.key.minor});
     blast.level++;
     if(blast.level<HD_LEVELS.length) gameLater(()=>banner(`LEVEL ${blast.level+1}`, hdLevel().n.toUpperCase()), 2400);
     else gameLater(()=>banner(`LEVEL ${blast.level+1}`, "FASTER!"), 2400);
@@ -632,7 +632,7 @@ function hdDogWalk(ms){
   const L=blast.L, el=hdDogShow("walk", HD_DOG.walk, -130); if(!el) return;
   el.style.top=`${L.grassTop-10}px`; el.style.transform="translate(0,0)";
   void el.offsetWidth; el.style.transition=`left ${ms/1000}s linear`; el.style.left=`${Math.round(L.W*.38)}px`;
-  sfx("press");
+  sfx("sniff");
   gameLater(()=>{ if(!blast.dogEl || !blast.dogEl.classList.contains("walk")) return; el.classList.add("leap"); }, ms);
   gameLater(()=>{ if(!blast.dogEl || !blast.dogEl.classList.contains("walk")) return; el.classList.add("dive"); }, ms+450);
   gameLater(()=>{ if(blast.dogEl && blast.dogEl.classList.contains("walk")) blast.dogEl.hidden=true; }, ms+900);
@@ -657,7 +657,7 @@ function hdDogHold(x, d, flockPts){
     : `<b>${t[0].num}</b><i>${t[0].sym}</i><small>${d.gold?"GOLDEN · ":""}${t[0].fn}</small>`;
   hdDogUp("hold", `<span class="hdhand">${held}</span>`+HD_DOG.hold, Math.max(60, Math.min(blast.L.W-60, x)), card);
   if(d.gold) blast.dogEl.classList.add("gold");
-  sfx("bonus");
+  sfx("fetch");
 }
 function hdDogLaugh(left){
   const card = left.length ? `<b>${left.map(c=>c.num).join("–")}</b><i>${left.map(c=>c.sym).join(" ")}</i><small>IT WAS</small>` : "";
@@ -711,10 +711,10 @@ function hdDemo(){
       const c=hdChord(key,num), home=hdChord(key,"I"), hv=hdVoice(home.pc,home.q), v=hdVoice(c.pc,c.q,{near:hv.upper});
       hdPlay([{at:0, notes:hv.notes, dur:.85},{at:1.15, notes:v.notes, dur:1.4}]); helpChord("C","");
       await step(1150); const b=hdBirdNew(fieldW()*.55, 110, {target:0}); await step(1800);
-      if(wrong){ const w=hdChord(key,wrong); demoPlay(hdVoice(w.pc,w.q).notes); hdFlash(); sfx("shoot"); heard(w.sym,false,`THAT'S ${wrong}`); await step(1600); }
-      if(miss){ b.state="away"; blast.tintEl.classList.add("on"); sfx("miss"); await step(900); blast.tintEl.classList.remove("on");
+      if(wrong){ const w=hdChord(key,wrong); demoPlay(hdVoice(w.pc,w.q).notes); hdFlash(); sfx("bang"); heard(w.sym,false,`THAT'S ${wrong}`); await step(1600); }
+      if(miss){ b.state="away"; blast.tintEl.classList.add("on"); sfx("away"); await step(900); blast.tintEl.classList.remove("on");
         hdDogLaugh([c]); hdPlay([{at:0, notes:hv.notes, dur:.8},{at:1, notes:v.notes, dur:.9}]); helpChord(c.root,c.q); await step(2600); hdDogDown(); return; }
-      helpChord(c.root,c.q); demoPlay(v.notes); hdFlash(); sfx("boom"); heard(c.sym,true); b.state="shot"; b.el.classList.add("shot");
+      helpChord(c.root,c.q); demoPlay(v.notes); hdFlash(); sfx("hit"); heard(c.sym,true); b.state="shot"; b.el.classList.add("shot");
       await step(380); b.state="fall"; b.el.classList.add("falling"); await step(700);
       hdDogHold(b.x, {targets:[{...c, hit:true}]}); await step(2300); hdDogDown(); helpChord(null);
     };

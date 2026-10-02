@@ -114,7 +114,7 @@ function fdSpawn(){
 // aim down a spoke
 function fdAimAt(i){
   if(!blast || blast.kind!=="fifths" || i===blast.aim) return;
-  blast.aim=mod(i,12); sfx("press"); fdLabels(); fdHelp();
+  blast.aim=mod(i,12); sfx("aim", pcOfName(FD_KEYS[blast.aim])); fdLabels(); fdHelp();
 }
 // The knob has end stops, so the circle has a seam somewhere on it. It goes opposite C: C is the middle
 // of the knob's travel, the fifths running clockwise to the right (G, D, A, E, B) and anticlockwise to
@@ -204,7 +204,7 @@ function fifthsNote(pc){
   if(blast.phase!=="play") return;
   const L=FD_LEVELS[blast.level]; if(L.fire!=="harp") return;
   const now=performance.now(); if(now<blast.jamUntil){ heard("",false,"JAMMED"); return; }
-  if(pc!==pcOfName(FD_KEYS[blast.aim])){ heard(SHARP_NAMES[pc],false,`NOT ${FD_KEYS[blast.aim]}`); sfx("freeze"); blast.jamUntil=now+900; return; }
+  if(pc!==pcOfName(FD_KEYS[blast.aim])){ heard(SHARP_NAMES[pc],false,`NOT ${FD_KEYS[blast.aim]}`); sfx("jam"); blast.jamUntil=now+900; return; }
   heard(FD_KEYS[blast.aim],true); fdShoot();
 }
 document.addEventListener("keydown", e=>{
@@ -252,7 +252,7 @@ function fdDemo(){
   const play=demoPlay;
   sfx("attract");
   (async()=>{
-    const turnTo=async i=>{ while(blast.aim!==i){ const d=mod(i-blast.aim,12)<=6?1:-1; blast.aim=mod(blast.aim+d,12); helpKnob(steerKnob(), blast.aim/12); sfx("press"); fdLabels(); await step(260); } };
+    const turnTo=async i=>{ while(blast.aim!==i){ const d=mod(i-blast.aim,12)<=6?1:-1; blast.aim=mod(blast.aim+d,12); helpKnob(steerKnob(), blast.aim/12); sfx("aim", pcOfName(FD_KEYS[blast.aim])); fdLabels(); await step(260); } };
     try{
       say("FIFTHS DEFENDER","THE TWELVE KEYS STAND ROUND YOU IN FIFTHS. C AT THE TOP, G ONE STEP ROUND."); await step(4000);
       blast.foes.push({spoke:1, r:blast.R, wob:0},{spoke:11, r:blast.R*1.15, wob:2});

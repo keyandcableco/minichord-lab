@@ -254,7 +254,7 @@ function fretsChord(voices){
 function frRight(byHarp){
   const q=blast.q, pts=mulPts(20*(blast.level+1)); blast.score+=pts; blast.right++; stats.streak=blast.right; scoreboard(); frBar();
   if(byHarp){ frReveal(q); q.step="find"; return; }                                        // found on the harp: the find follows at once
-  sfx("key"); heard(q.kind==="riff"?`NOTE ${q.idx+1}`:(FR_ROWS[q.kind]||[])[q.answer]||"",true);
+  sfx("tick"); heard(q.kind==="riff"?`NOTE ${q.idx+1}`:(FR_ROWS[q.kind]||[])[q.answer]||"",true);
   frReveal(q);
   const find = q.off!==0 && q.kind!=="neutral";
   if(find){ q.step="find"; q.at=performance.now(); if(canWrite() && hasSetting(31)) borrow(31, q.off>0?0:1);   // the modifier's way, for this one
@@ -263,7 +263,7 @@ function frRight(byHarp){
 }
 function frFound(ok){
   const q=blast.q;
-  if(ok){ const pts=mulPts(30*(blast.level+1)); blast.score+=pts; frBar(); heard(`${q.letter}${q.off>0?" +¼":" −¼"}`,true); sfx("bonus");
+  if(ok){ const pts=mulPts(30*(blast.level+1)); blast.score+=pts; frBar(); heard(`${q.letter}${q.off>0?" +¼":" −¼"}`,true); sfx("right");
     if(!blast.instrument && settings.sounds && piano.ctx) piano.play([60+FR_NAT[q.letter]+q.off/100],{when:.02,dur:.9});   // the note in between (the minichord played it itself, in 24-EDO)
     frSay(`THAT'S IT: THE NOTE BETWEEN THE FRETS. +${pts}`); }
   else frSay(`IT WAS ${q.letter} AND THE MODIFIER`);
@@ -339,7 +339,7 @@ function frDemo(){
       say("LISTEN","AN A, THEN ANOTHER. THE SECOND IS A LITTLE HIGH: BETWEEN A AND B♭."); frDrawBoard([{m:69,c:"#F1E8D2",t:"REF"}]); frDrawStaff(frStaffNotes(q,false)); frPlay(q); await step(3200);
       say("ANSWER","ANY COLUMN: THE MAJOR ROW FOR SHARP. THE FRETBOARD AND THE STAFF SHOW WHERE IT SITS: A HALF-SHARP."); await step(1600); helpChord("A",""); await step(800); frReveal(q); sfx("key"); await step(2600); helpChord(null);
       say("FIND IT","HERE THE MODIFIER MEANS A QUARTER-TONE: A AND THE MODIFIER PLAYS A HALF-SHARP."); await step(2400);
-      helpChord("A",""); helpMod(true); demoPlay([69.5]); sfx("bonus"); await step(2400);
+      helpChord("A",""); helpMod(true); demoPlay([69.5]); sfx("right"); await step(2400);
       say("HEAR THE WOBBLE","HOLD A CHORD AND TAP THE MODIFIER ON AND OFF: THE NOTE, THEN THE ONE BETWEEN THE FRETS.");
       helpChord("A","");
       for(const m of [69,69.5,69,69.5]){ helpMod(m%1!==0); demoPlay([m]); await step(700); } await step(900); helpMod(false); helpChord(null);

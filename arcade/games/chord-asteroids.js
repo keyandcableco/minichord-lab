@@ -189,10 +189,19 @@ function asTick(now){
     blast.rocks=blast.rocks.filter(r=>!r.dead || now-r.deadAt<60);
     const low=asNearest("chord"); if(blast.lowEl!==low){ blast.lowEl=low; blast.rocks.forEach(r=>r.el.classList.toggle("low", r===low && !r.star)); }
     if(low && blast.phase==="play") arcadeMod(low.root);
+    if(blast.phase==="play" && !held) asHeartbeat(now, low);
     if(blast.phase==="play"){ const n=asNearest("note"); if(n) helpString(n.pc); else if(blast.helpHarp) helpString(-1); helpChord(low && !n ? low.root : null, low ? low.q : ""); }
   }
   if(blast.fx) fxDraw(now, dt);
   blast.raf=requestAnimationFrame(asTick);
+}
+// the heartbeat, as in Asteroids: dum, dum, quicker as the nearest rock closes in. Only in a quiet
+// moment: it waits while chords and notes are being played, and comes back after.
+function asHeartbeat(now, r){
+  if(!r || !quietFor(1500)){ blast.beatAt=now+400; return; }
+  if(now<(blast.beatAt||0)) return;
+  const far=Math.min(1, Math.hypot(r.x-blast.cx, r.y-blast.cy)/Math.hypot(blast.cx, blast.cy));
+  blast.beatN=(blast.beatN||0)^1; sfx("beat", blast.beatN); blast.beatAt=now+300+700*far;
 }
 function asKill(r){ r.dead=true; r.deadAt=performance.now(); r.el.remove(); }
 function asHitShip(r){
@@ -247,7 +256,7 @@ function asChordPoints(hit){
 }
 function asCrack(hit){
   explode(hit.x, hit.y, hit.star?46:34, hit.star?["#7FE9FF","#FFFFFF","#FFD35A"]:["#C9C0A8","#FFD35A","#F1E8D2"]);
-  sfx(hit.star?"bonus":"boom");
+  sfx(hit.star?"bonus":"boom", hit.r);
   const pts=asChordPoints(hit); blast.score+=pts; popup(hit.x, hit.y-30, `+${pts}`, hit.star?"#7FE9FF":undefined);
   if(hit.power){ explode(hit.x, hit.y, 44, ["#FF5AA0","#FFD35A","#7FE9FF"]); asPowerGet(hit); asBar(); return; }   // a power-up bursts into its power, not its notes
   // its notes fly out in a ring, each spelled as the chord's own
@@ -274,7 +283,7 @@ function asteroidsNote(pc){
   if(!r && asManual() && pool.length){                    // there is such a note, but not where the ship points: the shot goes wide
     heard(nm,false,"WIDE"); sfx("shoot"); blast.jamUntil=now+450; asWide(now);
     return; }
-  if(!r){ heard(nm,false,"NO SUCH ROCK"); sfx("freeze"); blast.jamUntil=now+1100+120*blast.level; popup(blast.cx, blast.cy+40, "JAMMED", "#7FE9FF"); return; }
+  if(!r){ heard(nm,false,"NO SUCH ROCK"); sfx("jam"); blast.jamUntil=now+1100+120*blast.level; popup(blast.cx, blast.cy+40, "JAMMED", "#7FE9FF"); return; }
   heard(nm,true);
   asShootNote(r);
 }
@@ -284,7 +293,7 @@ function asShootNote(r, pedal){
   r.dead=true;                                        // spoken for: no second shot at it
   const then=()=>{ r.deadAt=performance.now(); r.el.remove(); explode(r.x, r.y, 16);
     const pts=mulPts(10*(blast.level+1)); blast.score+=pts; popup(r.x, r.y-14, `+${pts}`, pedal?"#FF8A3D":undefined);
-    sfx("boom");
+    sfx("boom", r.r);
     if(--r.group.left===0) asCleared(r.group, r.x, r.y);
     asBar(); };
   if(!pedal) return asFire(r, then);

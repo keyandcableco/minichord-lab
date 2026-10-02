@@ -313,11 +313,11 @@ function kfLand(col,row,quiet){
     explode(x,y,26,["#FF4B3E","#FF8A3D","#FFD35A"]); sfx("boom");
     if(!quiet){ const pts=mulPts(10*(blast.level+1)); blast.score+=pts; popup(x,y-20,`HIT +${pts}`); }
     if(ship.hits.size===ship.cells.length && !ship.crippled){
-      ship.crippled=true; blast.lastHit=null; sfx("key");
+      ship.crippled=true; blast.lastHit=null; sfx("clang");
       if(!quiet) banner("CRIPPLED!", "NOW CALL ITS KEY");
     }
   } else {
-    blast.shots.set(k,"miss"); explode(x,y,12,["#7FE9FF","#F1E8D2"]); sfx("miss");
+    blast.shots.set(k,"miss"); explode(x,y,12,["#7FE9FF","#F1E8D2"]); sfx("splash");
     blast.ships.filter(s=>!s.sunk && s.hits.size).forEach(s=>s.misses++);          // missing near a known ship spoils a perfect sink
   }
   blast.busy=false; kfBar(); kfDraw();
@@ -343,7 +343,7 @@ function kfCall(match, what, quiet){
   const unhit=ship.cells.length-ship.hits.size, clean=ship.misses===0;
   ship.sunk=true; ship.cells.forEach(([c,r])=>{ blast.shots.set(kfKey(c,r),"hit"); ship.hits.add(kfKey(c,r)); });
   const [c,r]=ship.cells[Math.floor(ship.cells.length/2)], [x,y]=kfXY(c,r);
-  explode(x,y,34,["#FF4B3E","#FFD35A","#F1E8D2"]); sfx("bonus"); banner(ship.name, ship.detail);
+  explode(x,y,34,["#FF4B3E","#FFD35A","#F1E8D2"]); sfx("sunk"); banner(ship.name, ship.detail);
   if(!quiet){
     const pts=mulPts((50*ship.cells.length*(clean?2:1) + 40*unhit)*(blast.level+1)); blast.score+=pts;
     heard(what,true);

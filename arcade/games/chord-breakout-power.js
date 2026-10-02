@@ -102,7 +102,7 @@ function boCatch(b, now){
 function boRelease(which){
   if(!blast || !blast.balls) return;
   for(const b of blast.balls){ if(!b.caught || (which && b!==which)) continue;
-    b.caught=false; b.stuck=false; b.el.classList.remove("caught"); boPaddleBounce(b); sfx("shoot"); }
+    b.caught=false; b.stuck=false; b.el.classList.remove("caught"); boPaddleBounce(b); sfx("serve"); }
 }
 // the balls past the first, gone
 function boExtraClear(){

@@ -37,7 +37,7 @@ function chCrateDrop(call){
 function chCrateFly(pitches, name){
   const c=blast.crate; if(!c || !isChord(pitches, pcOfName(c.root), c.q)) return false;
   heard(name, true, "SUPPLY CRATE");
-  blast.busy=true; blast.pos={col:c.col, row:c.row}; chPlace(false); sfx("shoot");
+  blast.busy=true; blast.pos={col:c.col, row:c.row}; chPlace(false); sfx("fly");
   gameLater(()=>{ if(!blast || blast.kind!=="chopper") return;
     blast.crate=null; chDrawMap(); chPowerGet(c.k);
     const [x,y]=chXY(c.col,c.row); popup(x,y-30,CH_POWERS[c.k].name,"#7FE9FF");
@@ -67,7 +67,7 @@ function chRadar(call){
 function chWinch(tones, then){
   if(!chPowerOn("winch")) return false;
   blast.chPower=null; chBar();
-  banner("WINCH!", "THEY'RE COMING UP"); sfx("bonus");
+  banner("WINCH!", "THEY'RE COMING UP"); sfx("winch");
   const pts=mulPts(10*tones*(blast.level+1)); blast.score+=pts;
   gameLater(()=>{ if(blast && blast.kind==="chopper") then(pts); }, 700);
   return true;

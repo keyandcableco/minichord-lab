@@ -176,10 +176,10 @@ function snStep(){
     const t=blast.tiles.splice(ti,1)[0];
     if(blast.tail.length>=(SN_MAX[blast.level]||6)){ blast.body.shift(); return snCrash("OVERLOADED"); }
     blast.tail.unshift({name:t.name, pc:t.pc});          // the newest note rides just behind the head
-    sfx("press");
-    if(t.star){ const pts=mulPts(50*(blast.level+1)); blast.score+=pts; sfx("bonus"); snPopup(nx,ny,`+${pts}`,"#7FE9FF"); }
+    sfx("chomp", blast.tail.length);
+    if(t.star){ const pts=mulPts(50*(blast.level+1)); blast.score+=pts; sfx("star"); snPopup(nx,ny,`+${pts}`,"#7FE9FF"); }
     if(!blast.demo) snFill();
-    if(snReady().length) sfx("key");
+    if(snReady().length) sfx("ready");
   } else blast.body.pop();
   // the body is the head, one segment per note carried, and two plain segments after
   while(blast.body.length>blast.tail.length+3) blast.body.pop();
@@ -189,7 +189,7 @@ function snPopup(x,y,text,colour){ popup(blast.ox+(x+.5)*blast.cell, blast.oy+y*
 function snCrash(why){
   const h=blast.body[0];
   explode(blast.ox+(h[0]+.5)*blast.cell, blast.oy+(h[1]+.5)*blast.cell, 34, ["#FF4B3E","#FF8A3D","#FFD35A"]);
-  sfx("miss"); buzz(blast.field,true);
+  sfx("crash"); buzz(blast.field,true);
   blast.lives--; banner(why, blast.lives>0 ? `${blast.lives} ${blast.lives===1?"LIFE":"LIVES"} LEFT` : "");
   if(blast.lives<=0){
     blast.phase="over"; blast.over=true;
@@ -215,7 +215,7 @@ function snakeChord(voices){
   blast.body=blast.body.slice(0, blast.tail.length+3);
   const pts=mulPts(hit.tones.length*15*(blast.level+1));
   blast.score+=pts; blast.cashes++; stats.streak=blast.cashes; scoreboard();
-  sfx("boom"); const h=blast.body[0]; snPopup(h[0],h[1],`${hit.root}${hit.q} +${pts}`,"#FFD35A");
+  sfx("cash"); const h=blast.body[0]; snPopup(h[0],h[1],`${hit.root}${hit.q} +${pts}`,"#FFD35A");
   if(blast.cashes%5===0){
     const was=blast.level;
     for(let n=blast.level+1;n<SN_LEVELS.length;n++) if(snLevelOk(n)){ blast.level=n; break; }
@@ -240,7 +240,7 @@ function snDrop(){
   if(!blast.tail.length) return;
   blast.tail.pop(); blast.body.splice(blast.tail.length+1,1);
   const cost=5*(blast.level+1); blast.score=Math.max(0,blast.score-cost);
-  sfx("letgo"); const h=blast.body[0]; snPopup(h[0],h[1],`-${cost}`,"#FF7A6E");
+  sfx("drop"); const h=blast.body[0]; snPopup(h[0],h[1],`-${cost}`,"#FF7A6E");
   snBar(); snDraw();
 }
 document.addEventListener("keydown", e=>{
@@ -292,7 +292,7 @@ function snDemoStep(){ const saveLives=blast.lives; blast.phase="play"; snStep()
 function snDemoCash(){
   const gone=new Set(["E","G♯","B"]);
   blast.body.slice(1,blast.tail.length+1).forEach(([x,y],i)=>{ if(gone.has(blast.tail[i].name)) explode(blast.ox+(x+.5)*blast.cell, blast.oy+(y+.5)*blast.cell, 18, ["#7FE9FF","#FFD35A","#FFFFFF"]); });
-  sfx("boom"); const h=blast.body[0]; snPopup(h[0],h[1],"E +45","#FFD35A");
+  sfx("cash"); const h=blast.body[0]; snPopup(h[0],h[1],"E +45","#FFD35A");
   blast.tail=blast.tail.filter(t=>!gone.has(t.name)); while(blast.body.length>blast.tail.length+3) blast.body.pop(); snDraw();
 }
 function endSnDemo(token){

@@ -39,7 +39,7 @@ function hdFetchMaybe(then){
   const c=rnd(chords); if(!c) return false;
   blast.tag={k, chord:c, left:HD_TAG_SECS, then};
   hdDogUp("hold fetch", `<span class="hdhand">${hdTagLook(k, c.sym)}</span>`+HD_DOG.hold, blast.L.W*(.3+Math.random()*.4), `<small>PLAY ${c.sym} TO TAKE IT</small>`);
-  sfx("key");
+  sfx("fetch");
   return true;
 }
 function hdTagChord(pitches, name){

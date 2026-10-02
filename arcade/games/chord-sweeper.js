@@ -193,8 +193,8 @@ function swTick(now){
   if(blast.fx) fxDraw(now, dt);
   blast.raf=requestAnimationFrame(swTick);
 }
-function swMove(dx,dy){ blast.cur=[Math.max(0,Math.min(SW_W-1,blast.cur[0]+dx)), Math.max(0,Math.min(SW_H-1,blast.cur[1]+dy))]; sfx("press"); swDraw(); }
-function swFlag(){ const k=swKey(...blast.cur); if(blast.open.has(k)) return; blast.flags.has(k) ? blast.flags.delete(k) : blast.flags.add(k); sfx("key"); swDraw(); }
+function swMove(dx,dy){ blast.cur=[Math.max(0,Math.min(SW_W-1,blast.cur[0]+dx)), Math.max(0,Math.min(SW_H-1,blast.cur[1]+dy))]; sfx("tick"); swDraw(); }
+function swFlag(){ const k=swKey(...blast.cur); if(blast.open.has(k)) return; blast.flags.has(k) ? blast.flags.delete(k) : blast.flags.add(k); sfx("flag"); swDraw(); }
 // sweep the square under the cursor: a note, or a mine going off
 function swSweep(){
   const [x,y]=blast.cur, k=swKey(x,y);
@@ -209,7 +209,7 @@ function swSweep(){
 }
 // a square's chord, heard: the tension, or, for calm, just the sweep
 function swHear(c){
-  if(!c || !c.tones.length || !settings.sounds || !piano.ctx){ sfx("shoot"); return; }
+  if(!c || !c.tones.length || !settings.sounds || !piano.ctx){ sfx("sweep"); return; }
   let last=52; const ms=c.tones.map(n=>{ let m=48+pcOfName(n); while(m<=last) m+=12; last=m; return m; });
   const go=()=>piano.play(ms,{when:.02,dur:.9,vel:80}); piano.ctx.state==="running"?go():piano.ctx.resume().then(go).catch(()=>{});
 }
@@ -246,7 +246,7 @@ function sweeperChord(voices){
   heard(name,true); m.defused=true; blast.flags.delete(swKey(m.x,m.y));
   const [px,py]=swXY(m.x,m.y), unswept=SW_W*SW_H-blast.open.size-blast.mines.length;
   const pts=mulPts((100+2*unswept)*(blast.level+1)); blast.score+=pts;
-  explode(px,py,30,["#7FE08A","#FFD35A","#F1E8D2"]); sfx("bonus"); popup(px,py-24,`${m.key.name} DEFUSED +${pts}`,"#7FE08A");
+  explode(px,py,30,["#7FE08A","#FFD35A","#F1E8D2"]); sfx("defuse"); popup(px,py-24,`${m.key.name} DEFUSED +${pts}`,"#7FE08A");
   swBar(); swDraw();
   if(blast.mines.every(x=>x.defused)) swCleared();
 }
@@ -305,8 +305,8 @@ function swDemo(){
   const at=(x,y)=>blast.clue.get(swKey(x,y));
   const walk=async(x,y)=>{ while(blast.cur[0]!==x || blast.cur[1]!==y){ const dx=Math.sign(x-blast.cur[0]), dy=Math.sign(y-blast.cur[1]);
       helpZone(dx>0?"right":dx<0?"left":dy>0?"down":"up");                     // the harp as a d-pad, pressed
-      blast.cur=[blast.cur[0]+dx, blast.cur[1]+dy]; blast.phase="play"; swDraw(); blast.phase="demo"; sfx("press"); await step(180); } };
-  const sweep=async()=>{ helpZone("A"); blast.open.add(swKey(...blast.cur)); blast.phase="play"; swDraw(); blast.phase="demo"; sfx("shoot"); await step(700); };
+      blast.cur=[blast.cur[0]+dx, blast.cur[1]+dy]; blast.phase="play"; swDraw(); blast.phase="demo"; sfx("tick"); await step(180); } };
+  const sweep=async()=>{ helpZone("A"); blast.open.add(swKey(...blast.cur)); blast.phase="play"; swDraw(); blast.phase="demo"; sfx("sweep"); await step(700); };
   const cell=(d)=>{ for(let y=0;y<SW_H;y++) for(let x=0;x<SW_W;x++) if(!swMineAt(x,y) && Math.max(Math.abs(m.x-x),Math.abs(m.y-y))===d) return [x,y]; return null; };
   sfx("attract");
   (async()=>{
@@ -317,7 +317,7 @@ function swDemo(){
       const c2=cell(2); if(c2){ await walk(...c2); await sweep(); swHear(blast.clue.get(swKey(...c2))); say("CLOSER", `${at(...c2).label}: V OF V, TWO RESOLUTIONS AWAY.`); await step(3400); }
       const c1=cell(1); if(c1){ await walk(...c1); await sweep(); swHear(blast.clue.get(swKey(...c1))); say("RIGHT BESIDE IT", `${at(...c1).label}: THE V7. ONE RESOLUTION, AND IT'S HOME: G.`); await step(3800); }
       await walk(m.x,m.y); say("RELEASE","ON THE MINE, PLAY ITS KEY'S CHORD: G MAJOR. THE TENSION RESOLVES."); await step(1800);
-      demoPlay([55,59,62,67]); m.defused=true; blast.phase="play"; swDraw(); blast.phase="demo"; const [px,py]=swXY(m.x,m.y); explode(px,py,30,["#7FE08A","#FFD35A"]); sfx("bonus"); await step(2600);
+      demoPlay([55,59,62,67]); m.defused=true; blast.phase="play"; swDraw(); blast.phase="demo"; const [px,py]=swXY(m.x,m.y); explode(px,py,30,["#7FE08A","#FFD35A"]); sfx("defuse"); await step(2600);
       say("READY?","SWEEP A MINE, OR PLAY THE WRONG CHORD ON IT, AND IT GOES OFF."); sfx("level"); await step(2600);
       endSwDemo(token);
     }catch(e){ /* skipped */ }

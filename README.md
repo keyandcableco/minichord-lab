@@ -68,7 +68,8 @@ opens it with `?game=<name>&solo`). Its code is plain scripts, loaded in order a
 - `practice/games.js`: the Practice Room's own games
 - `arcade/`: the arcade. One file per game in `arcade/games/`; `controller.js` (the harp as a d-pad),
   `cabinet.js` (title loop, beginner mode, full screen), `kit.js` (menus, demos, settings, high scores),
-  `sounds.js` and `screen.js` (the pixel canvas every game draws on)
+  `sounds.js` (the shared cabinet sounds; each game's own are in `arcade/games/<game>-sounds.js`, loaded
+  after it) and `screen.js` (the pixel canvas every game draws on)
 - `practice/room.js`: the Practice Room itself (rounds, answers, settings, connecting), which runs last
   and starts whatever the page opened on
 

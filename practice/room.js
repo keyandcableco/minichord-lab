@@ -422,7 +422,7 @@ function later(fn){
   pendingWrong=setTimeout(()=>{ pendingWrong=null; if(q && !solved) fn(); }, q && q.answer.type==="slash" ? 800 : 500);
 }
 function answerChord(voices){
-  clearTimeout(pendingWrong); pendingWrong=null;
+  clearTimeout(pendingWrong); pendingWrong=null; heardAt=performance.now();   // the arcade's background sounds keep clear of it
   if(!q || solved) return;
   if(blast && blast.hsEntry){ blast.hsEntry.set(); return; }                     // initials: a chord sets the letter
   if(blast && blast.bonus && !bonusInField()){ bonusChord(voices); return; }   // a bonus round (an in-field one is played with the game)
@@ -471,6 +471,7 @@ function answerChord(voices){
   }
 }
 function answerNote(pc, pickedName){
+  heardAt=performance.now();
   if(blast && blast.bonus && !bonusInField()){ bonusNote(pc); return; }        // a bonus round (an in-field one is played with the game)
   if(blast && blast.hsEntry){ const c=kmControl(pc), h=blast.hsEntry;               // initials: the harp as a d-pad
     if(!c) return;                                                               // a dead corner of the keymaster

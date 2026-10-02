@@ -210,7 +210,7 @@ function boBall(now, dt){
         if(now>=b.releaseAt) boRelease(b);
       } else {
         b.x=p.x+p.w/2; b.y=blast.padY-BO_RING-R;
-        if(now>=blast.serveAt){ const a=(Math.random()<.5?-1:1)*(.15+Math.random()*.3); b.vx=Math.sin(a)*b.speed; b.vy=-Math.cos(a)*b.speed; b.stuck=false; sfx("shoot"); }
+        if(now>=blast.serveAt){ const a=(Math.random()<.5?-1:1)*(.15+Math.random()*.3); b.vx=Math.sin(a)*b.speed; b.vy=-Math.cos(a)*b.speed; b.stuck=false; sfx("serve"); }
       }
     } else {
       const dist=Math.hypot(b.vx,b.vy)*dt*f, steps=Math.max(1,Math.ceil(dist/2)), h=dt*f/steps;
@@ -243,10 +243,10 @@ function boPaddleHit(b, now){
   if(b.y > (y0+y1)/2){                                            // under its middle: only knocked aside, still falling
     const right=b.x>(x0+x1)/2; b.x = right ? x1+R : x0-R;
     b.vx = (right?1:-1)*Math.max(Math.abs(b.vx), b.speed*.35) + p.vx*.3; boKeepAngle(b);
-    sfx("press"); return true;
+    sfx("glance"); return true;
   }
   boPaddleBounce(b);
-  sfx("press"); boHeal();
+  sfx("paddle"); boHeal();
   if(blast.phase==="play" && boPowerOn("fermata")) boCatch(b, now);
   return true;
 }
@@ -290,8 +290,8 @@ function boBrickHit(b, now){
   boKeepAngle(b);
   const k=hits.sort((a,c)=>a.d-c.d)[0].k;       // the one it struck squarest
   blast.boTouchAt=now;
-  if(!k.cracked){ k.cracked=true; k.crackedAt=now; k.el.classList.add("cracked"); sfx("key"); boHelp(); }
-  else sfx("press");
+  if(!k.cracked){ k.cracked=true; k.crackedAt=now; k.el.classList.add("cracked"); sfx("crack"); boHelp(); }
+  else sfx("ping");
   if(blast.phase==="demo" && blast.demoAuto) gameLater(()=>{ if(blast && k.alive && k.cracked){ helpChord(k.root, k.q); boBreak(k, true); } }, 650);
   return true;
 }
@@ -369,14 +369,14 @@ function breakoutNote(pc){
   if(!t){ heard(same[0].name,false,"LINE THE CANNON UP UNDER IT"); return; }
   t.gone=true; pw.shot++;
   const P=PX; blast.fx.missiles.push({x0:cx/P, y0:blast.padY/P, x1:t.x/P, y1:t.y/P, t0:performance.now(), dur:140, hit:()=>{ t.el.remove(); explode(t.x,t.y,18,["#7FE9FF","#FFD35A","#F1E8D2"]); }});
-  const pts=mulPts(20*(blast.level+1)); blast.score+=pts; popup(t.x,t.y-16,`${t.name} +${pts}`,"#7FE9FF"); heard(t.name,true); sfx("shoot"); boBar();
+  const pts=mulPts(20*(blast.level+1)); blast.score+=pts; popup(t.x,t.y-16,`${t.name} +${pts}`,"#7FE9FF"); heard(t.name,true); sfx("tink"); boBar();
 }
 // the demo's cannon: what a harp pluck does, lined up under the tone
 function boDemoShoot(t){
   const pw=blast.power; if(!pw || t.gone) return;
   const p=blast.paddle, cx=p.x+p.w/2, P=PX; t.gone=true; pw.shot++; helpString(t.pc); demoPlay([60+t.pc]);
   blast.fx.missiles.push({x0:cx/P, y0:blast.padY/P, x1:t.x/P, y1:t.y/P, t0:performance.now(), dur:140, hit:()=>{ t.el.remove(); explode(t.x,t.y,18,["#7FE9FF","#FFD35A","#F1E8D2"]); }});
-  popup(t.x,t.y-16,t.name,"#7FE9FF"); sfx("shoot");
+  popup(t.x,t.y-16,t.name,"#7FE9FF"); sfx("tink");
 }
 function boPowerDone(){
   const pw=blast.power; blast.power=null; helpChord(null);
@@ -385,7 +385,7 @@ function boPowerDone(){
 }
 function boLost(x){
   explode(x??blast.W/2, blast.H-20, 26, ["#FF4B3E","#FF8A3D","#FFD35A"]);
-  sfx("miss"); buzz(blast.field,true); blast.lives--; boHeal(); boPowerEnd(); boBar();
+  sfx("lost"); buzz(blast.field,true); blast.lives--; boHeal(); boPowerEnd(); boBar();
   if(blast.lives<=0){
     blast.phase="over"; blast.over=true; boExtraClear(); boCapsClear(); blast.balls=[]; blast.ballEl.style.transform="translate(-40px,-40px)";
     const best=Math.max(saved.best.breakout||0, blast.score); saved.best.breakout=best; save();

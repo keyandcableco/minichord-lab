@@ -3,46 +3,66 @@
 // others as plain scripts sharing one scope; see practice/boot.js.
 "use strict";
 
-// ---------- Chord Invaders' own sounds ----------
-// Chiptune effects from square waves and noise, only in this game and only with sounds on:
-// a laser for each shot, a crunchy burst for each hit, a sparkle for a ★, a thud for a miss,
-// a rising fanfare for a new level, a jingle for a key set, and a falling tune for game over.
+// ---------- The arcade's sounds ----------
+// Chiptune effects from oscillators and noise, made on the spot, only with sounds on. The shared set
+// below is Chord Invaders' own, and the cabinet's: a laser for each shot, a crunchy burst for each
+// hit, a sparkle for a ★, a thud for a miss, a rising fanfare for a new level, a jingle for a key set,
+// a falling tune for game over, the coin-in, the menu's clicks. Every other game has a table of its
+// own (arcade/games/<game>-sounds.js, kept in GAME_SFX under the game's kind) that names sounds of
+// its own and may stand in for the shared shoot, boom, miss and level, so each game can be told by
+// ear. The cabinet's sounds (start, press, over, life, bonus, attract) stay shared: they're the
+// arcade's. A sound is a function of the kit and an optional value (a pitch class, a size).
 let noiseBuf=null;
 // A pixel star in the game's style, drawn as blocks: the arcade font has no ★ of its own, and
 // the one the browser borrowed looked like a small asterisk.
 const PIXEL_STAR=(()=>{ const rows=["....#....","...###...","#########",".#######.","..#####..","..##.##..",".##...##."];
   const r=[]; rows.forEach((row,y)=>[...row].forEach((c,x)=>{ if(c==="#") r.push(`<rect x="${x}" y="${y}" width="1" height="1"/>`); }));
   return `<svg class="pstar" viewBox="0 0 9 7" aria-hidden="true" shape-rendering="crispEdges">${r.join("")}</svg>`; })();
-// Some browsers pause a page's audio after a stretch of silence (the wait before the attract
-// demo is one). A paused context is woken and the sound played once it's back, rather than skipped.
-function sfx(kind){
-  if(!settings.sounds || !piano.ctx) return;
-  if(piano.ctx.state!=="running"){ piano.ctx.resume().then(()=>{ if(piano.ctx.state==="running") sfx(kind); }).catch(()=>{}); return; }
+// the last time a chord or a note came in, or the page played one: background sounds keep out of its way
+let heardAt=0;
+const quietFor=ms=>performance.now()-heardAt>ms;
+// a pitch class as a frequency in the octave from C5, for jingles set in a game's key
+const pcHz=(pc, oct=0)=>523.25*2**((((pc%12)+12)%12)/12+oct);
+// the makings of a sound: a tone that glides and fades, filtered noise, both from t (now) plus at
+function sfxKit(){
   const ctx=piano.ctx, t=ctx.currentTime+.005, out=ctx.createGain(); out.gain.value=.16; out.connect(ctx.destination);
   const tone=(type,f0,f1,at,dur,vol=1)=>{ const o=ctx.createOscillator(), g=ctx.createGain(); o.type=type;
     o.frequency.setValueAtTime(f0,t+at); if(f1) o.frequency.exponentialRampToValueAtTime(f1,t+at+dur);
     g.gain.setValueAtTime(vol,t+at); g.gain.exponentialRampToValueAtTime(.001,t+at+dur);
     o.connect(g).connect(out); o.start(t+at); o.stop(t+at+dur+.02); };
-  const noise=(at,dur,from,to,vol=1)=>{ if(!noiseBuf){ noiseBuf=ctx.createBuffer(1,ctx.sampleRate*.6,ctx.sampleRate); const d=noiseBuf.getChannelData(0); for(let i=0;i<d.length;i++) d[i]=Math.random()*2-1; }
-    const n=ctx.createBufferSource(), f=ctx.createBiquadFilter(), g=ctx.createGain(); n.buffer=noiseBuf; f.type="lowpass";
+  // filtered noise: lowpass by default; bandpass or highpass, with a Q, for hiss, splash and static
+  const noise=(at,dur,from,to,vol=1,type="lowpass",Q=1)=>{ if(!noiseBuf){ noiseBuf=ctx.createBuffer(1,ctx.sampleRate*.6,ctx.sampleRate); const d=noiseBuf.getChannelData(0); for(let i=0;i<d.length;i++) d[i]=Math.random()*2-1; }
+    const n=ctx.createBufferSource(), f=ctx.createBiquadFilter(), g=ctx.createGain(); n.buffer=noiseBuf; n.loop=dur>.55; f.type=type; f.Q.value=Q;
     f.frequency.setValueAtTime(from,t+at); f.frequency.exponentialRampToValueAtTime(to,t+at+dur);
     g.gain.setValueAtTime(vol,t+at); g.gain.exponentialRampToValueAtTime(.001,t+at+dur);
     n.connect(f).connect(g).connect(out); n.start(t+at); n.stop(t+at+dur+.02); };
-  if(kind==="shoot") tone("square",1400,180,0,.13,.55);
-  else if(kind==="boom"){ noise(0,.35,5000,120,.9); tone("square",160,40,0,.22,.5); }
-  else if(kind==="bonus"){ [1319,1568,1976,2637].forEach((f,i)=>tone("square",f,0,i*.05,.09,.35)); noise(0,.3,6000,300,.5); }
-  else if(kind==="miss") { tone("square",220,70,0,.35,.7); noise(0,.2,900,100,.4); }
-  else if(kind==="level"){ [523,659,784,1047,1319].forEach((f,i)=>tone("square",f,0,i*.07,.12,.45)); tone("triangle",1047,0,.36,.4,.6); }
-  else if(kind==="key")  { [784,988,1175,1568].forEach((f,i)=>tone("triangle",f,0,i*.06,.14,.7)); }
-  else if(kind==="over") { [392,370,349,330,311,294,262].forEach((f,i)=>tone("square",f,0,i*.16,.2,.5)); tone("triangle",131,0,1.12,.8,.8); }
-  else if(kind==="life") { [262,330,392,523, 523,659,784,1047].forEach((f,i)=>tone("square",f,0,i*.07+(i>3?.08:0),.11,.45)); tone("triangle",1047,0,.66,.45,.6); }   // the start, then from the top an octave up
-  else if(kind==="start"){ [262,330,392,523].forEach((f,i)=>tone("square",f,0,i*.08,.11,.45)); }
-  else if(kind==="freeze"){ tone("square",1600,200,0,.45,.35); noise(0,.5,8000,1500,.35); tone("triangle",2400,2400,.05,.3,.25); }   // an icy crackle
-  else if(kind==="press"){ tone("square",1760,1320,0,.05,.35); }                                  // a button going down
-  else if(kind==="combo"){ tone("square",392,784,0,.18,.4); tone("square",494,988,.02,.18,.3); }  // both preset buttons: key change mode
-  else if(kind==="blinks"){ [0,.3,.6].forEach(at=>tone("square",2093,0,at,.04,.25)); }            // the light blinking
-  else if(kind==="letgo"){ tone("square",988,494,0,.2,.4); }
-  else if(kind==="attract"){ [523,659,784,659,523,784,1047].forEach((f,i)=>tone("square",f,0,i*.09,.1,.35)); }
+  return {ctx, t, out, tone, noise};
+}
+const SFX={
+  shoot:  ({tone})=>tone("square",1400,180,0,.13,.55),
+  boom:   ({tone,noise})=>{ noise(0,.35,5000,120,.9); tone("square",160,40,0,.22,.5); },
+  bonus:  ({tone,noise})=>{ [1319,1568,1976,2637].forEach((f,i)=>tone("square",f,0,i*.05,.09,.35)); noise(0,.3,6000,300,.5); },
+  miss:   ({tone,noise})=>{ tone("square",220,70,0,.35,.7); noise(0,.2,900,100,.4); },
+  level:  ({tone})=>{ [523,659,784,1047,1319].forEach((f,i)=>tone("square",f,0,i*.07,.12,.45)); tone("triangle",1047,0,.36,.4,.6); },
+  key:    ({tone})=>{ [784,988,1175,1568].forEach((f,i)=>tone("triangle",f,0,i*.06,.14,.7)); },
+  over:   ({tone})=>{ [392,370,349,330,311,294,262].forEach((f,i)=>tone("square",f,0,i*.16,.2,.5)); tone("triangle",131,0,1.12,.8,.8); },
+  life:   ({tone})=>{ [262,330,392,523, 523,659,784,1047].forEach((f,i)=>tone("square",f,0,i*.07+(i>3?.08:0),.11,.45)); tone("triangle",1047,0,.66,.45,.6); },   // the start, then from the top an octave up
+  start:  ({tone})=>{ [262,330,392,523].forEach((f,i)=>tone("square",f,0,i*.08,.11,.45)); },
+  freeze: ({tone,noise})=>{ tone("square",1600,200,0,.45,.35); noise(0,.5,8000,1500,.35); tone("triangle",2400,2400,.05,.3,.25); },   // an icy crackle
+  press:  ({tone})=>tone("square",1760,1320,0,.05,.35),                                    // a button going down
+  combo:  ({tone})=>{ tone("square",392,784,0,.18,.4); tone("square",494,988,.02,.18,.3); },   // both preset buttons: key change mode
+  blinks: ({tone})=>{ [0,.3,.6].forEach(at=>tone("square",2093,0,at,.04,.25)); },              // the light blinking
+  letgo:  ({tone})=>tone("square",988,494,0,.2,.4),
+  attract:({tone})=>{ [523,659,784,659,523,784,1047].forEach((f,i)=>tone("square",f,0,i*.09,.1,.35)); },
+};
+const GAME_SFX={};
+// Some browsers pause a page's audio after a stretch of silence (the wait before the attract
+// demo is one). A paused context is woken and the sound played once it's back, rather than skipped.
+function sfx(kind, v){
+  if(!settings.sounds || !piano.ctx) return;
+  if(piano.ctx.state!=="running"){ piano.ctx.resume().then(()=>{ if(piano.ctx.state==="running") sfx(kind, v); }).catch(()=>{}); return; }
+  const own=blast && GAME_SFX[blast.kind], make=(own && own[kind]) || SFX[kind];
+  if(make) make(sfxKit(), v);
 }
 
 

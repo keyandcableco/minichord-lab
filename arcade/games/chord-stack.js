@@ -193,8 +193,8 @@ function stFall(){ const p=blast.piece; if(!p) return; if(stFits(p.cells,p.x,p.y
 function stLock(){
   const p=blast.piece; if(!p) return;
   stAbs(p.cells,p.x,p.y).forEach(([x,y],i)=>{ if(y>=0) blast.grid[y][x]={pc:p.notes[i]}; });
-  blast.piece=null; sfx("press");
-  if(stReadyRows().length) sfx("key");
+  blast.piece=null; sfx("lock");
+  if(stReadyRows().length) sfx("ready");
   stSpawn(); stDraw(); stBar();
 }
 function stMove(dx){ const p=blast.piece; if(!p) return; if(stFits(p.cells,p.x+dx,p.y)){ p.x+=dx; stDraw(); } }
@@ -207,7 +207,7 @@ function stRotate(){
   turned=turned.map(([x,y])=>[x-mx,y-my]);
   const shift=Math.floor((w-(Math.max(...turned.map(c=>c[0]))+1))/2);
   for(const [kx,ky] of [[0,0],[-1,0],[1,0],[-2,0],[2,0],[0,-1]]){
-    if(stFits(turned,p.x+shift+kx,p.y+ky)){ p.cells=turned; p.x+=shift+kx; p.y+=ky; sfx("press"); stDraw(); return; } }
+    if(stFits(turned,p.x+shift+kx,p.y+ky)){ p.cells=turned; p.x+=shift+kx; p.y+=ky; sfx("rotate"); stDraw(); return; } }
 }
 function stDrop(){ const p=blast.piece; if(!p) return; while(stFits(p.cells,p.x,p.y+1)) p.y++; stLock(); blast.nextFall=performance.now()+blast.fallMs; }
 // where the piece would land
@@ -257,11 +257,11 @@ function stackChord(voices){
   stGravity();
   pts=mulPts(Math.round(pts*(blast.level+1)*runs.length));
   blast.score+=pts; blast.clears+=runs.length; stats.streak=blast.clears; scoreboard();
-  sfx(runs.some(r=>r.whole)?"level":"boom");
+  sfx(runs.some(r=>r.whole)?"level":"boom", stKeyTonic(blast.keyF||0));
   const how = runs.some(r=>r.whole) ? "WHOLE ROW! " : runs.some(r=>r.tight) ? "SIDE BY SIDE! " : "";
   popup(blast.bx+ST_W/2*blast.cell, blast.by+runs[0].y*blast.cell, `${how}${runs[0].name}${runs.length>1?` ×${runs.length}`:""} +${pts}`, "#FFD35A");
   if(blast.clears>=(blast.level+1)*8 && blast.level<ST_LEVELS.length-1){
-    blast.level++; blast.fallMs*=.88; stLevelKey(); sfx("level");
+    blast.level++; blast.fallMs*=.88; stLevelKey(); sfx("level", stKeyTonic(blast.keyF||0));
     banner(`LEVEL ${blast.level+1}`, `${stLevelName(blast.level).toUpperCase()} · ${stName(stKeyTonic(blast.keyF),blast.keyF)} MAJOR`); }
   stDraw(); stBar();
 }
@@ -320,8 +320,8 @@ function stDemo(){
       for(let k=0;k<4;k++){ stFall(); await step(240); }
       for(const dx of [-1]){ helpZone(dx<0?"left":"right"); stMove(dx); await step(360); }
       while(stFits(blast.piece.cells,blast.piece.x,blast.piece.y+1)){ blast.piece.y++; stDraw(); await step(70); }
-      const p=blast.piece; stAbs(p.cells,p.x,p.y).forEach(([x,y],i)=>blast.grid[y][x]={pc:p.notes[i]}); blast.piece=null; sfx("press"); stDraw(); await step(900);
-      say("IT LIGHTS UP","THE ROW HOLDS C, E AND G: C MAJOR. SIDE BY SIDE LIKE THIS, IT SCORES DOUBLE. PLAY IT ON THE MINICHORD."); sfx("key"); await step(3000);
+      const p=blast.piece; stAbs(p.cells,p.x,p.y).forEach(([x,y],i)=>blast.grid[y][x]={pc:p.notes[i]}); blast.piece=null; sfx("lock"); stDraw(); await step(900);
+      say("IT LIGHTS UP","THE ROW HOLDS C, E AND G: C MAJOR. SIDE BY SIDE LIKE THIS, IT SCORES DOUBLE. PLAY IT ON THE MINICHORD."); sfx("ready"); await step(3000);
       demoPlay([48,52,55,60]);
       // C major, as the caption says: C, E and G, and nothing else
       const F=ST_ROWS-1, r=stRowChord(blast.grid[F], 0, "");

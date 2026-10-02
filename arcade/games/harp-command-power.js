@@ -39,7 +39,7 @@ function hcPowerGet(it){
 function hcShieldTakes(it){
   if(!hcPowerOn("shield")) return false;
   blast.hcPower=null;
-  popup(it.el.offsetLeft, blast.field.clientHeight-70, "SHIELDED", "#7FE08A"); sfx("bonus"); blastBarCommand();
+  popup(it.el.offsetLeft, blast.field.clientHeight-70, "SHIELDED", "#7FE08A"); sfx("shield"); blastBarCommand();
   return true;
 }
 // every frame of play: time slows, the cannons spray, a power runs out

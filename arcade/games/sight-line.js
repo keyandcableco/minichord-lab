@@ -235,7 +235,7 @@ function slScore(n){
   n.done=true; n.el && n.el.classList.add("hit");
   const dead=Math.abs(n.x-blast.ph)<=SL_DEAD, mult=Math.min(4,1+Math.floor(blast.streak/8));
   const pts=mulPts(10*(blast.level+1)*mult*(dead?2:1)*(n.chord?2:1)); blast.score+=pts; blast.hits++; blast.streak++;
-  stats.streak=blast.hits; scoreboard(); heard(n.name,true); sfx("shoot");
+  stats.streak=blast.hits; scoreboard(); heard(n.name,true); sfx("hit", dead); if(blast.streak%8===0) sfx("streak", Math.min(4,mult+1));
   popup(blast.ph, slY(n.dn,n.clef)-18, `${dead?"DEAD ON ":""}+${pts}`, dead?"#FFD35A":undefined);
   if(n.last){ const t=n.tune; banner(t.name, t.by); sfx("level"); blast.score+=mulPts(100*(blast.level+1)); }
   slBar();
@@ -325,7 +325,7 @@ function slDemoSpawn(){
 function slDemoHit(n){
   const d=blast.demo; if(!d) return;
   const [t,c]=n.say||["",""]; if(d.el) { const tt=d.el.querySelector(".demotitle"), cc=d.el.querySelector(".democap"); if(tt) tt.textContent=t; if(cc) cc.textContent=c; }
-  n.done=true; n.el && n.el.classList.add("hit"); sfx("shoot");
+  n.done=true; n.el && n.el.classList.add("hit"); sfx("hit");
   if(n.chord){ if(n.inv){ blast.inv=n.inv; if(blast.invEl) blast.invEl.textContent=`VOICING: ${SL_INV[n.inv]}`; if(blast.phase==="demo") helpKnob(steerKnob(), (n.inv+.5)/3); }
     helpChord(SHARP_NAMES[n.rootPc], n.q); demoPlay(n.dns.map(d=>slMidi(d,0,blast.keyF))); }
   else { helpString(n.pc); demoPlay([n.midi]); }
