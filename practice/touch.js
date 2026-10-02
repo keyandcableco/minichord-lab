@@ -253,12 +253,13 @@ function tdHarp(){
   h.addEventListener("pointerup", end); h.addEventListener("pointercancel", end); h.addEventListener("lostpointercapture", end);
   return h;
 }
-// the harp as a game controller: a d-pad and A and B, each plucking its string
+// the harp as a game controller: a d-pad and A and B, each plucking its string, silently: it steers,
+// it isn't music
 function tdDpad(){
   const d=document.createElement("div"); d.className="tddpad"; d.setAttribute("aria-label","The harp as a controller");
   for(const z of ["up","left","right","down","B","A"]){
     const b=document.createElement("button"); b.type="button"; b.className="tdz tdz-"+z; b.dataset.zone=z; b.innerHTML=kmGlyph(z);
-    tdHold(b, id=>{ const i=kmLayout().byString.indexOf(z); if(i<0) return; tdBuzz(); vmPluck("d"+id, i); }, id=>vmLetGo("d"+id));
+    tdHold(b, id=>{ const i=kmLayout().byString.indexOf(z); if(i<0) return; tdBuzz(); vmPluck("d"+id, i, true); }, id=>vmLetGo("d"+id));
     d.appendChild(b);
   }
   return d;

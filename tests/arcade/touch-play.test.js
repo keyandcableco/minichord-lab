@@ -73,10 +73,11 @@ const size=(el, w, h)=>{ el.getBoundingClientRect=()=>({left:0, top:0, right:w, 
     w.eval("touchMinichord(true)"); await sleep(50); const a=await sn.start(0); await sleep(500);
     check("Chord Snake shows a d-pad and A and B, and the chord buttons", !!d.querySelector(".tddpad") && d.querySelectorAll(".tdz").length===6 && !!d.querySelector(".tdgrid"));
     const turn=a.dir==="up"||a.dir==="down" ? "left" : "up";
-    a.queue.length=0;
+    a.queue.length=0; w.eval("window.__notes=0; { const play=piano.play; piano.play=function(...x){ window.__notes++; return play.apply(this, x); }; }");
     finger(sn, d.querySelector(`.tdz-${turn}`), "pointerdown", 4, 5, 5); await sleep(30); finger(sn, d.querySelector(`.tdz-${turn}`), "pointerup", 4, 5, 5);
     let ok=false; for(let i=0;i<20 && !ok;i++){ await sleep(40); ok=a.queue.includes(turn) || a.dir===turn; }
     check("the d-pad steers the snake", ok, `${turn}: ${a.dir} ${a.queue}`);
+    check("silently: the d-pad steers, it plays no note", w.eval("window.__notes")===0, w.eval("window.__notes")+" notes");
     // a bonus round played on the harp's notes: the strings while it plays, the d-pad after
     w.eval('arcadeBonus("missing")'); await sleep(600);
     check("MISSING NOTE in Chord Snake puts the strings on the deck in place of the d-pad", !!d.querySelector(".tdharp") && !d.querySelector(".tddpad"));

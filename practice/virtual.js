@@ -123,13 +123,13 @@ function vmDoubleTap(){
 }
 const vmSharp=()=> vm.mod.size>0;
 // a harp string: its note (the twelve strings chromatic from middle C), and the same events a real
-// pluck and release send
-function vmPluck(id, i){
+// pluck and release send; silent when it's only a game's control (the touch screen's d-pad)
+function vmPluck(id, i, silent){
   if(!vmOn()) return;
   vm.strings.set(id, i);
   const note=60+i;
   mc.dispatchEvent(new CustomEvent("harp",{detail:{note, pitch:note, string:i, ch:0}}));
-  vmPlay([note], {dur:.9, vel:70});
+  if(!silent) vmPlay([note], {dur:.9, vel:70});
   vmTell();
 }
 function vmLetGo(id){
