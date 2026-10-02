@@ -42,6 +42,7 @@ const FU_LEVELS=[
   {n:"Two against one: all of it", species:2, rules:FU_SP2, errors:4, both:true},
 ];
 const FU_LINES=3;                                                   // lines a level
+const FU_RUSH=10;                                                   // how much faster a line goes once all its faults are found
 const fuLevel=(n=blast.level)=>FU_LEVELS[Math.min(n, FU_LEVELS.length-1)];
 // the intervals over the bars: numbers, or hidden (kit.js scores it more)
 const fuShowIv=()=> blast && blast.kind==="fux" && blast.phase==="play" && blast.ivAt!=null ? blast.ivAt===0 : !saved.fuIv;
@@ -303,15 +304,16 @@ function fuTick(now){
   if(blast.fx) fxDraw(now, dt);
   const ln=blast.line;
   if(ln && !ln.done && blast.L && (blast.phase==="play" || (blast.phase==="demo" && !blast.demoHold))){
-    blast.scroll+=blast.L.barW/(ln.secs||fuSecs())*dt;
+    blast.scroll+=blast.L.barW/(ln.secs||fuSecs())*dt*(ln.rush ? FU_RUSH : 1);
+    // a bar is past the cannons (and out of reach) at the left edge, and keeps scrolling till it's off
     for(const b of blast.bars){
-      if(b.gone) continue;
+      if(b.el.hidden) continue;
       fuBarPlace(b);
-      if(!b.heard && b.x<blast.L.W-blast.L.barW*.5){ b.heard=true; fuHear(b); }
-      if(b.x<blast.L.m-blast.L.barW*.6){ b.gone=true; fuGone(b); }
+      if(!b.heard && b.x<blast.L.W-blast.L.barW*.5){ b.heard=true; if(!ln.rush) fuHear(b); }
+      if(!b.gone && b.x<blast.L.m-blast.L.barW*.6){ b.gone=true; fuGone(b); }
       if(b.x<-blast.L.barW) b.el.hidden=true;
     }
-    if(blast.bars.every(b=>b.gone)) fuLineEnd();
+    if(blast.bars.every(b=>b.el.hidden)) fuLineEnd();
   }
   blast.raf=requestAnimationFrame(fuTick);
 }
@@ -339,7 +341,7 @@ function fuShoot(i){
   const c=blast.cannons && blast.cannons[i], ln=blast.line; if(!c) return;
   c.fired=performance.now();
   const L=blast.L, b=blast.bars.find(x=>!x.gone && Math.abs(x.x-c.x)<L.barW/2);
-  if(!b || !ln || ln.done){ heard(`STRING ${i+1}`, false, "NO BAR OVER IT"); return; }
+  if(!b || !ln || ln.done || ln.rush){ heard(`STRING ${i+1}`, false, "NO BAR OVER IT"); return; }
   if(b.shot || b.wrong){ heard(`BAR ${b.i+1}`, false, "ALREADY SHOT"); return; }
   if(blast.phase==="play" && ln.shells<=0){ heard(`STRING ${i+1}`, false, "OUT OF SHELLS"); buzz(blast.field,true); return; }
   if(blast.phase==="play"){ ln.shells--; fuBar(); }
@@ -363,6 +365,8 @@ function fuLand(b, y){
     const pts=mulPts(Math.round((25+25*early)*(blast.level+1)));
     blast.score+=pts; blast.found++; ln.caught++; stats.streak=blast.found; scoreboard();
     popup(b.x, y-30, `+${pts}`);
+    // every wrong bar found: nothing's left to wait for, so the rest of the line hurries off
+    if(ln.caught===ln.wrong) gameLater(()=>{ if(blast.line===ln && !ln.done){ ln.rush=true; heard("ALL FOUND", true, ""); } }, 900);
   } else {
     b.wrong=true; b.el.classList.add("wrong");
     sfx("miss"); buzz(blast.field,true);
