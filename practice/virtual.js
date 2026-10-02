@@ -84,7 +84,43 @@ function vmTell(){ vm.listeners.forEach(fn=>fn()); }
 // ---------- what the front ends press ----------
 function vmPress(id, r, c){ if(!vmOn()) return; vm.presses.set(id, {r, c, t:performance.now()}); vmUpdate(); }
 function vmRelease(id){ if(vm.presses.delete(id)) vmUpdate(); }
-function vmModifier(id, on){ if(!vmOn()) return; const was=vm.mod.size>0; on ? vm.mod.add(id) : vm.mod.delete(id); if(was!==vm.mod.size>0) vmUpdate(); }
+function vmModifier(id, on){
+  if(!vmOn()) return;
+  const was=vm.mod.size>0; on ? vm.mod.add(id) : vm.mod.delete(id);
+  const now=vm.mod.size>0; if(was===now) return;
+  vmTap(now);
+  vmUpdate();
+}
+// The modifier's double tap, as the firmware has it: two taps, each shorter than VM_TAP_MAX and the
+// second within VM_TAP_GAP of the first, with no chord button down (a tap with a chord held is a
+// sharpen). It switches whatever the double tap is pointed at: each pair of settings names one to
+// change (200, 209, 211) and the value to give it (201, 210, 212); the games point it at the
+// modifier's direction (31). Another double tap puts back what it changed, unless something else
+// has changed it since, which then stands.
+const VM_TAP_MAX=250, VM_TAP_GAP=400, VM_TAP_PAIRS=[[200,201],[209,210],[211,212]];
+function vmTap(down){
+  const t=performance.now(), tap=vm.tap||(vm.tap={count:0, at:0, down:0, engaged:null});
+  if(down){ tap.down=t; return; }
+  if(t-tap.down>=VM_TAP_MAX || vm.presses.size){ tap.count=0; return; }     // a hold, or a chord down: not a tap
+  if(tap.count===1 && t-tap.at<VM_TAP_GAP){ tap.count=0; vmDoubleTap(); }
+  else { tap.count=1; tap.at=t; }
+}
+function vmDoubleTap(){
+  const p=mc.params, tap=vm.tap;
+  if(tap.engaged){
+    for(const {a, saved, applied} of tap.engaged.reverse()) if(p[a]===applied) p[a]=saved;
+    tap.engaged=null;
+  } else {
+    const done=[];
+    for(const [ctl, val] of VM_TAP_PAIRS){
+      const a=p[ctl]; if(!(a>=21 && a<=219) || VM_TAP_PAIRS.flat().includes(a) || done.some(d=>d.a===a)) continue;
+      done.push({a, saved:p[a], applied:p[val]}); p[a]=p[val];
+    }
+    if(!done.length) return;
+    tap.engaged=done;
+  }
+  mc.dispatchEvent(new Event("device"));                       // the Lab reads the settings as a minichord reports them
+}
 const vmSharp=()=> vm.mod.size>0;
 // a harp string: its note (the twelve strings chromatic from middle C), and the same events a real
 // pluck and release send

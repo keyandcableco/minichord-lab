@@ -93,7 +93,11 @@ body.tdplay .field .kmstrip{display:none}                      /* the deck is th
 .fscab.phone .fsmarquee{display:none}
 .fscab.phone .fsbezel{flex:1 1 auto;display:flex;flex-direction:column;min-height:0;padding:0;border:0;border-radius:0;background:#000;box-shadow:none}
 .fscab.phone .fsbezel::before{display:none}
-.fscab.phone .fsplate{position:static;order:-1;flex:0 0 auto;height:30px;padding:env(safe-area-inset-top,0px) max(10px,env(safe-area-inset-right,0px)) 0 max(10px,env(safe-area-inset-left,0px));font-size:.4rem}
+/* the bar is as tall as its buttons and their names need, however big the phone draws text, and over
+   the screen whatever happens, so the screen never covers it */
+.fscab.phone{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+.fscab.phone .fsplate{position:relative;inset:auto;z-index:3;order:-1;flex:0 0 auto;min-height:30px;height:auto;box-sizing:border-box;
+  padding:calc(env(safe-area-inset-top,0px) + 4px) max(10px,env(safe-area-inset-right,0px)) 4px max(10px,env(safe-area-inset-left,0px));font-size:.4rem;background:#000}
 .fscab.phone .fsplate>span:first-child,.fscab.phone .fsplate .rainbow,.fscab.phone .fsconn{display:none}   /* no room, and the minichord's here on the screen */
 .fscab.phone .fsplate{justify-content:flex-end}
 .fscab.phone .fsplate .nesbtn{flex-direction:row;gap:6px}

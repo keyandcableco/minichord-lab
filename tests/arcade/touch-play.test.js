@@ -5,7 +5,7 @@
 // strings strum, the d-pad plucks the string the harp layout gives each direction, and the knob turns
 // by how far it's dragged. Chord Sweeper flags with a long press.
 const harness=require("./harness");
-const [inv, sn, bo, sw]=["invaders","chord-snake","chord-breakout","chord-sweeper"].map(s=>harness.load(s));
+const [inv, sn, bo, sw, as]=["invaders","chord-snake","chord-breakout","chord-sweeper","chord-asteroids"].map(s=>harness.load(s));
 const t=sw, {check, sleep}=t;
 // a pointer event, as a finger sends it (jsdom has no PointerEvent of its own)
 const finger=(g, el, type, id, x, y)=>{ const e=new g.w.MouseEvent(type, {clientX:x, clientY:y, bubbles:true, cancelable:true});
@@ -91,6 +91,16 @@ const size=(el, w, h)=>{ el.getBoundingClientRect=()=>({left:0, top:0, right:w, 
     w.eval("window.__knob=[]; mc.addEventListener('knob', e=>window.__knob.push(Math.round(e.detail.value*100)))");
     finger(bo, k, "pointerdown", 6, 150, 20); finger(bo, k, "pointermove", 6, 170, 20); finger(bo, k, "pointermove", 6, 110, 20); finger(bo, k, "pointerup", 6, 110, 20); await sleep(30);
     check("the knob turns by how far it's dragged, from where it was", w.eval("window.__knob.join()")==="60,30", w.eval("window.__knob.join()")); }
+
+  // ---------- Chord Asteroids in manual aim: two knobs ----------
+  { const {w, d}=as;
+    w.eval("saved.asAim=true; touchMinichord(true)"); await sleep(50); await as.start(0); await sleep(600);
+    const ks=[...d.querySelectorAll(".tdknob")];
+    check("Chord Asteroids in manual aim has two knobs, to orbit and to aim", ks.map(k=>k.dataset.name).join()==="ORBIT,AIM", ks.map(k=>k.dataset.name).join());
+    w.eval("window.__k=[]; mc.addEventListener('knob', e=>window.__k.push(e.detail.knob))");
+    ks.forEach((k,i)=>{ size(k, 200, 40); finger(as, k, "pointerdown", 30+i, 100, 20); finger(as, k, "pointermove", 30+i, 140, 20); finger(as, k, "pointerup", 30+i, 140, 20); });
+    await sleep(30);
+    check("each turns its own knob: the steering one, and the other to aim", w.eval("window.__k.join()")===`${w.eval("steerKnob()")},${w.eval("asAimKnob()")}`, w.eval("window.__k.join()")); }
 
   // ---------- Chord Sweeper: a long press flags ----------
   { const {w, d}=sw;

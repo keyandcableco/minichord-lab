@@ -74,6 +74,20 @@ const t=require("./harness").load("invaders");
   check(`the modifier ${flat?"flattens":"sharpens"} the chord, as the game set it`, JSON.stringify(heard())===(flat?'["B"]':'["C♯"]'), heard().join(" "));
   w.eval("vmModifier('m', false)"); await quiet();
 
+  // the modifier's double tap, as the firmware has it: pointed at the modifier's direction, it flips it
+  w.eval("mc.params[200]=31; mc.params[201]=mc.params[31]===1 ? 0 : 1");
+  const dir=()=>w.eval("mc.params[31]"), d0=dir();
+  const tap=async(ms=60)=>{ w.eval("vmModifier('m', true)"); await sleep(ms); w.eval("vmModifier('m', false)"); await sleep(80); };
+  await tap(); await tap(); await sleep(50);
+  check("two quick taps of the modifier flip it", dir()===1-d0, `${d0} → ${dir()}`);
+  await sleep(500); await tap(); await tap(); await sleep(50);
+  check("and two more put it back", dir()===d0, `${dir()}`);
+  await sleep(500); await tap(300); await tap(); await sleep(50);
+  check("a hold isn't a tap", dir()===d0);
+  await sleep(500); press("c",0,1); await tap(); await tap(); lift("c"); await sleep(50);
+  check("nor a tap with a chord held: that sharpens the chord", dir()===d0);
+  await quiet();
+
   // the voices, while it sounds
   w.eval("window.__voices=0; mc.addEventListener('voices', ()=>window.__voices++)");
   press("a",1,4); await sleep(150);

@@ -10,7 +10,8 @@
 //   chords   the chord buttons
 //   harp     "notes": the twelve strings; "dpad": the harp as a game controller (arcade/controller.js),
 //            drawn as a d-pad and A and B, each plucking the string the harp layout gives it
-//   knob     a knob, turned by dragging along it
+//   knob     a knob, turned by dragging along it; Chord Asteroids in manual aim has two, one to orbit
+//            the ship and one to aim it
 const TD_PROFILES={
   blaster:  {chords:1},
   command:  {chords:0, harp:"notes"},
@@ -27,12 +28,18 @@ const TD_PROFILES={
   hunt:     {chords:1, harp:"notes"},
 };
 const TD_EVERYTHING={chords:1, harp:"notes"};                // the Practice Room's own games
-const tdProfile=()=> (blast && blast.field && TD_PROFILES[blast.kind]) || TD_EVERYTHING;
+function tdProfile(){
+  const p=(blast && blast.field && TD_PROFILES[blast.kind]) || TD_EVERYTHING;
+  if(blast && blast.kind==="asteroids" && (blast.aimManual || saved.asAim)) return {...p, knob:2};
+  return p;
+}
+// what the deck is built for: when it changes (another game, or manual aim chosen), the deck's built again
+const tdShape=()=>{ const p=tdProfile(); return (blast && blast.field ? blast.kind : "")+"|"+(p.knob||0); };
 // A finger near the line between two rows presses both, so one thumb plays the chords that take two
 // buttons in a column and lie next to each other: major and minor (diminished), minor and seventh
 // (minor seventh). The edge is this much of a button's height, on each side of the line.
 const TD_EDGE=.22;
-const td={on:false, deck:null, kind:null, touches:new Map(), knobV:.5, sharpLabels:""};
+const td={on:false, deck:null, shape:null, touches:new Map(), knobV:{}, sharpLabels:""};
 const tdOn=()=> td.on && vmOn();
 
 // where a finger on the chord buttons is: its column, and the row or rows it presses
@@ -71,7 +78,7 @@ let tdTimer=0;
 
 // ---------- the deck ----------
 function tdBuild(){
-  const p=tdProfile(); td.kind=blast && blast.field ? blast.kind : null;
+  const p=tdProfile(); td.shape=tdShape();
   vmKnobs(!!p.knob);
   if(td.touches.size){ td.touches.clear(); vmReset(); }          // fingers on the old deck let go
   td.sharpLabels="";                                           // the new buttons are labelled afresh
@@ -89,7 +96,8 @@ function tdBuild(){
   const top=document.createElement("div"); top.className="tdtop"; deck.appendChild(top);
   if(p.harp==="notes") top.appendChild(tdHarp());
   if(p.harp==="dpad") top.appendChild(tdDpad());
-  if(p.knob) top.appendChild(tdKnob());
+  if(p.knob===2){ top.appendChild(tdKnob("ORBIT", ()=>steerKnob())); top.appendChild(tdKnob("AIM", ()=>asAimKnob())); }
+  else if(p.knob) top.appendChild(tdKnob("KNOB", ()=> blast && blast.kind==="chopper" ? 0 : steerKnob()));
   const now=document.createElement("span"); now.className="tdnow"; top.appendChild(now);
   if(p.chords){ const g=document.createElement("div"); g.className="tdgrid"; deck.appendChild(g); tdGrid(g); }
   tdPlace(); tdDraw(); tdHeight();
@@ -109,8 +117,7 @@ function tdHeight(){ if(td.deck) document.documentElement.style.setProperty("--t
 // the game changed, or the cabinet went up or down: the deck follows
 function tdSync(){
   if(!td.on) return;
-  const kind=blast && blast.field ? blast.kind : null;
-  if(kind!==td.kind) tdBuild(); else tdPlace();
+  if(tdShape()!==td.shape) tdBuild(); else tdPlace();
   tdPhone(); tdHeight();
 }
 // On a phone the game plays in the phone's cabinet: its screen and the minichord drawn round it, filling
@@ -189,14 +196,14 @@ function tdDpad(){
   return d;
 }
 // the knob: dragged along, it turns by how far the finger goes, not where it lands, as a knob does
-function tdKnob(){
-  const k=document.createElement("div"); k.className="tdknob"; k.setAttribute("aria-label","The knob: drag along it");
-  k.innerHTML="<i></i><b>KNOB</b>";
+function tdKnob(name, which){
+  const k=document.createElement("div"); k.className="tdknob"; k.setAttribute("aria-label",`The ${name.toLowerCase()} knob: drag along it`);
+  k.innerHTML=`<i></i><b>${name}</b>`; k.dataset.name=name;
+  const v=()=> td.knobV[name] ?? .5;
   let from=null;
-  const which=()=> blast && blast.kind==="chopper" ? 0 : steerKnob();
-  k.addEventListener("pointerdown", e=>{ e.preventDefault(); tdCapture(k, e); from={x:e.clientX, v:td.knobV, id:e.pointerId}; tdBuzz(); });
+  k.addEventListener("pointerdown", e=>{ e.preventDefault(); tdCapture(k, e); from={x:e.clientX, v:v(), id:e.pointerId}; tdBuzz(); });
   k.addEventListener("pointermove", e=>{ if(!from || e.pointerId!==from.id) return; const w=k.getBoundingClientRect().width||1;
-    td.knobV=Math.max(0, Math.min(1, from.v+(e.clientX-from.x)/w)); vmKnob(which(), td.knobV); tdDraw(); });
+    td.knobV[name]=Math.max(0, Math.min(1, from.v+(e.clientX-from.x)/w)); vmKnob(which(), td.knobV[name]); tdDraw(); });
   const end=e=>{ if(from && e.pointerId===from.id) from=null; };
   k.addEventListener("pointerup", end); k.addEventListener("pointercancel", end);
   return k;
@@ -219,7 +226,7 @@ function tdDraw(){
   td.sharpLabels=labels;
   const lit=new Set(vm.strings.values());
   deck.querySelectorAll(".tdharp span").forEach(s=>s.classList.toggle("on", lit.has(+s.dataset.i)));
-  const knob=deck.querySelector(".tdknob i"); if(knob) knob.style.width=(td.knobV*100)+"%";
+  deck.querySelectorAll(".tdknob").forEach(k=>{ k.querySelector("i").style.width=((td.knobV[k.dataset.name] ?? .5)*100)+"%"; });
   const now=deck.querySelector(".tdnow"); if(now) now.textContent=vmChordName();
 }
 
