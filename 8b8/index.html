@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>8b8 Link · Minichord Lab</title>
+<meta name="description" content="The minichord playing the 8-Bit 8asterd's three AY chips: its tuning followed exactly, its knobs on the 8b8's settings, its rhythm mode clocked to an 8b8 drum pattern, and a sound kept with each preset.">
+<!-- the card a link to this page unfurls into -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Minichord Lab">
+<meta property="og:title" content="8b8 Link">
+<meta property="og:description" content="The minichord playing the 8-Bit 8asterd's three AY chips: its tuning followed exactly, its knobs on the 8b8's settings, its rhythm mode clocked to an 8b8 drum pattern, and a sound kept with each preset.">
+<meta property="og:url" content="https://chordlab.keyandcable.com/8b8/">
+<meta property="og:image" content="https://chordlab.keyandcable.com/8b8/card.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://chordlab.keyandcable.com/8b8/card.png">
+<link rel="icon" href="../core/logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../core/lab.css">
+<script src="../core/theme.js"></script>
+<style>
+.grid2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:0 28px}
+@media (max-width:900px){.grid2{grid-template-columns:1fr}}
+.panel p{max-width:62ch}
+.opts{display:grid;gap:8px;margin:.4rem 0}
+.opts label{display:flex;gap:10px;align-items:baseline}
+.opts label span{display:block}
+.opts label small{display:block;color:var(--muted);font-size:.9rem}
+.lights{display:flex;gap:16px;margin:.6rem 0 .2rem;font-size:.95rem;color:var(--muted)}
+.lights span::before{content:"";display:inline-block;width:12px;height:12px;border-radius:50%;margin-right:6px;vertical-align:-1px;background:var(--rule);transition:background .25s}
+.lights span.lit::before{background:var(--accent);transition:none}
+.tuning{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.88rem;overflow-wrap:anywhere}
+.cents{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:2px;margin:.5rem 0;max-width:520px}
+.cents div{text-align:center;font-size:.8rem;color:var(--muted)}
+.cents i{display:block;height:44px;position:relative;border-bottom:1px solid var(--rule)}
+.cents i b{position:absolute;left:20%;right:20%;background:var(--accent)}
+.knobs{display:grid;gap:8px;max-width:520px}
+.knobs label{display:grid;grid-template-columns:8.5rem minmax(0,1fr) 3.2rem;gap:10px;align-items:center}
+.knobs output{text-align:right;color:var(--muted);font-size:.95rem}
+.grid{display:grid;grid-template-columns:6.2rem repeat(16,minmax(0,1fr));gap:3px;max-width:640px;margin:.6rem 0;align-items:center}
+.grid .name{font-size:.9rem;color:var(--muted)}
+.grid button{padding:0;height:26px;border-bottom-width:1px;min-width:0}
+.grid button:active{margin-top:0}
+.grid button.beat{border-left-width:2px}
+.grid button[aria-pressed="true"]{background:var(--ink)}
+.grid button.now{outline:2px solid var(--brass);outline-offset:-2px}
+.banks{width:100%;border-collapse:collapse;font-size:.95rem;max-width:520px}
+.banks td{padding:.25rem .4rem;border-bottom:1px solid var(--rule)}
+.banks tr.cur td{font-weight:700}
+.banks button{padding:.1rem .5rem;font-size:.85rem}
+#log{max-height:12rem;overflow:auto;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.82rem;color:var(--muted);white-space:pre-wrap;margin:.4rem 0 0}
+.warn{color:var(--felt)}
+@media (prefers-color-scheme:dark){ :root:not([data-theme="light"]) .warn{color:var(--accent)} }
+:root[data-theme="dark"] .warn{color:var(--accent)}
+[hidden]{display:none!important}
+input[type=number]{width:5em;color:var(--ink);border:1px solid var(--ink);background:var(--panel);border-radius:var(--radius);padding:.25rem .4rem}
+</style>
+</head>
+<body>
+<main>
+  <div class="labbar">
+    <a class="crumb" href="../">Minichord Lab</a>
+    <div class="connect">
+      <button id="connect" class="primary">Connect minichord</button>
+      <select id="input" aria-label="MIDI input" disabled><option>No MIDI yet</option></select>
+    </div>
+  </div>
+
+  <h1>8b8 Link</h1>
+  <p class="lede">The minichord playing the <a href="https://github.com/keyandcableco/8bit8asterd">8-Bit 8asterd</a>: three AY-3-8910 sound chips, on the board or in its emulator. Its chords and strings play the chips, in the minichord's own tuning, its knobs turn the 8b8's settings, and its rhythm mode keeps time with an 8b8 drum pattern.</p>
+  <p class="status" id="status">Connect the minichord, then the 8b8.</p>
+  <p class="device-line" id="device"></p>
+
+  <section class="panel" style="margin-top:14px">
+    <h2>The 8b8</h2>
+    <div class="row">
+      <button id="usb">Connect the 8b8 over USB</button>
+      <button id="emu">Use the emulator</button>
+      <button id="test" disabled>Play a test chord</button>
+      <button id="giveback" hidden>Give everything back</button>
+    </div>
+    <p class="fine" id="ebStatus">Not connected. Over USB the settings go through the 8b8's serial port, so close its own control panel first; Chrome or Edge on a computer.</p>
+    <div class="row" id="outRow" hidden>
+      <label class="fine" for="out">Notes go to</label>
+      <select id="out"></select>
+    </div>
+    <div class="lights" aria-hidden="true"><span id="litChord">Chords</span><span id="litHarp">Harp</span><span id="litDrum">Drums</span></div>
+  </section>
+
+  <div class="grid2">
+    <section class="panel">
+      <h2>What plays what</h2>
+      <div class="opts">
+        <label><input type="checkbox" id="chordOn" checked><span>Chord buttons play the 8b8</span></label>
+        <label><span style="min-width:6.5rem">The harp plays</span>
+          <select id="harpMode"><option value="voice">the 8b8's voices</option><option value="drums">the 8b8's drums</option><option value="off">nothing on the 8b8</option></select></label>
+        <label><input type="checkbox" id="exact" checked><span>Exact tuning<small>Turns on the minichord's MPE output while the page is open, so every note brings its own bend: temperaments, 19, 24 and 31 notes to the octave, and glide arrive exactly.</small></span></label>
+        <label><input type="checkbox" id="silence"><span>Silence the minichord<small>Its output amplifiers at zero, so only the 8b8 sounds. MIDI is untouched.</small></span></label>
+        <label><input type="checkbox" id="arpFollow"><span>Arpeggio follows the chord<small>Sets the 8b8's Auto FX arpeggio to major, minor or diminished with each chord, so a held string arpeggiates inside the harmony.</small></span></label>
+      </div>
+      <p class="fine" id="drumNote" hidden>On drums each string hits a piece of the 8b8's kit, lowest string the bass drum. With exact tuning on, every string has its own channel, so a string is always the same drum; without it, the note's letter picks the drum.</p>
+    </section>
+
+    <section class="panel">
+      <h2>Tuning</h2>
+      <p id="tuneText">The 8b8 follows the minichord's temperament and its A.</p>
+      <div class="cents" id="cents" aria-label="Cents from equal temperament sent to the 8b8, C to B"></div>
+      <p class="fine tuning" id="tuneLine"></p>
+      <p class="fine warn" id="tuneWarn" hidden></p>
+    </section>
+  </div>
+
+  <div class="grid2">
+    <section class="panel">
+      <h2>Knobs</h2>
+      <p class="fine">The minichord sends its three knobs while the page is open, and each can turn any of the 8b8's settings across its whole range. The chord and harp knobs also set how hard the minichord plays, so they are the 8b8's loudness too; the modulation knob is free.</p>
+      <div class="knobs" id="knobs"></div>
+    </section>
+
+    <section class="panel">
+      <h2>Sounds and presets</h2>
+      <div class="row">
+        <label class="fine" for="sound">8b8 sound</label>
+        <select id="sound"><option value="">As it is</option></select>
+      </div>
+      <p class="fine" id="bankText">Each of the minichord's presets can keep an 8b8 sound: load the preset on the minichord and its sound loads on the 8b8.</p>
+      <div class="row"><button id="keep" disabled>Keep this sound with the preset</button></div>
+      <table class="banks"><tbody id="banks"></tbody></table>
+    </section>
+  </div>
+
+  <section class="panel">
+    <h2>Clock and drums</h2>
+    <p class="fine">The page keeps time: a drum pattern on the 8b8, and MIDI clock to the minichord. Put the minichord in rhythm mode (a long press of the hold button) and its chord pattern locks to the drums, starting together on Play.</p>
+    <div class="row">
+      <button id="play">Play</button>
+      <label class="fine">Tempo <input type="number" id="bpm" min="30" max="300" value="100"></label>
+      <label class="fine"><input type="checkbox" id="clockMini" checked> Clock the minichord</label>
+      <button id="clear">Clear</button>
+    </div>
+    <div class="grid" id="grid" role="grid" aria-label="Drum pattern, sixteen steps"></div>
+  </section>
+
+  <section class="panel">
+    <details><summary class="fine">What the 8b8 says</summary><div id="log"></div></details>
+  </section>
+
+  <footer>
+    <p>Part of <a href="../">Minichord Lab</a>. The 8b8 is <a href="https://github.com/keyandcableco/8bit8asterd">the 8-Bit 8asterd firmware</a>; its emulator runs that firmware itself, compiled for the browser. Exact tuning, MPE, the knobs and the clock come from the unofficial <a href="https://github.com/keyandcableco/minichord/tree/test-allFeatures">test-allFeatures firmware</a> for the minichord.</p>
+    <p>Made by <a href="https://keyandcable.com">The Key &amp; Cable Company</a>. Source on <a href="https://github.com/keyandcableco/minichord-lab">GitHub</a>.</p>
+  </footer>
+</main>
+<script type="module" src="page.js"></script>
+<!-- say-thanks -->
+<p style="text-align:center;margin:28px 0 18px;font-size:14px;opacity:0.8">Minichord Lab by <a href="https://keyandcable.com/projects.html" target="_blank" rel="noopener" style="color:inherit">The Key &amp; Cable Company</a> &middot; <a href="https://keyandcable.com/thanks.html" target="_blank" rel="noopener" style="color:inherit;font-weight:bold">Say thanks</a></p>
+</body>
+</html>
