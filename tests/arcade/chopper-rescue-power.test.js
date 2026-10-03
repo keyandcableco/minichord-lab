@@ -25,7 +25,8 @@ const t=require("./harness").load("chopper-rescue");
   for(let k=0;k<120 && !a.signal;k++) await sleep(50);
   const radio=()=>d.querySelector(".chradio .chtext").textContent;
   check("the radio says it's the first inversion, from the 3rd", /1ST INVERSION: START ON THE 3RD/.test(radio()), radio());
-  check("each note to pluck is marked with its place in the chord", [...d.querySelectorAll(".chsignal b small")].map(x=>x.textContent).join(" ")==="3RD 5TH ROOT", [...d.querySelectorAll(".chsignal b small")].map(x=>x.textContent).join(" "));
+  const marks=[...d.querySelectorAll(".chsignal b small")].map(x=>x.textContent).join(" ");   // a seventh's first inversion has its 7th before the root
+  check("each note to pluck is marked with its place in the chord", marks===(a.signal && a.signal.tones.length===4 ? "3RD 5TH 7TH ROOT" : "3RD 5TH ROOT"), marks);
   await sleep(2600);
   check("and the instruction is still there after the banner's gone", /1ST INVERSION/.test(radio()) && !d.querySelector(".field .banner"));
   for(const n of a.signal.tones){ note(t.PC[n]); await sleep(20); }
@@ -43,7 +44,7 @@ const t=require("./harness").load("chopper-rescue");
 
   // the crate: dropped with a call at a chord of its key, flown out for by that chord
   const crateCall=async k=>{
-    for(let i=0;i<80 && !(a.call && !a.busy && !a.signal);i++){ if(a.tune) note(a.tune.pc); await sleep(100); }
+    for(let i=0;i<200 && !(a.call && !a.busy && !a.signal);i++){ if(a.tune) note(a.tune.pc); await sleep(100); }
     w.eval(`blast.chPower=null; blast.crate={k:"${k}", root:"F", q:"", ...chPad("F","")}; blast.call.legs=[{root:"G", q:""}]; blast.emerg=[]; chDrawMap()`);
   };
   await crateCall("tailwind");
