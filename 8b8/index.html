@@ -54,6 +54,12 @@
 @media (prefers-color-scheme:dark){ :root:not([data-theme="light"]) .warn{color:var(--accent)} }
 :root[data-theme="dark"] .warn{color:var(--accent)}
 [hidden]{display:none!important}
+/* the tracker keeps a dark screen in either theme, like the Beats scope */
+#trkBox{background:#171412;border:1px solid var(--rule);border-radius:var(--radius);margin-top:.5rem}
+#tracker{display:block;width:100%;height:520px}
+@media (max-width:700px){#tracker{height:420px}}
+#trkBox:fullscreen{border:none;border-radius:0}
+#trkBox:fullscreen #tracker{height:100vh}
 #voicesPanel .opts{display:block;margin:.3rem 0}
 #voicesPanel .opts small{display:block;color:var(--muted);font-size:.9rem;max-width:72ch}
 #voicesPanel h3{font-size:1rem;margin:1rem 0 .3rem}
@@ -156,6 +162,19 @@ input[type=number]{width:5em;color:var(--ink);border:1px solid var(--ink);backgr
       <label class="fine">Glide <input type="number" id="glide" min="0" max="1500" step="10"> ms</label>
     </div>
     <p class="fine">With voice leading on, the minichord's four voices arrive bottom to top: bass, tenor, alto, soprano, each moving as little as it can. Cantus lets the harp set one voice's note; slash voice lets a slash chord set one. The minichord's glide arrives as bends, carried by the latched voices as they move; the 8b8's own Glide, in its sound, slides each latched voice from its own last note. Use one or the other. The 8b8's Buzzy Bass always takes its lowest note and its wavetable its highest, so latched, those are the bass line and the soprano line.</p>
+  </section>
+
+  <section class="panel" id="trackerPanel">
+    <h2>Tracker</h2>
+    <p class="fine">The 8b8's nine channels as a tracker shows them, read from its chips' registers: a scope for each channel, three to a chip, and rows scrolling up with each new note, volume, slide and note let go, the drums by name, and each chip's noise and envelope. The scopes are rebuilt from the registers with the same model of the chip the emulator runs.</p>
+    <div class="row">
+      <button id="trkFull">Full screen</button>
+      <button id="trkPause" aria-pressed="false">Pause</button>
+      <label class="fine">A row every <select id="trkRow"><option value="25">25 ms</option><option value="50" selected>50 ms</option><option value="100">100 ms</option></select></label>
+      <label class="fine">Scopes show <select id="trkSpan"><option value="10">10 ms</option><option value="20" selected>20 ms</option><option value="50">50 ms</option></select></label>
+    </div>
+    <p class="fine warn" id="trkWarn" hidden></p>
+    <div id="trkBox"><canvas id="tracker" role="img" aria-label="The 8b8's nine channels: scopes and tracker rows"></canvas></div>
   </section>
 
   <div class="grid2">

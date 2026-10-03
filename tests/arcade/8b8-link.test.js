@@ -21,7 +21,7 @@ function load(){
   const wrap=f=>{ const raw=fs.readFileSync(path.join(ROOT,f),"utf8");
     const names=[...raw.matchAll(/^export (?:async )?(?:class|function|const|let) ([A-Za-z_$][\w$]*)/mg)].map(m=>m[1]);
     return "(function(){"+raw.replace(/^import [\s\S]*?;$/mg,"").replace(/^export \{[^}]*\};$/mg,"").replace(/^export (default )?/mg,"")+"\n"+names.map(n=>`window.${n}=${n};`).join("")+"})();"; };
-  w.eval(["core/minichord.js","core/temperaments.js","8b8/params.js","8b8/link.js","8b8/page.js"].map(wrap).join("\n"));
+  w.eval(["core/minichord.js","core/temperaments.js","8b8/params.js","8b8/tracker.js","8b8/link.js","8b8/page.js"].map(wrap).join("\n"));
   if(errors.length) throw new Error(errors[0]);
   return w;
 }
@@ -56,6 +56,7 @@ function minichord(w, extra={}){
 function emulator(w, {pins=true}={}){
   const lines=[], midi=[], replies=[];
   const params=w.SOUNDS_8B8.Init.slice(), pinned=new Map();
+  const chips=[0,1,2].map(()=>{ const r=new Array(16).fill(0); r[7]=0x3F; return r; });
   w.AudioContext=class{ constructor(){ this.sampleRate=48000; this.destination={}; }
     createScriptProcessor(){ return {connect(){}, disconnect(){}}; } resume(){ return Promise.resolve(); } close(){} };
   w.Module={HEAPF32:new Float32Array(4096), _malloc:()=>0, ccall(f, r, types, args){
@@ -71,9 +72,10 @@ function emulator(w, {pins=true}={}){
       else if(l==="DIAG") replies.push("RAM:-1:-1", "DIAG "+Array.from({length:9},(_,v)=>`${v}:c${v%3}/${v===0?"n43":v===5?"perc":"free"}/${v===0?"S":"-"}/0`).join(" ")+" ");
     }
     else if(f==="emu_midi_raw") midi.push(args.slice());
+    else if(f==="emu_reg") return chips[args[0]][args[1]];
     else if(f==="emu_read_lines"){ const s=replies.join("\n"); replies.length=0; return s; }
   }};
-  return {lines, midi, params, pinned, last:re=>[...lines].reverse().find(l=>re.test(l))};
+  return {lines, midi, params, pinned, chips, last:re=>[...lines].reverse().find(l=>re.test(l))};
 }
 
 (async()=>{
@@ -163,6 +165,35 @@ function emulator(w, {pins=true}={}){
     check("and the 8b8's own tuning comes back", emu.last(/^PCT:/)==="PCT:off" && emu.last(/^MPE:/)==="MPE:0");
   }
 
+  // ---- the tracker ----
+  {
+    const w=load();
+    const blank=()=>[0,1,2].map(()=>{ const r=new Array(16).fill(0); r[7]=0x3F; return r; });   // everything shut
+    const R=new w.Rows({rowMs:50});
+    let regs=blank(); R.feed(regs, 0);
+    regs=blank(); regs[0][0]=0xAA; regs[0][1]=0x01; regs[0][7]=0x3E; regs[0][8]=15;        // chip A channel 1: period 426, D3
+    R.feed(regs, 60);
+    const r1=R.rows[R.rows.length-1].cells[0];
+    check("a note starting is written as a tracker writes it, with its volume", r1.note==="D-3" && r1.vol==="F" && r1.kind==="note", JSON.stringify(r1));
+    regs=regs.map(x=>x.slice()); regs[0][0]=0x9C; R.feed(regs, 120);                       // a semitone up, at once: E♭3… a new note
+    check("a jump to another note is a new note", R.rows[R.rows.length-1].cells[0].note==="D#3", R.rows[R.rows.length-1].cells[0].note);
+    regs=regs.map(x=>x.slice()); regs[0][0]=0x9A; R.feed(regs, 170);                       // a few cents: a slide
+    check("a few cents is a slide, not a note", R.rows[R.rows.length-1].cells[0].fx==="↗" && !R.rows[R.rows.length-1].cells[0].kind, JSON.stringify(R.rows[R.rows.length-1].cells[0]));
+    // a drum: chip B channel 1 on noise and a one-shot envelope, just after the page sent a snare
+    R.drum(38, 200);
+    regs=regs.map(x=>x.slice()); regs[1][7]=0x37; regs[1][8]=0x10; regs[1][6]=8; regs[1][13]=0; regs[1][11]=0x40; R.feed(regs, 230);
+    const r2=R.rows[R.rows.length-1];
+    check("a drum is named from what the page sent", r2.cells[1].note==="SNR" && r2.cells[1].kind==="drum", JSON.stringify(r2.cells[1]));
+    check("and its chip's noise and envelope are noted", /N08/.test(r2.fx[1]) && /E0/.test(r2.fx[1]), r2.fx[1]);
+    regs=regs.map(x=>x.slice()); regs[0][8]=0; R.feed(regs, 290);
+    check("a channel falling silent is a note let go", R.rows[R.rows.length-1].cells[0].note==="===");
+    // Buzzy Bass: the envelope looping (shape 8-15) on a channel with its tone shut is a waveform, not a drum
+    regs=blank(); regs[2][7]=0x3F&~0x01; regs[2][8]=0x10; regs[2][13]=8; regs[2][11]=0x40; R.feed(regs, 350);
+    const s=w.scope(w.describe(regs), 2, 64, 20, [1,1,1]);
+    check("a looping envelope is drawn as its sawtooth", new Set(Array.from(s).map(x=>x.toFixed(3))).size>6, Array.from(s).slice(0,16).map(x=>x.toFixed(2)).join(" "));
+    check("REGS lines are read as three chips of sixteen", w.parseRegs("REGS:"+"0F".repeat(48))[2][15]===15 && w.parseRegs("REGS:12")===null);
+  }
+
   // ---- the chord voices, latched to voices of their own ----
   {
     const w=load(), d=w.document;
@@ -200,6 +231,10 @@ function emulator(w, {pins=true}={}){
     await sleep(500);
     const cells=[...d.getElementById("chips").children].map(c=>c.textContent);
     check("the nine voices are shown as the 8b8 reports them, latched ones named", /Tenor/.test(cells[0]) && /G2/.test(cells[0]) && /drum/.test(cells[5]), cells.join(" | "));
+    // the tracker reads the emulated chips each frame
+    emu.chips[0][0]=0xAA; emu.chips[0][1]=1; emu.chips[0][7]=0x3E; emu.chips[0][8]=15;
+    await sleep(200);
+    check("from the emulator the tracker reads the chips' registers every frame", w.rows.rows.some(r=>r.cells[0].note==="D-3"), String(w.rows.rows.length));
     // the minichord's voicing, from the page
     ch("cantus", 4); await sleep(30);
     check("the cantus can be set from here", mini.P[115]===4);
@@ -240,6 +275,10 @@ function emulator(w, {pins=true}={}){
     check("over serial alone, notes go as NON lines", lines.some(l=>/^NON:\d+:64:100$/.test(l)));
     check("and the 8b8 is tuned by letter instead, just intonation from the minichord", lines.filter(l=>l.startsWith("PCT:")).pop()==="PCT:"+w.TEMPERAMENT_TABLE[2].cents.join(","), lines.filter(l=>l.startsWith("PCT:")).pop());
     check("with a warning that glide is lost", !d.getElementById("tuneWarn").hidden);
+    await sleep(1800);
+    check("a board that doesn't answer REGS is asked for its registers, and the tracker says it needs the new firmware", lines.filter(l=>l==="REGS").length>20 && !d.getElementById("trkWarn").hidden);
+    push(new TextEncoder().encode("REGS:"+"AA0100000000000000003E0F".padEnd(32,"0")+"0".repeat(64)+"\r\n")); await sleep(80);
+    check("and one that does is read into the rows", w.rows.last && w.rows.last.chans[0].period===0x1AA, w.rows.last && w.rows.last.chans[0].period);
   }
 
   const bad=results.filter(r=>!r).length;

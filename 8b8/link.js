@@ -17,6 +17,7 @@
  * ========================================================================== */
 import {TEMPERAMENT_TABLE} from "../core/temperaments.js";
 import {PARAMS_8B8, LAYOUT_8B8, SOUNDS_8B8} from "./params.js";
+import {parseRegs} from "./tracker.js";
 export {PARAMS_8B8, LAYOUT_8B8, SOUNDS_8B8};
 
 /** a setting's index on the 8b8, by its key */
@@ -207,9 +208,9 @@ export class Router {
  */
 export class EightBit extends EventTarget {
   constructor(){ super(); this.transport=null; this.layout=null; this.params=null; this.name="";
-    this.canPin=null; this.pinMask=0; this.voiceMap=null; }
+    this.canPin=null; this.pinMask=0; this.voiceMap=null; this.canRegs=null; }
   attach(transport, name){
-    this.transport=transport; this.name=name||""; this.layout=null; this.params=null; this.canPin=null; this.voiceMap=null;
+    this.transport=transport; this.name=name||""; this.layout=null; this.params=null; this.canPin=null; this.voiceMap=null; this.canRegs=null;
     transport.receive=l=>this.receive(l);
     this.line("DUMP");
   }
@@ -225,6 +226,7 @@ export class EightBit extends EventTarget {
     if(l.startsWith("LAYOUT:")) this.layout=l.slice(7).toUpperCase();
     else if(l.startsWith("PRESET:")){ this.params=l.slice(7).split(",").map(Number); this.dispatchEvent(new Event("preset")); }
     else if(/^PIN:\d+$/.test(l)){ this.canPin=true; this.pinMask=+l.slice(4); this.dispatchEvent(new Event("pins")); }
+    else if(l.startsWith("REGS:")){ const r=parseRegs(l); if(r){ this.canRegs=true; this.dispatchEvent(new CustomEvent("regs",{detail:r})); } }
     else if(l.startsWith("DIAG ")){ this.voiceMap=parseDiag(l); this.dispatchEvent(new Event("voicemap")); }
     else if(/^V:\d+:\d+$/.test(l)){ const [,i,v]=l.split(":").map(Number); if(this.params) this.params[i]=v; this.dispatchEvent(new Event("preset")); }
   }

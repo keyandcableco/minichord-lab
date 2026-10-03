@@ -4,6 +4,7 @@ import {Minichord} from "../core/minichord.js";
 import {TEMPERAMENT_TABLE} from "../core/temperaments.js";
 import {PARAMS_8B8, LAYOUT_8B8, SOUNDS_8B8, PARAM, KIT, DRUM_CH, DRUM_ROWS, Router, EightBit, Clock,
   tuningCents, tuningReaches, knobValue, arpFor, ENVELOPES, AY_VOICES, DEFAULT_PINS} from "./link.js";
+import {Rows, drawTracker} from "./tracker.js";
 
 const $=id=>document.getElementById(id);
 const mc=new Minichord(); window.mc=mc;
@@ -22,7 +23,7 @@ const save=()=>{ try{ localStorage.setItem("lab-8b8", JSON.stringify(st)); }catc
 // ---------- the log: what the 8b8 says, and what the page sends it ----------
 const logLines=[];
 function log(s){ logLines.push(s); if(logLines.length>60) logLines.shift(); const el=$("log"); el.textContent=logLines.join("\n"); el.scrollTop=el.scrollHeight; }
-eb.addEventListener("line", e=>{ if(!/^(V:|DIAG |RAM:|Received )/.test(e.detail)) log("« "+e.detail); });
+eb.addEventListener("line", e=>{ if(!/^(V:|DIAG |RAM:|REGS:|Received )/.test(e.detail)) log("« "+e.detail); });
 
 // ---------- lights ----------
 const lit={};
@@ -90,6 +91,8 @@ async function openEmulator(){
     midi(b, at){ const go=()=>call("emu_midi_raw", null, ["number","number","number"], [b[0], b[1]||0, b[2]||0]);
       const d=at ? at-performance.now() : 0; d>2 ? setTimeout(go,d) : go(); },
     receive:null,
+    // the emulated chips' registers, read directly: what they really hold, Warp Zone and all
+    regs(){ return [0,1,2].map(c=>Array.from({length:16}, (_,i)=>call("emu_reg","number",["number","number"],[c,i]))); },
     close(){ clearInterval(poll); node.disconnect(); ctx.close(); audio=null; },
   };
   const poll=setInterval(()=>{ const s=call("emu_read_lines","string",[],[]); if(s) for(const l of s.split("\n")) if(l) t.receive && t.receive(l); }, 60);
@@ -155,7 +158,7 @@ function fromMinichord(data, harpPort){
   // under MPE each string has a channel: from 2 on its own port, from 6 when it shares the chord's
   const string = section==="harp" && mc.mpe ? (harpPort ? ch-1 : ch-5) : null;
   const msgs=router.route(section, data, string);
-  for(const m of msgs) eb.midi(m);
+  for(const m of msgs){ eb.midi(m); if(m[0]===(0x90|DRUM_CH)) rows.drum(m[1], performance.now()); }
   if(msgs.some(m=>(m[0]&0xF0)===0x90)) flash(section==="harp" ? (router.harp==="drums" ? "litDrum" : "litHarp") : "litChord");
 }
 window.fromMinichord=fromMinichord;
@@ -348,7 +351,7 @@ const clock=new Clock({
   },
   step:(i, at)=>{
     st.pattern.forEach((row,r)=>{ if(!row[i]) return; const n=DRUM_ROWS[r][0];
-      eb.midi([0x90|DRUM_CH, n, 110], at); eb.midi([0x80|DRUM_CH, n, 0], at+60); });
+      eb.midi([0x90|DRUM_CH, n, 110], at); eb.midi([0x80|DRUM_CH, n, 0], at+60); rows.drum(n, at); });
     setTimeout(()=>{ cells.forEach((row)=>row.forEach((c,j)=>c.classList.toggle("now", j===i))); if(st.pattern.some(r=>r[i])) flash("litDrum"); }, Math.max(0, at-performance.now()));
   },
 });
@@ -519,5 +522,41 @@ function drawLines(){
   });
 }
 requestAnimationFrame(drawLines);
+
+// ---------- the tracker ----------
+// From the emulator the registers are read every frame; from the board they are asked for with REGS,
+// twenty times a second, while the tracker is on screen. A board whose firmware has no REGS says nothing.
+const rows=new Rows({rowMs:50}); window.rows=rows;
+const trk={paused:false, span:20, visible:true, noise:[1,1,1], asked:0};
+const DARK_VOICES=["#9DB8D9","#A9C98F","#EF8A80","#CDB3DE"];
+eb.addEventListener("regs", e=>{ if(!trk.paused) rows.feed(e.detail, performance.now()); });
+if(typeof IntersectionObserver!=="undefined")
+  new IntersectionObserver(es=>{ trk.visible=es.some(e=>e.isIntersecting); }).observe($("trkBox"));
+setInterval(()=>{
+  if(via!=="usb" || !eb.connected || !trk.visible || trk.paused || document.hidden) return;
+  eb.line("REGS"); trk.asked++;
+  if(eb.canRegs==null && trk.asked>30){ eb.canRegs=false; trackerWarn(); }
+}, 50);
+function trackerWarn(){
+  const w=$("trkWarn");
+  w.hidden = !(via==="usb" && eb.canRegs===false);
+  w.textContent="This 8b8's firmware can't report its registers yet: flash the feature/tracker-regs branch of the 8bit8asterd firmware (its REGS command). The emulator needs nothing new.";
+}
+function tracker(){
+  requestAnimationFrame(tracker);
+  const now=performance.now();
+  // recorded all along, so the rows are there when the tracker is scrolled to; drawn only when seen
+  if(via==="emu" && serial && serial.regs && !trk.paused && !document.hidden){ try{ rows.feed(serial.regs(), now); }catch(e){} }
+  if(!trk.visible || document.hidden) return;
+  const names=[], colours=[];
+  if(sentPins){ const vn=voiceNames(); st.voices.forEach((v,i)=>{ names[v.voice]=vn[i]; colours[v.voice]=DARK_VOICES[i]; }); }
+  drawTracker($("tracker"), rows, {names, colours, noise:trk.noise, now, scopeMs:trk.span, paused:trk.paused});
+}
+requestAnimationFrame(tracker);
+$("trkPause").onclick=e=>{ trk.paused=!trk.paused; e.target.setAttribute("aria-pressed", String(trk.paused)); e.target.textContent=trk.paused ? "Carry on" : "Pause"; };
+$("trkRow").onchange=e=>{ rows.rowMs=+e.target.value; };
+$("trkSpan").onchange=e=>{ trk.span=+e.target.value; };
+$("trkFull").onclick=()=>{ const b=$("trkBox"); if(document.fullscreenElement) document.exitFullscreen(); else if(b.requestFullscreen) b.requestFullscreen().catch(()=>{}); };
+eb.addEventListener("preset", trackerWarn);
 
 options(); drawGrid(); drawKnobs(); drawBanks(); drawTuning(0, tuningCents(0), false); drawPins(); drawVoicing();
