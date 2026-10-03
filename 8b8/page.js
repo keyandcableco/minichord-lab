@@ -3,7 +3,7 @@
 import {Minichord} from "../core/minichord.js";
 import {TEMPERAMENT_TABLE} from "../core/temperaments.js";
 import {PARAMS_8B8, LAYOUT_8B8, SOUNDS_8B8, PARAM, KIT, DRUM_CH, DRUM_ROWS, Router, EightBit, Clock,
-  tuningCents, tuningReaches, knobValue, arpFor} from "./link.js";
+  tuningCents, tuningReaches, knobValue, arpFor, ENVELOPES, AY_VOICES, DEFAULT_PINS} from "./link.js";
 
 const $=id=>document.getElementById(id);
 const mc=new Minichord(); window.mc=mc;
@@ -15,14 +15,14 @@ const KNOB_NAMES=["Chord knob","Harp knob","Modulation knob"];
 // ---------- remembered between visits ----------
 const st={chord:true, harp:"voice", exact:true, silence:false, arp:false, knobs:["","",""], clockMini:true, bpm:null,
   pattern:DRUM_ROWS.map((_,r)=>Array.from({length:16},(_,i)=> r===0 ? i%8===0 : r===1 ? i%8===4 : r===2 ? i%2===0 : false)),
-  banks:{}};
+  banks:{}, pin:false, voices:DEFAULT_PINS.map(v=>({voice:v, env:null, legato:true, on:true, oct:0}))};
 try{ Object.assign(st, JSON.parse(localStorage.getItem("lab-8b8")||"{}")); }catch(e){}
 const save=()=>{ try{ localStorage.setItem("lab-8b8", JSON.stringify(st)); }catch(e){} };
 
 // ---------- the log: what the 8b8 says, and what the page sends it ----------
 const logLines=[];
 function log(s){ logLines.push(s); if(logLines.length>60) logLines.shift(); const el=$("log"); el.textContent=logLines.join("\n"); el.scrollTop=el.scrollHeight; }
-eb.addEventListener("line", e=>{ if(!/^V:/.test(e.detail)) log("« "+e.detail); });
+eb.addEventListener("line", e=>{ if(!/^(V:|DIAG |RAM:|Received )/.test(e.detail)) log("« "+e.detail); });
 
 // ---------- lights ----------
 const lit={};
@@ -58,15 +58,19 @@ async function openSerial(){
   })();
   return t;
 }
-// The emulator: the 8b8's own firmware compiled for the browser, from its GitHub Pages site, into a
-// Web Audio node here. ?core=<url> loads it from elsewhere (a local build, say).
-const CORE=new URLSearchParams(location.search).get("core") || "https://keyandcableco.github.io/8bit8asterd/";
+// The emulator: the 8b8's own firmware compiled for the browser, from its site, into a Web Audio
+// node here: 8b8.keyandcable.com, or its GitHub Pages address if that doesn't answer. ?core=<url>
+// loads it from elsewhere (a local build, say).
+const CORES=[new URLSearchParams(location.search).get("core")].filter(Boolean).concat(["https://8b8.keyandcable.com/", "https://keyandcableco.github.io/8bit8asterd/"]);
 let audio=null;
-function loadCore(){
+function loadCore(i=0){
   if(window.Module && window.Module.ccall) return Promise.resolve(window.Module);
+  const base=CORES[i];
+  if(!base) return Promise.reject(new Error("couldn't load the emulator from "+CORES.join(" or ")));
   return new Promise((ok, fail)=>{
-    window.Module={locateFile:f=>new URL(f, CORE).href, onRuntimeInitialized:()=>ok(window.Module)};
-    const s=document.createElement("script"); s.src=new URL("8b8.js", CORE).href; s.onerror=()=>fail(new Error("couldn't load the emulator from "+CORE));
+    window.Module={locateFile:f=>new URL(f, base).href, onRuntimeInitialized:()=>ok(window.Module)};
+    const s=document.createElement("script"); s.src=new URL("8b8.js", base).href;
+    s.onerror=()=>{ s.remove(); loadCore(i+1).then(ok, fail); };
     document.head.appendChild(s);
   });
 }
@@ -173,6 +177,11 @@ function wanted(){
   const w={238:1};                                     // the knobs, sent as they turn
   if(st.exact) w[110]=1;                               // MPE: a channel and a bend per voice
   if(st.silence){ w[97]=0; w[197]=0; }                 // the harp's and chord's output amplifiers
+  // Latched chord voices want voice leading, which is what puts the minichord's four voices bottom to
+  // top and keeps each on its line; on unless it already is, or the voicing below chooses otherwise.
+  const vlOwn = 111 in borrowed ? borrowed[111] : mc.params[111];
+  if(st.pin && !vlOwn) w[111]=1;
+  for(const [a,v] of Object.entries(voicing)) w[a]=v;  // chosen here, for this visit
   return w;
 }
 function borrowAll(){
@@ -194,7 +203,8 @@ function giveBackMinichord(){
 // the 8b8 back to its own tuning and channels; the sound loaded stays, as a sound chosen on its panel would
 function giveBack8b8(){
   if(!eb.connected) return;
-  releaseAll(); eb.tune(null); eb.mpe(false); sentTune=""; sentMpe=null;
+  releaseAll(); if(sentPins){ eb.unpin(); sentPins=""; } router.pinned=false;
+  eb.tune(null); eb.mpe(false); sentTune=""; sentMpe=null;
 }
 function giveBackAll(){ clock.stop(); giveBack8b8(); giveBackMinichord(); given=true; $("giveback").hidden=true;
   $("status").textContent="Everything is back as it was: the minichord's settings and the 8b8's tuning. Change anything here to take them again."; }
@@ -211,6 +221,7 @@ function follow(){
   const t=mc.temperament ?? 0, cents=tuningCents(t, mc.aHz, bends), line=cents.join(",");
   if(line!==sentTune){ eb.tune(cents); sentTune=line; }
   drawTuning(t, cents, bends);
+  applyPins();
 }
 function drawTuning(t, cents, bends){
   const T=TEMPERAMENT_TABLE[t]||TEMPERAMENT_TABLE[0];
@@ -377,4 +388,136 @@ for(const [id,key] of [["chordOn","chord"],["exact","exact"],["silence","silence
 $("harpMode").value=st.harp;
 $("harpMode").onchange=e=>{ releaseAll(); st.harp=e.target.value; save(); options(); };
 
-options(); drawGrid(); drawKnobs(); drawBanks(); drawTuning(0, tuningCents(0), false);
+// ---------- chord voices, latched ----------
+// The minichord's four MPE chord voices come on its channels 2 to 5, each keeping its channel as it
+// moves: with voice leading on they are bass, tenor, alto and soprano, bottom to top. The router puts
+// them on the 8b8's channels 1 to 4, and PIN gives each of those one of the nine voices for itself.
+const voicing={};          // minichord settings chosen in the voicing row, for this visit only
+let sentPins="";
+const vcolour=i=>getComputedStyle(document.documentElement).getPropertyValue("--v"+i).trim()||"#888";
+const noteName=n=>NAMES[((n%12)+12)%12]+(Math.floor(n/12)-1);
+const voiceNames=()=> (mc.params[111]??0)>0 ? ["Bass","Tenor","Alto","Soprano"] : ["Voice 1","Voice 2","Voice 3","Voice 4"];
+function applyPins(){
+  const can = eb.connected && !given && st.pin && router.mpe && eb.canPin!==false;
+  const want = can ? st.voices.map((v,i)=>`${1+i}:${v.voice}:${v.env??255}:${v.legato?1:0}`).join(" ") : "";
+  router.slots.forEach((s,i)=>{ s.on=st.voices[i].on; s.oct=st.voices[i].oct; });
+  if(want!==sentPins){
+    releaseAll();                         // a lane about to change hands lets go of what it holds
+    router.pinned=!!want;
+    if(want) st.voices.forEach((v,i)=>eb.pin(1+i, v.voice, v.env, v.legato)); else if(sentPins) eb.unpin();
+    sentPins=want;
+    // a firmware without PIN says nothing: then the voices can't be latched
+    if(want && eb.canPin==null) setTimeout(()=>{ if(eb.canPin==null){ eb.canPin=false; applyPins(); } drawPins(); }, 1500);
+  }
+  drawPins();
+}
+function drawPins(){
+  const tb=$("pins").tBodies[0], names=voiceNames();
+  if(!tb.rows.length){
+    st.voices.forEach((v,i)=>{
+      const tr=tb.insertRow();
+      tr.innerHTML=`<td><i style="background:var(--v${i})"></i><span></span></td><td><input type="checkbox" aria-label="plays"></td>`+
+        `<td><select aria-label="8b8 voice">${AY_VOICES.map((n,k)=>`<option value="${k}">${n}</option>`).join("")}</select></td>`+
+        `<td><select aria-label="envelope"><option value="">The sound's</option>${ENVELOPES.map((n,k)=>`<option value="${k}">${n}</option>`).join("")}</select></td>`+
+        `<td><input type="checkbox" aria-label="legato"></td>`+
+        `<td><select aria-label="octave"><option value="-2">−2</option><option value="-1">−1</option><option value="0">0</option><option value="1">+1</option></select></td><td class="now"></td>`;
+      const [on, voice, env, leg, oct]=tr.querySelectorAll("input,select");
+      on.onchange=()=>{ st.voices[i].on=on.checked; changed(); };
+      voice.onchange=()=>{ const k=+voice.value, other=st.voices.findIndex((x,j)=>j!==i && x.voice===k);
+        if(other>=0) st.voices[other].voice=st.voices[i].voice;          // a voice belongs to one line: the two swap
+        st.voices[i].voice=k; changed(); };
+      env.onchange=()=>{ st.voices[i].env = env.value==="" ? null : +env.value; changed(); };
+      leg.onchange=()=>{ st.voices[i].legato=leg.checked; changed(); };
+      oct.onchange=()=>{ st.voices[i].oct=+oct.value; changed(); };
+    });
+  }
+  st.voices.forEach((v,i)=>{
+    const tr=tb.rows[i], [on, voice, env, leg, oct]=tr.querySelectorAll("input,select");
+    tr.cells[0].lastChild.textContent=names[i];
+    on.checked=v.on; voice.value=String(v.voice); env.value=v.env==null ? "" : String(v.env); leg.checked=v.legato; oct.value=String(v.oct);
+  });
+  $("pinOn").checked=st.pin;
+  const warn=$("pinWarn"), msgs=[];
+  if(st.pin && !mc.mpe) msgs.push("Latching needs exact tuning (MPE) on: it's how each chord voice arrives on a channel of its own.");
+  if(st.pin && eb.canPin===false) msgs.push("This 8b8's firmware doesn't know how to latch a voice yet: flash the feature/pinned-voices branch of the 8bit8asterd firmware (or its emulator build).");
+  if(st.pin && eb.connected && env8b8Custom()) msgs.push("The 8b8's sound uses its own custom envelope, which every voice shares: the envelope choices here wait until its envelope mode is back to MIDI channel presets.");
+  warn.hidden=!msgs.length; warn.textContent=msgs.join(" ");
+  drawChips();
+}
+const env8b8Custom=()=> eb.known && eb.params && eb.params[PARAM.env_mode]===1;
+function changed(){ save(); if(given) take(); else { borrowAll(); follow(); } }
+$("pinOn").onchange=e=>{ st.pin=e.target.checked; changed(); };
+
+// the nine voices as the 8b8 reports them, three chips of three
+function drawChips(){
+  const box=$("chips");
+  if(!box.childElementCount) for(let k=0;k<9;k++) box.appendChild(document.createElement("div"));
+  const names=voiceNames(), map=eb.voiceMap;
+  // laid out as the chips are: a column each, its three channels down
+  for(let ch=0;ch<3;ch++) for(let chip=0;chip<3;chip++){
+    const v=ch*3+chip, el=box.children[ch*3+chip];
+    const slot = sentPins ? st.voices.findIndex(x=>x.voice===v) : -1;
+    const m=map && map[v], what = !m ? "" : m.drum ? "drum" : m.note!=null ? noteName(m.note) : m.stage==="R" ? "fading" : "free";
+    el.className=(slot>=0 ? "pin" : "")+(m && (m.drum || m.note!=null) ? " busy" : "");
+    el.style.borderColor = slot>=0 ? vcolour(slot) : "";
+    el.innerHTML=`<b>${AY_VOICES[v]}${slot>=0 ? " · "+names[slot] : ""}</b>${what || "&nbsp;"}`;
+  }
+}
+eb.addEventListener("voicemap", drawChips);
+eb.addEventListener("pins", drawPins);
+eb.addEventListener("preset", ()=>drawPins());
+setInterval(()=>{ if(eb.connected && !document.hidden) eb.line("DIAG"); }, 400);
+
+// the voicing row: the minichord's own settings, shown as they are and borrowed when changed here
+const VOICING={vl:111, cantus:115, slashv:113, glide:199};
+for(const [id,a] of Object.entries(VOICING)) $(id).onchange=e=>{ voicing[a]=Math.max(0, +e.target.value||0); if(given) take(); else borrowAll(); };
+function drawVoicing(){ for(const [id,a] of Object.entries(VOICING)) if(document.activeElement!==$(id) && mc.params[a]!=null) $(id).value=String(mc.params[a]); }
+mc.addEventListener("device", ()=>{ drawVoicing(); drawPins(); });
+
+// ---------- the four lines, over the last twelve seconds ----------
+const SPAN=12000, hist=[[],[],[],[]];
+let lastVoicing=null;
+mc.addEventListener("voices", ()=>{
+  const now=performance.now(), by=[null,null,null,null];
+  for(const v of mc.voices) if(v.voice!=null && v.voice>=0 && v.voice<4) by[v.voice]=v.pitch;
+  by.forEach((p,i)=>{ const h=hist[i], last=h[h.length-1]; if(!last || last[1]!==p) h.push([now,p]); while(h.length>2 && now-h[1][0]>SPAN) h.shift(); });
+});
+mc.addEventListener("chord", e=>{
+  const now=[null,null,null,null]; for(const v of e.detail) if(v.voice!=null && v.voice>=0 && v.voice<4) now[v.voice]=v.pitch;
+  if(lastVoicing){
+    const names=voiceNames(), parts=[]; let total=0;
+    now.forEach((p,i)=>{ if(p==null || lastVoicing[i]==null) return; const d=Math.round((p-lastVoicing[i])*10)/10; total+=Math.abs(d); parts.push(`${names[i].toLowerCase()} ${d>0?"+":d<0?"−":""}${Math.abs(d)}`); });
+    if(parts.length) $("motion").textContent=`Last change: ${parts.join(", ")}: ${Math.round(total*10)/10} semitones moved in all.`;
+  }
+  lastVoicing=now;
+  const tb=$("pins").tBodies[0];
+  now.forEach((p,i)=>{ if(tb.rows[i]) tb.rows[i].cells[6].textContent = p==null ? "" : noteName(Math.round(p)); });
+});
+function drawLines(){
+  requestAnimationFrame(drawLines);
+  const cv=$("lines"); if(!cv || document.hidden) return;
+  const g=cv.getContext("2d"); if(!g) return;
+  const W=cv.width, H=cv.height, now=performance.now();
+  g.clearRect(0,0,W,H);
+  let lo=1e9, hi=-1e9;
+  for(const h of hist) for(const [,p] of h) if(p!=null){ lo=Math.min(lo,p); hi=Math.max(hi,p); }
+  if(lo>hi){ lo=48; hi=72; }
+  lo-=3; hi+=3; if(hi-lo<18){ const m=(hi+lo)/2; lo=m-9; hi=m+9; }
+  const x=t=>W-(now-t)/SPAN*W, y=p=>H-6-(p-lo)/(hi-lo)*(H-12);
+  g.strokeStyle=getComputedStyle(document.documentElement).getPropertyValue("--rule").trim()||"#ccc"; g.lineWidth=1;
+  for(let n=Math.ceil(lo/12)*12;n<=hi;n+=12){ g.beginPath(); g.moveTo(0,y(n)); g.lineTo(W,y(n)); g.stroke(); }
+  hist.forEach((h,i)=>{
+    g.strokeStyle=vcolour(i); g.lineWidth=4; g.lineCap="round"; g.beginPath(); let pen=false;
+    h.forEach(([t,p],k)=>{
+      const tEnd = k+1<h.length ? h[k+1][0] : now;
+      if(p==null || tEnd<now-SPAN){ pen=false; return; }
+      const x0=Math.max(0,x(t)), x1=x(tEnd);
+      if(pen) g.lineTo(x0,y(p)); else g.moveTo(x0,y(p));
+      g.lineTo(x1,y(p)); pen=true;
+    });
+    g.stroke();
+  });
+}
+requestAnimationFrame(drawLines);
+
+options(); drawGrid(); drawKnobs(); drawBanks(); drawTuning(0, tuningCents(0), false); drawPins(); drawVoicing();

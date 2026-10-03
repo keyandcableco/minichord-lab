@@ -15,6 +15,7 @@ function load(){
   const dom=new JSDOM(`<!doctype html><html><body>${body}</body></html>`, {runScripts:"dangerously", pretendToBeVisual:true, url:"http://localhost/8b8/"});
   const w=dom.window;
   for(const k of ["ReadableStream","WritableStream","TextDecoderStream","TextEncoder"]) w[k]=globalThis[k];
+  w.HTMLCanvasElement.prototype.getContext=()=>null;   // no canvas here: the lines simply aren't drawn
   const errors=[]; w.addEventListener("error", e=>errors.push(e.message));
   // each module as a script putting its exports on window, as the browser would link them
   const wrap=f=>{ const raw=fs.readFileSync(path.join(ROOT,f),"utf8");
@@ -52,9 +53,9 @@ function minichord(w, extra={}){
 }
 
 // ---------- the 8b8 as its emulator core ----------
-function emulator(w){
+function emulator(w, {pins=true}={}){
   const lines=[], midi=[], replies=[];
-  const params=w.SOUNDS_8B8.Init.slice();
+  const params=w.SOUNDS_8B8.Init.slice(), pinned=new Map();
   w.AudioContext=class{ constructor(){ this.sampleRate=48000; this.destination={}; }
     createScriptProcessor(){ return {connect(){}, disconnect(){}}; } resume(){ return Promise.resolve(); } close(){} };
   w.Module={HEAPF32:new Float32Array(4096), _malloc:()=>0, ccall(f, r, types, args){
@@ -63,11 +64,16 @@ function emulator(w){
       else if(/^P:\d+:\d+$/.test(l)){ const [,i,v]=l.split(":").map(Number); params[i]=v; replies.push(`V:${i}:${v}`); }
       else if(l.startsWith("LOAD:")){ l.slice(5).split(",").forEach((v,i)=>params[i]=+v); replies.push("PRESET:"+params.join(",")); }
       else if(l.startsWith("PCT:")) replies.push("PCT:"+(l==="PCT:off"?0:1));
+      // a firmware with pinned voices answers with the mask of them; one without says nothing
+      else if(pins && l==="PIN:off"){ pinned.clear(); replies.push("PIN:0"); }
+      else if(pins && l.startsWith("PIN:")){ const [ch,v]=l.slice(4).split(":").map(Number); for(const [c,x] of pinned) if(x===v) pinned.delete(c);
+        if(v<9) pinned.set(ch,v); else pinned.delete(ch); replies.push("PIN:"+[...pinned.values()].reduce((m,x)=>m|1<<x,0)); }
+      else if(l==="DIAG") replies.push("RAM:-1:-1", "DIAG "+Array.from({length:9},(_,v)=>`${v}:c${v%3}/${v===0?"n43":v===5?"perc":"free"}/${v===0?"S":"-"}/0`).join(" ")+" ");
     }
     else if(f==="emu_midi_raw") midi.push(args.slice());
     else if(f==="emu_read_lines"){ const s=replies.join("\n"); replies.length=0; return s; }
   }};
-  return {lines, midi, params, last:re=>[...lines].reverse().find(l=>re.test(l))};
+  return {lines, midi, params, pinned, last:re=>[...lines].reverse().find(l=>re.test(l))};
 }
 
 (async()=>{
@@ -155,6 +161,60 @@ function emulator(w){
     d.getElementById("giveback").click(); await sleep(60);
     check("giving back is one pop for the minichord, putting back even what the page never touched", mini.writes.length===0 && mini.P[238]===0 && mini.P[41]!==99);
     check("and the 8b8's own tuning comes back", emu.last(/^PCT:/)==="PCT:off" && emu.last(/^MPE:/)==="MPE:0");
+  }
+
+  // ---- the chord voices, latched to voices of their own ----
+  {
+    const w=load(), d=w.document;
+    const mini=minichord(w, {111:0});
+    await sleep(60);
+    const emu=emulator(w);
+    d.getElementById("emu").click(); await sleep(1100);
+    const ch=(id,v)=>{ const el=d.getElementById(id); if(el.type==="checkbox") el.checked=v; else el.value=String(v); el.dispatchEvent(new w.Event("change")); };
+    ch("pinOn", true); await sleep(100);
+    check("latching pins the four chord channels to their voices, with legato", ["PIN:1:0:255:1","PIN:2:1:255:1","PIN:3:2:255:1","PIN:4:3:255:1"].every(l=>emu.lines.includes(l)), emu.lines.filter(l=>l.startsWith("PIN")).join(" "));
+    check("and turns the minichord's voice leading on, so its voices come bottom to top", mini.P[111]===1);
+    const rowName=i=>d.getElementById("pins").tBodies[0].rows[i].cells[0].textContent;
+    check("the voices are named bass to soprano once they're led", rowName(0)==="Bass" && rowName(3)==="Soprano", rowName(0));
+    emu.midi.length=0;
+    [[1,43],[2,55],[3,59],[4,62]].forEach(([c,n])=>{ mini.p1.emit([0xE0|c,0,64]); mini.p1.emit([0x90|c,n,100]); });
+    mini.p2.emit([0x91,67,90]);
+    const ons=emu.midi.filter(m=>(m[0]&0xF0)===0x90);
+    check("each chord voice plays on its own channel, 1 to 4", ons.slice(0,4).map(m=>m[0]&15).join()==="1,2,3,4", JSON.stringify(ons));
+    check("and the harp keeps clear of them", (ons[4][0]&15)>4, `channel ${ons[4][0]&15}`);
+    // a voice left out, and the bass down an octave
+    const row=i=>d.getElementById("pins").tBodies[0].rows[i].querySelectorAll("input,select");
+    row(2)[0].checked=false; row(2)[0].dispatchEvent(new w.Event("change"));
+    row(0)[4].value="-1"; row(0)[4].dispatchEvent(new w.Event("change")); await sleep(30);
+    [[1,43],[3,59]].forEach(([c,n])=>mini.p1.emit([0x80|c,n,20]));
+    emu.midi.length=0;
+    mini.p1.emit([0x91,45,100]); mini.p1.emit([0x93,60,100]);
+    check("a voice can be left out, and the bass moved down an octave", emu.midi.length===1 && emu.midi[0][0]===0x91 && emu.midi[0][1]===33, JSON.stringify(emu.midi));
+    mini.p1.emit([0x81,45,20]);
+    check("its note-off follows it down", emu.midi.some(m=>m[0]===0x81 && m[1]===33));
+    // giving a line another line's voice swaps the two
+    emu.lines.length=0;
+    row(1)[1].value="0"; row(1)[1].dispatchEvent(new w.Event("change")); await sleep(30);
+    check("choosing another line's 8b8 voice swaps them", emu.lines.includes("PIN:1:1:255:1") && emu.lines.includes("PIN:2:0:255:1"), emu.lines.filter(l=>l.startsWith("PIN")).join(" "));
+    // the voice map
+    await sleep(500);
+    const cells=[...d.getElementById("chips").children].map(c=>c.textContent);
+    check("the nine voices are shown as the 8b8 reports them, latched ones named", /Tenor/.test(cells[0]) && /G2/.test(cells[0]) && /drum/.test(cells[5]), cells.join(" | "));
+    // the minichord's voicing, from the page
+    ch("cantus", 4); await sleep(30);
+    check("the cantus can be set from here", mini.P[115]===4);
+    d.getElementById("giveback").click(); await sleep(60);
+    check("giving back frees the 8b8's voices and the minichord's voicing", emu.last(/^PIN/)==="PIN:off" && mini.P[115]===0 && mini.P[111]===0);
+  }
+  {
+    // an 8b8 whose firmware has no PIN yet
+    const w=load(), d=w.document;
+    minichord(w); await sleep(60);
+    const emu=emulator(w, {pins:false});
+    d.getElementById("emu").click(); await sleep(1100);
+    d.getElementById("pinOn").checked=true; d.getElementById("pinOn").dispatchEvent(new w.Event("change"));
+    await sleep(1700);
+    check("an 8b8 without pinned voices says so, and the chord voices share lanes as before", !d.getElementById("pinWarn").hidden && /feature\/pinned-voices/.test(d.getElementById("pinWarn").textContent) && !w.router.pinned);
   }
 
   // ---- the board, over USB: settings by serial, notes to its MIDI port ----

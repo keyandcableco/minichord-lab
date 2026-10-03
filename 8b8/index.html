@@ -54,6 +54,26 @@
 @media (prefers-color-scheme:dark){ :root:not([data-theme="light"]) .warn{color:var(--accent)} }
 :root[data-theme="dark"] .warn{color:var(--accent)}
 [hidden]{display:none!important}
+#voicesPanel .opts{display:block;margin:.3rem 0}
+#voicesPanel .opts small{display:block;color:var(--muted);font-size:.9rem;max-width:72ch}
+#voicesPanel h3{font-size:1rem;margin:1rem 0 .3rem}
+.voicegrid{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:24px;align-items:start;margin:.6rem 0}
+@media (max-width:900px){.voicegrid{grid-template-columns:1fr}}
+.pins{border-collapse:collapse;font-size:.95rem;width:100%}
+.pins th{font-weight:400;color:var(--muted);font-size:.85rem;text-align:left;padding:.2rem .3rem}
+.pins td{padding:.25rem .3rem;border-top:1px solid var(--rule)}
+.pins td:first-child{font-weight:700;white-space:nowrap}
+.pins td:first-child i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px}
+.pins select{padding:.15rem .3rem}
+.pins .now{font-variant-numeric:tabular-nums;min-width:3.2em}
+@media (max-width:600px){.pins th:nth-child(4),.pins td:nth-child(4),.pins th:nth-child(6),.pins td:nth-child(6){display:none}}
+.chips8{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;max-width:330px}
+.chips8 div{border:1px solid var(--rule);border-radius:var(--radius);padding:.3rem .4rem;font-size:.85rem;min-height:3.1rem;line-height:1.3}
+.chips8 div b{display:block;font-size:.78rem;color:var(--muted);font-weight:400}
+.chips8 div.pin{border-color:var(--ink);border-width:2px}
+.chips8 div.busy{background:var(--panel)}
+#lines{display:block;width:100%;height:auto;max-height:240px;background:var(--panel);border:1px solid var(--rule);border-radius:var(--radius);margin-top:.4rem}
+.voicing{gap:14px 20px}
 input[type=number]{width:5em;color:var(--ink);border:1px solid var(--ink);background:var(--panel);border-radius:var(--radius);padding:.25rem .4rem}
 </style>
 </head>
@@ -110,6 +130,33 @@ input[type=number]{width:5em;color:var(--ink);border:1px solid var(--ink);backgr
       <p class="fine warn" id="tuneWarn" hidden></p>
     </section>
   </div>
+
+  <section class="panel" id="voicesPanel">
+    <h2>Chord voices</h2>
+    <label class="opts"><span><input type="checkbox" id="pinOn"> Latch the four chord voices to voices of their own
+      <small>Each chord voice keeps one of the 8b8's nine voices for itself, whatever the harp and the drums are doing, so a chord change is four lines moving on four oscillators, not four notes struck again. The harp and the drums share the other five.</small></span></label>
+    <p class="fine warn" id="pinWarn" hidden></p>
+    <div class="voicegrid">
+      <table class="pins" id="pins">
+        <thead><tr><th></th><th>Plays</th><th>8b8 voice</th><th>Envelope</th><th>Legato</th><th>Octave</th><th>Now</th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <div>
+        <div class="chips8" id="chips" aria-label="The 8b8's nine voices: three chips of three"></div>
+        <p class="fine">The 8b8's nine voices, three to a chip, as it reports them.</p>
+      </div>
+    </div>
+    <canvas id="lines" width="1080" height="220" role="img" aria-label="The four chord voices as lines over the last twelve seconds"></canvas>
+    <p class="fine" id="motion">Play a few chords to see the lines move.</p>
+    <h3>Voicing on the minichord</h3>
+    <div class="row voicing">
+      <label class="fine">Voice leading <select id="vl"><option value="0">Off</option><option value="1">On</option><option value="2">Strict</option></select></label>
+      <label class="fine">Cantus <select id="cantus"><option value="0">Off</option><option value="1">Bass</option><option value="2">Tenor</option><option value="3">Alto</option><option value="4">Soprano</option><option value="5">Nearest voice</option></select></label>
+      <label class="fine">Slash voice <select id="slashv"><option value="0">By slash level</option><option value="1">Bass</option><option value="2">Tenor</option><option value="3">Alto</option><option value="4">Soprano</option></select></label>
+      <label class="fine">Glide <input type="number" id="glide" min="0" max="1500" step="10"> ms</label>
+    </div>
+    <p class="fine">With voice leading on, the minichord's four voices arrive bottom to top: bass, tenor, alto, soprano, each moving as little as it can. Cantus lets the harp set one voice's note; slash voice lets a slash chord set one. The minichord's glide arrives as bends, carried by the latched voices as they move; the 8b8's own Glide, in its sound, slides each latched voice from its own last note. Use one or the other. The 8b8's Buzzy Bass always takes its lowest note and its wavetable its highest, so latched, those are the bass line and the soprano line.</p>
+  </section>
 
   <div class="grid2">
     <section class="panel">

@@ -28,6 +28,14 @@ export const KIT = [
   [36,"Bass drum"], [38,"Snare"], [42,"Closed hat"], [46,"Open hat"], [39,"Clave"], [41,"Low floor tom"],
   [45,"Low tom"], [48,"Hi-mid tom"], [50,"High tom"], [49,"Crash"], [51,"Ride"], [56,"Cowbell"],
 ];
+/** the 8b8's four envelope presets (tones[] in its firmware), for a pinned voice to choose */
+export const ENVELOPES = ["Organ", "Pluck", "Swell", "Pad"];
+/** the nine AY voices: voice v is channel v/3 of chip v%3 */
+export const AY_VOICES = Array.from({length:9}, (_,v)=>`${"ABC"[v%3]}${Math.floor(v/3)+1}`);
+/** where the four chord voices go by default: a chip each for the bass, tenor and alto, the soprano back on
+ *  the first chip. The bass is the 8b8's lowest note, so its Buzzy Bass envelope lands on chip A; drums
+ *  look for a chip with a free envelope, and find B or C. */
+export const DEFAULT_PINS = [0, 1, 2, 3];
 /** the drum pattern's rows: a note on the 8b8's kit each */
 export const DRUM_ROWS = [[36,"Kick"], [38,"Snare"], [42,"Hat"], [46,"Open hat"]];
 
@@ -89,9 +97,15 @@ export class Router {
     this.chord=true;           // the chord buttons play the 8b8
     this.harp="voice";         // the harp: "voice", "drums" or "off"
     this.mpe=false;            // the minichord sends MPE: lanes and bends
+    // The chord voices on lanes of their own (1 to 4 for its voices 1 to 4), for the 8b8 to pin: the
+    // minichord's MPE chord voices come on its channels 2 to 5, one each, and keep them as they move.
+    // Each can be left out, or moved by octaves.
+    this.pinned=false;
+    this.slots=[0,1,2,3].map(()=>({on:true, oct:0}));
     this.reset();
   }
-  reset(){ this.lanes=new Map(); this.age=new Array(16).fill(0); this.clock=0; this.held=new Map(); }
+  reset(){ this.lanes=new Map(); this.age=new Array(16).fill(0); this.clock=0; this.held=new Map(); this.sent=new Map(); }
+  get _pool(){ return this.pinned ? LANES.filter(l=>l>4) : LANES; }
   /** every note still sounding on the 8b8, let go: for switching modes, or leaving */
   releaseAll(){
     const out=[];
@@ -103,9 +117,10 @@ export class Router {
     const out=[];
     if(lane===undefined){
       const taken=new Set(this.lanes.values());
-      lane=LANES.find(l=>!taken.has(l));
+      const pool=this._pool;
+      lane=pool.find(l=>!taken.has(l));
       if(lane===undefined){
-        lane=LANES.reduce((a,b)=>this.age[a]<=this.age[b] ? a : b);
+        lane=pool.reduce((a,b)=>this.age[a]<=this.age[b] ? a : b);
         for(const n of this.held.get(lane)||[]) out.push([0x80|lane, n, 0]);
         this.held.delete(lane);
         for(const [k,v] of this.lanes) if(v===lane) this.lanes.delete(k);
@@ -137,6 +152,10 @@ export class Router {
         for(const n of this.held.get(lane)||[]) out.push([0x80|lane, n, 0]);
         this.held.delete(lane);
       }
+      if(this.mpe && this.pinned && section==="chord") for(let lane=1;lane<=4;lane++){
+        for(const n of this.held.get(lane)||[]) out.push([0x80|lane, n, 0]);
+        this.held.delete(lane);
+      }
       if(!this.mpe){ const lane=section==="chord" ? 0 : 1;
         for(const n of this.held.get(lane)||[]) out.push([0x80|lane, n, 0]); this.held.delete(lane); }
       return out;
@@ -155,6 +174,21 @@ export class Router {
       this._hold(lane, data[1], on);
       return [[(on?0x90:0x80)|lane, data[1], on ? data[2] : 0]];
     }
+    // a chord voice on its own lane: the minichord's voice 1 to 4 (channels 2 to 5) on lanes 1 to 4
+    const slot = this.pinned && section==="chord" ? ch-1 : -1;
+    if(slot>=0 && slot<4){
+      const lane=1+slot, key=lane+":"+data[1];
+      if(type===0xE0) return [[0xE0|lane, data[1], data[2]]];
+      if(on){
+        const s=this.slots[slot]; if(!s.on) return [];
+        const n=Math.max(0, Math.min(127, data[1]+12*s.oct));
+        this.sent.set(key, n); this._hold(lane, n, true);
+        return [[0x90|lane, n, data[2]]];
+      }
+      if(!this.sent.has(key)) return [];      // left out, or let go already
+      const n=this.sent.get(key); this.sent.delete(key); this._hold(lane, n, false);
+      return [[0x80|lane, n, 0]];
+    }
     // a note-off for a voice whose lane was handed on: its note was let go then
     if(off && !this.lanes.has(section+":"+ch)) return [];
     const {lane, out}=this._lane(section+":"+ch);
@@ -172,9 +206,10 @@ export class Router {
  * Events: "preset" when its settings arrive or change, "line" for every line it sends.
  */
 export class EightBit extends EventTarget {
-  constructor(){ super(); this.transport=null; this.layout=null; this.params=null; this.name=""; }
+  constructor(){ super(); this.transport=null; this.layout=null; this.params=null; this.name="";
+    this.canPin=null; this.pinMask=0; this.voiceMap=null; }
   attach(transport, name){
-    this.transport=transport; this.name=name||""; this.layout=null; this.params=null;
+    this.transport=transport; this.name=name||""; this.layout=null; this.params=null; this.canPin=null; this.voiceMap=null;
     transport.receive=l=>this.receive(l);
     this.line("DUMP");
   }
@@ -189,6 +224,8 @@ export class EightBit extends EventTarget {
     this.dispatchEvent(new CustomEvent("line",{detail:l}));
     if(l.startsWith("LAYOUT:")) this.layout=l.slice(7).toUpperCase();
     else if(l.startsWith("PRESET:")){ this.params=l.slice(7).split(",").map(Number); this.dispatchEvent(new Event("preset")); }
+    else if(/^PIN:\d+$/.test(l)){ this.canPin=true; this.pinMask=+l.slice(4); this.dispatchEvent(new Event("pins")); }
+    else if(l.startsWith("DIAG ")){ this.voiceMap=parseDiag(l); this.dispatchEvent(new Event("voicemap")); }
     else if(/^V:\d+:\d+$/.test(l)){ const [,i,v]=l.split(":").map(Number); if(this.params) this.params[i]=v; this.dispatchEvent(new Event("preset")); }
   }
   /** one setting, held to its range */
@@ -202,6 +239,24 @@ export class EightBit extends EventTarget {
   /** twelve cents from equal, C to B, or null for the 8b8's own temperament */
   tune(cents){ this.line(cents ? "PCT:"+cents.join(",") : "PCT:off"); }
   mpe(on){ this.line("MPE:"+(on?1:0)); }
+  /** give a MIDI channel (0-15) one of the nine voices to itself; envelope 0-3 or null for the sound's own */
+  pin(channel, voice, envelope=null, legato=false){
+    this.line(`PIN:${channel}:${voice}:${envelope==null ? 255 : envelope}:${legato?1:0}`);
+  }
+  unpin(){ this.line("PIN:off"); }
+}
+
+/**
+ * The 8b8's DIAG line, as the nine voices: {note} for a note (a MIDI number), {drum:true}, or {} for a
+ * free voice, each with its envelope stage (A, D, S, R, X for a drum, - never used).
+ */
+export function parseDiag(line){
+  const map=Array.from({length:9}, ()=>({}));
+  for(const m of line.matchAll(/(\d+):c\d+\/([^/\s]+)\/(.)\//g)){
+    const v=+m[1]; if(v>8) continue;
+    map[v] = m[2]==="perc" ? {drum:true, stage:m[3]} : m[2][0]==="n" ? {note:+m[2].slice(1), stage:m[3]} : {stage:m[3]};
+  }
+  return map;
 }
 
 /**
