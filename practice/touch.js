@@ -48,7 +48,13 @@ const tdShape=()=>{ const p=tdProfile(); return (blast && blast.field ? blast.ki
 // buttons in a column and lie next to each other: major and minor (diminished), minor and seventh
 // (minor seventh). The edge is this much of a button's height, on each side of the line.
 const TD_EDGE=.22;
-const td={on:false, deck:null, shape:null, touches:new Map(), knobV:{}, sharpLabels:"", modLocked:false, keyBannerTimeout:null};
+const td={on:false, deck:null, shape:null, touches:new Map(), knobV:{}, sharpLabels:"", latched:false, chordSinceMod:false, keyHold:null};
+// One hand. A long press on the modifier latches it, held for the player till another long press (a
+// double tap still flips it, latched or not); a long press on a chord button sets the key signature
+// from it, as the key change combo does with both preset buttons held: the top row's the sharp keys
+// (F♯ to B♯), the middle the naturals, the bottom the flats (F♭ to B♭). The button fills as it's held,
+// from KEY_SHOW, naming the key, and the key's set at KEY_SET.
+const TD_LATCH=500, TD_KEY_SHOW=250, TD_KEY_SET=1000;
 const tdOn=()=> td.on && vmOn();
 
 // where a finger on the chord buttons is: its column, and the row or rows it presses
@@ -79,7 +85,7 @@ function touchMinichord(on=true){
     if(td.deck){ td.deck.remove(); td.deck=null; }
     document.documentElement.style.removeProperty("--td-h");
     vmKnobs(false);
-    td.modLocked=false; clearTimeout(td.keyBannerTimeout);
+    td.latched=false; tdKeyHold(null);
   }
   const b=document.getElementById("touchBtn"); if(b) b.textContent = on ? "Put the screen minichord away" : "Play on the screen";
   if(typeof cabPress==="function") document.querySelectorAll(".cabpress").forEach(p=>p.textContent=cabPress());   // what wakes a title screen
@@ -92,6 +98,7 @@ let tdTimer=0;
 function tdBuild(){
   const p=tdProfile(); td.shape=tdShape();
   vmKnobs(!!p.knob);
+  tdKeyHold(null);
   if(td.touches.size){ td.touches.clear(); vmReset(); }          // fingers on the old deck let go
   td.sharpLabels="";                                           // the new buttons are labelled afresh
   if(!td.deck){
@@ -102,11 +109,23 @@ function tdBuild(){
   }
   const deck=td.deck; deck.innerHTML=""; deck.dataset.harp=p.harp||""; deck.dataset.chords=p.chords?"1":""; deck.dataset.knob=p.knob?"1":""; deck.dataset.piano=p.harp==="notes" && tdPianoOn()?"1":"";
   // the modifier, held like the instrument's, beside the chord buttons
-  const modBtn=document.createElement("button"); modBtn.type="button"; modBtn.className="tdmod"; modBtn.textContent="♯"; modBtn.setAttribute("aria-label","The modifier: hold it or long-press to lock");
-  if(p.chords){
-    tdModButton(modBtn);
-    deck.appendChild(modBtn);
-  }
+  const modBtn=document.createElement("button"); modBtn.type="button"; modBtn.className="tdmod"; modBtn.textContent="♯"; modBtn.setAttribute("aria-label","The modifier: hold it, or hold it a moment to latch it");
+  // Latched, the modifier's already down, so a finger on it changes nothing the virtual minichord
+  // sees: its press and release are handed to the double tap by hand. A long press latches (or lets go)
+  // unless a chord's played under it, which is the modifier held as usual.
+  let latchTimer=0;
+  tdHold(modBtn, id=>{
+    tdBuzz(); td.chordSinceMod=false;
+    if(td.latched) vmTap(true);
+    vmModifier("m"+id, true);
+    clearTimeout(latchTimer);
+    latchTimer=setTimeout(()=>{ if(!td.chordSinceMod && !vm.presses.size) tdLatch(!td.latched); }, TD_LATCH);
+  }, id=>{
+    clearTimeout(latchTimer);
+    if(td.latched) vmTap(false);
+    vmModifier("m"+id, false);
+  });
+  if(p.chords) deck.appendChild(modBtn);
   const top=document.createElement("div"); top.className="tdtop"; deck.appendChild(top);
   if(p.harp==="notes") top.appendChild(tdHarp());
   if(p.harp==="dpad") top.appendChild(tdDpad());
@@ -161,9 +180,9 @@ function tdHints(){
 }
 // the first time on this device, a word on what isn't plain to see
 function tdTip(){
-  if(saved.tdTip) return; saved.tdTip=true; save();
+  if(saved.tdTip2) return; saved.tdTip2=true; save();
   const tip=document.createElement("div"); tip.className="tdtip";
-  tip.innerHTML="TAP THE CHORDS. A THUMB ON THE LINE BETWEEN TWO ROWS PLAYS BOTH: DIM, OR m7. DOUBLE-TAP ♯ TO FLIP SHARP AND FLAT.";
+  tip.innerHTML="TAP THE CHORDS. A THUMB ON THE LINE BETWEEN TWO ROWS PLAYS BOTH: DIM, OR m7. DOUBLE-TAP ♯ TO FLIP SHARP AND FLAT; HOLD IT TO LOCK IT ON. HOLD A CHORD TO CHANGE KEY: TOP ROW ♯ KEYS, MIDDLE ♮, BOTTOM ♭.";
   (document.querySelector(".fscab") || document.body).appendChild(tip);
   const go=()=>{ tip.classList.add("gone"); setTimeout(()=>tip.remove(), 400); document.removeEventListener("pointerdown", go, true); };
   setTimeout(go, 8000); document.addEventListener("pointerdown", go, true);
@@ -201,37 +220,13 @@ function tdHold(el, down, up){
   const end=e=>{ if(!el.classList.contains("on")) return; el.classList.remove("on"); up(e.pointerId); };
   el.addEventListener("pointerup", end); el.addEventListener("pointercancel", end); el.addEventListener("lostpointercapture", end);
 }
-// the modifier button: tap to activate momentarily, long-press to toggle lock
-function tdModButton(modBtn){
-  let downAt=null;
-  modBtn.addEventListener("pointerdown", e=>{
-    e.preventDefault(); tdCapture(modBtn, e); downAt=performance.now();
-    modBtn.classList.add("on"); tdBuzz();
-  });
-  const end=e=>{
-    if(!downAt) return;
-    const elapsed=performance.now()-downAt;
-    if(elapsed>=500){
-      td.modLocked=!td.modLocked;
-      if(td.modLocked) vmModifier("m"+e.pointerId, true);
-      else vmModifier("m"+e.pointerId, false);
-    } else {
-      if(!td.modLocked) vmModifier("m"+e.pointerId, true);
-      setTimeout(()=>{ if(!td.modLocked) vmModifier("m"+e.pointerId, false); }, 150);
-    }
-    modBtn.classList.remove("on"); downAt=null;
-  };
-  modBtn.addEventListener("pointerup", end); modBtn.addEventListener("pointercancel", end);
-  modBtn.addEventListener("lostpointercapture", end);
-}
 
 // the chord buttons: each finger presses the buttons under it, and sliding moves to the next
 function tdGrid(g){
   for(let r=0;r<3;r++) for(let c=0;c<7;c++){ const b=document.createElement("span"); b.className="tdcell"; b.dataset.r=r; b.dataset.c=c; g.appendChild(b); }
-  const touchTimings=new Map();
-  g.addEventListener("pointerdown", e=>{ e.preventDefault(); tdCapture(g, e); const z=tdZone(g.getBoundingClientRect(), e.clientX, e.clientY); touchTimings.set(e.pointerId, {at:performance.now(), zone:z, moved:false, pressed:false}); });
-  g.addEventListener("pointermove", e=>{ const t=touchTimings.get(e.pointerId); if(t) { t.moved=true; if(!t.pressed) tdFinger(e.pointerId, t.zone); t.pressed=true; tdFinger(e.pointerId, tdZone(g.getBoundingClientRect(), e.clientX, e.clientY)); } });
-  const end=e=>{ const t=touchTimings.get(e.pointerId); if(!t) return; const elapsed=performance.now()-t.at; if(!t.moved && elapsed>=500) { if(t.zone) tdChangeKey(t.zone); } else { if(!t.pressed) tdFinger(e.pointerId, t.zone); tdFinger(e.pointerId, null); } touchTimings.delete(e.pointerId); };
+  g.addEventListener("pointerdown", e=>{ e.preventDefault(); tdCapture(g, e); tdFinger(e.pointerId, tdZone(g.getBoundingClientRect(), e.clientX, e.clientY)); });
+  g.addEventListener("pointermove", e=>{ if(td.touches.has(e.pointerId)) tdFinger(e.pointerId, tdZone(g.getBoundingClientRect(), e.clientX, e.clientY)); });
+  const end=e=>tdFinger(e.pointerId, null);
   g.addEventListener("pointerup", end); g.addEventListener("pointercancel", end); g.addEventListener("lostpointercapture", end);
 }
 // a finger's buttons: the new ones pressed first, then the old let go, so moving to the next chord
@@ -239,31 +234,52 @@ function tdGrid(g){
 function tdFinger(id, zone){
   const was=td.touches.get(id), key=zone ? zone.c+":"+zone.rows.join() : "";
   if((was ? was.key : "")===key){ if(!zone) td.touches.delete(id); return; }
-  if(zone){ td.touches.set(id, {key, zone}); tdBuzz(); zone.rows.forEach(r=>vmPress(`t${id}:${r}`, r, zone.c)); }
+  if(zone){ td.touches.set(id, {key, zone}); tdBuzz(); td.chordSinceMod=true; zone.rows.forEach(r=>vmPress(`t${id}:${r}`, r, zone.c)); }
   else td.touches.delete(id);
   if(was) was.zone.rows.filter(r=>!zone || !zone.rows.includes(r)).forEach(r=>vmRelease(`t${id}:${r}`));
+  // one finger, still, on one button is a key change on the way; anything else isn't
+  tdKeyHold(zone && zone.rows.length===1 && td.touches.size===1 ? {id, c:zone.c, r:zone.rows[0]} : null);
 }
-// long-press a chord button to change to that key
-function tdChangeKey(zone){
-  if(!zone || zone.c<0 || zone.c>=7) return;
-  const bases=[4, 0, 1, 2, 3, 5, -1];
-  const fifths=bases[zone.c];
-  const idx=keyIndexOf(fifths);
-  if(idx>=0 && idx<15) {
-    ensure(35, idx);
-    tdShowKeyChange(KEY_BY_FIFTHS[fifths]);
-  }
+
+// the modifier latched, or let go: held under its own name, apart from any finger
+function tdLatch(on){
+  td.latched=on; vmModifier("latch", on);
+  try{ navigator.vibrate && navigator.vibrate(on ? [12,50,12] : 25); }catch(e){}
+  tdDraw();
 }
-// show visual feedback when key changes
-function tdShowKeyChange(keyName){
-  const deck=document.querySelector(".tdeck");
-  if(!deck) return;
-  let banner=deck.querySelector(".td-key-banner");
-  if(!banner){ banner=document.createElement("div"); banner.className="td-key-banner"; deck.appendChild(banner); }
-  banner.textContent="KEY: "+keyName;
-  banner.classList.add("show");
-  clearTimeout(td.keyBannerTimeout);
-  td.keyBannerTimeout=setTimeout(()=>{ if(banner) banner.classList.remove("show"); }, 1500);
+// The key a chord button sets, held: the column's letter (round the circle of fifths, F to B, so its
+// natural key is its place less one), sharpened on the top row, flattened on the bottom.
+const tdKeyFifths=(c,r)=> c-1+[7,0,-7][r];
+function tdKeyHold(h){
+  const k=td.keyHold;
+  if(k && h && k.id===h.id && k.c===h.c && k.r===h.r) return;
+  if(k){ clearTimeout(k.show); clearTimeout(k.set); k.cell && k.cell.classList.remove("keying"); td.keyHold=null; }
+  if(!h || !td.deck) return;
+  const cell=td.deck.querySelector(`.tdcell[data-c="${h.c}"][data-r="${h.r}"]`); if(!cell) return;
+  const f=tdKeyFifths(h.c, h.r);
+  cell.dataset.key=KEY_NAMES_BY_FIFTHS[f];
+  td.keyHold={...h, cell,
+    show:setTimeout(()=>{ if(tdHoldTaken()) tdKeyHold(null); else cell.classList.add("keying"); }, TD_KEY_SHOW),
+    set:setTimeout(()=>{ if(tdHoldTaken()){ tdKeyHold(null); return; } td.keyHold=null; cell.classList.remove("keying"); tdFinger(h.id, null); tdSetKey(f); }, TD_KEY_SET)};
+}
+// a chord held for the game's own sake isn't a key change: Chord Invaders' beam, earned or burning
+const tdHoldTaken=()=> typeof blast!=="undefined" && !!blast && blast.phase==="play" && !!(blast.beamArmed || blast.beamOn);
+const KEY_NAMES_BY_FIFTHS={"-8":"F♭","-7":"C♭","-6":"G♭","-5":"D♭","-4":"A♭","-3":"E♭","-2":"B♭","-1":"F","0":"C","1":"G","2":"D","3":"A","4":"E","5":"B",
+  "6":"F♯","7":"C♯","8":"G♯","9":"D♯","10":"A♯","11":"E♯","12":"B♯"};
+// The key set, as the instrument sets it for itself: the Lab hears it the way it hears the combo, a
+// game asking for a key takes it, and the deck says so, over the game, with the new key's chord.
+function tdSetKey(f){
+  const i=keyIndexOf(f); if(i<0 || !vmOn()) return;
+  mc.writeParam(35, i);
+  try{ navigator.vibrate && navigator.vibrate([20,60,40]); }catch(e){}
+  const root=mod(f*7, 12); vmPlay([60+root, 64+root, 67+root].map(n=>n>71 ? n-12 : n), {dur:.9, vel:70});
+  const g=td.deck && td.deck.querySelector(".tdgrid");
+  if(g){ g.classList.remove("keyset"); void g.offsetWidth; g.classList.add("keyset"); }
+  document.querySelectorAll(".tdkey").forEach(e=>e.remove());
+  const b=document.createElement("div"); b.className="tdkey";
+  b.innerHTML=`KEY OF ${KEY_NAMES_BY_FIFTHS[f]}<small>${sigText(f).toUpperCase()}</small>`;
+  (document.querySelector(".fscab") || document.body).appendChild(b);
+  setTimeout(()=>b.classList.add("gone"), 1600); setTimeout(()=>b.remove(), 2100);
 }
 
 // The harp as a piano's keys instead: one octave, C to B, the white keys side by side and the black
@@ -338,21 +354,15 @@ const tdBare=()=> !!saved.tdBare, tdHarpBare=()=> !!saved.tdHarpBare;
 function tdDraw(){
   const deck=td.deck; if(!deck || !td.on) return;
   const f=devFifths(), sharp=vmSharp(), names=f<0?FLAT_NAMES:SHARP_NAMES, bare=tdBare();
-  const labels=f+"|"+sharp+"|"+(mc.params[31]??0)+"|"+bare+"|"+(mc.params[33]??0)+"|"+td.modLocked;
-  const m=deck.querySelector(".tdmod");
-  if(m){
-    m.textContent = mc.params[31]===1 ? "♭" : "♯";
-    m.classList.toggle("locked", td.modLocked);
-    m.setAttribute("aria-label", td.modLocked ? "Modifier locked: long-press to unlock" : "Modifier: long-press to lock, double-tap to flip");
-  }
+  const labels=f+"|"+sharp+"|"+(mc.params[31]??0)+"|"+bare+"|"+(mc.params[33]??0);
+  if(td.latched && !vm.mod.has("latch")) td.latched=false;   // everything let go (the window left): the latch too
+  const m=deck.querySelector(".tdmod"); if(m){ m.textContent = mc.params[31]===1 ? "♭" : "♯"; m.classList.toggle("latched", td.latched); }
   const held=new Set([...vm.presses.values()].map(p=>p.r+":"+p.c));
   deck.querySelectorAll(".tdcell").forEach(b=>{
     const r=+b.dataset.r, c=+b.dataset.c;
-    if(td.sharpLabels!==labels){
-      const li=LETTERS.indexOf(VM_COLS[c]); let pc=mod(NAT[li]+keyAcc(li,f),12);
+    if(td.sharpLabels!==labels){ const li=LETTERS.indexOf(VM_COLS[c]); let pc=mod(NAT[li]+keyAcc(li,f),12);
       if(sharp) pc=mod(pc+(mc.params[31]===1?-1:1),12);
-      b.textContent = bare ? "" : names[pc]+vmQuality(String(r));
-    }
+      b.textContent = bare ? "" : names[pc]+vmQuality(String(r)); }
     b.classList.toggle("on", held.has(r+":"+c));
   });
   td.sharpLabels=labels;

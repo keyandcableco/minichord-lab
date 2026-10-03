@@ -2,6 +2,7 @@
 // the fingers. Each game shows what it needs (chord buttons, the harp's strings or a d-pad, a knob). A
 // finger plays the buttons under it, and one on the line between two rows plays both; sliding moves
 // to the next chord without a slash on the way; two fingers make the rest. The modifier is held. The
+// modifier latches with a long press, and a chord button held sets the key from it. The
 // strings strum, the d-pad plucks the string the harp layout gives each direction, and the knob turns
 // by how far it's dragged. Chord Sweeper flags with a long press.
 const harness=require("./harness");
@@ -65,6 +66,38 @@ const size=(el, w, h)=>{ el.getBoundingClientRect=()=>({left:0, top:0, right:w, 
     check(`the modifier held ${flat?"flattens":"sharpens"} the chord`, heard()===(flat?"B":"C♯"), heard());
     finger(inv, g, "pointerup", 1, 150, 25); finger(inv, m, "pointerup", 3, 5, 5); await sleep(150);
     check("and let go, it's let go", w.eval("vmSharp()")===false);
+    // one hand: a long press latches the modifier, another lets it go; a double tap still flips it
+    finger(inv, m, "pointerdown", 4, 5, 5); await sleep(600); finger(inv, m, "pointerup", 4, 5, 5); await sleep(50);
+    check("a long press on the modifier latches it, lit as such", w.eval("vmSharp() && td.latched") && m.classList.contains("latched")); clear();
+    finger(inv, g, "pointerdown", 1, 150, 25); await sleep(150);
+    check("latched, a chord's played as if it were held", heard()===(flat?"B":"C♯"), heard());
+    finger(inv, g, "pointerup", 1, 150, 25); await sleep(150); clear();
+    const dir=w.eval("mc.params[31]"); w.eval("mc.params[200]=31; mc.params[201]=1-mc.params[31]");   // as a game points the double tap
+    for(let i=0;i<2;i++){ finger(inv, m, "pointerdown", 5, 5, 5); await sleep(60); finger(inv, m, "pointerup", 5, 5, 5); await sleep(60); }
+    check("a double tap still flips it, latched", w.eval("mc.params[31]")===1-dir && w.eval("td.latched && vmSharp()"), w.eval("mc.params[31]"));
+    await sleep(450); finger(inv, m, "pointerdown", 6, 5, 5); await sleep(600); finger(inv, m, "pointerup", 6, 5, 5); await sleep(50);
+    check("another long press lets it go, however many fingers held it", w.eval("vmSharp()")===false && !m.classList.contains("latched"));
+    finger(inv, m, "pointerdown", 7, 5, 5); await sleep(100); finger(inv, g, "pointerdown", 1, 150, 25); await sleep(600);
+    finger(inv, g, "pointerup", 1, 150, 25); finger(inv, m, "pointerup", 7, 5, 5); await sleep(150); clear();
+    check("held long with a chord under it, it's only held", w.eval("vmSharp() || td.latched")===false);
+    // one hand: a chord button held sets the key from it, the rows sharp, natural and flat
+    const keyAfter=async(x,y,ms)=>{ finger(inv, g, "pointerdown", 20, x, y); await sleep(ms); finger(inv, g, "pointerup", 20, x, y); await sleep(80); return w.eval("mc.keyName"); };
+    check("a chord button let go before the key's set changes nothing", await keyAfter(350, 75, 500)==="C");
+    finger(inv, g, "pointerdown", 21, 350, 75); await sleep(500);
+    check("held, it fills, naming the key it'll set", d.querySelector('.tdcell[data-c="3"][data-r="1"]').classList.contains("keying") && d.querySelector('.tdcell[data-c="3"][data-r="1"]').dataset.key==="D");
+    await sleep(650);
+    check("held a second, D's natural button sets D major", w.eval("mc.keyName")==="D", w.eval("mc.keyName"));
+    check("and says so over the game", /KEY OF D/.test(d.querySelector(".tdkey")?.textContent||""), d.querySelector(".tdkey")?.textContent);
+    check("the press is spent: its chord let go", !d.querySelector(".tdcell.on") && w.eval("vmChordName()")==="");
+    finger(inv, g, "pointerup", 21, 350, 75); await sleep(80);
+    check("F's top button sets F♯, B's bottom B♭, F's bottom F♭, B's top B♯",
+      [await keyAfter(50,25,1100), await keyAfter(650,125,1100), await keyAfter(50,125,1100), await keyAfter(650,25,1100)].join()==="F♯,B♭,F♭,B♯");
+    finger(inv, g, "pointerdown", 22, 150, 75); await sleep(300); finger(inv, g, "pointermove", 22, 250, 75); await sleep(900); finger(inv, g, "pointerup", 22, 250, 75); await sleep(80);
+    check("a finger slid to another chord sets no key", w.eval("mc.keyName")==="B♯");
+    finger(inv, g, "pointerdown", 23, 150, 25); finger(inv, g, "pointerdown", 24, 450, 25); await sleep(1100);
+    finger(inv, g, "pointerup", 23, 150, 25); finger(inv, g, "pointerup", 24, 450, 25); await sleep(80); clear();
+    check("nor two held together (a slash chord)", w.eval("mc.keyName")==="B♯");
+    w.eval("mc.writeParam(35,0)");
     w.eval("touchMinichord(false)"); await sleep(50);
     check("put away, the screen is as it was", !d.getElementById("tdeck") && mc.virtual===false); }
 

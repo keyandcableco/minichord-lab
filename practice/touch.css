@@ -16,11 +16,10 @@
 /* the modifier */
 .tdmod{grid-area:mod;width:44px;padding:0;background:#16132A;border:2px solid #3D3656;font-size:1.1rem}
 .tdmod.on{background:#FFD35A;color:#16132A;border-color:#FFD35A}
-.tdmod.locked{background:#7FE9FF;color:#16132A;border-color:#7FE9FF}
-.td-key-banner{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:1000;background:#FFD35A;color:#16132A;
-  padding:8px 16px;border-radius:4px;font-size:.7rem;font-weight:bold;white-space:nowrap;opacity:0;
-  transition:opacity .2s;pointer-events:none}
-.td-key-banner.show{opacity:1}
+/* latched by a long press: held for the player till another long press */
+.tdmod.latched{position:relative;background:#7FE9FF;color:#16132A;border-color:#7FE9FF}
+.tdmod.latched::after{content:"LOCK";position:absolute;left:0;right:0;bottom:3px;font-size:.3rem;line-height:1}
+.tdmod.latched.on{border-color:#FFD35A}
 /* the top row: the harp or d-pad, the knob, and the chord that's playing */
 .tdtop{grid-area:top;display:flex;gap:6px;align-items:stretch;height:44px;min-width:0}
 .tdnow{flex:0 0 auto;min-width:5.5em;align-self:center;text-align:right;font-size:.7rem;color:#7FE9FF;white-space:nowrap}
@@ -55,6 +54,21 @@
   font-size:.62rem;background:#2A2440;color:#F1E8D2;box-shadow:inset 0 -3px 0 rgba(0,0,0,.45)}
 .tdcell[data-r="0"]{background:#3A3150}.tdcell[data-r="1"]{background:#2A2C48}.tdcell[data-r="2"]{background:#3A2440}
 .tdcell.on{background:#FFD35A;color:#16132A;box-shadow:none}
+/* a chord button held for a key change: it fills, naming the key it will set, till the key is set (touch.js, TD_KEY_*) */
+.tdcell{position:relative;overflow:hidden}
+.tdcell.keying{color:transparent}
+.tdcell.keying::after{content:"";position:absolute;inset:0;background:#7FE9FF;transform-origin:left;animation:tdkeyfill .75s linear forwards}
+.tdcell.keying::before{content:attr(data-key) "\A KEY";white-space:pre;position:absolute;inset:0;z-index:1;display:flex;align-items:center;justify-content:center;
+  text-align:center;font-size:.45rem;line-height:1.5;color:#F1E8D2;text-shadow:1px 1px 0 #000,-1px 0 0 #000}
+@keyframes tdkeyfill{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+.tdgrid.keyset .tdcell{animation:tdkeyset .6s ease-out}
+@keyframes tdkeyset{from{background:#7FE9FF;color:#16132A}}
+/* the key just set, over the game */
+.tdkey{position:fixed;left:50%;top:34%;transform:translate(-50%,-50%);z-index:10001;box-sizing:border-box;padding:14px 18px;text-align:center;pointer-events:none;
+  background:rgba(7,6,12,.94);border:3px solid #7FE9FF;box-shadow:0 0 0 3px #000;color:#F1E8D2;
+  font:400 .9rem/1.6 "Press Start 2P","Minichord Lab Accidentals",monospace;transition:opacity .4s}
+.tdkey small{display:block;font-size:.45rem;color:#7FE9FF}
+.tdkey.gone{opacity:0}
 /* a game with a knob as well as a harp: the harp gets a row of its own, wide enough to pluck */
 .tdeck[data-knob="1"][data-harp="notes"] .tdtop{flex-wrap:wrap;height:auto;row-gap:6px}
 .tdeck[data-knob="1"][data-harp="notes"] .tdtop>*{height:44px}

@@ -82,7 +82,7 @@ const t=inv, {check, sleep}=t;
 
   // ---------- the first time ----------
   { const {w, d}=inv;
-    w.eval("touchMinichord(false); delete saved.tdTip; touchMinichord(true)"); await sleep(30);
+    w.eval("touchMinichord(false); delete saved.tdTip2; touchMinichord(true)"); await sleep(30);
     check("the first time on a device, a word on what isn't plain to see", /BETWEEN TWO ROWS/.test((d.querySelector(".tdtip")||{}).textContent||""));
     d.dispatchEvent(new inv.w.MouseEvent("pointerdown", {bubbles:true})); await sleep(500);
     w.eval("touchMinichord(false); touchMinichord(true)"); await sleep(30);
