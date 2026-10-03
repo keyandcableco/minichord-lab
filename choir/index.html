@@ -178,7 +178,7 @@ footer p{margin:0;max-width:80ch}
       <h1 aria-label="Minichord choir"><span class="initial" aria-hidden="true">M</span><span aria-hidden="true">inichord Choir</span></h1>
       <p class="subtitle" lang="la">Schola cantorum ex chorda una</p>
       <p class="lede">One chord button, four instruments. Each voice of the chord arrives on its own MPE channel, and each channel plays its own timbre, glides included.</p>
-      <p class="home"><a href="../">Minichord Lab</a> · <a href="https://keyandcableco.github.io/minichord-soundlab/">Open Sound Lab</a></p>
+      <p class="home"><a href="../">Minichord Lab</a> · <a href="https://minicontrol.keyandcable.com/">Open minicontrol</a></p>
     </div>
     <div class="connect">
       <button id="start" class="primary">Start sound and MIDI</button>
@@ -217,7 +217,7 @@ footer p{margin:0;max-width:80ch}
       <label class="ctl" id="ctlCantus" hidden><span class="lbl">Cantus</span><select id="cantusSel" disabled>
         <option value="0">Off</option><option value="1">Bass</option><option value="2">Tenor</option><option value="3">Alto</option><option value="4">Soprano</option><option value="5">Nearest</option></select></label>
     </div>
-    <p class="fine">Changes here are live and last until the preset changes. Save the preset in Sound Lab to keep them. Voice leading and the 19-, 24- and 31-EDO temperaments need the test-allFeatures firmware (24-EDO from version 18).</p>
+    <p class="fine">Changes here are live and last until the preset changes. Save the preset in minicontrol to keep them. Voice leading and the 19-, 24- and 31-EDO temperaments need the test-allFeatures firmware (24-EDO from version 18).</p>
     <p class="fine">Slash voice picks which voice sings a slash chord's note, counted up from the bottom: bass, tenor, alto or soprano. That voice's strip is marked below. Re-voice lets the other upper voices move to keep the chord whole around it. Choosing a slash voice also sets slash level to root, which then only steers the harp and rhythm mode. On the trace, a red slash marks the moment the chosen voice takes the slash note while the chord you hold stays whole, and "back" when it lets go. Older firmware has "Slash replaces" here instead.</p>
     <p class="fine" id="cantusHelp" hidden>Cantus lets the harp set one voice, the way slash voice lets a slash set one: bass, tenor, alto or soprano, or Nearest, whichever voice can reach the note by the smallest move. The first string of each harp gesture gives that voice its note; the rest of a strum moves nothing. A chord tone re-voices the chord around it, and any other note is a passing tone that voice sings alone. That voice's strip is marked below. With a slash voice on as well, the trace can't tell the harp's moves from the slash's, so both are drawn as slashes.</p>
   </section>
@@ -278,7 +278,7 @@ footer p{margin:0;max-width:80ch}
     </section>
   </div>
   <footer>
-    <p>The minichord is <a href="https://github.com/BenjaminPoilve/minichord">Benjamin Poilve's open-source instrument</a>. MPE output, voice leading and the temperaments come from the unofficial <a href="https://github.com/keyandcableco/minichord/tree/test-allFeatures">test-allFeatures firmware</a>; its settings editor is <a href="https://keyandcableco.github.io/minichord-soundlab/">Sound Lab</a>.</p>
+    <p>The minichord is <a href="https://github.com/BenjaminPoilve/minichord">Benjamin Poilve's open-source instrument</a>. MPE output, voice leading and the temperaments come from the unofficial <a href="https://github.com/keyandcableco/minichord/tree/test-allFeatures">test-allFeatures firmware</a>; its settings editor is <a href="https://minicontrol.keyandcable.com/">minicontrol</a>.</p>
     <p>Choir recordings from the FluidR3 (CC BY 3.0), Musyng Kite and FatBoy (CC BY-SA 3.0) soundfonts, as rendered by <a href="https://github.com/gleitz/midi-js-soundfonts">midi-js-soundfonts</a>. See <a href="https://github.com/keyandcableco/minichord-lab/blob/main/samples/README.md">samples/README.md</a>.</p>
     <p>Made by <a href="https://keyandcable.com">The Key &amp; Cable Company</a>. Source on <a href="https://github.com/keyandcableco/minichord-lab">GitHub</a>.</p>
     <p class="explicit" lang="la">Explicit.</p>

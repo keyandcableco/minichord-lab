@@ -299,7 +299,7 @@ mc.addEventListener("device", ()=>{
   if(mc.temperament!=null) parts.push(`the minichord is in <b>${TEMPERAMENT_TABLE[mc.temperament]?.label||mc.temperament}</b>`);
   parts.push(mc.mpe ? "MPE on, so the exact tuning comes through" : "MPE off, so the tuning is worked out from the temperament");
   $("device").innerHTML=parts.join(", ")+".";
-  $("tempsHint").textContent = mc.sysex && mc.out ? "Choose a temperament and the minichord switches to it. The change lasts until the preset changes; save it in Sound Lab to keep it." : "Choose a temperament to see its effect. With the minichord connected, it switches too.";
+  $("tempsHint").textContent = mc.sysex && mc.out ? "Choose a temperament and the minichord switches to it. The change lasts until the preset changes; save it in minicontrol to keep it." : "Choose a temperament to see its effect. With the minichord connected, it switches too.";
   refresh();
 });
 mc.addEventListener("ports", ()=>{
