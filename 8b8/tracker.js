@@ -83,7 +83,8 @@ export class Rows {
       if(c.sounding || c.wave){
         // a drum: noise, or the envelope in a one-shot shape (0-7). Buzzy Bass loops its envelope (8-15)
         const isDrum = c.noise || (c.env && d.chips[v%3].shape<8);
-        const fresh = !was || !(was.sounding || was.wave) || (c.tone && Math.abs(c.midi-was.midi)>0.4 && !c.wave);
+        // a drum's pitch falling (a kick's sweep) is the same hit, not a new one
+        const fresh = !was || !(was.sounding || was.wave) || (c.tone && !isDrum && Math.abs(c.midi-was.midi)>0.4 && !c.wave);
         if(fresh && !cell.kind){
           if(isDrum){
             const k=this.drums.findIndex(x=>t-x.t<250);
@@ -103,7 +104,7 @@ export class Rows {
     d.chips.forEach((c,i)=>{
       const w=p && p.chips[i]; const parts=[];
       if(!w || c.noise!==w.noise) parts.push("N"+c.noise.toString(16).toUpperCase().padStart(2,"0"));
-      if(!w || c.shape!==w.shape || c.envPeriod!==w.envPeriod) parts.push("E"+c.shape.toString(16).toUpperCase()+c.envPeriod.toString(16).toUpperCase().padStart(4,"0"));
+      if(!w || c.shape!==w.shape || c.envPeriod!==w.envPeriod) parts.push("E"+c.shape.toString(16).toUpperCase()+c.envPeriod.toString(16).toUpperCase().padStart(3,"0"));
       if(parts.length && !row.fx[i]) row.fx[i]=parts.join(" ");
     });
     this.prev=d;
@@ -171,8 +172,8 @@ export function drawTracker(cv, rows, {names=[], colours=[], noise=[1,1,1], now=
   g.fillStyle=PAL.bg; g.fillRect(0,0,W,H);
   const d=rows.last;
   // columns: a row number, then per chip three channels and its effects column
-  const chars=4+3*(3*9+8), font=Math.max(8, Math.min(15, W/(chars*0.62)));
-  const cw=font*0.62, numW=4*cw, chipW=(W-numW)/3, chanW=(chipW-8*cw)/3;
+  const chars=4+3*(3*9+10), font=Math.max(8, Math.min(15, W/(chars*0.62)));
+  const cw=font*0.62, numW=4*cw, chipW=(W-numW)/3, chanW=(chipW-10*cw)/3;
   const xChan=(chip,ch)=>numW+chip*chipW+ch*chanW, xFx=chip=>numW+chip*chipW+3*chanW;
   const mono=`${font}px ui-monospace,Menlo,Consolas,monospace`;
   // the scopes
@@ -228,7 +229,7 @@ export function drawTracker(cv, rows, {names=[], colours=[], noise=[1,1,1], now=
         g.fillStyle = cell.mix ? PAL.muted : PAL.dim; g.fillText(cell.mix || "..", x+6*cw, y);
         if(cell.fx){ g.fillStyle=PAL.felt; g.fillText(cell.fx, x+8.5*cw, y); }
       }
-      g.fillStyle = r.fx[chip] ? PAL.muted : PAL.dim; g.fillText(r.fx[chip] || "........", xFx(chip)+4, y);
+      g.fillStyle = r.fx[chip] ? PAL.muted : PAL.dim; g.fillText(r.fx[chip] || ".........", xFx(chip)+4, y);
     }
   }
   if(paused){ g.fillStyle=PAL.brass; g.textAlign="right"; g.fillText("PAUSED", W-6, 2); g.textAlign="left"; }
