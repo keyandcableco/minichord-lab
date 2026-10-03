@@ -59,7 +59,7 @@
 .tdcell{position:relative;overflow:hidden}
 .tdcell.keying{color:transparent}
 .tdcell.keying::after{content:"";position:absolute;inset:0;background:#7FE9FF;transform-origin:left;animation:tdkeyfill .75s linear forwards}
-.tdcell.keying::before{content:attr(data-key) "\A KEY";white-space:pre;position:absolute;inset:0;z-index:1;display:flex;align-items:center;justify-content:center;
+.tdcell.keying::before{content:attr(data-key) "\A KEY\A" attr(data-rel);white-space:pre;position:absolute;inset:0;z-index:1;display:flex;align-items:center;justify-content:center;
   text-align:center;font-size:.45rem;line-height:1.5;color:#F1E8D2;text-shadow:1px 1px 0 #000,-1px 0 0 #000}
 @keyframes tdkeyfill{from{transform:scaleX(0)}to{transform:scaleX(1)}}
 .tdgrid.keyset .tdcell{animation:tdkeyset .6s ease-out}

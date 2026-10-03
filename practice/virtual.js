@@ -126,6 +126,9 @@ function vmDoubleTap(){
   mc.dispatchEvent(new Event("device"));                       // the Lab reads the settings as a minichord reports them
 }
 const vmSharp=()=> vm.mod.size>0;
+// the names the buttons are spelled with: while the modifier's held, its way (flattened, A is A♭,
+// whatever the key; sharpened, G♯), and otherwise the key signature's
+const vmNames=()=> vmSharp() ? (mc.params[31]===1 ? FLAT_NAMES : SHARP_NAMES) : (devFifths()<0 ? FLAT_NAMES : SHARP_NAMES);
 // The harp's strings as the firmware tunes them (firmware/src/main.cpp, calculate_note_harp): twelve
 // semitones from middle C (the chromatic harp, address 98, and harp mode 0, which follows the chord
 // and isn't followed here, nor are the scales per chord, 8, 9 and 11); or a fixed scale on the key
@@ -235,7 +238,7 @@ function vmChordNow(){
 // the chord's name as the Lab spells it, for a front end to show
 function vmChordName(){
   const ch=vmChordNow(); if(!ch) return "";
-  const names=devFifths()<0 ? FLAT_NAMES : SHARP_NAMES;
+  const names=vmNames();
   return names[ch.pc]+ch.q+(ch.bass!=null ? "/"+names[ch.bass] : "");
 }
 // What the instrument would send: four voices, as the firmware voices them, a slash's bass in place

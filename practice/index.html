@@ -830,14 +830,18 @@ html.arcadepage .gamebar{align-items:flex-end}
 .kfcell.hit{background:rgba(255,75,62,.18)}
 .kfcell.hit b{font:400 1.5rem "Press Start 2P",monospace;color:#FF8A3D;text-shadow:0 0 10px #FF4B3E;animation:blink .6s steps(2) infinite;font-weight:400}
 .kfcell.miss i{font:400 1.6rem "Press Start 2P",monospace;color:#7FE9FF;font-style:normal}
-.kfcol{position:absolute;transform:translate(-50%,-50%);font:400 .6rem "Press Start 2P",monospace;color:#9A93B5}
+.kfcol{position:absolute;transform:translate(-50%,-50%);font:400 .6rem "Press Start 2P","Minichord Lab Accidentals",monospace;color:#9A93B5}
 .kfrow{position:absolute;transform:translate(-100%,-50%);font:400 .45rem "Press Start 2P",monospace;color:#9A93B5}
 .kfship{position:absolute;z-index:2;filter:drop-shadow(2px 3px 0 rgba(0,0,0,.45))}
 .kfship svg{display:block;width:100%;height:100%;image-rendering:pixelated}
 .kfship.afloat{opacity:.55}
 .kfship .kffire{animation:blink .35s steps(2) infinite}
 @media (prefers-reduced-motion:reduce){.kfship .kffire{animation:none}}
-.kfname{position:absolute;transform:translate(-50%,0);white-space:nowrap;font:400 .5rem "Press Start 2P",monospace;color:#FFD35A;text-shadow:2px 2px 0 #000;z-index:3}
+.kfname{position:absolute;transform:translate(-50%,-100%);text-align:center;font:400 .5rem/1.45 "Press Start 2P","Minichord Lab Accidentals",monospace;color:#FFD35A;text-shadow:2px 2px 0 #000,-1px -1px 0 #000;z-index:3}
+/* a sea too narrow to name each cell (every key, on a phone): the row and column headings name them, smaller */
+.kfsea.tight .kfcell small{display:none}
+.kfsea.tight .kfcol{font-size:.42rem}
+.kfsea.tight .kfname{font-size:.38rem}
 .kfside{position:absolute;z-index:3;font:400 .5rem/1.9 "Press Start 2P",monospace;color:#F1E8D2}
 .kftorps span{color:#9A93B5}
 .kftorps div{display:flex;flex-wrap:wrap;gap:4px;margin:6px 0 10px}

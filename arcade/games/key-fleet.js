@@ -166,10 +166,15 @@ function kfDraw(){
     rows.forEach(row=>{ const cs=s.cells.filter(c=>c[1]===row).map(c=>c[0]), c0=Math.min(...cs), c1=Math.max(...cs);
       const n=c1-c0+1, wpx=n*cw-8, hpx=Math.min(rh*.62, wpx*.5);
       h+=`<span class="kfship${s.sunk?"":" afloat"}" style="left:${blast.sx+c0*cw+4}px;top:${blast.sy+row*rh+(rh-hpx)/2}px;width:${wpx}px;height:${hpx}px">${kfShipSvg(n, s.sunk)}</span>`; });
-    const [c,r]=s.cells[Math.floor(s.cells.length/2)], [x,y]=kfXY(c,r);
-    if(s.sunk) h+=`<span class="kfname" style="left:${x}px;top:${y+rh*.34}px">${s.name}</span>`;
+    // its name, in the row where most of it lies (a whole key's under its major three, a ii–V–I's under
+    // its I), along the foot of that row: no wider than the ship and half a cell either side, so it never
+    // meets the next ship's, and a long name wraps upward over the hull rather than into the next row
+    if(s.sunk){ const segs=rows.map(row=>{ const cs=s.cells.filter(c=>c[1]===row).map(c=>c[0]); return {row, c0:Math.min(...cs), n:Math.max(...cs)-Math.min(...cs)+1}; }),
+        seg=segs.reduce((a,b)=>b.n>a.n?b:a);
+      h+=`<span class="kfname" style="left:${blast.sx+(seg.c0+seg.n/2)*cw}px;top:${blast.sy+(seg.row+1)*rh-3}px;width:${(seg.n+1)*cw-4}px">${s.name}</span>`; }
   }
   blast.seaEl.innerHTML=h;
+  blast.seaEl.classList.toggle("tight", cw<34);                                 // every key on a phone: too narrow to name each cell
   kfSide();
 }
 // A warship in pixels, as long as the chords it covers in a row: a hull pointed at the bow, a deck,
@@ -210,7 +215,7 @@ function kfSide(){
   if(blast.islands && blast.islands.size) h+=`<p class="kfhow">ROCKS: NO SHIP THERE.</p>`;
   if(L.counts) h+=`<p class="kfhow">THE NUMBERS: HOW MANY SHIP CHORDS IN EACH COLUMN AND ROW.</p>`;
   if(kfWide()) h+=`<p class="kfmod">MODIFIER: <b>${kfSharp()?"♯ SHARPENS":"♭ FLATTENS"}</b><br><span>PLUCK THE HARP TO FLIP IT</span></p>`;
-  h+=`<p class="kfhow">SINK A SHIP BY CALLING ITS KEY:${kfHarpOk()?"<br>· PLUCK ITS TONIC ON THE HARP":""}<br>· PLAY ITS V7 THEN I${canWrite()?"<br>· OR THE KEY CHANGE COMBO: HOLD BOTH PRESET BUTTONS AND PRESS THE KEY IN THE MIDDLE ROW (TOP ROW SHARPS, BOTTOM ROW FLATS). A MINOR SHIP TAKES ITS RELATIVE MAJOR'S KEY: A MINOR IS C":""}<br>ONLY A SHIP YOU'VE HIT CAN BE CALLED; A WRONG OR BLIND CALL COSTS A TORPEDO.</p>`;
+  h+=`<p class="kfhow">SINK A SHIP BY CALLING ITS KEY:${kfHarpOk()?"<br>· PLUCK ITS TONIC ON THE HARP":""}<br>· PLAY ITS V7 THEN I${!canWrite()?"":(typeof playOnScreen==="function" && playOnScreen() ? "<br>· OR SET ITS KEY: HOLD A CHORD BUTTON (TOP ROW SHARP KEYS, MIDDLE NATURAL, BOTTOM FLAT)" : "<br>· OR THE KEY CHANGE COMBO: HOLD BOTH PRESET BUTTONS AND PRESS THE KEY IN THE MIDDLE ROW (TOP ROW SHARPS, BOTTOM ROW FLATS)")+". A MINOR SHIP TAKES ITS RELATIVE MAJOR'S KEY: A MINOR IS C, A♭ MINOR IS C♭ (OR B)"}<br>ONLY A SHIP YOU'VE HIT CAN BE CALLED; A WRONG OR BLIND CALL COSTS A TORPEDO.</p>`;
   blast.sideEl.innerHTML=h;
 }
 const kfWide=()=> !!KF_LEVELS[blast.level||0].span;
@@ -267,6 +272,13 @@ function kfSpell(pc){ const n=SHARP_NAMES[mod(pc,12)]; return n.length===1 ? n :
 // a cadence calling that key. A 7 chord waits a moment to see whether its I follows before it fires.
 const KF_CADENCE_WAIT=1400;
 function fleetChord(voices){
+  if(!blast || blast.kind!=="fleet") return;
+  // on the screen's minichord a chord button held may be setting the key, which calls a ship and never
+  // fires: the chord waits to see, played when the finger lifts, or let go if the key's set
+  if(blast.phase==="play" && typeof tdAfterHold==="function") return tdAfterHold(()=>kfChord(voices));
+  kfChord(voices);
+}
+function kfChord(voices){
   if(!blast || blast.kind!=="fleet") return;
   const pend=blast.pendingDom;
   if(pend && blast.phase==="play"){

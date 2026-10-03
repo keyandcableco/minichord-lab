@@ -253,31 +253,42 @@ const tdKeyFifths=(c,r)=> c-1+[7,0,-7][r];
 function tdKeyHold(h){
   const k=td.keyHold;
   if(k && h && k.id===h.id && k.c===h.c && k.r===h.r) return;
-  if(k){ clearTimeout(k.show); clearTimeout(k.set); k.cell && k.cell.classList.remove("keying"); td.keyHold=null; }
+  if(k){ clearTimeout(k.show); clearTimeout(k.set); k.cell && k.cell.classList.remove("keying"); td.keyHold=null; k.after.forEach(go=>go()); }   // no key change: what waited on it goes ahead
   if(!h || !td.deck) return;
   const cell=td.deck.querySelector(`.tdcell[data-c="${h.c}"][data-r="${h.r}"]`); if(!cell) return;
   const f=tdKeyFifths(h.c, h.r);
-  cell.dataset.key=KEY_NAMES_BY_FIFTHS[f];
-  td.keyHold={...h, cell,
+  cell.dataset.key=KEY_NAMES_BY_FIFTHS[f]; cell.dataset.rel=tdNoteAt(f+3)+"m";   // and its relative minor: C♭ is A♭ minor's key
+  td.keyHold={...h, cell, after:[],
     show:setTimeout(()=>{ if(tdHoldTaken()) tdKeyHold(null); else cell.classList.add("keying"); }, TD_KEY_SHOW),
     set:setTimeout(()=>{ if(tdHoldTaken()){ tdKeyHold(null); return; } td.keyHold=null; cell.classList.remove("keying"); tdFinger(h.id, null); tdSetKey(f); }, TD_KEY_SET)};
 }
+// A game that acts on a chord the moment it's played can wait instead to see whether it's a key change
+// (Key Fleet: a button held to set the key fires no torpedo). go runs now if no button's held that way,
+// or when the hold ends short of setting the key (the finger lifted or moved), and never if it sets it.
+function tdAfterHold(go){ const k=tdOn() && td.keyHold; if(k) k.after.push(go); else go(); }
 // a chord held for the game's own sake isn't a key change: Chord Invaders' beam, earned or burning
 const tdHoldTaken=()=> typeof blast!=="undefined" && !!blast && blast.phase==="play" && !!(blast.beamArmed || blast.beamOn);
 const KEY_NAMES_BY_FIFTHS={"-8":"F♭","-7":"C♭","-6":"G♭","-5":"D♭","-4":"A♭","-3":"E♭","-2":"B♭","-1":"F","0":"C","1":"G","2":"D","3":"A","4":"E","5":"B",
   "6":"F♯","7":"C♯","8":"G♯","9":"D♯","10":"A♯","11":"E♯","12":"B♯"};
+// a note by its place on the line of fifths, F to B round again, with a flat or sharp (or two) for each
+// time round: the relative minors of the far sharp keys want double sharps (B♯ major's is G𝄪 minor)
+const tdNoteAt=f=>{ const n=Math.floor((f+1)/7); return "FCGDAEB"[mod(f+1,7)]+(n<0 ? "♭".repeat(-n) : "♯".repeat(n)).replace("♭♭","𝄫").replace("♯♯","𝄪"); };
 // The key set, as the instrument sets it for itself: the Lab hears it the way it hears the combo, a
 // game asking for a key takes it, and the deck says so, over the game, with the new key's chord.
 function tdSetKey(f){
   const i=keyIndexOf(f); if(i<0 || !vmOn()) return;
+  // as the key change combo reports it, so a game that listens for the combo (Key Fleet, which keeps the
+  // instrument in C) hears a key that's already set: C held calls C major
+  mc.unasked=true; mc.changed=new Set([35]);
   mc.writeParam(35, i);
+  mc.unasked=false; mc.changed=new Set();
   try{ navigator.vibrate && navigator.vibrate([20,60,40]); }catch(e){}
   const root=mod(f*7, 12); vmPlay([60+root, 64+root, 67+root].map(n=>n>71 ? n-12 : n), {dur:.9, vel:70});
   const g=td.deck && td.deck.querySelector(".tdgrid");
   if(g){ g.classList.remove("keyset"); void g.offsetWidth; g.classList.add("keyset"); }
   document.querySelectorAll(".tdkey").forEach(e=>e.remove());
   const b=document.createElement("div"); b.className="tdkey";
-  b.innerHTML=`KEY OF ${KEY_NAMES_BY_FIFTHS[f]}<small>${sigText(f).toUpperCase()}</small>`;
+  b.innerHTML=`KEY OF ${KEY_NAMES_BY_FIFTHS[f]}<small>${tdNoteAt(f+3)}m · ${sigText(f).toUpperCase()}</small>`;
   (document.querySelector(".fscab") || document.body).appendChild(b);
   setTimeout(()=>b.classList.add("gone"), 1600); setTimeout(()=>b.remove(), 2100);
 }
@@ -353,7 +364,7 @@ mc.addEventListener("device", ()=>tdDraw());
 const tdBare=()=> !!saved.tdBare, tdHarpBare=()=> !!saved.tdHarpBare;
 function tdDraw(){
   const deck=td.deck; if(!deck || !td.on) return;
-  const f=devFifths(), sharp=vmSharp(), names=f<0?FLAT_NAMES:SHARP_NAMES, bare=tdBare();
+  const f=devFifths(), sharp=vmSharp(), names=vmNames(), bare=tdBare();
   const labels=f+"|"+sharp+"|"+(mc.params[31]??0)+"|"+bare+"|"+(mc.params[33]??0);
   if(td.latched && !vm.mod.has("latch")) td.latched=false;   // everything let go (the window left): the latch too
   const m=deck.querySelector(".tdmod"); if(m){ m.textContent = mc.params[31]===1 ? "♭" : "♯"; m.classList.toggle("latched", td.latched); }
