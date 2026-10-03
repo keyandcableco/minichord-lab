@@ -31,7 +31,7 @@
 <link rel="stylesheet" href="../core/fonts/fonts.css">
 <style>
 @font-face{font-family:"Minichord Lab Accidentals";font-style:normal;font-weight:100 900;font-display:swap;src:url("../core/fonts/lab-accidentals.woff2") format("woff2");size-adjust:85%;unicode-range:U+266D-266F,U+1D12A-1D12B}
-:root{--ink:#F1E8D2;--dim:#9A93B5;--gold:#FFD35A;--cyan:#7FE9FF;--pink:#FF5AA0;--felt:#8B0000;--night:#07060C}
+:root{--ink:#F1E8D2;--dim:#9A93B5;--gold:#FFD35A;--blue:#4FA3FF;--cyan:#7FE9FF;--pink:#FF5AA0;--felt:#8B0000;--night:#07060C}
 *{box-sizing:border-box}
 html{background:var(--night);scroll-padding-top:env(safe-area-inset-top,0px)}
 body{margin:0;min-height:100vh;color:var(--ink);font-family:"Press Start 2P","Minichord Lab Accidentals",ui-monospace,monospace;font-size:14px;line-height:1.8;
@@ -64,6 +64,11 @@ main{position:relative;z-index:1;max-width:1180px;margin:0 auto;padding:22px 18p
 .marquee p{margin:18px 0 0;font-size:.7rem;color:var(--ink)}
 .insert{display:inline-flex;align-items:center;gap:12px;margin-top:20px;font-size:.8rem;color:var(--gold);animation:blink 1.1s steps(2) infinite}
 .insert svg{width:57px;height:30px}   /* a little pixel minichord: its case, three rows of buttons, the harp, the knobs, the light */
+/* a minichord connected: PLAYER 1 READY, steady and blue, the drawing turned 45 degrees like the favicon */
+.insert.on{color:var(--blue);animation:none}
+.insert svg{transition:transform .3s}
+.insert.on svg{transform:rotate(45deg);margin:0 3px}
+.insert.on svg path[fill="#FFD35A"]{fill:var(--blue)}
 @keyframes blink{50%{opacity:0}}
 /* the high scores, scrolling across under the marquee */
 .ticker{position:relative;margin:18px 0 34px;overflow:hidden;white-space:nowrap;border-top:2px solid #2A1C35;border-bottom:2px solid #2A1C35;background:rgba(0,0,0,.55);padding:10px 0}
@@ -115,9 +120,9 @@ footer a{color:var(--gold);text-decoration:none;border-bottom:2px solid rgba(255
     <div class="bulbs" aria-hidden="true"></div><div class="bulbs side" aria-hidden="true"></div>
     <h1><small>KEY &amp; CABLE PRESENTS</small>MINICHORD<br>ARCADE</h1>
     <p>FOURTEEN GAMES, PLAYED ON THE MINICHORD ITSELF</p>
-    <div class="insert" aria-hidden="true">
+    <div class="insert" id="insert" aria-hidden="true">
       <span data-pixel-minichord></span><script>document.querySelectorAll("[data-pixel-minichord]").forEach(el=>el.outerHTML=PIXEL_MINICHORD_SVG)</script>
-      INSERT MINICHORD
+      <span id="insert-text">INSERT MINICHORD</span>
     </div>
   </header>
 
@@ -148,6 +153,14 @@ footer a{color:var(--gold);text-decoration:none;border-bottom:2px solid rgba(255
 <script>if("serviceWorker" in navigator)addEventListener("load",()=>navigator.serviceWorker.register("/sw.js").catch(()=>{}))</script>
 <script type="module">
 import {SCORES_API} from "../core/scores.js";
+import {Minichord} from "../core/minichord.js";
+
+// the sign: INSERT MINICHORD, blinking, until one's connected, then PLAYER 1 READY. A minichord
+// connected on any of the Lab's pages before connects here by itself; until then the sign waits.
+const mc=new Minichord(), sign=document.getElementById("insert");
+const ready=()=>{ const on=!!mc.out; sign.classList.toggle("on", on);
+  document.getElementById("insert-text").textContent = on ? "PLAYER 1 READY" : "INSERT MINICHORD"; };
+mc.addEventListener("ports", ready);
 
 // the games, in the order they arrived
 const GAMES=[
