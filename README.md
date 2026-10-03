@@ -73,7 +73,7 @@ opens it with `?game=<name>&solo`). Its code is plain scripts, loaded in order a
   Lab as a real one is; `practice/keyboard.js` plays it from the computer keyboard, and
   `practice/touch.js` (with `touch.css`) from a touch screen: the chord buttons, the modifier, and the
   harp's strings (or, an option, an octave of a piano's keys playing them), a d-pad or a knob as each game
-  needs, on by itself on a phone. There the game plays
+  needs, on by itself on a phone (and put away by itself when a minichord is plugged in). There the game plays
   in the phone's cabinet (`cabinet.js`): the game's screen with the minichord under it, or held
   sideways either side of it, chords on the left and the harp standing on the right
 - `arcade/`: the arcade. One file per game in `arcade/games/`; `controller.js` (the harp as a d-pad),

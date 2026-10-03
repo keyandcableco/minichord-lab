@@ -264,8 +264,20 @@ function vmSound(){
 function vmPlay(notes, opts){ try{ piano.start(); piano.play(notes, opts); }catch(e){} }
 addEventListener("blur", ()=>{ if(vmOn()){ vmReset(); vmTell(); } });
 // a real minichord connected: the virtual one steps aside first, every front end put away
-document.getElementById("connect")?.addEventListener("click", ()=>{
+function vmStepAside(){
   if(!vm.on) return;
   if(typeof kbOn==="function" && kbOn()) document.getElementById("keysBtn")?.click();
   if(typeof touchMinichord==="function") touchMinichord(false);
-}, true);
+  if(vm.on){ vm.fronts.clear(); virtualMinichord(null, false); }    // whatever front end was left
+}
+document.getElementById("connect")?.addEventListener("click", vmStepAside, true);
+// or one that turns up by itself, while the virtual one plays: plugged in after the page reconnected
+// (a phone's arcade puts the screen minichord up when it finds none), or the page's reconnect slower
+// than that. It steps aside the same way, and the real one is asked for its settings.
+mc.addEventListener("ports", ()=>{
+  const out=mc.out; if(!vm.on || !out || out.id==="virtual") return;
+  vmStepAside();
+  mc.out=out; mc.sysex=mc.sysexGranted;
+  mc.dispatchEvent(new Event("device"));
+  mc.requestDump();
+});

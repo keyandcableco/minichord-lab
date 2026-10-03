@@ -39,7 +39,7 @@ export class Minichord extends EventTarget {
 
   constructor(){
     super();
-    this.midi=null; this.out=null; this.sysex=false; this.inputChoice="auto";
+    this.midi=null; this.out=null; this.sysex=false; this.sysexGranted=false; this.inputChoice="auto";
     this.chans=Array.from({length:16},(_,i)=>({bend:0, range:i===0?2:48, rpn:[127,127]}));
     this.zone={type:"lower", members:15, known:false};
     this.params={};               // raw values from the dump, by address
@@ -87,7 +87,7 @@ export class Minichord extends EventTarget {
   // ---------- connection ----------
   async connect(){
     if(!navigator.requestMIDIAccess){ this._status("This browser has no Web MIDI. Use Chrome, Edge or Opera on a computer."); return false; }
-    try{ this.midi=await navigator.requestMIDIAccess({sysex:true}); this.sysex=true; }
+    try{ this.midi=await navigator.requestMIDIAccess({sysex:true}); this.sysex=this.sysexGranted=true; }
     catch(e){
       try{ this.midi=await navigator.requestMIDIAccess(); }
       catch(e2){ this._status("MIDI access was blocked. Open the page in its own tab and allow MIDI when asked."); return false; }
@@ -110,7 +110,7 @@ export class Minichord extends EventTarget {
     });
     const out=this.midi ? [...this.midi.outputs.values()].find(o=>isChordPort(o.name))||null : null;
     const fresh = out && (!this.out || this.out.id!==out.id);
-    this.out=out;
+    if(out || !this.virtual) this.out=out;   // a minichord played on the page keeps its place until a real one turns up
     if(!ins.length) this._status("No MIDI inputs found. Plug in the minichord and it will show up here.");
     else if(chord) this._status(`Listening to ${chord.name}, the chord port.` + (this.sysex ? "" :
       " System-exclusive access wasn't allowed, so the lab can't read or change the minichord's settings: allow \"MIDI device control & reprogram\" in the browser's site settings, then reload."));
