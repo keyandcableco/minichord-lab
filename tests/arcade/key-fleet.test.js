@@ -59,7 +59,10 @@ const t=require("./harness").load("key-fleet");
   mc.params[31]=0; const sharp=w.eval("kfSpell(1)"); mc.params[31]=1; const flat=w.eval("kfSpell(1)");
   check("sharpening gives C♯, flattening D♭", sharp==="C♯" && flat==="D♭" && w.eval("KF_COLS.indexOf('C♯')")!==w.eval("KF_COLS.indexOf('D♭')"));
   mc.params[31]=0; a.phase="play"; note(5); await sleep(20);
-  check("in the wider seas the harp flips the modifier", mc.params[31]===1);
+  check("in the wider seas the double tap flips the modifier, not the harp", mc.params[31]===0 && /DOUBLE-TAP/.test(t.heard()), t.heard());
+  w.eval("settings.modTap='off'"); note(5); await sleep(20);
+  check("with the double tap turned off, the harp flips it", mc.params[31]===1);
+  w.eval("settings.modTap='on'"); mc.params[31]=0;
   // a shot at a sharp: in the sharp waters, a ship on F♯ or C♯ is hit by the sharpened chord
   a.level=9; let target=null;
   for(let n=0;n<60 && !target;n++){ sb.kfWave(); a.torps=20; for(const sh of a.ships) for(const [c,r] of sh.cells){ const nm=w.eval(`KF_COLS[${c}]`); if(!target && /♯/.test(nm) && r<2) target={nm,r,sh,c}; } }
@@ -67,6 +70,25 @@ const t=require("./harness").load("key-fleet");
   check("in the sharp waters, a sharpened chord hits its ship", a.shots.get(target.c+","+target.r)==="hit", `${target.nm}${["","m"][target.r]} in ${target.sh.name}`);
   mc.params[31]=1; chord(target.nm, ["","m"][target.r]); await sleep(50);
   check("the same chord flattened is spelled flat, and falls off the chart there", /OFF THE CHART|ALREADY/.test(t.heard()) || /♭/.test(t.heard()), t.heard());
+  // the last fleets sail as progressions, scattered: a row's chords apart are separate boats
+  const progs=new Set(); for(let lv=8;lv<11;lv++){ a.level=lv; for(let n=0;n<40;n++){ sb.kfWave(); a.ships.forEach(s=>{ if(w.eval(`!!KF_PROGS[${JSON.stringify(s.kind)}]`)) progs.add(s.kind); }); } }
+  check("the last three levels sail progressions, every kind", progs.size===5, [...progs].join(", "));
+  check("a progression's chords apart in a row are drawn as two boats", w.eval("kfRuns([[2,0],[0,0],[4,1],[5,1]]).length")===3);
+  // from level 7 a key can be called before a hit: proved by the chart, a big bonus; guessed, less;
+  // wrong, two torpedoes
+  const callFirst=()=>{ const s=a.ships[0]; return w.eval(`kfCall(s=>s.tonic===${JSON.stringify(s.tonic)} && s.minor===${s.minor}, "TEST")`); };
+  a.level=6; let tries=0; do{ sb.kfWave(); tries++; }while(w.eval("kfForced")(s=>s.tonic===a.ships[0].tonic && s.minor===a.ships[0].minor) && tries<50);
+  a.torps=20; let n=a.ships[0].cells.length, sc=a.score; callFirst();
+  check("a right call the chart didn't prove sinks, for the plain points", a.ships[0].sunk && a.score-sc===w.eval(`mulPts(${50*n*7})`), `${a.score-sc}`);
+  sb.kfWave(); a.torps=20;
+  const own=new Set(a.ships.flatMap(s=>s.cells.map(([c,r])=>c+","+r)));
+  for(let r=0;r<3;r++) for(let c=0;c<w.eval("KF_COLS.length");c++){ const k=c+","+r; if(!own.has(k) && !a.islands.has(k)) a.shots.set(k,"miss"); }
+  n=a.ships[0].cells.length; sc=a.score; callFirst();
+  check("called sight unseen when the chart proves it, the biggest bonus", a.ships[0].sunk && a.score-sc===w.eval(`mulPts(${(100*n+40*n)*7})`), `${a.score-sc}`);
+  sb.kfWave(); a.torps=20; const homes=new Set(a.ships.map(s=>t.PC[s.tonic]));
+  const away=["C","G","D","A","E","B","F"].find(k=>!homes.has(t.PC[k]) && !a.ships.some(s=>s.minor && t.PC[s.tonic]===(t.PC[k]+9)%12));
+  w.eval(`kfCall(s=>!s.minor && s.tonic===${JSON.stringify(away)}, "WRONG")`);
+  check("a wrong call there costs two torpedoes", a.torps===18, a.torps);
   a.level=0; sb.kfWave();
   // a timer from a game that's gone never reaches the next one: sink a fleet (its next wave is two
   // seconds off), press RESET, and the fresh title screen stays a title screen
