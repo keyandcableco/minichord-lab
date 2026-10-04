@@ -5,7 +5,8 @@ const dom=new JSDOM(html.replace(/<script type="module">[\s\S]*<\/script>/,""),{
 const w=dom.window, d=w.document;
 w.matchMedia=()=>({matches:false}); w.HTMLCanvasElement.prototype.getContext=()=>({fillRect(){}, set fillStyle(v){}});
 w.fetch=async u=>({ok:true, json:async()=>({scores: u.includes("chord-snake") ? [{initials:"GKY",score:12345,level:3},{initials:"ABC",score:900,level:1}] : []})});
-const src=html.slice(html.indexOf('<script type="module">')+22, html.lastIndexOf("</script>")).replace('import {SCORES_API} from "../core/scores.js";','const SCORES_API="https://scores.test";');
+const src=html.slice(html.indexOf('<script type="module">')+22, html.lastIndexOf("</script>")).replace('import {SCORES_API} from "../core/scores.js";','const SCORES_API="https://scores.test";')
+  .replace('import {Minichord} from "../core/minichord.js";','class Minichord extends EventTarget{ get out(){ return null; } }');   // the sign's minichord: none plugged in
 w.eval("(async()=>{"+src+"})()");
 setTimeout(()=>{
   const results=[]; const check=(n,ok,det="")=>{ results.push(ok); console.log(`${ok?"  ✓":"  ✗"} ${n}${det?`  (${det})`:""}`); };
