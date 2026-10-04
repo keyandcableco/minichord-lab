@@ -88,3 +88,11 @@ Order matters: a script can use what an earlier one declared as soon as it runs,
 declared only from inside a function. `tests/` checks it all, headless: `cd tests && npm install && npm test`.
 `node tools/weigh.js` says what each arcade game's own page downloads before it can play, raw and
 gzipped, against the budget a phone's page should keep to (`--all` lists every file).
+
+## License
+
+Copyright © 2026 Greg Miller / The Key & Cable Company.
+
+Licensed under the [GNU General Public License v3.0](LICENSE). You can use, study, share and modify it. If you distribute it or a modified version, you have to make the source available under the same licence.
+
+Bundled assets keep their own licences: the fonts in `core/fonts/` are under the SIL Open Font License 1.1 (see the `OFL-*.txt` files beside them), and the sound samples in `samples/` are under the Creative Commons licences listed in [samples/README.md](samples/README.md).
