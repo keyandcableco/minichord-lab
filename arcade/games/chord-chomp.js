@@ -647,7 +647,18 @@ const CC_ICONS={
   rest:   ["#####..","...#...","..#....",".#.####","#####.#",".....#.","....###"],
   dacapo: [".##.##.","#######","#######","#######",".#####.","..###..","...#..."],
 };
-const CC_MINI=["....########..","..############",".###x#x#x#x##x","##############","###x#x#x#x##x#","############o#",".############.","...########..."];
+// The little minichord is the arcade's own pixel minichord (pixel-minichord.js, from
+// pixel-minichord.txt), as the lobby's INSERT MINICHORD sign has it: 36 by 19, pixel for pixel, in its
+// gold, dark and red. It fits the side tunnel's run exactly.
+function ccMiniSprite(){
+  let cv=CC_SPR.get("mini"); if(cv) return cv;
+  const W=typeof PIXEL_MINICHORD_W!=="undefined" ? PIXEL_MINICHORD_W : 1, H=typeof PIXEL_MINICHORD_H!=="undefined" ? PIXEL_MINICHORD_H : 1;
+  const rows=Array.from({length:H}, ()=>Array(W).fill("."));
+  if(typeof PIXEL_MINICHORD_PATHS!=="undefined") for(const m of PIXEL_MINICHORD_PATHS.matchAll(/fill="([^"]+)" d="([^"]+)"/g))
+    for(const p of m[2].matchAll(/M(\d+) (\d+)/g)) rows[+p[2]][+p[1]]=m[1];
+  const pal={}; rows.flat().forEach(c=>{ if(c!==".") pal[c]=c; });          // each pixel's own colour
+  return ccSprite("mini", rows.map(r=>r.map(c=>c==="." ? "." : c)), pal);
+}
 
 // ---------- the arcade's lettering ----------
 // Press Start 2P, the arcade's font, is an eight-pixel font: each letter drawn once at eight pixels and
@@ -741,7 +752,7 @@ function ccDraw(_, now){
     spr(ccSprite("icon|"+c.k, CC_ICONS[c.k], {"#":"#16132A"}), p); }
   // the little minichord, in the tunnel, bobbing
   const mi=blast.mini;
-  if(mi && !(mi.until-clock<2.5 && Math.floor(clock*6)%2)) spr(ccSprite("mini", CC_MINI, {"#":"#FFD35A","x":"#16132A","o":"#FF4B3E"}), {x:ox+(mi.x+.5)*t, y:oy+(mi.y+.5)*t}, Math.round(Math.sin(clock*5)));
+  if(mi && !(mi.until-clock<2.5 && Math.floor(clock*6)%2)) spr(ccMiniSprite(), {x:ox+(mi.x+.5)*t, y:oy+(mi.y+.5)*t}, Math.round(Math.sin(clock*5)));
   // the key that's up, below the ghosts' house: a sign with its name, and its sharps or flats over it
   const fr=blast.fruit;
   if(fr && !(fr.until-clock<3 && Math.floor(clock*5)%2)){
