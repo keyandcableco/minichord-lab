@@ -111,6 +111,24 @@ const size=(el, w, h)=>{ el.getBoundingClientRect=()=>({left:0, top:0, right:w, 
     let ok=false; for(let i=0;i<20 && !ok;i++){ await sleep(40); ok=a.queue.includes(turn) || a.dir===turn; }
     check("the d-pad steers the snake", ok, `${turn}: ${a.dir} ${a.queue}`);
     check("silently: the d-pad steers, it plays no note", w.eval("window.__notes")===0, w.eval("window.__notes")+" notes");
+    // the d-pad is a thumb stick: the way from where the thumb is, changing as it slides, steady by the
+    // diagonal, nothing in the middle. The arrows laid out as a 150-pixel square, centred on (75, 75).
+    { const pad=d.querySelector(".tddpad"), at={up:[50,0], left:[0,50], right:[100,50], down:[50,100]};
+      for(const [z,[x,y]] of Object.entries(at)){ const el=d.querySelector(`.tdz-${z}`); el.getBoundingClientRect=()=>({left:x, top:y, right:x+50, bottom:y+50, width:50, height:50}); }
+      size(pad, 400, 150);
+      w.eval("window.__ways=[]; mc.addEventListener('harp', e=>__ways.push(kmControl(e.detail.note)))");
+      const ways=()=>w.eval("__ways.join(' ')"), slide=(x,y)=>finger(sn, pad, "pointermove", 7, x, y);
+      finger(sn, pad, "pointerdown", 7, 75, 20);
+      check("a thumb landing above the middle is up, at once", ways()==="up", ways());
+      slide(35, 40); check("held past the diagonal only a little, it stays up", ways()==="up", ways());
+      slide(20, 70); check("slid round to the left, without lifting, it's left", ways()==="up left", ways());
+      check("the arrow showing the way lit, and a dot under the thumb", d.querySelector(".tdz-left").classList.contains("on") && !d.querySelector(".tdz-up").classList.contains("on") && !d.querySelector(".tdstickdot").hidden);
+      slide(75, 78); slide(75, 20); check("back to the middle and out again: up again, a second pluck", ways()==="up left up", ways());
+      slide(130, 70); slide(75, 140);
+      finger(sn, pad, "pointerup", 7, 75, 140);
+      check("right and down; let go, nothing lit and the dot gone", ways()==="up left up right down" && !d.querySelector(".tdz.on") && d.querySelector(".tdstickdot").hidden, ways());
+      w.eval("__ways.length=0"); finger(sn, pad, "pointerdown", 8, 360, 75); finger(sn, pad, "pointerup", 8, 360, 75);
+      check("a touch off the pad (by A and B) steers nothing", ways()==="", ways()); }
     // a bonus round played on the harp's notes: the strings while it plays, the d-pad after
     w.eval('arcadeBonus("missing")'); await sleep(600);
     check("MISSING NOTE in Chord Snake puts the strings on the deck in place of the d-pad", !!d.querySelector(".tdharp") && !d.querySelector(".tddpad"));

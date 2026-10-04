@@ -37,14 +37,23 @@
 .tdpiano span.on{background:#7FE9FF;color:#16132A}
 /* the harp as a controller: the d-pad on the left, B and A on the right, the room left over shared
    evenly before B and between B and A, so the two never crowd each other */
-.tddpad{flex:1 1 auto;display:grid;gap:4px;grid-template-columns:repeat(3,minmax(40px,56px)) minmax(8px,1fr) minmax(44px,64px) minmax(8px,1fr) minmax(44px,64px);
-  grid-template-rows:1fr 1fr;grid-template-areas:". up . . b . a" "left down right . b . a"}
+.tddpad{flex:1 1 auto;display:grid;gap:4px;grid-template-columns:repeat(3,minmax(34px,40px)) minmax(8px,1fr) minmax(44px,64px) minmax(8px,1fr) minmax(44px,64px);
+  grid-template-rows:repeat(3,1fr);grid-template-areas:". up . . b . a" "left . right . b . a" ". down . . b . a"}   /* a plus, round an empty middle: a thumb stick's */
 .tdz{padding:0;background:#16132A;border:2px solid #3D3656;font-size:.8rem}
 .tdz-up{grid-area:up}.tdz-down{grid-area:down}.tdz-left{grid-area:left}.tdz-right{grid-area:right}
 .tdz-A{grid-area:a;border-radius:50%;background:#3A1626;border-color:#FF5AA0}.tdz-B{grid-area:b;border-radius:50%;background:#14283A;border-color:#7FE9FF}
 .tdz-A,.tdz-B{aspect-ratio:1;width:100%;max-height:100%;align-self:center;justify-self:center}   /* as wide as its column, never past it */
 .tdz svg{width:60%;height:60%}
 .tdz.on{background:#FFD35A;color:#16132A;border-color:#FFD35A}
+/* the d-pad read as a thumb stick (touch.js): one pad, the arrows only showing the way; a dot under the thumb */
+.tddpad{position:relative;touch-action:none}
+.tdz-up,.tdz-down,.tdz-left,.tdz-right{pointer-events:none;z-index:1;background:transparent;border-color:transparent;color:#9A93B5}
+.tdstickring{grid-row:1/4;grid-column:1/4;align-self:center;justify-self:center;height:100%;aspect-ratio:1;max-width:100%;box-sizing:border-box;border-radius:50%;
+  border:2px solid #3D3656;background:radial-gradient(circle,#0E0A16 0 22%,#16132A 23% 100%);pointer-events:none}
+.tddpad{cursor:pointer}
+.tdstickdot{position:absolute;z-index:2;width:34px;height:34px;margin:-17px 0 0 -17px;border-radius:50%;pointer-events:none;
+  background:radial-gradient(circle at 40% 35%,rgba(255,244,194,.9),rgba(255,211,90,.55) 60%,rgba(255,211,90,0) 72%);box-shadow:0 0 12px rgba(255,211,90,.5)}
+.tdstickdot[hidden]{display:none}
 /* the knob, dragged along */
 .tdknob{flex:0 0 28%;position:relative;overflow:hidden;background:#16132A;border:2px solid #3D3656}
 .tdknob i{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,#2F2342,#FF5AA0)}
@@ -78,7 +87,7 @@
 /* a game played on the harp alone (Harp Command): the harp gets the room */
 .tdeck[data-chords=""] .tdtop{height:96px}
 .tdeck[data-chords=""] .tdharp span{font-size:.55rem}
-.tdeck[data-harp="dpad"] .tdtop{height:92px}
+.tdeck[data-harp="dpad"] .tdtop{height:120px}
 /* the piano's keys want more height than strings, for the black keys over the white */
 @media not all and (orientation:landscape) and (max-height:520px){
   .tdeck[data-piano="1"][data-chords="1"][data-knob=""] .tdtop{height:60px}

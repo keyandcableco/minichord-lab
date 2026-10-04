@@ -332,15 +332,56 @@ function tdHarp(){
   h.addEventListener("pointerup", end); h.addEventListener("pointercancel", end); h.addEventListener("lostpointercapture", end);
   return h;
 }
-// the harp as a game controller: a d-pad and A and B, each plucking its string, silently: it steers,
-// it isn't music
+// The harp as a game controller: a d-pad and A and B, each plucking its string, silently: it steers,
+// it isn't music. The d-pad is read as a thumb stick, as the emulators have it: the whole square of
+// it, the gaps and corners too, is one pad, and the way is where the thumb is from its middle, there as
+// soon as it lands and changing as it slides (up to left without lifting, which the maze games need).
+// A tap on an arrow is still that arrow. The way changes only once the thumb is clearly past the
+// diagonal, so it doesn't flicker between two, and near the middle it's no way at all, so a flick out,
+// back and out again is two steps for the games that move a square a pluck. A dot follows the thumb.
+const TD_STICK_DEAD=.15, TD_STICK_LEAN=1.25;   // the middle, as a share of the pad's width; how much one axis must beat the other to change
 function tdDpad(){
   const d=document.createElement("div"); d.className="tddpad"; d.setAttribute("aria-label","The harp as a controller");
+  const pluck=(id,z)=>{ const i=kmLayout().byString.indexOf(z); if(i<0) return; tdBuzz(); vmPluck("d"+id, i, true); };
+  const arrows={}, ring=document.createElement("i"); ring.className="tdstickring"; d.appendChild(ring);
   for(const z of ["up","left","right","down","B","A"]){
     const b=document.createElement("button"); b.type="button"; b.className="tdz tdz-"+z; b.dataset.zone=z; b.innerHTML=kmGlyph(z);
-    tdHold(b, id=>{ const i=kmLayout().byString.indexOf(z); if(i<0) return; tdBuzz(); vmPluck("d"+id, i, true); }, id=>vmLetGo("d"+id));
+    if(z==="A" || z==="B") tdHold(b, id=>pluck(id,z), id=>vmLetGo("d"+id)); else arrows[z]=b;
     d.appendChild(b);
   }
+  const dot=document.createElement("i"); dot.className="tdstickdot"; d.appendChild(dot);
+  // the pad: the box round the four arrows, measured as the thumb lands (the deck may have moved)
+  const padBox=()=>{ const rs=Object.values(arrows).map(b=>b.getBoundingClientRect()), l=Math.min(...rs.map(r=>r.left)), t=Math.min(...rs.map(r=>r.top)),
+    rr=Math.max(...rs.map(r=>r.right)), bb=Math.max(...rs.map(r=>r.bottom)); return {l, t, w:rr-l, h:bb-t, cx:(l+rr)/2, cy:(t+bb)/2}; };
+  let stick=null;                                       // {id, box, way}
+  const wayAt=(e, was)=>{
+    const b=stick.box; if(!b.w || !b.h) return was;        // nothing laid out to measure (the tests' page): the arrow it landed on
+    const dx=e.clientX-b.cx, dy=e.clientY-b.cy, r=Math.min(b.w,b.h);
+    if(Math.hypot(dx,dy)<r*TD_STICK_DEAD) return null;
+    const ax=Math.abs(dx), ay=Math.abs(dy), h=dx<0?"left":"right", v=dy<0?"up":"down";
+    if(was===h || was===v) return was===h ? (ay>ax*TD_STICK_LEAN ? v : h) : (ax>ay*TD_STICK_LEAN ? h : v);   // held past the diagonal to change
+    return ax>ay ? h : v;
+  };
+  const show=(e)=>{
+    for(const [z,b] of Object.entries(arrows)) b.classList.toggle("on", !!stick && stick.way===z);
+    const b=stick && stick.box; if(!b || !b.w){ dot.hidden=true; return; }
+    const r=d.getBoundingClientRect(), max=Math.min(b.w,b.h)/2, dx=e.clientX-b.cx, dy=e.clientY-b.cy, k=Math.min(1, max/(Math.hypot(dx,dy)||1));
+    dot.hidden=false; dot.style.left=(b.cx-r.left+dx*k)+"px"; dot.style.top=(b.cy-r.top+dy*k)+"px";
+  };
+  const go=(e, way)=>{ if(way===stick.way) return; vmLetGo("d"+stick.id); stick.way=way; if(way) pluck(stick.id, way); };
+  dot.hidden=true;
+  d.addEventListener("pointerdown", e=>{
+    if(e.target.closest(".tdz-A,.tdz-B") || stick) return;
+    const box=padBox(), on=e.target.closest(".tdz");
+    const inPad = on || (box.w && e.clientX>=box.l && e.clientX<=box.l+box.w && e.clientY>=box.t && e.clientY<=box.t+box.h);
+    if(!inPad) return;
+    e.preventDefault(); tdCapture(d, e);
+    stick={id:e.pointerId, box, way:null};
+    go(e, wayAt(e, on ? on.dataset.zone : null) ?? (box.w ? null : on && on.dataset.zone)); show(e);
+  });
+  d.addEventListener("pointermove", e=>{ if(!stick || e.pointerId!==stick.id) return; go(e, wayAt(e, stick.way)); show(e); });
+  const end=e=>{ if(!stick || e.pointerId!==stick.id) return; vmLetGo("d"+stick.id); stick=null; show(e); };
+  d.addEventListener("pointerup", end); d.addEventListener("pointercancel", end); d.addEventListener("lostpointercapture", end);
   return d;
 }
 // the knob: dragged along, it turns by how far the finger goes, not where it lands, as a knob does
