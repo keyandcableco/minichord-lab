@@ -98,6 +98,13 @@ const t=require("./harness").load("chord-chomp");
   check("on firmware without the combo, the key's home chord takes it, and the minichord's set to it", a.key.name==="D" && t.mc.params[35]===w.eval("keyIndexOf(2)"));
   check("the little minichord turns up only once a game", !a.mini);
   t.mc.params[7]=17;
+  // a phone held upright: the maze fills the view's height, big enough to play on, and the view follows
+  // the player; on a wide field the whole maze shows and nothing scrolls
+  check("on a wide field the whole maze is in view, unscrolled", !a.scrolls && a.tile*w.eval("PX")>=w.eval("CC_SMALL"), `${a.tile*w.eval("PX")} px squares`);
+  const cam=w.eval(`(()=>{ const fx=blast.fx; fx.ro=fx.ro||{}; fx.fw=375; fx.fh=513; PX=3; ccLayout(); const out=[];
+    for(const x of [1,13,25]){ Object.assign(blast.pac,{x, y:9, p:0}); ccCamera(0); const px=blast.ox+(x+.5)*blast.tile, v=blast.view; out.push(px>=v.x && px<=v.x+v.w); }
+    return {scrolls:blast.scrolls, sq:blast.tile*PX, seen:out}; })()`);
+  check("on a phone it scrolls, at three times the squares, keeping the player in view from end to end", cam.scrolls && cam.sq>=27 && cam.seen.every(Boolean), JSON.stringify(cam));
   // leaving gives the key back
   sb.restoreAll();
   check("leaving gives back the minichord's own key", t.mc.params[35]===2);
