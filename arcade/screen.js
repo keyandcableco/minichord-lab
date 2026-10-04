@@ -205,6 +205,7 @@ function fxDraw(now, dt){
   fxBackground(g, W, H, now, dt);
   if(blast.kind==="fifths") fdDraw(g, now);
   else if(blast.kind==="racer") krDraw(g, now);
+  else if(blast.kind==="chomp") ccDraw(g, now);
   else if(blast.asteroids) asDraw(g, now);
   else if(blast.noShip){ /* the snake's board has no ship */ }
   else if(blast.cannons){
@@ -359,10 +360,10 @@ function blastKill(hit, how){
 }
 // the arcade games' generators are looked up only when asked for: a game opened on its own
 // (?game=…&solo) loads only its own file, so the others aren't there
-const GENS={spell:genSpell, command:()=>genCommand(), snake:()=>genSnake(), asteroids:()=>genAsteroids(), stack:()=>genStack(), breakout:()=>genBreakout(), fifths:()=>genFifths(), chopper:()=>genChopper(), fleet:()=>genFleet(), sweeper:()=>genSweeper(), frets:()=>genFrets(), sight:()=>genSight(), hunt:()=>genHunt(), racer:()=>genRacer(), hidden:genHidden, oddone:genOddOne, shades:genShades, reshape:genReshape, blaster:genBlaster, diatonic:genDiatonic, numeral:genNumeral, staff:genStaff, slash:genSlash, key:genKey, harp:genHarp, missing:genMissing,
+const GENS={spell:genSpell, command:()=>genCommand(), snake:()=>genSnake(), asteroids:()=>genAsteroids(), stack:()=>genStack(), breakout:()=>genBreakout(), fifths:()=>genFifths(), chopper:()=>genChopper(), fleet:()=>genFleet(), sweeper:()=>genSweeper(), frets:()=>genFrets(), sight:()=>genSight(), hunt:()=>genHunt(), racer:()=>genRacer(), chomp:()=>genChomp(), hidden:genHidden, oddone:genOddOne, shades:genShades, reshape:genReshape, blaster:genBlaster, diatonic:genDiatonic, numeral:genNumeral, staff:genStaff, slash:genSlash, key:genKey, harp:genHarp, missing:genMissing,
   melody:()=>genMelody(false), solfa:()=>genMelody(true), chordscale:genChordScale, smooth:genSmooth, whichvoice:genWhichVoice, simon:genSimon, directions:genDirections, pluckchord:genPluckChord, buildscale:genBuildScale,
   scale:genScale, transpose:genTranspose, temper:genTemper, tune:genTune};
 const MYSTERY=new Set(["scale","transpose","temper","tune"]);
-const LABELS={spell:"Spell it", hidden:"Hidden layout", oddone:"Odd one out", shades:"Shades of the third", reshape:"Reshape", blaster:"Chord Invaders", command:"Harp Command", snake:"Chord Snake", asteroids:"Chord Asteroids", stack:"Chord Stack", breakout:"Chord Breakout", fifths:"Fifths Defender", chopper:"Chopper Rescue", fleet:"Key Fleet", sweeper:"Chord Sweeper", frets:"Between the Frets", sight:"Sight Line", hunt:"Chord Hunt", racer:"Key Racer", diatonic:"Seven chords", numeral:"Numerals", staff:"On the staff", slash:"Slash chords", key:"Key detective", harp:"Harp hunt", missing:"Missing note", mix:"Mix",
+const LABELS={spell:"Spell it", hidden:"Hidden layout", oddone:"Odd one out", shades:"Shades of the third", reshape:"Reshape", blaster:"Chord Invaders", command:"Harp Command", snake:"Chord Snake", asteroids:"Chord Asteroids", stack:"Chord Stack", breakout:"Chord Breakout", fifths:"Fifths Defender", chopper:"Chopper Rescue", fleet:"Key Fleet", sweeper:"Chord Sweeper", frets:"Between the Frets", sight:"Sight Line", hunt:"Chord Hunt", racer:"Key Racer", chomp:"Chord Chomp", diatonic:"Seven chords", numeral:"Numerals", staff:"On the staff", slash:"Slash chords", key:"Key detective", harp:"Harp hunt", missing:"Missing note", mix:"Mix",
   melody:"Play by number", solfa:"Play by solfège", chordscale:"Chord scales", smooth:"Smooth moves", whichvoice:"Which voice moved?", simon:"Simon says", directions:"Follow the directions", pluckchord:"Pluck the chord", buildscale:"Build the scale",
   scale:"Scale detective", transpose:"Transpose detective", temper:"Temperament taster", tune:"Tune up"};

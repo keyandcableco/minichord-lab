@@ -136,7 +136,7 @@ function arcadeKnobsInert(){
 // The minichord's chord and harp volumes (addresses 3 and 2, on the knobs by default) are also its MIDI
 // velocities: turned right down, it sends notes a game can't hear. So a game turns up whichever it
 // listens to, if it's down, for as long as it plays, and says so; and if one goes down mid-game, it says that.
-const ARCADE_HARP=new Set(["command","snake","asteroids","stack","fifths","breakout","fleet","sweeper","racer"]);
+const ARCADE_HARP=new Set(["command","snake","asteroids","stack","fifths","breakout","fleet","sweeper","racer","chomp"]);
 const ARCADE_CHORDS=k=>k!=="command";
 function arcadeVolumes(){
   const up=[];
@@ -216,6 +216,7 @@ const POINTS_FOR={
   chopper:()=>[["RESCUE","20"],["FAST RESCUE","UP TO +30"],["WAYPOINT","15"],["WHOLE ROUTE","× 2"],["WRONG PLACE","−2 SECONDS"],powerRow(CH_POWERS)],
   hunt:()=>[["DUCK","20"],["QUICK SHOT","UP TO +30"],["FIRST SHOT","× 2"],["PURE EAR","UP TO × 4"],["GOLDEN DUCK","× 3"],["WHOLE FLOCK","+25 A DUCK"],["PERFECT ROUND","100"],powerRow(HD_POWERS)],
   racer:()=>[["GATE OF THE KEY","10"],["GATE PLAYED OPEN","20"],["PIVOT CHORD","× 2"],["CAR PULLED OVER","30"],["CAR OVERTAKEN","10"],["TURBO","15"],["CHECKPOINT, HOME PLAYED","50"],["FINISH","50 A PLACE ABOVE 9TH"],["TIME LEFT","10 A SECOND"],powerRow(KR_POWERS, "CAPSULES")],
+  chomp:()=>[["DOT","10"],["POWER PELLET","50"],["GHOST CAUGHT","200, 400, 800, 1600"],["HALF CADENCE","200"],["PLAGAL OR DECEPTIVE","300"],["PERFECT CADENCE","500"],["FULL CADENCE","1500"],["KEY SET","500, +250 A FIFTH"],powerRow(CC_POWERS, "CAPSULES")],
 };
 // the POINTS page's line for a game's power-ups (or capsules): their icons, then their names
 const powerRow=(table, word="POWER-UPS")=>{ const P=Object.values(table); return [P.map(p=>p.icon).join(" ")+" "+word, P.map(p=>p.name).join(" · ")]; };
@@ -242,11 +243,12 @@ const POWERS_FOR={
   chopper:()=>Object.entries(CH_POWERS).map(([k,P])=>({look:chCrateLook(k,"F"), name:P.name, text:P.page})),
   hunt:()=>Object.entries(HD_POWERS).map(([k,P])=>({look:hdTagLook(k,"G"), name:P.name, text:P.page})),
   racer:()=>Object.entries(KR_POWERS).map(([k,P])=>({look:krPowerLook(k), name:P.name, text:P.page})),
+  chomp:()=>Object.entries(CC_POWERS).map(([k,P])=>({look:ccPowerLook(k), name:P.name, text:P.page})),
 };
 const powersFor=k=> POWERS_FOR[k] ? POWERS_FOR[k]() : [];
 function powersRender(el){
   let i=0; const d=()=>`style="animation-delay:${(i++)*.6}s"`;
-  el.innerHTML=`<h3>POWER-UPS</h3><p class="ptsub">${cabKind()==="blaster" ? "PLAY A POWER-UP'S CHORD TO TAKE IT" : cabKind()==="command" ? "PLUCK A POWER-UP'S STRING TO TAKE IT" : cabKind()==="asteroids" ? "CRACK A POWER-UP ROCK WITH ITS CHORD TO TAKE IT" : cabKind()==="breakout" ? "BREAK A BRICK THAT HOLDS ONE AND CATCH ITS CAPSULE" : cabKind()==="chopper" ? "PLAY A SUPPLY CRATE'S CHORD TO FLY OUT FOR IT" : cabKind()==="hunt" ? "THE DOG FETCHES THEM: PLAY THE CHORD ON THE TAG" : cabKind()==="racer" ? "CAPSULES ON THE ROAD: DRIVE THROUGH ONE TO TAKE IT" : "THEY TURN UP NOW AND THEN"}</p>
+  el.innerHTML=`<h3>POWER-UPS</h3><p class="ptsub">${cabKind()==="blaster" ? "PLAY A POWER-UP'S CHORD TO TAKE IT" : cabKind()==="command" ? "PLUCK A POWER-UP'S STRING TO TAKE IT" : cabKind()==="asteroids" ? "CRACK A POWER-UP ROCK WITH ITS CHORD TO TAKE IT" : cabKind()==="breakout" ? "BREAK A BRICK THAT HOLDS ONE AND CATCH ITS CAPSULE" : cabKind()==="chopper" ? "PLAY A SUPPLY CRATE'S CHORD TO FLY OUT FOR IT" : cabKind()==="hunt" ? "THE DOG FETCHES THEM: PLAY THE CHORD ON THE TAG" : cabKind()==="racer" ? "CAPSULES ON THE ROAD: DRIVE THROUGH ONE TO TAKE IT" : cabKind()==="chomp" ? "CAPSULES IN THE MAZE: RUN THROUGH ONE TO TAKE IT" : "THEY TURN UP NOW AND THEN"}</p>
     <ul class="pwtable">${powersFor(cabKind()).map(p=>`<li ${d()}><span class="pwlook">${p.look}</span><div><b>${p.name}</b><em>${p.text}</em></div></li>`).join("")}</ul>`;
 }
 // The lives, as pixel hearts in the HUD: a full heart for each life left, a dark empty one for each
@@ -304,9 +306,9 @@ function arcadeSettings(){
   choice("BONUS ROUNDS", ["ON","OFF"], ()=>saved.bonus===false?1:0, i=>{ saved.bonus=!i; save(); }, "A MINI-GAME EVERY TWO LEVELS");
   if(["blaster","asteroids","breakout","fifths","command"].includes(k))
     choice("LETTERING", SIZES.map(x=>x[0]), ()=>saved.chordSize??1, i=>{ saved.chordSize=i; save(); applyChordSize(); });
-  if(["snake","stack","command","asteroids","fifths","sweeper","sight"].includes(k))
-    choice("HARP", HARP_LAYOUTS.map(([t])=>t.replace("STANDARD ","")), harpLayoutIndex, i=>{ saved.harpLayout=HARP_LAYOUTS[i][1]; save(); if(["snake","stack"].includes(k)) kmRestrip(); else helperSync(true); });
-  if(["snake","stack","sweeper","racer"].includes(k))
+  if(["snake","stack","command","asteroids","fifths","sweeper","sight","chomp"].includes(k))
+    choice("HARP", HARP_LAYOUTS.map(([t])=>t.replace("STANDARD ","")), harpLayoutIndex, i=>{ saved.harpLayout=HARP_LAYOUTS[i][1]; save(); if(["snake","stack","chomp"].includes(k)) kmRestrip(); else helperSync(true); });
+  if(["snake","stack","sweeper","racer","chomp"].includes(k))
     choice("HARP SOUND", ["NORMAL","QUIET","OFF"], ()=>saved.harpSound??1, i=>{ saved.harpSound=i; save(); if(blast && blast.setupDone) kmHarp(); });
   if(["breakout","fifths","stack","racer"].includes(k))
     choice("STEER WITH", ["CHORD KNOB","HARP KNOB","MOD KNOB"], ()=>steerKnob(), i=>{ saved.steerKnob=i; save(); });
@@ -409,7 +411,7 @@ const HS_SECONDS=20;        // the countdown on the initials, as a cabinet has
 // what's shown if the shared one can't be reached.
 const SCORES_API=String(SCORES_HOST||"").replace(/\/+$/,"");   // the Funnel address of arcade-scores (core/scores.js), no trailing slash
 const scoresOnline=()=> !!SCORES_API && !SCORES_API.includes("SCORES-HOST");
-const HS_SLUG={blaster:"invaders", command:"harp-command", snake:"chord-snake", asteroids:"chord-asteroids", stack:"chord-stack", breakout:"chord-breakout", fifths:"fifths-defender", chopper:"chopper-rescue", fleet:"key-fleet", sweeper:"chord-sweeper", frets:"between-the-frets", sight:"sight-line", hunt:"chord-hunt", racer:"key-racer"};
+const HS_SLUG={blaster:"invaders", command:"harp-command", snake:"chord-snake", asteroids:"chord-asteroids", stack:"chord-stack", breakout:"chord-breakout", fifths:"fifths-defender", chopper:"chopper-rescue", fleet:"key-fleet", sweeper:"chord-sweeper", frets:"between-the-frets", sight:"sight-line", hunt:"chord-hunt", racer:"key-racer", chomp:"chord-chomp"};
 const HS_CHARS="ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 const hsCache={};                                        // the shared boards, as last fetched
 const hsSlug=()=> HS_SLUG[cabKind()];
