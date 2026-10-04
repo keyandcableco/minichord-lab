@@ -167,7 +167,7 @@ function buildChompField(box){
   box.append(field);
   if(blast && blast.kind==="chomp"){
     Object.assign(blast, {field, hud, heard:hd, jamEl:jam, fx:fxInit(field), strip:kmStrip(field), layoutKey:null});
-    blast.sharp=sharpLayer(blast.fx);
+    const scr=document.createElement("canvas"); scr.className="ccscreen"; blast.fx.cv.after(scr); blast.screen=scr;   // the maze's own screen, at the old game's resolution
     if(blast.overlay) field.appendChild(blast.overlay);
   }
   ccBar(); setTimeout(helperSync);
@@ -564,26 +564,29 @@ document.addEventListener("keydown", e=>{
 });
 
 // ---------- drawing ----------
-// On the arcade's pixel canvas: the maze (drawn once to its own canvas, in the key's colour), the
-// dots, the capsules, the key that's up, the ghosts and the player. The ghosts' chords, the key and
-// READY! go on the sharp layer above, so they read at any size.
+// An arcade screen of its own, at the old game's resolution: eight pixels a square, the whole maze 216
+// by 120, every sprite and letter drawn pixel by pixel with nothing smoothed, then shown at a whole
+// number of screen pixels a pixel, so each one is the same size and square. The arcade's own pixel
+// font for the chords and READY!, its sharps and flats drawn to match.
 // The whole maze in view where it fits with squares big enough to play on. Where it doesn't (a phone
-// held upright), it fills the view the other way, as big as the view allows up to CC_BIG, and the view
-// follows the player across it, as the old handheld versions scrolled theirs.
-const CC_SMALL=18, CC_BIG=34;                                          // screen pixels a square
+// held upright), it's shown bigger, up to CC_BIGK times, and the view follows the player across it, as
+// the old handheld versions scrolled theirs.
+const CC_T=8, CC_SMALL=16, CC_BIGK=4;                                  // native pixels a square; screen pixels a square, at the least; the most times over
 function ccLayout(){
   const fw=fieldW(), fh=fieldH();
   const side = !kmStripShown() ? 16 : (saved.beginner || blast.phase==="demo") ? Math.ceil(Math.min(fw*.3, 300))+20 : (kmLayout().cols===3 ? 150 : 84);
-  const W=Math.floor((fw-side-8)/PX), H=Math.floor((fh-40-28)/PX);
-  let t=Math.floor(Math.min(W/CC_COLS, H/CC_ROWS));
-  if(t*PX<CC_SMALL) t=Math.max(t, Math.min(Math.floor(Math.max(W/CC_COLS, H/CC_ROWS)), Math.floor(CC_BIG/PX)));
-  blast.tile=Math.max(4,t); blast.view={x:Math.floor(8/PX), y:Math.floor(40/PX), w:W, h:H};
-  blast.scrolls = blast.tile*CC_COLS>W || blast.tile*CC_ROWS>H;
-  blast.cam=null; blast.mazeCv=null;
+  const aw=fw-side-8, ah=fh-40-28, NW=CC_COLS*CC_T, NH=CC_ROWS*CC_T;
+  let k=Math.floor(Math.min(aw/NW, ah/NH));
+  if(k*CC_T<CC_SMALL) k=Math.max(k, Math.min(CC_BIGK, Math.floor(Math.max(aw/NW, ah/NH))));   // as big as fits the other way: upright, the whole height, scrolling across
+  k=Math.max(1,k);
+  const w=Math.min(NW, Math.floor(aw/k)), h=Math.min(NH, Math.floor(ah/k));
+  Object.assign(blast, {tile:CC_T, k, view:{x:0, y:0, w, h}, scrolls:NW>w || NH>h, cam:null, mazeCv:null});
+  blast.scrLeft=8+Math.floor((aw-w*k)/2); blast.scrTop=40+Math.floor((ah-h*k)/2);
+  const s=blast.screen; if(s){ s.width=w; s.height=h; s.style.cssText=`left:${blast.scrLeft}px;top:${blast.scrTop}px;width:${w*k}px;height:${h*k}px`; }
   ccCamera(0);
 }
-// where the maze sits: centred in the view on an axis where it fits, otherwise the player in the middle
-// of the view as far as the maze's edges allow, eased there (and jumped, through the tunnel)
+// where the maze sits on the screen: whole, or the player in the middle of the view as far as the
+// maze's edges allow, eased there (and jumped, through the tunnel)
 function ccCamera(dt){
   const t=blast.tile, v=blast.view, P=blast.pac ? ccPos(blast.pac) : {x:CC_START.x, y:CC_START.y};
   const axis=(v0, len, maze, focus, was)=>{
@@ -597,153 +600,217 @@ function ccCamera(dt){
   blast.cam=c; blast.ox=Math.round(c.x); blast.oy=Math.round(c.y);
 }
 const ccInView=(x,y,m=0)=>{ const v=blast.view; return !v || (x>=v.x-m && x<=v.x+v.w+m && y>=v.y-m*2 && y<=v.y+v.h+m); };
-// the maze's colour: the old game's blue in C, turned round the colour wheel with the key
+
+// ---------- sprites ----------
+// each drawn once from rows of characters, a colour for each, and kept
+const CC_SPR=new Map();
+function ccSprite(key, rows, pal){
+  let cv=CC_SPR.get(key); if(cv) return cv;
+  cv=document.createElement("canvas"); cv.width=rows[0].length; cv.height=rows.length;
+  const g=cv.getContext("2d");
+  if(g && g.fillRect) rows.forEach((r,y)=>[...r].forEach((c,x)=>{ const col=pal[c]; if(col){ g.fillStyle=col; g.fillRect(x,y,1,1); } }));
+  CC_SPR.set(key, cv); return cv;
+}
+// the player: a disc 13 across, its mouth open by an angle, facing its way
+function ccPacSprite(dir, open, col){
+  const rot={right:0, down:Math.PI/2, left:Math.PI, up:-Math.PI/2}[dir||"left"], rows=[];
+  for(let y=0;y<13;y++){ let r=""; for(let x=0;x<13;x++){ const dx=x-6, dy=y-6, d2=dx*dx+dy*dy;
+    let a=Math.atan2(dy,dx)-rot; a=Math.atan2(Math.sin(a),Math.cos(a));
+    r+= d2<=42 && !(open>0 && Math.abs(a)<open/2 && d2>0) ? "#" : "."; } rows.push(r); }
+  return ccSprite(`pac|${dir}|${open.toFixed(2)}|${col}`, rows, {"#":col});
+}
+// a ghost, 14 square: its body and hem (two of them, for the wiggle), its eyes looking its way; or
+// frightened, blue with a wobbly mouth; or only its eyes, going home
+const CC_GHOST_BODY=[".....####.....","...########...","..##########..",".############.",".############.",".############.",
+  "##############","##############","##############","##############","##############","##############"];
+const CC_GHOST_HEM=[["##.###..###.##","#...##..##...#"], ["####.####.####",".##...##...##."]];
+const CC_LOOK={left:[-1,0,0,2], right:[1,0,2,2], up:[0,-1,1,0], down:[0,1,1,3]};   // the whites' shift, then the pupils' place in them
+function ccGhostSprite(col, frame, look, mode){
+  return ccSprite(`gh|${col}|${frame}|${look}|${mode}`, (()=>{
+    const rows=(mode==="eyes" ? Array(14).fill(".".repeat(14)) : [...CC_GHOST_BODY, ...CC_GHOST_HEM[frame]]).map(r=>[...r]);
+    const put=(x,y,c)=>{ if(rows[y] && x>=0 && x<14) rows[y][x]=c; };
+    if(mode==="scared" || mode==="ending"){
+      for(const ex of [4,8]) for(const [a,b] of [[0,0],[1,0],[0,1],[1,1]]) put(ex+a,5+b,"f");
+      for(let x=2;x<=11;x++) put(x, 9+(Math.floor((x-2)/2)%2), "f");
+    } else {
+      const [dx,dy,px,py]=CC_LOOK[look]||CC_LOOK.left, white=[".##.","####","####","####",".##."];
+      for(const bx of [2,8]){ white.forEach((r,y)=>[...r].forEach((c,x)=>{ if(c==="#") put(bx+dx+x, 3+dy+y, "w"); }));
+        for(const [a,b] of [[0,0],[1,0],[0,1],[1,1]]) put(bx+dx+px+a, 3+dy+py+b, "p"); }
+    }
+    return rows.map(r=>r.join(""));
+  })(), {"#": mode==="scared" ? "#2121FF" : mode==="ending" ? "#F1E8D2" : col, "f": mode==="ending" ? "#FF4B3E" : "#FFB8AE", "w":"#FFFFFF", "p":"#2121DE"});
+}
+const CC_PELLET=["..####..",".######.","########","########","########","########",".######.","..####.."];
+// the capsules' icons, 7 square, and the little minichord, as the arcade draws it, smaller
+const CC_ICONS={
+  fermata:["..###..",".#...#.","#.....#","#..#..#",".......",".......","......."],
+  rest:   ["#####..","...#...","..#....",".#.####","#####.#",".....#.","....###"],
+  dacapo: [".##.##.","#######","#######","#######",".#####.","..###..","...#..."],
+};
+const CC_MINI=["....########..","..############",".###x#x#x#x##x","##############","###x#x#x#x##x#","############o#",".############.","...########..."];
+
+// ---------- the arcade's lettering ----------
+// Press Start 2P, the arcade's font, is an eight-pixel font: each letter drawn once at eight pixels and
+// made all or nothing, pixel by pixel, so none comes out soft. Sharps, flats and the diminished ring,
+// which it hasn't got, drawn to match.
+const CC_HAND={
+  "♭":[".#......",".#......",".#......",".####...",".#..#...",".#.#....",".##.....","........"],
+  "♯":["..#.#...",".#####..","..#.#...","..#.#...",".#####..","..#.#...","........","........"],
+  "°":[".##.....","#..#....",".##.....","........","........","........","........","........"],
+};
+const CC_GLYPH=new Map();
+let ccFontAsked=false;
+function ccGlyph(ch, col){
+  const key=ch+"|"+col; let cv=CC_GLYPH.get(key); if(cv) return cv;
+  if(CC_HAND[ch]) return ccSprite("hand|"+key, CC_HAND[ch], {"#":col});
+  const fonts=document.fonts, face='8px "Press Start 2P"';
+  if(fonts && fonts.check && !fonts.check(face)){ if(!ccFontAsked && fonts.load){ ccFontAsked=true; fonts.load(face).then(()=>CC_GLYPH.clear()).catch(()=>{}); } return null; }
+  cv=document.createElement("canvas"); cv.width=8; cv.height=8;
+  const g=cv.getContext("2d"); if(!g || !g.fillText) return cv;
+  g.font=face; g.textBaseline="top"; g.fillStyle=col; g.fillText(ch, 0, 0);
+  const im=g.getImageData && g.getImageData(0,0,8,8);
+  if(im && im.data && im.data.length){ for(let i=3;i<im.data.length;i+=4) im.data[i]=im.data[i]>=110 ? 255 : 0; g.putImageData(im,0,0); }
+  CC_GLYPH.set(key, cv); return cv;
+}
+// a line of lettering, centred on x, its top at y, black round it so it reads over the maze
+function ccText(g, text, cx, y, col, outline=true){
+  const chars=[...text], x0=Math.round(cx-chars.length*4); y=Math.round(y);
+  if(outline) for(const [dx,dy] of [[-1,0],[1,0],[0,-1],[0,1],[1,1]]) chars.forEach((ch,i)=>{ const m=ccGlyph(ch,"#000"); if(m) g.drawImage(m, x0+i*8+dx, y+dy); });
+  chars.forEach((ch,i)=>{ const m=ccGlyph(ch,col); if(m) g.drawImage(m, x0+i*8, y); });
+}
+
+// ---------- the maze ----------
+// The old game's walls: a line one pixel wide inset three pixels into each wall square along the sides
+// that face a path, joined round the corners, so a corridor between two walls is fourteen pixels, room
+// for the player's thirteen. In the key's colour (white, to flash a cleared maze).
 const ccWall=f=>`hsl(${mod(235+f*30,360)},85%,${f%2?58:62}%)`;
-function ccMazePaint(){
-  const t=blast.tile, cv=document.createElement("canvas"); cv.width=CC_COLS*t; cv.height=CC_ROWS*t;
+function ccMazePaint(col){
+  const T=CC_T, I=3, cv=document.createElement("canvas"); cv.width=CC_COLS*T; cv.height=CC_ROWS*T;
   const g=cv.getContext("2d"); if(!g || !g.fillRect) return cv;
-  const col=ccWall(blast.key ? blast.key.f : 0), wall=(x,y)=>ccCell(x,y)==="#" && !(y===7 && (x<0 || x>=CC_COLS));
-  g.fillStyle="#000"; g.fillRect(0,0,cv.width,cv.height);
-  const w=Math.max(1, Math.round(t/5));
+  const wall=(x,y)=> x<0 || x>=CC_COLS ? y!==7 : y<0 || y>=CC_ROWS ? true : "#-".includes(CC_MAZE[y][x]);
+  const h=(x0,x1,y)=>g.fillRect(x0,y,x1-x0+1,1), v=(x,y0,y1)=>g.fillRect(x,y0,1,y1-y0+1);
+  g.fillStyle=col;
   for(let y=0;y<CC_ROWS;y++) for(let x=0;x<CC_COLS;x++){
-    if(!wall(x,y)) continue;
-    g.fillStyle="#08082A"; g.fillRect(x*t, y*t, t, t);
-    g.fillStyle=col;
-    if(y>0 && !wall(x,y-1)) g.fillRect(x*t, y*t, t, w);
-    if(y<CC_ROWS-1 && !wall(x,y+1)) g.fillRect(x*t, (y+1)*t-w, t, w);
-    if(x>0 && !wall(x-1,y)) g.fillRect(x*t, y*t, w, t);
-    if(x<CC_COLS-1 && !wall(x+1,y)) g.fillRect((x+1)*t-w, y*t, w, t);
-  }
-  g.fillStyle="#FFB8FF"; g.fillRect(13*t, 6*t+Math.floor(t/2)-1, t, Math.max(1,Math.round(t/5)));   // the ghosts' door
-  return cv;
-}
-function ccDraw(g, now){
-  if(!blast.dots){ ccLabelsBegin(); return; }
-  const lk=`${blast.fx.w}x${blast.fx.h}|${PX}|${kmStripShown()}|${!!saved.beginner}|${blast.phase==="demo"}|${saved.harpLayout||""}`;
-  if(blast.layoutKey!==lk){ blast.layoutKey=lk; ccLayout(); }
-  if(blast.scrolls){ ccCamera(Math.min(.1, (now-(blast.camAt||now))/1000)); blast.camAt=now;
-    const v=blast.view; g.save(); g.beginPath(); g.rect(v.x, v.y, v.w, v.h); g.clip(); }       // the maze seen through the view
-  const t=blast.tile, ox=blast.ox, oy=blast.oy;
-  if(!blast.mazeCv) blast.mazeCv=ccMazePaint();
-  // cleared: the walls flash white, as the old game's did
-  if(blast.st==="clear" && Math.floor((blast.clock-(blast.stUntil-2.2))*4)%2){ g.fillStyle="#F1E8D2"; g.fillRect(ox, oy, CC_COLS*t, CC_ROWS*t); g.globalCompositeOperation="multiply"; g.drawImage(blast.mazeCv, ox, oy); g.globalCompositeOperation="source-over"; }
-  else g.drawImage(blast.mazeCv, ox, oy);
-  // the dots and the pellets, blinking
-  const ds=Math.max(2, Math.round(t/4)), blink=Math.floor(blast.clock*3)%2===0 || blast.st!=="go";
-  for(let y=0;y<CC_ROWS;y++) for(let x=0;x<CC_COLS;x++){
-    const v=blast.dots[y][x]; if(!v) continue;
-    const cx=ox+x*t+t/2, cy=oy+y*t+t/2;
-    if(v===1){ g.fillStyle="#FFB8AE"; g.fillRect(Math.floor(cx-ds/2), Math.floor(cy-ds/2), ds, ds); }
-    else if(blink){ g.fillStyle="#FFB8AE"; g.beginPath(); g.arc(cx, cy, t*.48, 0, Math.PI*2); g.fill(); }
-  }
-  ccLabelsBegin();
-  const at=e=>{ const p=ccPos(e); return {x:ox+(p.x+.5)*t, y:oy+(p.y+.5)*t}; };
-  // the clip: nothing drawn outside the maze, so the tunnel swallows what goes through it
-  g.save(); g.beginPath(); g.rect(ox, oy, CC_COLS*t, CC_ROWS*t); g.clip();
-  // the capsules: a disc with its icon, blinking as it goes
-  for(const c of blast.caps){ if(c.until-blast.clock<2.5 && Math.floor(blast.clock*6)%2) continue;
-    const cx=ox+(c.x+.5)*t, cy=oy+(c.y+.5)*t; g.fillStyle=c.k==="dacapo" ? "#FF4B3E" : "#FF5AA0"; g.beginPath(); g.arc(cx, cy, t*.65, 0, Math.PI*2); g.fill();
-    ccLabel(cx, cy, t*.65, CC_POWERS[c.k].icon, null); }
-  // the little minichord, tilted as the arcade's favicon is, in the tunnel
-  const mi=blast.mini;
-  if(mi && !(mi.until-blast.clock<2.5 && Math.floor(blast.clock*6)%2)) ccMiniDraw(g, ox+(mi.x+.5)*t, oy+(mi.y+.5)*t+Math.sin(blast.clock*5)*t*.08, t);
-  // the key that's up, below the ghosts' house: its name, and its sharps or flats
-  const fr=blast.fruit;
-  if(fr && !(fr.until-blast.clock<3 && Math.floor(blast.clock*5)%2)){
-    const cx=ox+(CC_FRUIT.x+.5)*t, cy=oy+(CC_FRUIT.y+.5)*t, w=t*2.6, h=t*1.25;
-    g.fillStyle="#16132A"; g.fillRect(Math.floor(cx-w/2), Math.floor(cy-h/2), Math.ceil(w), Math.ceil(h));
-    g.fillStyle="#FFD35A"; g.fillRect(Math.floor(cx-w/2), Math.floor(cy-h/2), Math.ceil(w), 1); g.fillRect(Math.floor(cx-w/2), Math.floor(cy+h/2)-1, Math.ceil(w), 1);
-    ccLabel(cx, cy-t*.12, t*.62, fr.key.name, "#FFD35A");
-    ccLabel(cx, cy-h/2-t*.45, t*.32, fr.f ? sigList(fr.f).join("") : "NO ♯ OR ♭", "#F1E8D2");
-  }
-  // the ghosts, then the player over them
-  const dying=blast.st==="dying";
-  if(!dying || blast.clock-blast.diedAt<.5) for(const gh of blast.ghosts) ccGhost(g, gh, at(gh), t, now);
-  ccPlayer(g, at(blast.pac), t, now);
-  g.restore();
-  if(blast.scrolls){ g.restore(); ccOffscreen(g, at, t); }
-  // a ghost's chord over it; READY!
-  if(!dying || blast.clock-blast.diedAt<.5) for(const gh of blast.ghosts) ccGhostLabel(gh, at(gh), t);
-  if(blast.st==="ready") ccLabel(ox+(CC_FRUIT.x+.5)*t, oy+(CC_FRUIT.y+.5)*t, t*.7, "READY!", "#FFD35A");
-}
-// the player: a disc, its mouth opening and closing as it goes; shrinking away when caught
-function ccPlayer(g, p, t, now){
-  const P=blast.pac, r=t*.8, rot={right:0, down:Math.PI/2, left:Math.PI, up:-Math.PI/2}[P.dir||"left"];
-  let a = blast.st==="go" && !P.stopped ? .08+.75*Math.abs(Math.sin(blast.clock*14)) : .45;
-  if(blast.st==="dying"){ const k=Math.min(1, Math.max(0, (blast.clock-blast.diedAt-.5)/1)); a=.2+k*(Math.PI-.2); if(k>=1) return; }
-  const resting=blast.clock<blast.restUntil;
-  g.fillStyle = resting ? (Math.floor(now/200)%2 ? "#7A6A20" : "#B39A2A") : "#FFE600";
-  g.beginPath(); g.moveTo(p.x, p.y); g.arc(p.x, p.y, r, rot+a/2, rot+Math.PI*2-a/2); g.closePath(); g.fill();
-}
-function ccGhost(g, gh, p, t, now){
-  if(gh.state==="house" && blast.st==="go") p={x:p.x, y:p.y+Math.sin(now/180+gh.i)*t*.15};   // bobbing at home
-  if(blast.st==="jam" && gh.state!=="eyes") p={x:p.x+Math.sin(now/150+gh.i*1.6)*t*.12, y:p.y-Math.abs(Math.sin(now/150+gh.i*1.6))*t*.22};   // dancing
-  const w=t*1.55, h=w, x0=p.x-w/2, top=p.y-h/2;
-  const ending = gh.scared && blast.powerUntil-blast.clock<2 && Math.floor(blast.clock*6)%2;
-  if(gh.state!=="eyes"){
-    const still=blast.clock<blast.fermataUntil;
-    g.fillStyle = gh.scared ? (ending ? "#F1E8D2" : "#2121FF") : still ? "#8FA3C8" : gh.col;
-    g.beginPath(); g.arc(p.x, top+w/2, w/2, Math.PI, 0); g.fill();
-    g.fillRect(x0, top+w/2, w, h*.36);
-    const feet=4, fw=w/feet, wig=Math.floor(now/140)%2;                     // the hem, wiggling
-    for(let k=0;k<feet;k++) if((k+wig)%2===0) g.fillRect(x0+k*fw, top+h*.86, fw, h*.14);
-    if(gh.scared){                                                        // the blue face: dots for eyes, a wavy mouth
-      g.fillStyle = ending ? "#FF4B3E" : "#FFB8AE";
-      g.fillRect(p.x-w*.22, top+h*.36, Math.max(1,w*.12), Math.max(1,w*.12)); g.fillRect(p.x+w*.1, top+h*.36, Math.max(1,w*.12), Math.max(1,w*.12));
-      for(let k=0;k<4;k++) g.fillRect(p.x-w*.3+k*w*.15, top+h*.66-(k%2)*w*.06, Math.max(1,w*.12), Math.max(1,w*.06));
-      return;
+    if(CC_MAZE[y][x]!=="#") continue;
+    const X=x*T, Y=y*T, W=(dx,dy)=>wall(x+dx,y+dy);
+    const xs=X+(W(-1,0)?0:I), xe=X+T-1-(W(1,0)?0:I), ys=Y+(W(0,-1)?0:I), ye=Y+T-1-(W(0,1)?0:I);
+    if(!W(0,-1)) h(xs, xe, Y+I);
+    if(!W(0,1)) h(xs, xe, Y+T-1-I);
+    if(!W(-1,0)) v(X+I, ys, ye);
+    if(!W(1,0)) v(X+T-1-I, ys, ye);
+    for(const [dx,dy] of [[-1,-1],[1,-1],[-1,1],[1,1]]){                 // an inside corner, round a path's diagonal
+      if(!W(dx,0) || !W(0,dy) || W(dx,dy)) continue;
+      const cx= dx<0 ? X+I : X+T-1-I, cy= dy<0 ? Y+I : Y+T-1-I;
+      v(cx, dy<0 ? Y : cy, dy<0 ? cy : Y+T-1); h(dx<0 ? X : cx, dx<0 ? cx : X+T-1, cy);
     }
   }
-  // the eyes, looking the way it's going
-  const [dx,dy]=CC_DIRS[gh.dir||"left"], ew=w*.24, eh=w*.3;
-  for(const s of [-1,1]){ const ex=p.x+s*w*.2-ew/2, ey=top+h*.24;
-    g.fillStyle="#FFFFFF"; g.fillRect(ex, ey, ew, eh);
-    g.fillStyle="#1A1AE0"; g.fillRect(ex+ew*.25+dx*ew*.25, ey+eh*.3+dy*eh*.25, ew*.5, eh*.45); }
+  g.fillStyle="#FFB8FF"; g.fillRect(13*T, 6*T+I, T, 2);                  // the ghosts' door
+  return cv;
 }
-// the chord a ghost wears, once it's out: named or as a numeral, by the level. With the power on, the ones that could
-// be caught glow; the one held is blue, and the one it isn't yet
-function ccGhostLabel(gh, p, t){
+
+// ---------- each frame ----------
+function ccDraw(_, now){
+  const s=blast.screen, g=s && s.getContext("2d"); if(!g || !g.fillRect) return;
+  if(!blast.dots){ g.clearRect(0,0,s.width,s.height); return; }
+  const lk=`${fieldW()}x${fieldH()}|${kmStripShown()}|${!!saved.beginner}|${blast.phase==="demo"}|${saved.harpLayout||""}`;
+  if(blast.layoutKey!==lk){ blast.layoutKey=lk; ccLayout(); }
+  if(blast.scrolls){ ccCamera(Math.min(.1, (now-(blast.camAt||now))/1000)); blast.camAt=now; }
+  const t=CC_T, ox=blast.ox, oy=blast.oy, clock=blast.clock;
+  g.imageSmoothingEnabled=false;
+  g.fillStyle="#000"; g.fillRect(0,0,s.width,s.height);
+  // the maze, in the key's colour; cleared, flashing white as the old game's did
+  const flash=blast.st==="clear" && Math.floor((clock-(blast.stUntil-2.2))*4)%2;
+  const mcol=flash ? "#FFFFFF" : ccWall(blast.key ? blast.key.f : 0);
+  if(!blast.mazeCv || blast.mazeCol!==mcol){ blast.mazeCv=ccMazePaint(mcol); blast.mazeCol=mcol; }
+  g.drawImage(blast.mazeCv, ox, oy);
+  // the dots, and the pellets blinking
+  const blink=Math.floor(clock*3)%2===0 || blast.st!=="go", pel=ccSprite("pellet", CC_PELLET, {"#":"#FFB8AE"});
+  g.fillStyle="#FFB8AE";
+  for(let y=0;y<CC_ROWS;y++) for(let x=0;x<CC_COLS;x++){
+    const v=blast.dots[y][x]; if(!v) continue;
+    if(v===1) g.fillRect(ox+x*t+3, oy+y*t+3, 2, 2); else if(blink) g.drawImage(pel, ox+x*t, oy+y*t);
+  }
+  const at=e=>{ const p=ccPos(e); return {x:ox+(p.x+.5)*t, y:oy+(p.y+.5)*t}; };
+  const spr=(cv, p, dy=0)=>g.drawImage(cv, Math.round(p.x-cv.width/2), Math.round(p.y-cv.height/2+dy));
+  // nothing drawn outside the maze, so the tunnel swallows what goes through it
+  g.save(); g.beginPath(); g.rect(ox, oy, CC_COLS*t, CC_ROWS*t); g.clip();
+  // the capsules: a disc with its icon, blinking as it goes
+  for(const c of blast.caps){ if(c.until-clock<2.5 && Math.floor(clock*6)%2) continue;
+    const p={x:ox+(c.x+.5)*t, y:oy+(c.y+.5)*t};
+    spr(ccPacSprite("right", 0, c.k==="dacapo" ? "#FF4B3E" : "#FF5AA0"), p);
+    spr(ccSprite("icon|"+c.k, CC_ICONS[c.k], {"#":"#16132A"}), p); }
+  // the little minichord, in the tunnel, bobbing
+  const mi=blast.mini;
+  if(mi && !(mi.until-clock<2.5 && Math.floor(clock*6)%2)) spr(ccSprite("mini", CC_MINI, {"#":"#FFD35A","x":"#16132A","o":"#FF4B3E"}), {x:ox+(mi.x+.5)*t, y:oy+(mi.y+.5)*t}, Math.round(Math.sin(clock*5)));
+  // the key that's up, below the ghosts' house: a sign with its name, and its sharps or flats over it
+  const fr=blast.fruit;
+  if(fr && !(fr.until-clock<3 && Math.floor(clock*5)%2)){
+    const cx=ox+(CC_FRUIT.x+.5)*t, cy=oy+(CC_FRUIT.y+.5)*t, n=[...fr.key.name].length, w=n*8+6, x0=Math.round(cx-w/2), y0=Math.round(cy-6);
+    g.fillStyle="#FFD35A"; g.fillRect(x0-1, y0-1, w+2, 14); g.fillStyle="#16132A"; g.fillRect(x0, y0, w, 12);
+    ccText(g, fr.key.name, cx, y0+2, "#FFD35A", false);
+    if(fr.f) ccText(g, `${Math.abs(fr.f)}${fr.f>0?"♯":"♭"}`, cx, y0-11, "#F1E8D2");
+  }
+  // the ghosts, then the player over them
+  const dying=blast.st==="dying", wig=Math.floor(now/140)%2;
+  if(!dying || clock-blast.diedAt<.5) for(const gh of blast.ghosts){
+    let p=at(gh), dy=0;
+    if(gh.state==="house" && blast.st==="go") dy=Math.round(Math.sin(now/180+gh.i)*1.5);             // bobbing at home
+    if(blast.st==="jam" && gh.state!=="eyes"){ p={x:p.x+Math.round(Math.sin(now/150+gh.i*1.6)), y:p.y}; dy=-Math.round(Math.abs(Math.sin(now/150+gh.i*1.6))*2); }   // dancing
+    const ending=gh.scared && blast.powerUntil-clock<2 && Math.floor(clock*6)%2;
+    const mode = gh.state==="eyes" ? "eyes" : gh.scared ? (ending ? "ending" : "scared") : "normal";
+    const col = clock<blast.fermataUntil ? "#8FA3C8" : gh.col;
+    spr(ccGhostSprite(col, wig, gh.dir||"left", mode), p, dy);
+  }
+  ccPlayer(g, at(blast.pac), now, spr);
+  g.restore();
+  // the chords the ghosts wear, the pointers to the ones out of view, READY!
+  if(!dying || clock-blast.diedAt<.5) for(const gh of blast.ghosts) ccGhostLabel(g, gh, at(gh));
+  if(blast.scrolls) ccOffscreen(g, at);
+  if(blast.st==="ready") ccText(g, "READY!", ox+(CC_FRUIT.x+.5)*t, oy+CC_FRUIT.y*t, "#FFE600");
+}
+// the player: its mouth opening and closing as it goes, three frames; caught, it turns up and opens
+// all the way round till it's gone, as the old game's did
+function ccPlayer(g, p, now, spr){
+  const P=blast.pac;
+  let dir=P.dir||"left", open = blast.st==="go" && !P.stopped ? [0,.8,1.6,.8][Math.floor(blast.clock*16)%4] : .8;
+  if(blast.st==="dying"){ const k=Math.min(1, Math.max(0, (blast.clock-blast.diedAt-.5)/1)); if(k>=1) return; dir="up"; open=Math.round((.8+k*5.6)*4)/4; }
+  const resting=blast.clock<blast.restUntil;
+  spr(ccPacSprite(dir, open, resting ? (Math.floor(now/200)%2 ? "#7A6A20" : "#B39A2A") : "#FFE600"), p);
+}
+// the chord a ghost wears, once it's out: named or as a numeral, by the level, over its head. With the
+// power on, the ones that could be caught glow; the one held is blue, its chord white
+function ccGhostLabel(g, gh, p){
   if(!gh.chord || gh.state==="eyes" || (gh.state!=="out" && blast.st!=="jam")) return;   // at home, unlabelled (they'd sit on one another), but for the jam
+  if(blast.scrolls && !ccInView(p.x, p.y, 4)) return;
   const L=ccLevel(), power=ccPowerOn();
   const col = gh.scared ? "#FFFFFF" : power && gh.state==="out" ? (Math.floor(blast.clock*4)%2 ? "#FFD35A" : "#FFF4C2") : "#F1E8D2";
-  const y=p.y-t*1.2;
-  if(L.names){ ccLabel(p.x, y, t*.7, gh.chord.sym, col); ccLabel(p.x, y-t*.7, t*.4, gh.num, "#9A93B5"); }
-  else ccLabel(p.x, y, t*.7, gh.num, col);
-  if(blast.clock<blast.fermataUntil) ccLabel(p.x, p.y+t*.05, t*.45, CC_POWERS.fermata.icon, null);
-}
-function ccLabelsBegin(){
-  if(!blast.sharp) return; blast.lg=sharpBegin(blast.sharp);
-  if(blast.lg){ blast.lg.textAlign="center"; blast.lg.textBaseline="middle"; }
-}
-// text on the sharp layer, at a place on the pixel canvas, size in its pixels
-function ccLabel(x, y, size, text, col, any){
-  const g=blast.lg; if(!g || !g.fillText) return;
-  if(!any && blast.scrolls && !ccInView(x, y, blast.tile*.5)) return;        // scrolled out of view
-  const fs=Math.round(Math.max(size*PX, 8));
-  g.font=`400 ${Math.min(fs, 40)}px "Press Start 2P","Minichord Lab Accidentals",monospace`;
-  if(col){ g.fillStyle="#000"; g.fillText(text, x*PX+2, y*PX+2); g.fillStyle=col; } else g.fillStyle="#FFF";
-  g.fillText(text, x*PX, y*PX);
+  let top=p.y-7-10; const up=L.names ? 9 : 0;
+  if(top-up<1) top=p.y+8+up;                                             // on the top row: under it, not off the screen
+  if(L.names){ ccText(g, gh.chord.sym, p.x, top, col); ccText(g, gh.num, p.x, top-9, "#9A93B5"); }
+  else ccText(g, gh.num, p.x, top, col);
+  if(blast.clock<blast.fermataUntil) g.drawImage(ccSprite("icon|fermata|w", CC_ICONS.fermata, {"#":"#FFFFFF"}), Math.round(p.x-3), Math.round(p.y+8));
 }
 // Scrolling, the ghosts out of view: a pointer at the edge of the view in each one's colour (blue if
 // it's the one held), level with it, and its chord, so a ghost to catch or to keep clear of is never
 // out of mind.
-function ccOffscreen(g, at, t){
+const CC_POINT=["...#","..##",".###","####",".###","..##","...#"];
+function ccOffscreen(g, at){
   const v=blast.view, L=ccLevel(), power=ccPowerOn();
   for(const gh of blast.ghosts){
     if(gh.state==="eyes" || (gh.state!=="out" && blast.st!=="jam")) continue;
     const p=at(gh); if(p.x>=v.x && p.x<=v.x+v.w) continue;
-    const left=p.x<v.x, x=left ? v.x+2 : v.x+v.w-2, y=Math.max(v.y+t, Math.min(v.y+v.h-t, p.y)), s=Math.max(3, Math.round(t*.45)), d=left?1:-1;
-    g.fillStyle=gh.scared ? "#2121FF" : gh.col;
-    g.beginPath(); g.moveTo(x, y); g.lineTo(x+d*s*1.4, y-s); g.lineTo(x+d*s*1.4, y+s); g.closePath(); g.fill();
-    const col = gh.scared ? "#FFFFFF" : power ? "#FFD35A" : "#F1E8D2";
-    ccLabel(x+d*(s*1.4+t*.9), y, t*.5, L.names ? gh.chord.sym : gh.num, col, true);
+    const left=p.x<v.x, y=Math.round(Math.max(v.y+8, Math.min(v.y+v.h-8, p.y))), col=gh.scared ? "#2121FF" : gh.col;
+    const arrow=ccSprite(`point|${left}|${col}`, left ? CC_POINT : CC_POINT.map(r=>[...r].reverse().join("")), {"#":col});
+    const x=left ? v.x+1 : v.x+v.w-1-arrow.width; g.drawImage(arrow, x, y-3);
+    const label=L.names ? gh.chord.sym : gh.num, lx= left ? x+arrow.width+2+[...label].length*4 : x-2-[...label].length*4;
+    ccText(g, label, lx, y-4, gh.scared ? "#FFFFFF" : power ? "#FFD35A" : "#F1E8D2");
   }
 }
 // a popup over a place in the maze
 function ccPop(e, text, colour){
-  if(!blast.field || blast.phase!=="play" || !blast.tile) return;
+  if(!blast.field || blast.phase!=="play" || !blast.k) return;
   const p=e.p!=null ? ccPos(e) : e;
-  popup((blast.ox+(p.x+.5)*blast.tile)*PX, (blast.oy+p.y*blast.tile)*PX, text, colour);
+  popup(blast.scrLeft+(blast.ox+(p.x+.5)*CC_T)*blast.k, blast.scrTop+(blast.oy+p.y*CC_T)*blast.k, text, colour);
 }
 
 // ---------- the jam session ----------
@@ -796,18 +863,6 @@ function ccJamDraw(){
   el.hidden=false;
   el.innerHTML=`<h4>JAM SESSION</h4><div class="ccjamchips">${j.seq.map((g,i)=>`<span class="${i<j.i?"done":i===j.i?"now":""}" style="--gc:${g.col}"><b>${g.num}</b>${names||i<j.i?`<i>${g.chord.sym}</i>`:""}</span>`).join("")}</div><div class="ccjamtime"><i></i></div>`;
 }
-// the little minichord: the arcade's pixel one, tilted 45 degrees as the favicon has it
-let ccMiniImg=null;
-function ccMiniDraw(g, cx, cy, t){
-  if(!ccMiniImg && typeof Image!=="undefined" && typeof PIXEL_MINICHORD_SVG!=="undefined"){
-    ccMiniImg=new Image(); ccMiniImg.src="data:image/svg+xml;charset=utf-8,"+encodeURIComponent(PIXEL_MINICHORD_SVG.replace("<svg ",`<svg xmlns="http://www.w3.org/2000/svg" width="${PIXEL_MINICHORD_W*4}" height="${PIXEL_MINICHORD_H*4}" `)); }
-  const w=t*2.1, h=w*PIXEL_MINICHORD_H/PIXEL_MINICHORD_W;
-  g.save(); g.translate(cx, cy); g.rotate(-Math.PI/4);
-  if(ccMiniImg && ccMiniImg.complete && ccMiniImg.naturalWidth) g.drawImage(ccMiniImg, -w/2, -h/2, w, h);
-  else { g.fillStyle="#FFD35A"; g.fillRect(-w/2, -h/2, w, h); }
-  g.restore();
-}
-
 // ---------- the demo ----------
 // It plays itself on the real maze: the harp's d-pad toured, the dots singing C and then F, a power
 // pellet and the V ghost turning blue for its chord and caught, a key turning up and taken, the

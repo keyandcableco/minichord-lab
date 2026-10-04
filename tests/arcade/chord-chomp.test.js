@@ -113,11 +113,11 @@ const t=require("./harness").load("chord-chomp");
   t.mc.params[7]=17;
   // a phone held upright: the maze fills the view's height, big enough to play on, and the view follows
   // the player; on a wide field the whole maze shows and nothing scrolls
-  check("on a wide field the whole maze is in view, unscrolled", !a.scrolls && a.tile*w.eval("PX")>=w.eval("CC_SMALL"), `${a.tile*w.eval("PX")} px squares`);
+  check("on a wide field the whole maze is in view, unscrolled, at a whole number of screen pixels a pixel", !a.scrolls && Number.isInteger(a.k) && a.k*8>=w.eval("CC_SMALL"), `${a.k*8} px squares`);
   const cam=w.eval(`(()=>{ const fx=blast.fx; fx.ro=fx.ro||{}; fx.fw=375; fx.fh=513; PX=3; ccLayout(); const out=[];
     for(const x of [1,13,25]){ Object.assign(blast.pac,{x, y:9, p:0}); ccCamera(0); const px=blast.ox+(x+.5)*blast.tile, v=blast.view; out.push(px>=v.x && px<=v.x+v.w); }
-    return {scrolls:blast.scrolls, sq:blast.tile*PX, seen:out}; })()`);
-  check("on a phone it scrolls, at three times the squares, keeping the player in view from end to end", cam.scrolls && cam.sq>=27 && cam.seen.every(Boolean), JSON.stringify(cam));
+    return {scrolls:blast.scrolls, sq:blast.tile*blast.k, seen:out}; })()`);
+  check("on a phone it scrolls, at twice the squares or more, keeping the player in view from end to end", cam.scrolls && cam.sq>=24 && cam.seen.every(Boolean), JSON.stringify(cam));
   // leaving gives the key back
   sb.restoreAll();
   check("leaving gives back the minichord's own key", t.mc.params[35]===2);
