@@ -1,5 +1,6 @@
-// Chord Hunt: every level's chords spell plainly in every key it deals; a round sets the
-// minichord to its key; a duck is shot by its chord, only once it's sounded; a wrong chord spends a
+// Chord Hunt: every level's chords spell plainly in every key it deals; a round asks for its key
+// while it opens, and a key set then with the combo scores, a wrong one put back, and one not set is
+// set for the player at the first duck; a duck is shot by its chord, only once it's sounded; a wrong chord spends a
 // shell (after a moment, so a chord of two buttons isn't punished on its way) and says what it was;
 // three wrong and it's away; the harp replays home and the duck, which counts as help; a round with
 // too few ducks costs a life, enough moves the level on; flocks are shot in order; minor keys; the
@@ -23,11 +24,23 @@ const t=require("./harness").load("chord-hunt");
   const v=w.eval(`hdVoice(7,"",{bass:1})`);
   check("a chord voiced with its bass low and the rest close in the middle", v.notes[0]%12===11 && v.notes[0]<52 && Math.max(...v.upper)-Math.min(...v.upper)<12, JSON.stringify(v.notes));
 
+  // the key change combo, as the minichord reports it: a dump no one asked for, only the key changed
+  const combo=async idx=>{ mc._asked=0; const dump=[0xF0]; for(let k=0;k<256;k++){ const v=k===35 ? idx : mc.params[k]||0; dump.push(v&127, v>>7); } dump.push(0xF7); mc._dump(dump); await sleep(60); };
+  const kIdx=f=>w.eval(`keyIndexOf(${f})`);
   const a=await t.start(0, {speed:4});
   w.eval("hdFetchMaybe=()=>false");                            // no tags turning up by chance: the tag has its own check below
+  for(let i=0;i<100 && !a.key;i++) await sleep(50);
+  check("a round opens asking for its key, the signature at C till it's set", a.key && a.keyAsk && mc.params[35]===0 && /SET IT TO/.test(w.document.querySelector(".hdkey").textContent), w.document.querySelector(".hdkey").textContent);
+  const wrongF=a.key.f===2 ? 3 : 2;
+  await combo(kIdx(wrongF));
+  check("a wrong key set with the combo is put back, and said so", mc.params[35]===0 && a.keyAsk && /NOT THIS ONE/.test(t.heard()), t.heard());
+  const s00=a.score; await combo(kIdx(a.key.f));
+  check("the round's key set with the combo while it opens scores, and stays", a.score>s00 && mc.params[35]===kIdx(a.key.f) && !a.keyAsk && /KEY SET/.test(w.document.body.textContent), `${a.score-s00} points, 35=${mc.params[35]}`);
+  const s01=a.score; await combo(kIdx(a.key.f));
+  check("set again, it scores nothing more", a.score===s01);
   const open=async()=>{ for(let i=0;i<300 && !(a.duck && a.duck.open && !a.duck.done);i++) await sleep(50); return a.duck; };
   let d=await open();
-  check("a round holds the key signature at C, the buttons playing their letters", a.key && mc.params[35]===0, a.key && a.key.label);
+  check("the round flies in its key, the buttons playing it", a.key && mc.params[35]===kIdx(a.key.f), a.key && a.key.label);
   check("the first level's ducks are I, IV or V", d && ["I","IV","V"].includes(d.targets[0].num), d && d.targets[0].num);
   // the right chord shoots it
   const s0=a.score, tg=d.targets[0];
@@ -71,20 +84,22 @@ const t=require("./harness").load("chord-hunt");
   // minor keys
   w.eval(`newRun(); blast.level=3; blast.duck=null; const k=hdKey("E",true); hdApplyKey(k); blast.rnd={slots:[], n:0, last:null}; hdLaunch([{...hdChord(k,"V"), slot:0}])`);
   d=await open();
-  check("a minor key holds the signature at C too", mc.params[35]===0);
+  check("a minor key sets its relative major's signature: E minor, G", mc.params[35]===kIdx(1), mc.params[35]);
   chord("B",""); await sleep(30);
   check("V in E minor is B major", d.done && d.targets[0].hit, `${d.targets[0].num} ${d.targets[0].sym} open=${d.open} done=${d.done} · ${t.heard()}`);
   await sleep(2600);
-  // the modifier set for the key: sharpening in A, so C♯m is the C button and the modifier; flattening in E♭
+  // the key's signature set, A's three sharps: C♯m is the C button, no modifier; the modifier's set for
+  // what the signature leaves out, the chords borrowed from the minor, flattening
   w.eval(`newRun(); blast.level=2; blast.duck=null; const k=hdKey("A"); hdApplyKey(k); blast.rnd={slots:[], n:0, last:null}; hdLaunch([{...hdChord(k,"iii"), slot:0}])`);
-  check("in A the modifier sharpens", mc.params[31]===0 && mc.params[35]===0);
+  check("in A the signature is A's", mc.params[35]===kIdx(3));
   d=await open(); chord(1,"m"); await sleep(30);
-  check("C♯m, the C button and the modifier, shoots iii in A", d.done && d.targets[0].hit, t.heard());
+  check("C♯m, the C button in A, shoots iii", d.done && d.targets[0].hit, t.heard());
   await sleep(2600);
-  w.eval(`newRun(); blast.duck=null; hdApplyKey(hdKey("E♭"))`);
-  check("in E♭ the modifier flattens", mc.params[31]===1);
-  const leanBad=w.eval(`(()=>{ const out=[]; for(const L of HD_LEVELS) for(const n of [...L.keys, ...HD_KEYS_MIN]){ for(const minor of [false,true]){ const k=hdKey(n,minor); const pool=minor?(L.minorPool||HD_MINOR):L.pool; if(!minor===!L.minor || L.roam){ if(hdKeyOk(k,pool) && hdLean(k,pool)==null) out.push(L.n+": "+k.label); } } } return out; })()`);
-  check("no key a level deals needs the modifier both ways", !leanBad.length, leanBad.slice(0,3).join(" · "));
+  w.eval(`mc.params[31]=0; newRun(); blast.level=5; blast.duck=null; hdApplyKey(hdKey("G"))`);
+  check("borrowed chords in G: the modifier flattens (♭VII, F, is the F♯ button flattened)", mc.params[31]===1);
+  w.eval(`blast.level=2`);
+  const leanBad=w.eval(`(()=>{ const out=[]; for(const L of HD_LEVELS) for(const n of [...L.keys, ...HD_KEYS_MIN]){ for(const minor of [false,true]){ const k=hdKey(n,minor); const pool=minor?(L.minorPool||HD_MINOR):L.pool; if(!minor===!L.minor || L.roam){ if(hdKeyOk(k,pool) && (hdLean(k,pool)==null || hdLean(k,pool,k.f)==null)) out.push(L.n+": "+k.label); } } } return out; })()`);
+  check("no key a level deals needs the modifier both ways, at C or its own signature", !leanBad.length, leanBad.slice(0,3).join(" · "));
   check("D major's borrowed B♭ and its F♯m never meet: no D at the migration level, A and B♭ there", !w.eval(`hdKeyOk(hdKey("D"), HD_LEVELS[9].pool)`) && w.eval(`hdKeyOk(hdKey("A"), HD_LEVELS[9].pool) && hdKeyOk(hdKey("B♭"), HD_LEVELS[9].pool)`));
   // the dog's tag: its chord takes the power-up
   w.eval(`blast.duck=null; blast.hdPower=null; blast.key=hdKey("C"); blast.tag={k:"drone", chord:hdChord(blast.key,"IV"), left:5, then:()=>{ window.__then=1; }}`);

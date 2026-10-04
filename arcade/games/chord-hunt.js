@@ -30,12 +30,16 @@
 // power-up, a tag with a chord on it: play the chord to take it. Power-ups are ways of listening:
 // chord-hunt-power.js.
 //
-// The minichord's key signature stays at C, so its buttons play the letters they're marked with, as in
-// the other arcade games: a chord with a sharp or flat root is its letter and the modifier. The game
-// sets the modifier's way once for the key, sharpening in a sharp key and flattening in a flat one
-// (unless the player sets it by hand), which helps every duck in that key alike and so names none of
-// them; the keys a level deals are only those whose chords all lean the same way (D major's F♯ and its
-// borrowed B♭ never meet).
+// The minichord's key signature follows the round's key, so its buttons play the key: home on the
+// tonic's button and every chord of the key where it lies, the numeral a place on the buttons. Setting
+// it is the player's to do first, for points: while the round opens (the sign up, the cadence playing)
+// the key change combo sets it, or on the screen's minichord a chord button held (KEY OF G: hold G).
+// Not set by the first duck, the game sets it; and where it can't be set by hand (firmware without the
+// combo, the computer's keyboard), and for every duck at the migration level, the game sets it at
+// once. A wrong key is put back. The modifier's way is set once for the key, for the chords it leaves
+// out (flattening, for the ones borrowed from the minor; unless the player sets it by hand), which
+// helps every duck in that key alike and so names none of them; the keys a level deals are only those
+// whose chords all lean the same way (D major's F♯ and its borrowed B♭ never meet).
 
 // ---------- the chords a duck can be ----------
 // Each is a place in the key: its numeral, its root's distance above the tonic (letters, then
@@ -137,11 +141,12 @@ function hdChord(key, num){
 }
 // the keys a level can use: every chord it could ask for, spelled plainly
 function hdKeyOk(key, nums){ return nums.every(n=>!!hdChord(key, n)) && hdLean(key, nums)!=null; }
-// which way the modifier goes for a key's chords: 1 sharpening, -1 flattening, 0 for neither (C major's
-// own); null if some need it each way, which can't be set once for the key
-function hdLean(key, nums){
+// which way the modifier goes for a key's chords, with the minichord's key signature at f: 1
+// sharpening, -1 flattening, 0 for neither; null if some need it each way, which can't be set once for
+// the key. At C, every sharp or flat root; at the key's own signature, only the ones it leaves out.
+function hdLean(key, nums, f=0){
   let up=false, down=false;
-  for(const n of nums){ const c=hdChord(key,n); if(!c) continue; const a=parse(c.root).acc; if(a>0) up=true; if(a<0) down=true; }
+  for(const n of nums){ const c=hdChord(key,n); if(!c) continue; const {li,acc}=parse(c.root), a=acc-keyAcc(li,f); if(a>0) up=true; if(a<0) down=true; }
   return up && down ? null : up ? 1 : down ? -1 : 0;
 }
 // keys dealt from a shuffled bag, each used once before any comes round again
@@ -205,10 +210,16 @@ function startHunt(){
   blast.raf=requestAnimationFrame(hdTick);
 }
 // The minichord's side: the harp chromatic, so a low string and a high one are known (home and the
-// duck again); untransposed; and between games the key signature at C.
+// duck again); untransposed; and between games the key signature at C. Mid-game it listens for a key
+// set by hand.
 function hdDevice(){
   if(!blast || blast.kind!=="hunt" || !canWrite()) return;
   arcadeSetup(()=>{ asHarp(); if(hasSetting(30)) ensure(30,0); if(hasSetting(35) && blast.phase!=="play") borrow(35, keyIndexOf(0)); if(hasSetting(31)) borrow(31, mc.params[31]??0); });
+  // the key change combo (or a chord button held on the screen's minichord), mid-game: a key set by hand
+  // (only the combo: a preset loaded, or a double tap, reports unasked too, and isn't one). Heard once:
+  // what's set in answer reports in too.
+  const picked = mc.comboPick && blast.phase==="play"; mc.unasked=false;
+  if(picked && hasSetting(35) && mc.params[35]!=null) hdKeyPicked(mc.params[35]);
 }
 function buildHuntField(box){
   const field=document.createElement("div"); field.className="field arcade hunt"; field.setAttribute("aria-label","The hunting ground");
@@ -292,25 +303,62 @@ function hdGuideDraw(){
   el.hidden=false;
   el.innerHTML=pool.map(n=>{ const c=hdChord(key,n); return c ? `<span><b>${n}</b>${mode===0?`<i>${c.sym}</i>`:""}</span>` : ""; }).join("");
 }
-function hdKeySign(key){
+// the sign: the key, and while it's the player's to set, how (a minor key takes its relative major's
+// signature: E minor's is G). fresh: a new sign, swung up; otherwise only its words change.
+function hdKeySign(key, fresh=true){
   const el=blast.keyEl; if(!el) return;
   el.hidden=!key; if(!key) return;
-  el.innerHTML=`KEY OF <b>${key.label}</b>`;
-  el.classList.remove("new"); void el.offsetWidth; el.classList.add("new");
+  const sig=KEY_BY_FIFTHS[key.f], {acc}=parse(sig), screen=typeof playOnScreen==="function" && playOnScreen();
+  const how = !blast.keyAsk ? "" : screen ? `SET IT: HOLD ${sig[0]}, ${acc>0 ? "TOP" : acc<0 ? "BOTTOM" : "MIDDLE"} ROW` : `SET IT TO ${sig}: THE KEY CHANGE COMBO`;
+  el.innerHTML=`KEY OF <b>${key.label}</b>${how ? `<small>${how}</small>` : ""}`;
+  if(fresh){ el.classList.remove("new"); void el.offsetWidth; el.classList.add("new"); }
 }
-// the minichord follows the key: its signature held at C, so the buttons play their letters, and the
-// modifier's way set for the key's sharps or flats (unless the player sets it by hand)
-function hdApplyKey(key){
+// can the player set the key by hand: the key change combo, or a chord button held on the screen's minichord
+const hdCanSet=()=> canWrite() && hasSetting(35) && ((typeof playOnScreen==="function" && playOnScreen()) || (typeof keyComboReady==="function" && keyComboReady()));
+// The minichord follows the key. ask: the round's opening, when the key's the player's to set (the
+// signature at C till then); otherwise it's set now. The modifier's way is set for what the key's
+// signature leaves out (unless the player sets it by hand).
+function hdApplyKey(key, ask=false){
   blast.key=key; blast.hdLastKey=key.name;
-  const L=hdLevel(), lean=hdLean(key, key.minor ? (L.minorPool||HD_MINOR) : L.pool);
-  if(canWrite() && hasSetting(35) && mc.params[35]!==keyIndexOf(0)) borrow(35, keyIndexOf(0));
+  blast.keyAsk = ask && hdCanSet() ? {paid:false} : null;
+  const L=hdLevel(), lean=hdLean(key, key.minor ? (L.minorPool||HD_MINOR) : L.pool, key.f);
+  if(canWrite() && hasSetting(35)) ensure(35, keyIndexOf(blast.keyAsk ? 0 : key.f));
   if(lean && autoMod() && canWrite() && hasSetting(31)) ensure(31, lean>0 ? 0 : 1);
-  modPill(); hdKeySign(key); hdGuideDraw();
-  helpChord(null); const home=hdChord(key, hdHome(key)); if(home) helpChord(home.root, home.q);   // beginner mode lights home: where it is, not what the duck is
+  modPill(); hdKeySign(key); hdGuideDraw(); hdHomeLit();
+}
+// beginner mode lights home: where it is, not what the duck is (and where it is changes with the signature)
+function hdHomeLit(){ const key=blast.key, home=key && hdChord(key, hdHome(key)); helpChord(null); if(home) helpChord(home.root, home.q); }
+// The round's opening is over (the first duck's coming): a key the player didn't set is set for them.
+function hdKeyClose(){
+  if(!blast.keyAsk || !blast.key) return;
+  blast.keyAsk=null;
+  if(canWrite() && hasSetting(35)) ensure(35, keyIndexOf(blast.key.f));
+  hdKeySign(blast.key, false); hdHomeLit();
+}
+// A key set by hand (the combo, or a chord button held on the screen): the round's key (or the same
+// notes spelled the other way, C♭ for B) is kept, spelled as the round spells it, and while the
+// round's opening it scores; any other is put back.
+function hdKeyPicked(idx){
+  const key=blast.key; if(!key || !canWrite() || !hasSetting(35)) return;
+  const f=KEY_FIFTHS[idx], ask=blast.keyAsk, name=mc.keyName||"?";
+  if(f!=null && mod(7*f,12)===mod(7*key.f,12)){
+    ensure(35, keyIndexOf(key.f));
+    if(ask && !ask.paid){
+      ask.paid=true; blast.keyAsk=null;
+      const pts=mulPts(50*(blast.level+1)); blast.score+=pts; scoreboard(); hdBar();
+      sfx("key"); popup(90, 78, `+${pts} KEY SET`, "#FFD35A");
+      heard(`KEY OF ${key.label}`, true, "SET: THE BUTTONS PLAY THE KEY");
+    }
+    hdKeySign(key, false); hdHomeLit();
+    return;
+  }
+  ensure(35, keyIndexOf(ask ? 0 : key.f));
+  heard(`KEY OF ${name}`, false, key.minor ? `NOT THIS ONE: ${key.label}'S IS ${KEY_BY_FIFTHS[key.f]}` : `NOT THIS ONE: IT'S ${key.label}`);
+  hdHomeLit();
 }
 
 const HDMENU_G={key:"hunt", title:"CHORD HUNT",
-  rules:()=>`<p>EVERY ROUND OPENS WITH ITS KEY. THEN, FOR EACH DUCK, HOME SOUNDS FIRST, THE TONIC CHORD, AND THEN THE DUCK'S OWN CHORD.</p><p>NAME IT AGAINST HOME AND PLAY IT ON THE BUTTONS TO SHOOT: vi IN G IS Em. THREE SHELLS A DUCK, AND A WRONG CHORD SPENDS ONE.</p><p>HIT ENOUGH OF THE TEN TO CLEAR THE ROUND, OR THE DOG LAUGHS AND IT COSTS A LIFE.</p><p>PLUCK THE HARP TO HEAR IT AGAIN: A LOW STRING FOR HOME, A HIGH ONE FOR THE DUCK.</p><p>FIRST-SHOT HITS WITH NO HELP BUILD YOUR PURE EAR, UP TO ×4. GOLDEN DUCKS SING A CHORD FROM THE NEXT LEVEL UP: TRIPLE POINTS, AND NO HARM IF THEY GET AWAY.</p><p>NOW AND THEN THE DOG FETCHES A POWER-UP. PLAY THE CHORD ON ITS TAG TO TAKE IT.</p>`,
+  rules:()=>`<p>EVERY ROUND OPENS WITH ITS KEY.${hdCanSet() ? ` SET THE MINICHORD TO IT BEFORE THE FIRST DUCK FOR POINTS (${typeof playOnScreen==="function" && playOnScreen() ? "HOLD A CHORD BUTTON: TOP ROW SHARP KEYS, MIDDLE NATURAL, BOTTOM FLAT" : "THE KEY CHANGE COMBO"}), OR IT'S SET FOR YOU, SO THE BUTTONS PLAY THE KEY.` : " THE MINICHORD IS SET TO IT, SO THE BUTTONS PLAY THE KEY."} THEN, FOR EACH DUCK, HOME SOUNDS FIRST, THE TONIC CHORD, AND THEN THE DUCK'S OWN CHORD.</p><p>NAME IT AGAINST HOME AND PLAY IT ON THE BUTTONS TO SHOOT: vi IN G IS Em. THREE SHELLS A DUCK, AND A WRONG CHORD SPENDS ONE.</p><p>HIT ENOUGH OF THE TEN TO CLEAR THE ROUND, OR THE DOG LAUGHS AND IT COSTS A LIFE.</p><p>PLUCK THE HARP TO HEAR IT AGAIN: A LOW STRING FOR HOME, A HIGH ONE FOR THE DUCK.</p><p>FIRST-SHOT HITS WITH NO HELP BUILD YOUR PURE EAR, UP TO ×4. GOLDEN DUCKS SING A CHORD FROM THE NEXT LEVEL UP: TRIPLE POINTS, AND NO HARM IF THEY GET AWAY.</p><p>NOW AND THEN THE DOG FETCHES A POWER-UP. PLAY THE CHORD ON ITS TAG TO TAKE IT.</p>`,
   stat:()=>`DUCKS ${blast.ducks} · ROUND ${blast.round}`,
   rows:row=>{
     row("SPEED", SPEEDS.map(x=>x[0].toUpperCase()), ()=>+saved.speed||0, i=>{ saved.speed=i; save(); });
@@ -324,7 +372,7 @@ function beginHunt(level){
   piano.start(); stopDemo(); clearTimeout(blast.attract); clearTimeout(blast.cabT);
   if(blast.overlay){ blast.overlay.remove(); blast.overlay=null; }
   hdClear();
-  Object.assign(blast,{score:0, lives:3, level, startLevel:level, round:0, ducks:0, ear:0, phase:"play", over:false, duck:null, tag:null, key:null, rnd:null, hdBags:null, hdPower:null, hdLastKey:null, modFor:null, guideAt:saved.hdGuide||0});
+  Object.assign(blast,{score:0, lives:3, level, startLevel:level, round:0, ducks:0, ear:0, phase:"play", over:false, duck:null, tag:null, key:null, keyAsk:null, rnd:null, hdBags:null, hdPower:null, hdLastKey:null, modFor:null, guideAt:saved.hdGuide||0});
   saved.huntStart=level; save();
   stats.streak=0; scoreboard(); hdLayout(); hdBar(); hdPanel();
   cancelAnimationFrame(blast.raf); blast.last=performance.now(); blast.raf=requestAnimationFrame(hdTick);
@@ -346,16 +394,17 @@ function hdRoundStart(){
   if(L.roam){ blast.key=null; hdKeySign(null); hdGuideDraw(); gameLater(()=>hdNextDuck(), 2200); return; }
   const key=hdPickKey(L);
   gameLater(()=>{ if(blast.phase!=="play") return;
-    hdApplyKey(key);
+    hdApplyKey(key, true);
     const ms=hdPlay(hdCadence(key));
     hdDogWalk(ms);
-    gameLater(()=>hdNextDuck(), ms+1300); }, 1500);
+    gameLater(()=>hdNextDuck(), ms+1300+(blast.keyAsk ? 1500 : 0)); }, 1500);   // a moment more when the key's the player's to set
 }
 // the next duck, or flock; or the round's over
 function hdNextDuck(){
   if(!blast || blast.phase!=="play") return;
   const L=hdLevel(), r=blast.rnd;
   if(r.n>=HD_ROUND) return hdRoundEnd();
+  hdKeyClose();
   if(L.roam){ const key=hdPickKey(L, Math.random()<.35); hdApplyKey(key); }
   const key=blast.key;
   // a golden duck, once a round at most, extra to the ten: a chord from the next level up (in a major
@@ -491,7 +540,9 @@ function huntChord(voices){
   clearTimeout(blast.hdPend); blast.hdPend=null;
   if(blast.tag){ hdTagChord(pitches, name); return; }
   const d=blast.duck;
-  if(!d || !d.open || d.done){ heard(name,false, d ? "LISTEN FIRST: HOME, THEN THE DUCK" : "WAIT FOR THE DUCK"); return; }
+  // with no duck up, a chord button held on the screen's minichord may be setting the key: say nothing till it's let go
+  if(!d){ const wait=()=>heard(name,false,"WAIT FOR THE DUCK"); typeof tdAfterHold==="function" ? tdAfterHold(wait) : wait(); return; }
+  if(!d.open || d.done){ heard(name,false,"LISTEN FIRST: HOME, THEN THE DUCK"); return; }
   const t=d.targets[d.i];
   if(isChord(pitches, t.pc, t.q)){ heard(name,true); hdHit(d); return; }
   blast.hdPend=gameLater(()=>{ blast.hdPend=null; if(blast.duck===d && !d.done) hdWrong(d, pitches, name); }, 450);
@@ -566,7 +617,7 @@ function hdDuckDone(d, hit){
 }
 function hdRoundEnd(){
   const r=blast.rnd, hits=r.slots.filter(s=>s==="hit").length, q=hdQuota();
-  blast.key && hdKeySign(null);
+  blast.keyAsk=null; blast.key && hdKeySign(null);
   if(hits>=q){
     let bonus=0; if(hits===HD_ROUND){ bonus=mulPts(100*(blast.level+1)); blast.score+=bonus; }
     banner(hits===HD_ROUND ? "PERFECT!" : "ROUND CLEAR", `${hits} OF ${HD_ROUND}${bonus?` · +${bonus}`:""}`); sfx("level", blast.key && {pc:pcOfName(blast.key.name), minor:blast.key.minor});

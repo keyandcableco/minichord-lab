@@ -267,9 +267,10 @@ function tdKeyHold(h){
 // (Key Fleet: a button held to set the key fires no torpedo). go runs now if no button's held that way,
 // or when the hold ends short of setting the key (the finger lifted or moved), and never if it sets it.
 function tdAfterHold(go){ const k=tdOn() && td.keyHold; if(k) k.after.push(go); else go(); }
-// a chord held for the game's own sake isn't a key change: Chord Invaders' beam, earned or burning, and
-// Chord Chomp's chords, held to sing the dots and catch the ghosts (except while a key's up to be set)
-const tdHoldTaken=()=> typeof blast!=="undefined" && !!blast && blast.phase==="play" && (!!(blast.beamArmed || blast.beamOn) || (blast.kind==="chomp" && !blast.fruit));
+// a chord held for the game's own sake isn't a key change: Chord Invaders' beam, earned or burning,
+// Chord Chomp's chords, held to sing the dots and catch the ghosts (except while a key's up to be set),
+// and Chord Hunt's shots, at a duck or the dog's tag (the key's set between them)
+const tdHoldTaken=()=> typeof blast!=="undefined" && !!blast && blast.phase==="play" && (!!(blast.beamArmed || blast.beamOn) || (blast.kind==="chomp" && !blast.fruit) || (blast.kind==="hunt" && !!(blast.duck || blast.tag)));
 const KEY_NAMES_BY_FIFTHS={"-8":"F♭","-7":"C♭","-6":"G♭","-5":"D♭","-4":"A♭","-3":"E♭","-2":"B♭","-1":"F","0":"C","1":"G","2":"D","3":"A","4":"E","5":"B",
   "6":"F♯","7":"C♯","8":"G♯","9":"D♯","10":"A♯","11":"E♯","12":"B♯"};
 // a note by its place on the line of fifths, F to B round again, with a flat or sharp (or two) for each

@@ -647,6 +647,9 @@ html.arcadepage .gamebar{align-items:flex-end}
 .hdgrass{position:absolute;left:0;width:100%;z-index:3;image-rendering:pixelated;pointer-events:none}
 .hdkey{position:absolute;left:12px;top:32px;z-index:4;font:400 .55rem "Press Start 2P","Minichord Lab Accidentals",monospace;color:#F1E8D2;background:#16132A;border:3px solid #000;box-shadow:0 0 0 2px #6B4226;padding:6px 9px;pointer-events:none}
 .hdkey b{color:#FFD35A;font-weight:400}
+.hdkey small{display:block;margin-top:5px;font-size:.42rem;color:#9FE3FF;animation:hdask 1s steps(2) infinite}   /* the key's the player's to set: how */
+@keyframes hdask{50%{opacity:.45}}
+@media (prefers-reduced-motion:reduce){.hdkey small{animation:none}}
 .hdkey.new{animation:hdsign .5s steps(5)}
 .field.hunt.demoing .hdkey{top:118px}   /* clear of the demo's caption */
 .field.hunt .helper.hboard{top:64px;bottom:auto;right:10px;width:min(300px,32%)}   /* the on-screen minichord up in the sky's corner, clear of the grass and the guide; the ducks fly in front of it */
