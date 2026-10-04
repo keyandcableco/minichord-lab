@@ -79,16 +79,20 @@ function boPaddleGrowTick(dt){
   p.w=nw; p.x-=dw/2; if(p.target!=null) p.target-=dw/2;
   blast.padEl.style.width=p.w+"px";
 }
-// DIVISI: the ball splits in three, the two new ones a little either side of its line
+// DIVISI: the ball splits in three, the two new ones a little either side of its line, going the
+// way it goes, up or down. Its line is measured from straight up or straight down, so a falling
+// ball's two don't both end up clamped to the same steepest angle, on top of each other; and where
+// one side has no room, both go to the other, so the three always fan out.
 function boSplit(){
   const src=blast.balls.find(b=>!b.stuck) || blast.ball; if(!src) return;
   const p=blast.paddle, room=BO_MAX_BALLS-blast.balls.length;
-  const ang=src.stuck ? 0 : Math.atan2(src.vx, -src.vy);
-  [-.42,.42].slice(0, Math.max(0,room)).forEach(da=>{
+  const down=!src.stuck && src.vy>0, ang=src.stuck ? 0 : Math.max(-BO_MAXANG, Math.min(BO_MAXANG, Math.atan2(src.vx, Math.abs(src.vy))));
+  const das = ang+.42>BO_MAXANG ? [-.42,-.84] : ang-.42<-BO_MAXANG ? [.42,.84] : [-.42,.42];
+  das.slice(0, Math.max(0,room)).forEach(da=>{
     const el=document.createElement("div"); el.className="boball extra"; blast.field.appendChild(el);
-    const a=Math.max(-BO_MAXANG, Math.min(BO_MAXANG, ang+da)), sp=src.speed;
+    const a=ang+da, sp=src.speed;
     const x=src.stuck ? p.x+p.w/2 : src.x, y=src.stuck ? blast.padY-BO_RING-BO_R : src.y;
-    const b={x, y, vx:Math.sin(a)*sp, vy:-Math.cos(a)*sp, speed:sp, base:src.base||sp, stuck:false, el};
+    const b={x, y, vx:Math.sin(a)*sp, vy:(down?1:-1)*Math.cos(a)*sp, speed:sp, base:src.base||sp, stuck:false, el};
     el.style.transform=`translate(${b.x-BO_R}px,${b.y-BO_R}px)`;
     blast.balls.push(b);
   });

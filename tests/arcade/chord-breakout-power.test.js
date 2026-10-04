@@ -44,6 +44,14 @@ const t=require("./harness").load("chord-breakout");
   check("losing two of them costs no life", a.balls.length===1 && a.lives===l0 && d.querySelectorAll(".boball").length===1 && a.ball.el===a.ballEl);
   a.ball.y=a.H+30; a.ball.vy=200; a.ball.stuck=false; await sleep(80);
   check("the last one past costs a life, and a new ball is served", a.lives===l0-1 && a.balls.length===1 && a.ball.stuck);
+  // a falling ball splits in three too, all still falling, none on top of another; and one at its steepest
+  for(const [vx, what] of [[0,"straight down"], [-100,"steep, to the left"]]){
+    park(); Object.assign(a.ball,{x:450, y:150, vx, vy:60, speed:Math.hypot(vx,60), base:Math.hypot(vx,60)});
+    w.eval("boSplit()");
+    const vs=a.balls.map(b=>Math.atan2(b.vx,b.vy)), apart=vs.every((v,i)=>vs.every((u,j)=>i===j || Math.abs(u-v)>.3));
+    check(`DIVISI: a ball falling ${what} splits in three, fanned out`, a.balls.length===3 && a.balls.every(b=>b.vy>0) && apart, vs.map(v=>v.toFixed(2)).join(" "));
+    w.eval("boExtraClear()");
+  }
   // FERMATA
   w.eval("blast.serveAt=0"); await sleep(50);
   w.eval("blast.boPower={k:'fermata', powerUntil:performance.now()+8000}");
