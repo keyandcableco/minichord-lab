@@ -27,12 +27,25 @@ const t=require("./harness").load("chord-chomp");
   hold(0); await sleep(700);
   check("a chord held: the dots sing its notes", a.sung!=null && [0,4,7].includes(w.eval("mod")(a.sung,12)), `sang ${a.sung}`);
   sounding=[];
+  // LATCH, the default: a chord played stays on once it's let go, till another, or the same again
+  chord("F"); await sleep(400);
+  check("latched: F played and let go, the dots go on singing F", a.held && [5,9,0].includes(a.sung%12) && /♪ F/.test(d.querySelector(".field .hud").textContent), `sang ${a.sung}`);
+  chord("F"); await sleep(60);
+  check("F again lets it go: the waka back", !a.held && !/♪/.test(d.querySelector(".field .hud").textContent));
+  w.eval("saved.ccHold=1");
+  check("HOLD scores a quarter more", w.eval("diffMult('chomp')")===w.eval("(()=>{ saved.ccHold=0; const m=diffMult('chomp'); saved.ccHold=1; return m; })()")*1.25);
+  chord("F"); await sleep(60);
+  check("HOLD: a chord played and let go counts for nothing", !a.held && !a.latched);
+  w.eval("saved.ccHold=0");
   // power: only the ghost whose chord is held turns blue; the others still chase
   const place=(g,x,y)=>Object.assign(g,{state:"out", x, y, p:0, dir:"left", scared:false});
   w.eval("blast.fermataUntil=blast.clock+60; ccPowerStart()");          // the ghosts held still, to set the scene
   const [g0,g1]=a.ghosts; place(g0,20,9); place(g1,6,9); a.ghosts.slice(2).forEach((g,i)=>place(g,3+i,13));
   hold(g0.chord.pc, g0.chord.q); await sleep(60);
   check("power on, a ghost's chord held: that ghost is blue", g0.scared && !g1.scared);
+  sounding=[]; chord(g1.chord.root, g1.chord.q); await sleep(60);
+  check("latched, let go: the ghost whose chord it is turns blue, and the other back", g1.scared && !g0.scared);
+  chord(g1.chord.root, g1.chord.q); hold(g0.chord.pc, g0.chord.q); await sleep(60);
   // run the player into it
   Object.assign(a.pac,{x:19, y:9, p:0, dir:"right"}); a.want="right";
   const s0=a.score; await sleep(400);

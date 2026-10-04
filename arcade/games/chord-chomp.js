@@ -11,6 +11,11 @@
 // arpeggio, and a corner taken with a new chord held changes the harmony. With nothing held they go
 // waka-waka, as they always did.
 //
+// A chord latches (the default): pressed, it stays on after the buttons are let go, until another is
+// pressed, or the same one again to let it go, so a thumb on a phone needn't hold it while the other
+// steers. HOLD, chosen on the title screen, counts a chord only while it's held, for a quarter more.
+// A chord actually held counts either way.
+//
 // The four ghosts each wear a chord of the maze's key, as a numeral (I, IV, V and vi at first). A
 // power pellet doesn't turn them all blue: only the ghost whose chord is held turns blue and runs,
 // and can be caught. The other three keep chasing. Let go of the chord, or change it, and that ghost
@@ -176,8 +181,9 @@ function ccBar(){
 // ---------- the title screen ----------
 const ccMenuSig=()=> String(ccComboOk());
 const CCMENU_G={key:"chomp", title:"CHORD CHOMP",
-  rules:()=>`<p>EAT THE DOTS. HOLD A CHORD ON THE BUTTONS AND THEY SING IT, A NOTE A DOT.</p><p>THE GHOSTS WEAR CHORDS OF THE KEY. EAT A POWER PELLET, THEN HOLD A GHOST'S CHORD: THAT GHOST TURNS BLUE AND YOU CAN CATCH IT. THE OTHERS STILL CHASE YOU.</p><p>CATCH THEM IN A CADENCE'S ORDER FOR A BONUS: V THEN I, OR IV, V THEN I FOR THE BIGGEST.</p><p>WHEN A KEY TURNS UP, ${ccComboOk() ? "SET IT WITH THE KEY CHANGE COMBO" : "PLAY ITS HOME CHORD"} BEFORE IT GOES, AND THE MAZE CHANGES KEY. FARTHER KEYS SCORE MORE.</p><p>${playOnScreen() ? "STEER WITH THE ARROWS UNDER THE GAME" : "STEER ON THE HARP OR THE ARROW KEYS"}.</p>`,
+  rules:()=>`<p>EAT THE DOTS. PLAY A CHORD ON THE BUTTONS AND THEY SING IT, A NOTE A DOT. ${ccLatch() ? "IT STAYS ON TILL YOU PLAY ANOTHER, OR THE SAME AGAIN TO LET IT GO. OR CHOOSE HOLD, FOR A QUARTER MORE: THEN A CHORD ONLY COUNTS WHILE IT'S HELD." : "A CHORD ONLY COUNTS WHILE IT'S HELD (A QUARTER MORE POINTS); CHOOSE LATCH TO HAVE IT STAY ON."}</p><p>THE GHOSTS WEAR CHORDS OF THE KEY. EAT A POWER PELLET, THEN PLAY A GHOST'S CHORD: THAT GHOST TURNS BLUE AND YOU CAN CATCH IT. THE OTHERS STILL CHASE YOU.</p><p>CATCH THEM IN A CADENCE'S ORDER FOR A BONUS: V THEN I, OR IV, V THEN I FOR THE BIGGEST.</p><p>WHEN A KEY TURNS UP, ${ccComboOk() ? "SET IT WITH THE KEY CHANGE COMBO" : "PLAY ITS HOME CHORD"} BEFORE IT GOES, AND THE MAZE CHANGES KEY. FARTHER KEYS SCORE MORE.</p><p>${playOnScreen() ? "STEER WITH THE ARROWS UNDER THE GAME" : "STEER ON THE HARP OR THE ARROW KEYS"}.</p>`,
   rows:row=>{
+    row("CHORDS", ["LATCH","HOLD ×1.25"], ()=>saved.ccHold?1:0, i=>{ saved.ccHold=i; save(); });
     row("SPEED", SPEEDS.map(x=>x[0].toUpperCase()), ()=>+saved.speed||0, i=>{ saved.speed=i; save(); });
     row("HARP", HARP_LAYOUTS.map(([t])=>t), harpLayoutIndex, i=>{ saved.harpLayout=HARP_LAYOUTS[i][1]; save(); kmRestrip(); });
     row("HARP SOUND", ["NORMAL","QUIET","OFF"], ()=>saved.harpSound??1, i=>{ saved.harpSound=i; save(); if(blast && blast.setupDone) kmHarp(); });
@@ -188,7 +194,7 @@ function beginChomp(level){
   newRun();
   piano.start(); stopDemo(); clearTimeout(blast.attract);
   if(blast.overlay){ blast.overlay.remove(); blast.overlay=null; }
-  Object.assign(blast,{score:0, lives:3, level, startLevel:level, maze:0, phase:"play", over:false, clock:0, demoAuto:false, demoHeld:null, powerTold:false, modFor:null, jamUsed:false, jam:null});
+  Object.assign(blast,{score:0, lives:3, level, startLevel:level, maze:0, phase:"play", over:false, clock:0, demoAuto:false, demoHeld:null, powerTold:false, modFor:null, jamUsed:false, jam:null, latched:null});
   if(canWrite() && hasSetting(33)) ensure(33,0);                // no Barry Harris: the plain chords
   ccSetKey(ccKey(0));
   saved.chompStart=level; save();
@@ -273,7 +279,8 @@ function ccStep(dt){
 }
 // held chords: the minichord's sounding voices (the demo holds its own)
 function ccHeldSync(){
-  const v = blast.phase==="demo" ? (blast.demoHeld||[]) : ((typeof mc!=="undefined" && mc.voices) || []).map(x=>x.pitch);
+  const sounding=((typeof mc!=="undefined" && mc.voices) || []).map(x=>x.pitch);
+  const v = blast.phase==="demo" ? (blast.demoHeld||[]) : sounding.length ? sounding : ccLatch() && blast.latched || [];
   const k=v.map(p=>Math.round(p)).join();
   if(k===blast.heldKey) return;
   blast.heldKey=k;
@@ -281,6 +288,9 @@ function ccHeldSync(){
   blast.held = v.length ? {pitches:v, seq:ccArp(v)} : null;
   blast.heldGhost = blast.held ? blast.ghosts.find(g=>g.chord && g.state==="out" && ccIs(v, g.chord)) || null : null;
 }
+// LATCH (the default) or HOLD (a quarter more)
+const ccLatch=()=> !saved.ccHold;
+const ccSame=(a,b)=>{ const x=chordId(a), y=chordId(b); return !!x && !!y && x.root===y.root && x.quality===y.quality; };
 // the dots' tune for a chord: its notes from the bottom, up two octaves and back down
 function ccArp(pitches){
   const ps=[...new Set(pitches.map(p=>Math.round(p)))].sort((a,b)=>a-b), low=ps[0], base=60+mod(low,12);
@@ -339,7 +349,7 @@ function ccPowerStart(){
   blast.heldKey=null;                                                  // whatever's held counts at once
   if(blast.phase!=="play") return;
   sfx("power"); ccBar();
-  if(!blast.powerTold){ blast.powerTold=true; banner("POWER!", "HOLD A GHOST'S CHORD: IT TURNS BLUE, AND YOU CAN CATCH IT"); }
+  if(!blast.powerTold){ blast.powerTold=true; banner("POWER!", `${ccLatch() ? "PLAY" : "HOLD"} A GHOST'S CHORD: IT TURNS BLUE, AND YOU CAN CATCH IT`); }
 }
 
 // ---------- the ghosts ----------
@@ -415,7 +425,7 @@ function ccDie(g){
   if(blast.st!=="go") return;
   blast.st="dying"; blast.stUntil=blast.clock+1.7; blast.diedAt=blast.clock;
   sfx("die"); buzz(blast.field, true);
-  heard(`${g.chord.sym} · ${g.num}`, false, ccPowerOn() ? "CAUGHT: HOLD ITS CHORD AND IT TURNS BLUE" : "CAUGHT");
+  heard(`${g.chord.sym} · ${g.num}`, false, ccPowerOn() ? `CAUGHT: ${ccLatch() ? "PLAY" : "HOLD"} ITS CHORD AND IT TURNS BLUE` : "CAUGHT");
 }
 function ccAfterDeath(){
   blast.lives--; ccBar();
@@ -506,6 +516,7 @@ function ccPowerGet(k){
 function ccPowerHud(){
   if(!blast.pac) return "";
   const out=[];
+  if(ccLatch() && blast.latched) out.push(`♪ ${chordName(blast.latched, devFifths())}`);
   if(ccPowerOn()) out.push(`⚡ ${Math.ceil(blast.powerUntil-blast.clock)}`);
   if(blast.clock<blast.fermataUntil) out.push(`${CC_POWERS.fermata.icon} FERMATA`);
   if(blast.clock<blast.restUntil) out.push(`${CC_POWERS.rest.icon} REST`);
@@ -525,6 +536,10 @@ function chompChord(voices){
   if(blast.st==="jam") return ccJamChord(pitches, name);
   if(fr && !ccComboOk() && isChord(pitches, fr.key.home.pc, "")){
     heard(name, true); if(canWrite() && hasSetting(35)) borrow(35, keyIndexOf(fr.f)); ccKeyTo(fr); return; }
+  if(ccLatch()){
+    if(blast.latched && ccSame(blast.latched, pitches)){ blast.latched=null; heard(name, true); ccBar(); return; }   // the same again: let go
+    blast.latched=pitches; ccBar();
+  }
   const g=blast.ghosts.find(g=>g.chord && g.state!=="eyes" && ccIs(pitches, g.chord));
   if(g) heard(`${name} · ${g.num}`, true); else heard(name, false, "NO GHOST WEARS IT");
 }
@@ -826,10 +841,10 @@ function ccDemo(){
       const pad=saved.harpLayout==="kmpad", grid=kmLayout().cols===3;
       say("STEER ON THE HARP", pad ? "THE KEYMASTER AS A D-PAD: 5 UP, 4 LEFT, 3 RIGHT, 2 DOWN." : grid ? "ITS FOUR ROWS OF THREE ARE A D-PAD: TOP UP, SIDES LEFT AND RIGHT, BOTTOM DOWN." : "THE TOP THREE GO UP, THE NEXT TWO LEFT, TWO RIGHT BELOW A AND B, THE BOTTOM THREE DOWN.");
       for(const z of ["up","left","right","down"]){ zones(z); sfx("press"); await step(900); } zones();
-      say("THE DOTS SING","HOLD A CHORD AND EACH DOT YOU EAT PLAYS ITS NEXT NOTE. HERE, C."); hold(ccChord(blast.key,"I")); await step(4200);
-      say("CHANGE THE CHORD","F NOW, AND THE DOTS SING F. WITH NOTHING HELD THEY GO WAKA-WAKA."); hold(ccChord(blast.key,"IV")); await step(4200);
+      say("THE DOTS SING",`PLAY A CHORD AND EACH DOT YOU EAT PLAYS ITS NEXT NOTE. HERE, C.${ccLatch() ? " IT STAYS ON TILL YOU PLAY ANOTHER." : ""}`); hold(ccChord(blast.key,"I")); await step(4200);
+      say("CHANGE THE CHORD",`F NOW, AND THE DOTS SING F. ${ccLatch() ? "PLAY F AGAIN TO LET IT GO" : "LET GO"}, AND THEY GO WAKA-WAKA.`); hold(ccChord(blast.key,"IV")); await step(4200);
       blast.demoHeld=null; helpChord(null);
-      say("POWER PELLET","EAT ONE, THEN HOLD A GHOST'S CHORD. ONLY THAT GHOST TURNS BLUE: CATCH IT. THE OTHERS STILL CHASE YOU.");
+      say("POWER PELLET","EAT ONE, THEN PLAY A GHOST'S CHORD. ONLY THAT GHOST TURNS BLUE: CATCH IT. THE OTHERS STILL CHASE YOU.");
       ccPowerStart(); blast.powerUntil=blast.clock+30;
       const v=blast.ghosts.find(g=>g.num==="V"); if(v.state!=="out"){ Object.assign(v,{state:"out", x:CC_OUT.x, y:CC_OUT.y, p:0, dir:"left"}); }
       await step(1400); hold(v.chord); blast.demoTarget=v;

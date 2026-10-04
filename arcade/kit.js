@@ -192,6 +192,7 @@ function diffMult(kind=cabKind()){
   if(kind==="breakout") m*=MULT_PADDLE[saved.boPaddle??1]??1;
   if(kind==="hunt") m*=MULT_GUIDE[saved.hdGuide||0]??1;
   if(kind==="racer" && saved.krSteer) m*=1.25;                                 // Key Racer steered with a knob, the harp left alone
+  if(kind==="chomp" && saved.ccHold) m*=1.25;                                  // Chord Chomp's chords held, not latched
   if((kind==="asteroids" && saved.asAim) || (kind==="blaster" && saved.invAim)) m*=2;   // manual aim: harder, so double
   if(MOD_GAMES.has(kind) && !autoMod()) m*=1.25;                              // the modifier set by hand: a quarter more
   if(kind!=="command" && saved.tdBare && typeof playOnScreen==="function" && playOnScreen()) m*=1.25;   // the screen's chord buttons bare: a quarter more
@@ -226,6 +227,7 @@ function multRows(kind){
   if(kind==="breakout") rows.push(["PADDLE", ["NARROW","NORMAL","WIDE"].map((n,i)=>`${n} ×${MULT_PADDLE[i]}`)]);
   if(kind==="hunt") rows.push(["FIELD GUIDE", ["NAMES","NUMERALS","NONE"].map((n,i)=>`${n} ×${MULT_GUIDE[i]}`)]);
   if(kind==="racer") rows.push(["STEER", ["HARP ×1","KNOB ×1.25"]]);
+  if(kind==="chomp") rows.push(["CHORDS", ["LATCH ×1","HOLD ×1.25"]]);
   if(kind!=="command" && typeof playOnScreen==="function" && playOnScreen()) rows.push(["BUTTONS", ["LABELLED ×1","BARE ×1.25"]]);
   if(HARP_BY_NAME.has(kind) && harpOnScreen(kind)) rows.push(["STRINGS", ["LABELLED ×1","BARE ×1.25"]]);
   return rows;
@@ -296,6 +298,7 @@ function arcadeSettings(){
   if(k!=="sweeper") choice("SPEED", SPEEDS.map(x=>x[0].toUpperCase()), ()=>+saved.speed||0, i=>{ saved.speed=i; save(); }, "FROM THE NEXT GAME");
   if(k==="command") choice("NOTES AT ONCE", ["FEW","SOME","MANY","SWARM"], ()=>saved.hcDensity??1, i=>{ saved.hcDensity=i; save(); }, "FROM THE NEXT GAME");
   if(k==="breakout") choice("PADDLE", ["NARROW","NORMAL","WIDE"], ()=>saved.boPaddle??1, i=>{ saved.boPaddle=i; save(); }, "FROM THE NEXT GAME");
+  if(k==="chomp") choice("CHORDS", ["LATCH","HOLD ×1.25"], ()=>saved.ccHold?1:0, i=>{ saved.ccHold=i; save(); }, "LATCHED, A CHORD STAYS ON TILL ANOTHER · HELD SCORES MORE");
   if(k==="hunt") choice("FIELD GUIDE", ["NAMES","NUMERALS","NONE"], ()=>saved.hdGuide||0, i=>{ saved.hdGuide=i; save(); }, "FROM THE NEXT GAME · LESS TO READ SCORES MORE");
   if(k!=="command" && typeof playOnScreen==="function" && playOnScreen()) choice("BUTTONS", ["LABELLED","BARE ×1.25"], ()=>saved.tdBare?1:0, i=>{ saved.tdBare=!!i; save(); if(typeof tdDraw==="function") tdDraw(); }, "THE CHORD BUTTONS ON THE SCREEN · BARE SCORES MORE");
   if(harpOnScreen(k)) choice("HARP AS", ["STRINGS","PIANO KEYS"], ()=>saved.tdPiano?1:0, i=>{ saved.tdPiano=!!i; save(); if(typeof tdSync==="function") tdSync(); }, "THE HARP ON THE SCREEN: THE MINICHORD'S TWELVE STRINGS, OR AN OCTAVE OF A PIANO");
