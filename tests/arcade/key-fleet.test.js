@@ -1,5 +1,5 @@
-// Key Fleet: fleets never touch end to end; hits cripple; a key is called by its tonic (early
-// levels), its V7 → I, or the key change combo (C too, when the minichord reports it unasked).
+// Key Fleet: fleets never touch end to end; hits cripple; a ship's called by opening a call (the harp,
+// CALL IT, Space) and playing it: a key's chords ending on I, its V7 → I, a progression in its order.
 const t=require("./harness").load("key-fleet");
 (async()=>{
   const {sb, sleep, chord, note, check, mc, w}=t;
@@ -17,32 +17,41 @@ const t=require("./harness").load("key-fleet");
   a.level=0; sb.kfWave(); a.torps=9;
   const s0=a.ships[0], COLS="FCGDAEB", ROWS=["","m","7"];
   const [c0,r0]=s0.cells[0]; chord(COLS[c0], ROWS[r0]); await sleep(500);
-  note(t.PC[s0.tonic]); await sleep(300);
-  check("plucking the tonic sinks it early", s0.sunk, s0.name);
+  // a call: the harp opens it, and the chords played then fire nothing
+  const tc=a.torps, shots=a.shots.size; note(0); await sleep(50);
+  check("a pluck of the harp opens a call, CALL IT lit", !!a.calling && !!t.d.querySelector(".kfcallbtn.on"));
+  const [iv,i1,v]=s0.cells.map(([c,r])=>COLS[c]);
+  chord(v); await sleep(120); chord(iv); await sleep(120);
+  check("chords in a call fire no torpedo", a.torps===tc && a.shots.size===shots && !s0.sunk);
+  chord(i1); await sleep(2400);
+  check("a key's chords in any order, ending on its I, sink it", s0.sunk && !a.calling, `${v} ${iv} ${i1}: ${t.heard()}`);
   await sleep(2600);                                          // the fleet is sunk: the next one sails in
   a.level=2; sb.kfWave(); a.torps=20; const s1=a.ships.find(s=>s.kind==="major"||s.kind==="minor")||a.ships[0];
   const fire=(c,r)=>{ const nm=w.eval(`KF_COLS[${c}]`); mc.params[31]=nm.includes("♭")?1:0; chord(nm, ROWS[r]); };   // the sea's own columns, the modifier set for a sharp or flat
   for(const [c,r] of s1.cells){ fire(c,r); await sleep(r===2?1700:500); }
   check("hitting every chord only cripples it", s1.crippled && !s1.sunk);
-  note(t.PC[s1.tonic]); await sleep(200);
-  check("the harp can't call from level 3", !s1.sunk, t.heard());
   const V=w.eval(`KF_LINE[KF_LINE.indexOf(${JSON.stringify(s1.tonic)})+1]`);
-  mc.params[31]=V.includes("♭")?1:0; chord(V,"7"); await sleep(300); chord(s1.tonic, s1.minor?"m":""); await sleep(400);
-  check("its V7 then I sinks it", s1.sunk, `${V}7 → ${s1.tonic}${s1.minor?"m":""}`);
+  const tv=a.torps; mc.params[31]=V.includes("♭")?1:0; chord(V,"7"); await sleep(100);
+  check("out of a call a 7 chord fires at once", a.torps===tv-1, a.torps);
+  await sleep(500);
+  w.eval("kfCallKey()"); mc.params[31]=V.includes("♭")?1:0; chord(V,"7"); await sleep(150); chord(s1.tonic, s1.minor?"m":""); await sleep(2400);
+  check("in a call, its V7 then I sinks it", s1.sunk, `${V}7 → ${s1.tonic}${s1.minor?"m":""}`);
   // a cadence whose V7 lies off the sea still calls: F-sharp minor's C-sharp 7 is past this sea's edge
   a.level=2; sb.kfWave(); a.torps=20; await sleep(30);
   a.ships=[{kind:"minor", cells:[[6,1],[7,1],[8,1]], name:"F♯ MINOR", detail:"", tonic:"F♯", minor:true, hits:new Set(["7,1"]), sunk:false, misses:0}];
-  mc.params[31]=0; chord("C♯","7"); await sleep(300); chord("F♯","m"); await sleep(300);
+  w.eval("kfCallKey()"); mc.params[31]=0; chord("C♯","7"); await sleep(150); chord("F♯","m"); await sleep(2400);
   check("a cadence calls even when its V7 is off the sea", a.ships[0].sunk, t.heard());
   await sleep(2600);                                          // that fleet's sunk: the next one sails in
   a.ships=[{kind:"major", cells:[[0,0],[1,0],[2,0]], name:"C MAJOR", detail:"", tonic:"C", minor:false, hits:new Set(), sunk:false, misses:0}];
   // a call on a ship not yet hit is blind, and costs a torpedo
-  const tb=a.torps; chord("G","7"); await sleep(300); chord("C"); await sleep(300);
+  const tb=a.torps; w.eval("kfCallKey()"); chord("G","7"); await sleep(150); chord("C"); await sleep(2400);
   check("a key can't be called on a ship not yet hit", !a.ships[0].sunk && a.torps===tb-1 && /NO CONTACT/.test(t.heard()), t.heard());
   a.ships[0].hits.add("1,0");                                 // contact: one of its chords hit
   mc._asked=0; const dump=[0xF0]; for(let k=0;k<256;k++){ const v=mc.params[k]||0; dump.push(v&127, v>>7); } dump.push(0xF7); dump[71]=0; dump[72]=0;
   mc._dump(dump); await sleep(100);
-  check("the combo picking C (reported unasked) calls C major", a.ships[0].sunk, t.heard());
+  check("the key change combo calls nothing now", !a.ships[0].sunk, t.heard());
+  w.eval("kfCallKey()"); await sleep(6000);
+  check("a call with nothing played lapses, costing nothing", !a.calling && a.torps===tb-1, a.torps);
   // a preset loaded on the instrument reports unasked too, with lots changed (its key among them):
   // that's no call, and the game's key goes back to C
   a.ships=[{kind:"major", cells:[[0,0],[1,0],[2,0]], name:"G MAJOR", detail:"", tonic:"G", minor:false, hits:new Set(["1,0"]), sunk:false, misses:0}];
@@ -59,9 +68,9 @@ const t=require("./harness").load("key-fleet");
   mc.params[31]=0; const sharp=w.eval("kfSpell(1)"); mc.params[31]=1; const flat=w.eval("kfSpell(1)");
   check("sharpening gives C♯, flattening D♭", sharp==="C♯" && flat==="D♭" && w.eval("KF_COLS.indexOf('C♯')")!==w.eval("KF_COLS.indexOf('D♭')"));
   mc.params[31]=0; a.phase="play"; note(5); await sleep(20);
-  check("in the wider seas the double tap flips the modifier, not the harp", mc.params[31]===0 && /DOUBLE-TAP/.test(t.heard()), t.heard());
-  w.eval("settings.modTap='off'"); note(5); await sleep(20);
-  check("with the double tap turned off, the harp flips it", mc.params[31]===1);
+  check("in the wider seas the harp still calls; the double tap flips the modifier", mc.params[31]===0 && !!a.calling);
+  w.eval("kfCallEnd()"); w.eval("settings.modTap='off'"); note(5); await sleep(20);
+  check("with the double tap turned off, the harp flips it", mc.params[31]===1 && !a.calling);
   w.eval("settings.modTap='on'"); mc.params[31]=0;
   // a shot at a sharp: in the sharp waters, a ship on F♯ or C♯ is hit by the sharpened chord
   a.level=9; let target=null;
@@ -73,6 +82,14 @@ const t=require("./harness").load("key-fleet");
   // the last fleets sail as progressions, scattered: a row's chords apart are separate boats
   const progs=new Set(); for(let lv=8;lv<11;lv++){ a.level=lv; for(let n=0;n<40;n++){ sb.kfWave(); a.ships.forEach(s=>{ if(w.eval(`!!KF_PROGS[${JSON.stringify(s.kind)}]`)) progs.add(s.kind); }); } }
   check("the last three levels sail progressions, every kind", progs.size===5, [...progs].join(", "));
+  // a progression is played in its order: Dm G7 Am calls the deceptive cadence in C; Am G7 Dm doesn't
+  const toks=ns=>ns.map(n=>t.PC[n.replace(/[m7]$/,"")]+(/m$/.test(n)?"m":/7$/.test(n)?"7":""));
+  const plays=(kind,tonic,ns)=>w.eval(`(()=>{ const sh=kfShapes(${JSON.stringify(kind)}).find(s=>s.tonic===${JSON.stringify(tonic)}); return !!sh && kfPlays(sh, ${JSON.stringify(toks(ns))}); })()`);
+  a.level=10; sb.kfWave();
+  check("a progression in its order calls it", plays("deceptive","C",["Dm","G7","Am"]) && plays("andalusian","A",["Am","G","F","E7"]) && plays("turnaround","C",["C","Am","Dm","G7","C"]));
+  check("out of order, or another progression's chords, it doesn't", !plays("deceptive","C",["Am","G7","Dm"]) && !plays("turnaround","C",["Dm","G7","Am"]) && !plays("secondary","C",["Dm","G7","C"]));
+  check("a key's chords in any order ending on I, or its V7 then I", plays("major","C",["G","F","C"]) && plays("major","C",["G7","C"]) && plays("minor","A",["E7","Am"]) && !plays("major","C",["F","C","G"]) && !plays("major","C",["F","C"]));
+  check("a whole key: IV, V and I, ending on I", plays("whole","C",["F","G","C"]) && plays("whole","C",["F","Dm","G","C"]) && !plays("whole","C",["Am","Dm","C"]));
   check("a progression's chords apart in a row are drawn as two boats", w.eval("kfRuns([[2,0],[0,0],[4,1],[5,1]]).length")===3);
   // from level 7 a key can be called before a hit: proved by the chart, a big bonus; guessed, less;
   // wrong, two torpedoes
@@ -94,7 +111,7 @@ const t=require("./harness").load("key-fleet");
   // seconds off), press RESET, and the fresh title screen stays a title screen
   await sleep(2600);
   const b=sb.arcade; b.level=0; sb.kfWave(); b.torps=9; const sh=b.ships[0];
-  note(t.PC[sh.tonic]); await sleep(300);
+  sh.hits.add(sh.cells[0].join(",")); w.eval("kfCall(s=>s===blast.ships[0], 'T')"); await sleep(300);
   t.d.getElementById("resetBtn").click(); await sleep(5600);
   const fresh=sb.arcade;
   check("RESET leaves no timer behind to start a wave", fresh!==b && fresh.phase==="menu" && t.overlay() && !t.overlay().hidden, `phase ${fresh.phase}`);
