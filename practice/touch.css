@@ -15,6 +15,9 @@
 .tdeck[data-chords=""]{grid-template-areas:"top top"}
 /* the modifier */
 .tdmod{grid-area:mod;width:44px;padding:0;background:#16132A;border:2px solid #3D3656;font-size:1.1rem}
+/* the page's buttons take the board's colour under the pointer (core/lab.css), and a phone leaves that
+   on the last button tapped: cream on cream in the light theme. The deck's keep their own. */
+.tdmod:hover{background:#16132A}
 .tdmod.on{background:#FFD35A;color:#16132A;border-color:#FFD35A}
 /* latched by a long press: held for the player till another long press */
 .tdmod.latched{position:relative;background:#7FE9FF;color:#16132A;border-color:#7FE9FF}
@@ -40,8 +43,10 @@
 .tddpad{flex:1 1 auto;display:grid;gap:4px;grid-template-columns:repeat(3,minmax(34px,40px)) minmax(8px,1fr) minmax(44px,64px) minmax(8px,1fr) minmax(44px,64px);
   grid-template-rows:repeat(3,1fr);grid-template-areas:". up . . b . a" "left . right . b . a" ". down . . b . a"}   /* a plus, round an empty middle: a thumb stick's */
 .tdz{padding:0;background:#16132A;border:2px solid #3D3656;font-size:.8rem}
+.tdz:hover{background:#16132A}
 .tdz-up{grid-area:up}.tdz-down{grid-area:down}.tdz-left{grid-area:left}.tdz-right{grid-area:right}
 .tdz-A{grid-area:a;border-radius:50%;background:#3A1626;border-color:#FF5AA0}.tdz-B{grid-area:b;border-radius:50%;background:#14283A;border-color:#7FE9FF}
+.tdz-A:hover{background:#3A1626}.tdz-B:hover{background:#14283A}
 .tdz-A,.tdz-B{aspect-ratio:1;width:100%;max-height:100%;align-self:center;justify-self:center}   /* as wide as its column, never past it */
 .tdz svg{width:60%;height:60%}
 .tdz.on{background:#FFD35A;color:#16132A;border-color:#FFD35A}
