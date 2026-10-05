@@ -139,6 +139,7 @@ function tdBuild(){
   else if(p.knob) top.appendChild(tdKnob("KNOB", ()=> blast && blast.kind==="chopper" ? 0 : steerKnob()));
   const now=document.createElement("span"); now.className="tdnow"; top.appendChild(now);
   if(p.chords){ const g=document.createElement("div"); g.className="tdgrid"; deck.appendChild(g); tdGrid(g); }
+  deck.appendChild(tdMenuButton());
   tdPlace(); tdDraw(); tdHeight(); td.hintEls=null; tdWatchHints();
 }
 // the deck goes where the game is: on the page, or in the full-screen cabinet
@@ -194,8 +195,8 @@ function tdTip(){
   setTimeout(go, 8000); document.addEventListener("pointerdown", go, true);
 }
 // On a phone the game plays in the phone's cabinet: its screen and the minichord drawn round it, filling
-// the window, and full screen from the first tap where the browser allows it. Left for the page (SCREEN),
-// it stays left until asked for again.
+// the window, and full screen from the first tap where the browser allows it. Left for the page (THE
+// WHOLE PAGE, in the deck's menu), it stays left until asked for again (the page's SCREEN).
 const tdPhoneWanted=()=> !!(window.matchMedia && matchMedia("(pointer: coarse)").matches) && document.documentElement.classList.contains("arcadepage");
 function tdPhone(){
   const cab=document.querySelector(".fscab");
@@ -220,6 +221,52 @@ async function tdWake(){
   else if(!want && td.lock){ td.lock.release().catch(()=>{}); td.lock=null; }
 }
 document.addEventListener("visibilitychange", ()=>tdWake());
+
+// ---------- the phone's menu ----------
+// In the phone's cabinet the bezel's buttons (SOUND, RESET, SCREEN) would take a strip off the top of
+// the game's screen, and they'd be too small for a thumb, so they're one button on the deck instead,
+// ☰, beside the harp or d-pad (touch.css shows it only there). It opens a menu: the sound, a reset,
+// the arcade's settings (on the page underneath, out of reach otherwise), full screen where the
+// browser can do it (an iPhone can't, for anything but a video), more games, and the page itself.
+const TD_MENU_ICON='<svg viewBox="0 0 16 14" shape-rendering="crispEdges" aria-hidden="true"><path fill="currentColor" d="M2 2h12v2H2zM2 6h12v2H2zM2 10h12v2H2z"/></svg>';
+function tdMenuButton(){
+  const b=document.createElement("button"); b.type="button"; b.className="tdmenu"; b.innerHTML=TD_MENU_ICON;
+  b.setAttribute("aria-label", "Menu: sound, reset, settings"); b.title="Menu";
+  b.addEventListener("click", e=>{ e.stopPropagation(); tdMenu(); });
+  return b;
+}
+const tdCanFull=()=>{ const cab=document.querySelector(".fscab"); return !!cab && !!(cab.requestFullscreen || cab.webkitRequestFullscreen) && !tdInstalled(); };
+const tdIsFull=()=> !!(document.fullscreenElement || document.webkitFullscreenElement);
+function tdMenu(){
+  document.getElementById("tdMenuDlg")?.remove();
+  const dlg=document.createElement("dialog"); dlg.id="tdMenuDlg"; dlg.className="arcadedlg tdmenudlg";
+  dlg.innerHTML=`<h2>${(typeof TITLE_FOR!=="undefined" && TITLE_FOR[cabKind()]) || "MINICHORD ARCADE"}</h2><div class="tdmlist"></div><div class="aend"><button type="button" class="aclose">BACK TO THE GAME</button></div>`;
+  const list=dlg.querySelector(".tdmlist");
+  const row=(label, value, act)=>{
+    const b=document.createElement("button"); b.type="button"; b.className="tdmrow";
+    b.innerHTML=`<span>${label}</span><b>${value}</b>`; b.onclick=e=>{ e.stopPropagation(); sfx("press"); act(b); };
+    list.appendChild(b); return b;
+  };
+  const shut=()=>dlg.close();
+  const onOff=on=> on ? "ON" : `<em>OFF</em>`;
+  row("SOUND", onOff(settings.sounds), b=>{
+    const m=document.getElementById("muteBtn"); if(m) m.click(); else { settings.sounds=!settings.sounds; save(); }
+    b.querySelector("b").innerHTML=onOff(settings.sounds);
+  });
+  row("RESET", "▶", ()=>{ shut(); coldBoot(); });
+  row("SETTINGS", "▶", ()=>{ shut(); document.getElementById("arcadeDlg")?.remove(); arcadeSettings().showModal(); });
+  if(tdCanFull()) row("FULL SCREEN", onOff(tdIsFull()), ()=>{
+    shut(); const cab=document.querySelector(".fscab"); if(!cab) return;
+    if(tdIsFull()) (document.exitFullscreen || document.webkitExitFullscreen).call(document);   // the cabinet stays, filling the window
+    else { const req=cab.requestFullscreen || cab.webkitRequestFullscreen; try{ const p=req.call(cab); p && p.catch && p.catch(()=>{}); }catch(e){} }
+  });
+  row("MORE GAMES", "▶", ()=>{ location.href=document.querySelector("#moreLink a")?.href || "../arcade/"; });
+  row("THE WHOLE PAGE", "▶", ()=>{ shut(); fsExit(); });     // its SCREEN button brings the cabinet back
+  dlg.querySelector(".aclose").onclick=shut;
+  dlg.addEventListener("click", e=>{ if(e.target===dlg) shut(); });       // a tap outside closes it
+  dlg.addEventListener("close", ()=>dlg.remove());
+  document.body.appendChild(dlg); dlg.showModal();
+}
 // a button held by a finger: down and up, however the finger leaves
 function tdHold(el, down, up){
   el.addEventListener("pointerdown", e=>{ e.preventDefault(); tdCapture(el, e); el.classList.add("on"); down(e.pointerId); });

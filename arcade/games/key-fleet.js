@@ -203,7 +203,10 @@ function kfLayout(){
   const narrow=W<560; blast.sideEl.classList.toggle("narrow", narrow);
   if(narrow){
     const left=50, right=W-30, top=70;
-    blast.cw=(right-left)/KF_COLS.length; blast.rh=Math.min(80, (H-top)*.55/3); blast.sx=left; blast.sy=top;
+    // the chart's rows leave room under them for the torpedoes, what's afloat and CALL IT, however
+    // short the field (a phone held sideways)
+    const side=Math.max(120, blast.sideEl.offsetHeight);
+    blast.cw=(right-left)/KF_COLS.length; blast.rh=Math.max(24, Math.min(80, (H-top)*.55/3, (H-top-40-side)/3)); blast.sx=left; blast.sy=top;
     blast.sideEl.style.cssText=`left:14px;right:14px;top:${top+3*blast.rh+40}px`;
     return;
   }

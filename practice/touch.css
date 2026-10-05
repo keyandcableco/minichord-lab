@@ -3,8 +3,8 @@
      buttons, the modifier beside them; the game above
    - standing either side of the game (a phone held sideways): the modifier and chord buttons on the
      left, the harp (upright, high at the top), d-pad or knob on the right, the game between
-   On a phone the game plays in the phone's cabinet (cabinet.js): its screen, a slim bar of buttons
-   along the top, and the deck. */
+   On a phone the game plays in the phone's cabinet (cabinet.js): its screen and the deck, the bezel's
+   buttons folded into the deck's menu, ☰. */
 .tdeck{position:fixed;left:0;right:0;bottom:0;z-index:10000;box-sizing:border-box;display:grid;gap:6px;
   grid-template-columns:auto 1fr;grid-template-areas:"mod top" "grid grid";
   padding:6px max(8px,env(safe-area-inset-right,0px)) calc(6px + env(safe-area-inset-bottom,0px)) max(8px,env(safe-area-inset-left,0px));
@@ -97,6 +97,12 @@
 @media not all and (orientation:landscape) and (max-height:520px){
   .tdeck[data-piano="1"][data-chords="1"][data-knob=""] .tdtop{height:60px}
   .tdeck[data-piano="1"][data-knob="1"] .tdtop>.tdpiano{height:60px}
+  /* the d-pad and a knob (Chord Burger's two, Dominant Kong's lift, a bonus round's): the d-pad is as
+     wide as it must be, so the knobs take a row of their own under it, beside the chord's name */
+  .tdeck[data-knob="1"][data-harp="dpad"] .tdtop{flex-wrap:wrap;height:auto;row-gap:6px}
+  .tdeck[data-knob="1"][data-harp="dpad"] .tddpad{flex:1 0 100%;height:104px}
+  .tdeck[data-knob="1"][data-harp="dpad"] .tdknob{flex:1 1 0;height:44px}
+  .tdeck[data-knob="1"][data-harp="dpad"] .tdknob b{font-size:.5rem}   /* room for a name a phone can read */
 }
 
 /* ---- standing either side of the game: a phone held sideways (touch.js has the same query) ---- */
@@ -137,28 +143,51 @@ body.tdplay .field .kmstrip{display:none}                      /* the deck is th
   body.tdplay:has(.tdeck[data-chords=""]){padding-left:0}
 }
 
-/* ---- the phone's cabinet: the game's screen, a slim bar of its buttons, and the deck ---- */
+/* ---- the phone's cabinet: the game's screen and the deck, its buttons in the deck's menu ---- */
 .fscab.phone{display:flex;flex-direction:column;justify-content:flex-start;align-items:stretch;gap:0;padding:0 0 var(--td-h,0px);background:#000}
 .fscab.phone .fsmarquee{display:none}
 .fscab.phone .fsbezel{flex:1 1 auto;display:flex;flex-direction:column;min-height:0;padding:0;border:0;border-radius:0;background:#000;box-shadow:none}
 .fscab.phone .fsbezel::before{display:none}
-/* the bar is as tall as its buttons and their names need, however big the phone draws text, and over
-   the screen whatever happens, so the screen never covers it */
-.fscab.phone{-webkit-text-size-adjust:100%;text-size-adjust:100%}
-.fscab.phone .fsplate{position:relative;inset:auto;z-index:3;order:-1;flex:0 0 auto;min-height:30px;height:auto;box-sizing:border-box;
-  padding:calc(env(safe-area-inset-top,0px) + 4px) max(10px,env(safe-area-inset-right,0px)) 4px max(10px,env(safe-area-inset-left,0px));font-size:.4rem;background:#000}
-.fscab.phone .fsplate>span:first-child,.fscab.phone .fsplate .rainbow,.fscab.phone .fsconn{display:none}   /* no room, and the minichord's here on the screen */
-.fscab.phone .fsplate{justify-content:flex-end}
-.fscab.phone .fsplate .nesbtn{flex-direction:row;gap:6px}
-.fscab.phone .fsplate .nesbtn button{width:30px;height:20px}
-.fscab.phone .fsright{gap:12px}
+/* no bar along the top: the bezel's buttons are the deck's menu, ☰ (touch.js tdMenu), and the screen
+   goes up to the top, clear of the status bar where the arcade's a Home Screen app */
+.fscab.phone .fsplate{display:none}
+.fscab.phone{padding-top:env(safe-area-inset-top,0px)}
 .fscab.phone .fsscreen,.fscab.phone.plain .fsscreen{flex:1 1 auto;height:auto;width:auto;max-width:none;aspect-ratio:auto;min-height:0;border-radius:0;box-shadow:none}
 .fscab.phone .fsscreen>.field{border-radius:0;border-top:0}
 @media (orientation:landscape) and (max-height:520px){
   .fscab.phone{padding:0 var(--tdr) 0 var(--tdl)}
   .fscab.phone:has(.tdeck[data-chords=""]){padding-left:max(0px,env(safe-area-inset-left,0px))}
-  .fscab.phone .fsplate{padding-left:10px;padding-right:10px}
 }
+
+/* ---- the menu, ☰: in the phone's cabinet only (elsewhere the bezel's buttons are there) ---- */
+.tdmenu{display:none}
+.fscab.phone .tdeck{grid-template-columns:auto 1fr auto;grid-template-areas:"mod top menu" "grid grid grid"}
+.fscab.phone .tdeck[data-chords=""]{grid-template-areas:"top top menu"}
+.fscab.phone .tdmenu{grid-area:menu;align-self:start;display:flex;align-items:center;justify-content:center;width:40px;height:44px;padding:0;
+  background:#16132A;border:2px solid #3D3656;color:#9A93B5}
+.fscab.phone .tdmenu:hover{background:#16132A}
+.fscab.phone .tdmenu:active{background:#FFD35A;border-color:#FFD35A;color:#16132A}
+.tdmenu svg{width:18px;height:16px}
+.fscab.phone .tdnow{min-width:4.5em;font-size:.55rem}   /* the chord's name gives the harp back the ☰'s room */
+@media (orientation:landscape) and (max-height:520px){
+  /* sideways: at the end of the modifier's bar, over the chords; with no chords, atop the harp */
+  .fscab.phone .tdmenu{position:absolute;top:6px;left:calc(var(--tdl) - 46px);width:40px;height:34px}
+  .fscab.phone .tdeck[data-chords="1"] .tdmod{width:calc(var(--tdl) - max(6px,env(safe-area-inset-left,0px)) - 58px)}
+  /* no chords (Harp Command): the harp keeps its whole height, and the ☰ has a strip of its own on the left */
+  .fscab.phone:has(.tdeck[data-chords=""]){padding-left:calc(max(6px,env(safe-area-inset-left,0px)) + 46px)}
+  .fscab.phone .tdeck[data-chords=""] .tdmenu{left:max(6px,env(safe-area-inset-left,0px));height:44px}
+  .fscab.phone .tdnow{min-width:0}
+}
+/* the menu itself, the arcade's dialog with a line for each thing */
+dialog.tdmenudlg{width:min(22rem,88vw);box-sizing:border-box;padding:18px 16px}
+.tdmlist{display:flex;flex-direction:column;gap:2px;margin-bottom:14px}
+.tdmrow{display:flex;justify-content:space-between;align-items:center;min-height:44px;padding:0 .8rem;background:transparent;border:2px solid transparent;border-bottom-color:#2F2342;
+  color:#F1E8D2;font:400 .6rem "Press Start 2P",monospace;text-align:left;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.tdmrow:hover,.tdmrow:focus-visible{background:#1E1838;border-color:#3D3656;outline:none}
+.tdmrow:active{background:#2A2450}
+.tdmrow b{font-weight:400;color:#FFD35A}
+.tdmrow b em{font-style:normal;color:#9A93B5}
+.tdmenudlg .aend button{min-height:44px;width:100%}
 
 /* ---- beginner mode and the demos: the deck lights what to press, the game's own minichord hidden ---- */
 body.tdplay .field .helper{display:none}

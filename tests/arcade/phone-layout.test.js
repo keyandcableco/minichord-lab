@@ -1,8 +1,9 @@
 // On a phone the arcade plays in the phone's cabinet: the game's screen and the minichord drawn round
 // it, filling the window by itself (full screen needs a tap), plain, with no controller strip beside the
-// field, since the deck is the controller. SCREEN takes it down for the page, and it stays down. Held
-// sideways, the harp stands beside the game, high at the top. And a narrow field (a phone held upright)
-// lays Chord Sweeper, Key Fleet and Chord Stack out to fit it.
+// field, since the deck is the controller. The bezel's buttons are the deck's menu, ☰; its THE WHOLE
+// PAGE takes the cabinet down for the page, and it stays down. Held sideways, the harp stands beside
+// the game, high at the top. And a narrow field (a phone held upright) lays Chord Sweeper, Key Fleet
+// and Chord Stack out to fit it.
 const harness=require("./harness");
 const [sw, kf, st]=["chord-sweeper","key-fleet","chord-stack"].map(s=>harness.load(s));
 const t=st, {check, sleep}=t;
@@ -24,8 +25,19 @@ const narrow=(g, w=375, h=500)=>{ const f=g.w.eval("blast.field"); Object.define
     check("plain, to be light on the phone", cab && cab.classList.contains("plain"));
     check("with the game's field in it, and the deck", cab && !!cab.querySelector(".fsscreen>.field") && !!cab.querySelector("#tdeck"));
     check("and no controller strip beside the field: the deck is the controller", w.eval("kmStripShown()")===false);
-    w.eval("fsExit()"); await sleep(600);
-    check("SCREEN takes it down: the field back on the page", !d.querySelector(".fscab") && !!d.querySelector("main .field.arcade"));
+    // the bezel's buttons are the deck's menu, ☰, not a bar over the game's screen
+    const menu=cab && cab.querySelector("#tdeck .tdmenu");
+    check("the deck has a menu button, ☰", !!menu);
+    menu.click(); await sleep(50);
+    const dlg=d.getElementById("tdMenuDlg"), rows=dlg ? [...dlg.querySelectorAll(".tdmrow")].map(r=>r.firstChild.textContent) : [];
+    check("which opens the menu: sound, reset, settings, more games and the page", !!dlg && dlg.hasAttribute("open") && ["SOUND","RESET","SETTINGS","MORE GAMES","THE WHOLE PAGE"].every(r=>rows.includes(r)), rows.join());
+    check("and no full screen where the browser can't do it (an iPhone)", !rows.includes("FULL SCREEN"));
+    const was=w.eval("settings.sounds"), row=n=>[...dlg.querySelectorAll(".tdmrow")].find(r=>r.firstChild.textContent===n);
+    row("SOUND").click(); await sleep(20);
+    check("SOUND switches the sound, and says so", w.eval("settings.sounds")===!was && row("SOUND").querySelector("b").textContent===(was?"OFF":"ON"));
+    row("SOUND").click();
+    row("THE WHOLE PAGE").click(); await sleep(600);
+    check("THE WHOLE PAGE takes it down: the field back on the page", !d.querySelector(".fscab") && !!d.querySelector("main .field.arcade"));
     check("and it stays down", !d.querySelector(".fscab"));
     check("the deck stays with the page", !!d.getElementById("tdeck") && d.getElementById("tdeck").parentNode===d.body);
     w.eval("toggleFull()"); await sleep(200);

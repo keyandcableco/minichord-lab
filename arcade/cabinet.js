@@ -59,8 +59,9 @@ const fullToggle=()=>{ const f=fullField || (blast && blast.field); if(f) toggle
 // game's field moves into it and back out again, so nothing about the game changes. Where the browser
 // can't make a page full screen (an iPhone), the same cabinet fills the window instead.
 // Played on a touch screen (practice/touch.js) it's the phone's cabinet: the game's screen and the
-// minichord drawn round it, nothing else, plain, with its buttons along the top. {auto} puts it up
-// without asking for full screen, which a browser grants only to a tap: it fills the window.
+// minichord drawn round it, nothing else, plain, the bezel's buttons in the deck's menu (touch.js).
+// {auto} puts it up without asking for full screen, which a browser grants only to a tap: it fills the
+// window.
 let fsHome=null;
 function toggleFull(field, {auto=false}={}){
   field = field || (blast && blast.field); if(!field) return;
