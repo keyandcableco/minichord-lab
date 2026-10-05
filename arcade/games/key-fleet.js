@@ -325,7 +325,7 @@ function beginFleet(level){
 function kfWave(){
   const L=KF_LEVELS[blast.level]; kfSetSea(L); kfLayout();
   blast.ships=kfFleet(L); blast.shots=new Map(); blast.lastHit=null; blast.busy=false; blast.phase="play"; kfCallEnd();
-  blast.torps=Math.max(5, Math.round(L.torps*(1-(+saved.speed||0)*.07)));      // faster speeds, fewer torpedoes
+  blast.torps=Math.max(5, Math.round(L.torps*(KF_TORPS[saved.kfTorps??0]??1)));   // fewer torpedoes, chosen on the title, score more
   kfBar(); kfDraw();
 }
 function kfTick(now){

@@ -78,7 +78,8 @@ function fdLayout(){
 function fdLabels(){
   if(!blast || !blast.rimEl) return;
   const L=FD_LEVELS[blast.level||0];
-  [...blast.rimEl.children].forEach((l,i)=>{ const k=FD_KEYS[i]; l.innerHTML = L.fire==="minor" ? `${k}<small>${above(k,5,9)}m</small>` : k;
+  const bare=saved.fdBare && blast.phase==="play";                     // CIRCLE bare: only C, at the top, named
+  [...blast.rimEl.children].forEach((l,i)=>{ const k=FD_KEYS[i]; l.innerHTML = bare && i ? "" : L.fire==="minor" ? `${k}<small>${above(k,5,9)}m</small>` : k;
     l.classList.toggle("aimed", i===blast.aim); l.classList.toggle("unused", !!L.spokes && !L.spokes.includes(i)); });
 }
 function fdBar(){
@@ -88,9 +89,6 @@ function fdBar(){
 }
 const FDMENU_G={key:"fifths", title:"FIFTHS DEFENDER",
   rules:()=>`<p>THE TWELVE KEYS STAND ROUND YOU IN FIFTHS: C AT THE TOP, G ONE STEP ROUND, F ONE STEP BACK.</p><p>${playOnScreen() ? "AIM DOWN A KEY: DRAG THE KNOB UNDER THE GAME, OR SLIDE A FINGER ROUND THE CIRCLE." : knobsReady() ? "TURN A KNOB ON THE MINICHORD TO AIM DOWN A KEY: C IN THE MIDDLE, SHARPS TO THE RIGHT, FLATS TO THE LEFT. HOLD IT AT EITHER END TO KEEP TURNING." : "AIM DOWN A KEY WITH THE MOUSE OR THE ARROW KEYS. WITH FIRMWARE 17, A KNOB DOES IT."}</p><p>PLAY THAT KEY'S CHORD TO FIRE. LATER, ITS RELATIVE MINOR, ITS DOMINANT SEVENTH, OR ITS NOTE ON THE HARP.</p><p>AN ENEMY THAT REACHES THE MIDDLE COSTS A LIFE.</p>`,
-  rows:row=>{
-    row("SPEED", SPEEDS.map(x=>x[0].toUpperCase()), ()=>+saved.speed||0, i=>{ saved.speed=i; save(); });
-  },
   levels:FD_LEVELS, ok:fdLevelOk, needs:"NEEDS A MINICHORD", sig:()=>String(knobsReady()),
   begin:i=>beginFifths(i), demo:()=>fdDemo(), modNote:"title"};
 function fdMenu(over){ arcadeMenu(FDMENU_G, over); }

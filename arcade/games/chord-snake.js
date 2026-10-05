@@ -88,13 +88,6 @@ function snBar(){
 }
 const SNMENU_G={key:"snake", title:"CHORD SNAKE",
   rules:()=>`<p>EAT NOTES. WHEN THE ONES YOU CARRY SPELL A CHORD, PLAY IT TO CASH THEM IN.</p><p>${playOnScreen() ? "STEER WITH THE ARROWS UNDER THE GAME" : "STEER ON THE HARP OR THE ARROW KEYS"}. B DROPS YOUR OLDEST NOTE.</p>`,
-  rows:row=>{
-    mxRow(row, ()=>menuRebuild(()=>snMenu()));
-    row("SPEED", SPEEDS.map(x=>x[0].toUpperCase()), ()=>+saved.speed||0, i=>{ saved.speed=i; save(); });
-    row("HARP", HARP_LAYOUTS.map(([t])=>t), harpLayoutIndex, i=>{ saved.harpLayout=HARP_LAYOUTS[i][1]; save();
-    kmRestrip(); });
-    row("HARP SOUND", ["NORMAL","QUIET","OFF"], ()=>saved.harpSound??1, i=>{ saved.harpSound=i; save(); if(blast && blast.setupDone) kmHarp(); });
-  },
   levels:SN_LEVELS, ok:snLevelOk, levelName:snLevelName, sig:()=>String(mxAvailable().length), needs:"NEEDS A MINICHORD",
   begin:i=>beginSnake(i), demo:()=>snDemo(), modNote:"always"};
 function snMenu(over){ arcadeMenu(SNMENU_G, over); }
@@ -142,7 +135,7 @@ function snFill(){
 function snDraw(){
   if(!blast || blast.kind!=="snake" || !blast.boardEl) return;
   if(blast.phase==="play"){ const r=snReady()[0]; if(r) arcadeMod(r.root); helpChord(r ? r.root : null, r ? r.q : ""); }
-  const b=blast.boardEl, ready=new Set((snReady()[0]||{tones:[]}).tones);
+  const b=blast.boardEl, ready=new Set(saved.noGlow && blast.phase=="play" ? [] : (snReady()[0]||{tones:[]}).tones);   // CHORD GLOW off: nothing lit
   b.innerHTML="";
   for(const t of blast.tiles){ const e=document.createElement("span"); e.className="sntile"+(t.star?" star":""); e.style.cssText=snPos(t.x,t.y); e.innerHTML=(t.star?PIXEL_STAR:"")+t.name; b.appendChild(e); }
   // the head, then a segment for each carried note, then the plain end of the body
@@ -180,7 +173,7 @@ function snStep(){
     sfx("chomp", blast.tail.length);
     if(t.star){ const pts=mulPts(50*(blast.level+1)); blast.score+=pts; sfx("star"); snPopup(nx,ny,`+${pts}`,"#7FE9FF"); }
     if(!blast.demo) snFill();
-    if(snReady().length) sfx("ready");
+    if(snReady().length && !saved.noGlow) sfx("ready");
   } else blast.body.pop();
   // the body is the head, one segment per note carried, and two plain segments after
   while(blast.body.length>blast.tail.length+3) blast.body.pop();

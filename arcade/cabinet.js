@@ -17,10 +17,10 @@ function arcadeMenuChord(voices){
   const id=chordId(voices.map(v=>v.pitch)); if(!id) return true;
   const col=COLUMN_LETTERS.indexOf(spell(id.root, devFifths())[0]);   // 0 to 6
   if(col<0) return true;
-  const ov=blast.overlay, rowOf=label=>[...ov.querySelectorAll(".optrow")].find(r=>r.querySelector(".optlabel")?.textContent===label);
+  const ov=blast.overlay;
   const row = ["","6"].includes(id.quality) ? "major" : ["m","m6"].includes(id.quality) ? "minor" : id.quality==="7" ? "seven" : null;
   if(row==="major"){ const b=[...ov.querySelectorAll(".levels")].pop().querySelectorAll("button")[col]; if(b && !b.disabled) b.click(); }
-  else if(row==="minor"){ const r=rowOf("SPEED"), b=r && r.querySelectorAll("button")[col]; if(b){ b.click(); sfx("press"); } }
+  else if(row==="minor"){ if(optSet("speed", col)) sfx("press"); }
   else if(row==="seven"){ const g=ARCADE_GAMES[col]; if(g && g!==settings.mode) arcadeSwitch(g); }
   return true;
 }
@@ -233,10 +233,6 @@ function cabinet(ov){
   const opts=document.createElement("div"); opts.className="cab-options";
   [...ov.children].forEach(c=>opts.appendChild(c));
   opts.querySelector("h3")?.classList.add("small");
-  beginnerRow(opts);
-  crtRow(opts);
-  multLine(opts);
-  if(["breakout","fifths","stack","asteroids","sight","blaster","racer"].includes(cabKind()) && knobsReady()) knobRow(opts);
   cabPages(opts, ov);
   ov.append(title, roll, points, powers, board, opts);
   hsFetch(hsSlug());                                        // fetched now, so it's ready when its turn comes
@@ -267,7 +263,7 @@ function cabStage(ov, stage){
     const roll=ov.querySelector(".cab-rules"), cr=inner.querySelector(".credit.rolled");
     if(cr && roll.clientHeight) inner.style.setProperty("--end", `${-(roll.clientHeight/2 + cr.offsetTop + cr.offsetHeight/2)}px`);
     inner.style.animation=`cabroll ${Math.max(12, inner.children.length*2.4)}s linear forwards`; } }
-  if(stage==="options") ov.dataset.optpage="options";
+  if(stage==="options"){ ov.dataset.optpage="options"; optsRefresh(); }
   if(stage==="options") blast.cabT=gameLater(()=>{ if(blast && blast.overlay===ov && ov.dataset.stage==="options" && blast.phase==="menu") cabStage(ov,"title"); }, 45000);
   if(stage==="points"){                                        // what things are worth, then the board
     pointsRender(ov.querySelector(".cab-points"));
@@ -288,7 +284,7 @@ function cabStage(ov, stage){
 // second page; everything else on the first.
 function cabPages(opts, ov){
   const kids=[...opts.children], h3=opts.querySelector("h3");
-  const toLevels=c=> (c.classList.contains("levels") && !c.closest(".optrow")) || (c.tagName==="P" && (c.classList.contains("blink") || /^BEST /.test(c.textContent) || c.classList.contains("padhint") || c.classList.contains("credit")));
+  const toLevels=c=> c.classList.contains("levels") || (c.tagName==="P" && (c.classList.contains("blink") || /^BEST /.test(c.textContent) || c.classList.contains("padhint") || c.classList.contains("credit")));
   const p1=document.createElement("div"); p1.className="cab-optpage";
   const p2=document.createElement("div"); p2.className="cab-levelpage";
   if(h3) p2.appendChild(h3.cloneNode(true));
@@ -348,74 +344,6 @@ function helpKnobFollow(k, v){ const was=(blast.knobShown||(blast.knobShown=[]))
 // the modifier, lit or not, by itself (Between the Frets' quarter-tone: a chord and the modifier)
 function helpMod(on){ const m=blast && blast.helpBoard && blast.helpBoard.mod; if(m) m.classList.toggle("lit", !!on); }
 function helpZone(z){ const i=kmLayout().byString.indexOf(z); if(i>=0) kmFlash(blast.strip, i); }
-function beginnerRow(opts){
-  const r=document.createElement("div"); r.className="optrow"; const l=document.createElement("span"); l.className="optlabel"; l.textContent="BEGINNER";
-  const g=document.createElement("div"); g.className="levels";
-  const mark=b=>{ [...g.children].forEach(x=>{ x.style.background=""; x.style.color=""; }); b.style.background="#F1E8D2"; b.style.color="#16132A"; };
-  [["OFF",false],["SHOW WHAT TO PRESS (NO HIGH SCORES)",true]].forEach(([t,v])=>{ const b=document.createElement("button"); b.textContent=t; if(!!saved.beginner===v) mark(b);
-    b.onclick=()=>{ saved.beginner=v; save(); mark(b); helperSync(); }; g.appendChild(b); });
-  r.append(l,g);
-  // the harp games need to know which harp to draw
-  let harpRow=null;
-  if(helpUsesHarp(cabKind()) && cabKind()!=="breakout" && ![...opts.querySelectorAll(".optlabel")].some(x=>x.textContent==="HARP")){   // Breakout's few notes play on any harp
-    harpRow=document.createElement("div"); harpRow.className="optrow"; const hl=document.createElement("span"); hl.className="optlabel"; hl.textContent="HARP";
-    const hg=document.createElement("div"); hg.className="levels";
-    const hmark=b=>{ [...hg.children].forEach(x=>{ x.style.background=""; x.style.color=""; }); b.style.background="#F1E8D2"; b.style.color="#16132A"; };
-    HARP_LAYOUTS.forEach(([t,v])=>{ const b=document.createElement("button"); b.textContent=t; if((saved.harpLayout||"strip")===v) hmark(b);
-      b.onclick=()=>{ saved.harpLayout=v; save(); hmark(b); helperSync(true); }; hg.appendChild(b); });
-    harpRow.append(hl,hg);
-  }
-  // the minichord's sound while playing: the arcade's clean one (no vibrato or delay), or the player's own
-  const sr=document.createElement("div"); sr.className="optrow"; const sl=document.createElement("span"); sl.className="optlabel"; sl.textContent="SOUND";
-  const sg=document.createElement("div"); sg.className="levels";
-  const smark=b=>{ [...sg.children].forEach(x=>{ x.style.background=""; x.style.color=""; }); b.style.background="#F1E8D2"; b.style.color="#16132A"; };
-  [["CLEAN FOR PLAYING","clean"],["MY PRESET'S","mine"]].forEach(([t,v])=>{ const b=document.createElement("button"); b.textContent=t;
-    if((saved.arcadeSound||"clean")===v) smark(b);
-    b.title = v==="clean" ? "Vibrato and delay off while you play, so every chord is steady. Glide is always off: a gliding chord can't be read until it lands." : "Your preset's own vibrato and delay. Glide is still off: a gliding chord can't be read until it lands.";
-    b.onclick=()=>{ saved.arcadeSound=v; save(); smark(b); }; sg.appendChild(b); });
-  sr.append(sl,sg);
-  const before=opts.querySelector("p.blink") || [...opts.querySelectorAll(".levels")].pop();
-  opts.insertBefore(r, before); if(harpRow) opts.insertBefore(harpRow, r);
-  if(canWrite()) opts.insertBefore(sr, r);
-  // the modifier: set for you, or by hand for a quarter more points
-  if(MOD_GAMES.has(cabKind()) && canWrite()){
-    const mr=document.createElement("div"); mr.className="optrow"; const ml=document.createElement("span"); ml.className="optlabel"; ml.textContent="MODIFIER";
-    const mg=document.createElement("div"); mg.className="levels";
-    const mmark=b=>{ [...mg.children].forEach(x=>{ x.style.background=""; x.style.color=""; }); b.style.background="#F1E8D2"; b.style.color="#16132A"; };
-    [["SET FOR YOU",true],["BY HAND ×1.25",false]].forEach(([t,v])=>{ const b=document.createElement("button"); b.textContent=t; if(autoMod()===v) mmark(b);
-      b.title = v ? "The game sets sharp or flat for the chord you need next." : "You set sharp or flat yourself, double-tapping the modifier: a quarter more points.";
-      b.onclick=()=>{ saved.autoMod=v; save(); mmark(b); }; mg.appendChild(b); });
-    mr.append(ml,mg); opts.insertBefore(mr, sr.isConnected ? sr : r);
-  }
-  // played on the screen: the chord buttons labelled, or bare as the instrument's are, for a quarter more
-  if(playOnScreen() && cabKind()!=="command"){
-    const br=document.createElement("div"); br.className="optrow"; const bl=document.createElement("span"); bl.className="optlabel"; bl.textContent="BUTTONS";
-    const bg=document.createElement("div"); bg.className="levels";
-    const bmark=b=>{ [...bg.children].forEach(x=>{ x.style.background=""; x.style.color=""; }); b.style.background="#F1E8D2"; b.style.color="#16132A"; };
-    [["LABELLED",false],["BARE ×1.25",true]].forEach(([t,v])=>{ const b=document.createElement("button"); b.textContent=t; if(!!saved.tdBare===v) bmark(b);
-      b.title = v ? "The chord buttons blank, as on the instrument: a quarter more points." : "Each chord button shows its chord.";
-      b.onclick=()=>{ saved.tdBare=v; save(); bmark(b); if(typeof tdDraw==="function") tdDraw(); }; bg.appendChild(b); });
-    br.append(bl,bg); opts.insertBefore(br, r);
-  }
-  // and the harp's strings, named or bare: a quarter more where the game asks for notes by name
-  if(harpOnScreen(cabKind())){
-    // the harp drawn as the minichord's strings, or as an octave of a piano's keys
-    const pr=document.createElement("div"); pr.className="optrow"; const pl=document.createElement("span"); pl.className="optlabel"; pl.textContent="HARP AS";
-    const pg=document.createElement("div"); pg.className="levels";
-    const pmark=b=>{ [...pg.children].forEach(x=>{ x.style.background=""; x.style.color=""; }); b.style.background="#F1E8D2"; b.style.color="#16132A"; };
-    [["STRINGS",false],["PIANO KEYS",true]].forEach(([t,v])=>{ const b=document.createElement("button"); b.textContent=t; if(!!saved.tdPiano===v) pmark(b);
-      b.title = v ? "The harp as an octave of a piano's keys, C to B, each playing its string." : "The harp's twelve strings, as on the instrument.";
-      b.onclick=()=>{ saved.tdPiano=v; save(); pmark(b); if(typeof tdSync==="function") tdSync(); }; pg.appendChild(b); });
-    pr.append(pl,pg); opts.insertBefore(pr, r);
-    const hr=document.createElement("div"); hr.className="optrow"; const hl=document.createElement("span"); hl.className="optlabel"; hl.textContent="STRINGS";
-    const hg=document.createElement("div"); hg.className="levels";
-    const hmark=b=>{ [...hg.children].forEach(x=>{ x.style.background=""; x.style.color=""; }); b.style.background="#F1E8D2"; b.style.color="#16132A"; };
-    [["LABELLED",false],[harpBareWord(cabKind()),true]].forEach(([t,v])=>{ const b=document.createElement("button"); b.textContent=t; if(!!saved.tdHarpBare===v) hmark(b);
-      b.title = v ? (HARP_BY_NAME.has(cabKind()) ? "The harp's strings blank, as on the instrument: a quarter more points." : "The harp's strings blank, as on the instrument.") : "Each harp string shows its note.";
-      b.onclick=()=>{ saved.tdHarpBare=v; save(); hmark(b); if(typeof tdDraw==="function") tdDraw(); }; hg.appendChild(b); });
-    hr.append(hl,hg); opts.insertBefore(hr, r);
-  }
-}
 function helperSync(rebuild){
   if(!blast || !blast.field) return;
   const k=cabKind(), demo=helpDemoing(), want=!!saved.beginner || demo;

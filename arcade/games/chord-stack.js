@@ -141,12 +141,6 @@ function stBar(){
 const STMENU_G={key:"stack", title:"CHORD STACK",
   rules:()=>`<p>TETRIS, WHERE THE BLOCKS ARE NOTES. MOVE AND ROTATE EACH PIECE AS IT FALLS${knobsReady()?": A KNOB SLIDES IT":""}.</p><p>WHEN A ROW HOLDS ALL OF A CHORD'S NOTES, ANYWHERE IN IT, THEY LIGHT UP: PLAY THAT CHORD TO CLEAR THEM. SIDE BY SIDE SCORES DOUBLE; A WHOLE ROW OF ONE CHORD, FIVE TIMES.</p><p>${playOnScreen() ? "UNDER THE GAME: ◀ ▶ MOVE, ▼ DROPS A ROW, A ROTATES, B DROPS IT." : "ON THE HARP: ◀ ▶ MOVE, ▼ DROPS A ROW, A ROTATES, B DROPS IT. OR THE ARROW KEYS, AND SPACE TO DROP."}</p><p>THE CHORDS FOLLOW YOUR MINICHORD: WITH BARRY HARRIS MODE ON, SIXTHS AND DIMINISHED SEVENTHS LIGHT UP INSTEAD OF TRIADS. CHOOSE THE ALTERNATE CHORDS, OR YOUR PRESET'S OWN, UNDER CHORDS.</p>`,
   stat:()=>`CHORDS ${blast.clears}`,
-  rows:row=>{
-    mxRow(row, ()=>menuRebuild(()=>stMenu()));
-    row("SPEED", SPEEDS.map(x=>x[0].toUpperCase()), ()=>+saved.speed||0, i=>{ saved.speed=i; save(); });
-    row("HARP", HARP_LAYOUTS.map(([t])=>t), harpLayoutIndex, i=>{ saved.harpLayout=HARP_LAYOUTS[i][1]; save(); kmRestrip(); });
-    row("HARP SOUND", ["NORMAL","QUIET","OFF"], ()=>saved.harpSound??1, i=>{ saved.harpSound=i; save(); if(blast && blast.setupDone) kmHarp(); });
-  },
   levels:ST_LEVELS, levelName:i=>stLevelName(i),
   begin:i=>beginStack(i), demo:()=>stDemo(), modNote:"always"};
 function stMenu(over){ arcadeMenu(STMENU_G, over); }
@@ -196,7 +190,7 @@ function stLock(){
   const p=blast.piece; if(!p) return;
   stAbs(p.cells,p.x,p.y).forEach(([x,y],i)=>{ if(y>=0) blast.grid[y][x]={pc:p.notes[i]}; });
   blast.piece=null; sfx("lock");
-  if(stReadyRows().length) sfx("ready");
+  if(stReadyRows().length && !saved.noGlow) sfx("ready");
   stSpawn(); stDraw(); stBar();
 }
 function stMove(dx){ const p=blast.piece; if(!p) return; if(stFits(p.cells,p.x+dx,p.y)){ p.x+=dx; stDraw(); } }
@@ -276,7 +270,7 @@ function stDraw(){
   if(!blast || blast.kind!=="stack" || !blast.boardEl) return;
   const ready=stReadyRows();
   if(blast.phase==="play"){ const r=ready[0]; if(r) arcadeMod(r.tones[0]); helpChord(r ? r.tones[0] : null, r ? r.q : ""); }
-  const b=blast.boardEl, c=blast.cell, lit=new Map(); ready.forEach(r=>r.xs.forEach(x=>lit.set(r.y+","+x, r.whole?"ready whole":r.tight?"ready tight":"ready")));
+  const b=blast.boardEl, c=blast.cell, lit=new Map(); if(!(saved.noGlow && blast.phase==="play")) ready.forEach(r=>r.xs.forEach(x=>lit.set(r.y+","+x, r.whole?"ready whole":r.tight?"ready tight":"ready")));
   const cellHtml=(x,y,cls,label)=>`<span class="stcell ${cls}" style="left:${x*c}px;top:${y*c}px;width:${c}px;height:${c}px;font-size:${Math.round(c*.4)}px">${label}</span>`;
   let h="";
   blast.grid.forEach((row,y)=>row.forEach((cell,x)=>{ if(cell) h+=cellHtml(x,y, lit.get(y+","+x)||"", stName(cell.pc,blast.keyF)); }));
@@ -289,7 +283,7 @@ function stDraw(){
   // the next piece, its shape and its notes
   if(blast.nextEl){
     const n=blast.next;
-    if(!n){ blast.nextEl.innerHTML=""; return; }
+    if(!n || (saved.stNoNext && blast.phase==="play")){ blast.nextEl.innerHTML=""; return; }   // NEXT PIECE hidden: nothing
     const s=Math.round(c*.8), w=Math.max(...n.cells.map(q=>q[0]))+1, hh=Math.max(...n.cells.map(q=>q[1]))+1;
     blast.nextEl.innerHTML=`<span class="stnlabel">NEXT</span><span class="stnshape" style="width:${w*s}px;height:${hh*s}px">${n.cells.map(([x,y],i)=>`<i class="p${n.kind}" style="left:${x*s}px;top:${y*s}px;width:${s}px;height:${s}px;font-size:${Math.round(s*.4)}px">${stName(n.notes[i],blast.keyF)}</i>`).join("")}</span>`;
   }

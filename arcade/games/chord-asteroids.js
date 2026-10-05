@@ -101,12 +101,6 @@ function asBar(){
 }
 const ASMENU_G={key:"asteroids", title:"CHORD ASTEROIDS",
   rules:()=>`<p>PLAY A ROCK'S CHORD TO CRACK IT INTO ITS NOTES.</p><p>PLUCK EACH NOTE ON THE HARP TO SHOOT IT DOWN.</p>${playOnScreen() ? "<p>FLY ROUND YOUR ORBIT TO DODGE: DRAG THE KNOB UNDER THE GAME.</p><p>MANUAL AIM SCORES DOUBLE: SPIN THE SHIP WITH THE AIM KNOB. A CHORD OR A PLUCK FIRES WHERE IT POINTS.</p>" : "<p>FLY ROUND YOUR ORBIT TO DODGE: THE MOD KNOB, OR THE ARROW KEYS. HOLD A KNOB AT ITS END AND IT KEEPS GOING ROUND.</p><p>MANUAL AIM SCORES DOUBLE: SPIN THE SHIP WITH ANOTHER KNOB (OR ↑ ↓). A CHORD OR A PLUCK FIRES WHERE IT POINTS.</p>"}<p class="starline">${PIXEL_STAR}ROCKS SCORE BIG AND NEVER HURT.</p><p>NOW AND THEN A POWER-UP ROCK: CRACK IT WITH ITS CHORD TO TAKE IT.</p>`,
-  rows:row=>{
-    mxRow(row, ()=>menuRebuild(()=>asMenu()));
-    row("AIM", ["AUTO","MANUAL ×2"], ()=>saved.asAim?1:0, i=>{ saved.asAim=i; save(); });
-    row("SPEED", SPEEDS.map(x=>x[0].toUpperCase()), ()=>+saved.speed||0, i=>{ saved.speed=i; save(); });
-    row("LABEL SIZE", SIZES.map(x=>x[0]), ()=>saved.chordSize??1, i=>{ saved.chordSize=i; save(); applyChordSize(); });
-  },
   levels:AS_LEVELS, ok:asLevelOk, levelName:asLevelName, sig:()=>String(mxAvailable().length), needs:"NEEDS A MINICHORD",
   begin:i=>beginAsteroids(i), demo:()=>asDemo(), modNote:"always"};
 function asMenu(over){ arcadeMenu(ASMENU_G, over); }

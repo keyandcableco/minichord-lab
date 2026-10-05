@@ -133,12 +133,6 @@ function blastBarCommand(){
 }
 const COMMANDMENU_G={key:"command", title:"HARP COMMAND",
   rules:()=>`<p>NOTES FALL TOWARD YOUR CANNONS.</p><p>PLUCK THE STRING THAT PLAYS ONE AND ITS CANNON FIRES.</p><p class="starline">${PIXEL_STAR}NOTES SCORE BIG AND NEVER HURT.</p><p>A WRONG STRING FREEZES YOUR CANNONS.</p><p>POWER-UPS FALL NOW AND THEN: PLUCK THEIR STRING TO TAKE THEM.</p><p>EVERY TWO LEVELS, SPELL IT: ALL BUT ONE NOTE SPELL A CHORD. PLUCK THE ODD ONE, OR PLAY THE CHORD FOR THE REST.</p>`,
-  rows:row=>{
-    row("SPEED", SPEEDS.map(x=>x[0].toUpperCase()), ()=>+saved.speed||0, i=>{ saved.speed=i; save(); });
-    row("NOTE SIZE", SIZES.map(x=>x[0]), ()=>saved.chordSize??1, i=>{ saved.chordSize=i; save(); applyChordSize(); });
-    // how many notes fall at once: more targets on the screen, more chances at the right string, at any speed
-    row("NOTES AT ONCE", HC_DENSITY.map(x=>x[0]), ()=>saved.hcDensity??1, i=>{ saved.hcDensity=i; save(); });
-  },
   levels:HC_LEVELS, ok:hcLevelOk, needs:"NEEDS THE TEST FIRMWARE",
   begin:i=>beginCommand(i), demo:()=>commandDemo(), modNote:false};
 function commandMenu(over){ arcadeMenu(COMMANDMENU_G, over); }

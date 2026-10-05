@@ -37,9 +37,9 @@ const t=require("./harness").load("chord-breakout");
   w.eval("saved.crt=false; crtSync(); toggleFull(blast.field)"); await sleep(30);
   check("next time, this screen starts plain straight away", plain() && !a.field.classList.contains("crt"));
   // the setting
-  const dlg=w.eval("arcadeSettings()"), row=[...dlg.querySelectorAll(".arow")].find(r=>/FULL SCREEN/.test(r.textContent));
-  const pick=name=>[...row.querySelectorAll("button")].find(b=>b.textContent===name).click();
-  check("FULL SCREEN is in the arcade's settings: AUTO, CABINET, PLAIN", !!row && [...row.querySelectorAll("button")].map(b=>b.textContent).join()==="AUTO,CABINET,PLAIN" && row.querySelector("button.on").textContent==="AUTO");
+  const dlg=w.eval("arcadeSettings()"), row=()=>dlg.querySelector('.opt[data-opt="full"]'), shown=()=>row().querySelector(".ov b").textContent;
+  const pick=name=>{ for(let i=0;i<3 && shown()!==name;i++) row().click(); };
+  check("FULL SCREEN is in the arcade's settings, on AUTO", !!row() && /FULL SCREEN/.test(row().textContent) && shown()==="AUTO");
   pick("CABINET");
   check("CABINET puts the full one back at once", !plain() && a.field.classList.contains("crt"));
   frames(30, 250);

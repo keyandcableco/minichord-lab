@@ -122,7 +122,6 @@ function frDrawStaff(notes=[]){
 const FRMENU_G={key:"frets", title:"BETWEEN THE FRETS",
   rules:()=>`<p>A NOTE PLAYS, THEN ANOTHER: THE SAME, A QUARTER-TONE SHARP, OR A QUARTER-TONE FLAT?</p><p>ANSWER ON ANY COLUMN: MAJOR ROW SHARP, MINOR ROW IN TUNE, 7 ROW FLAT. PLUCK THE HARP TO HEAR IT AGAIN.</p><p>THEN FIND THE NOTE IN BETWEEN: HERE THE MODIFIER MEANS A QUARTER-TONE.</p><p>${frInstrument() ? "YOUR MINICHORD PLAYS THE QUARTER-TONES ITSELF, IN 24-EDO." : "THE PAGE PLAYS THEM; FIRMWARE 18 LETS THE MINICHORD PLAY THEM ITSELF."}</p>`,
   stat:()=>`RIGHT ${blast.right}`,
-  rows:row=>{ row("SPEED", SPEEDS.map(x=>x[0].toUpperCase()), ()=>+saved.speed||0, i=>{ saved.speed=i; save(); }); },
   levels:FR_LEVELS, begin:i=>beginFrets(i), demo:()=>frDemo(), modNote:false};
 function frMenu(over){ arcadeMenu(FRMENU_G, over); }
 function beginFrets(level){
@@ -169,7 +168,7 @@ function frPlay(q){
 function frAsk(){
   if(!blast || blast.phase!=="play") return;
   const L=FR_LEVELS[blast.level], kind = L.kind==="mix" ? rnd(["note","interval","neutral","riff"]) : L.kind;
-  const q=frQuestion(kind); blast.q=q; q.step="answer";
+  const q=frQuestion(kind); blast.q=q; q.step="answer"; q.replays=0; frAgainButton();
   const legend = kind==="riff" ? ["NOTE 1: F COLUMN","NOTE 2: C","NOTE 3: G","NOTE 4: D"] : FR_ROWS[kind].map((t,i)=>`${["MAJ","MIN","7"][i]} ROW: ${t}`);
   blast.stageEl.querySelector(".frrows").innerHTML=legend.map(t=>`<span>${t}</span>`).join("");
   const say = kind==="note" ? "THE SAME, ¼ SHARP OR ¼ FLAT?" : kind==="interval" ? `${q.what} UP: IS ITS TOP NOTE IN TUNE?` : kind==="neutral" ? "MAJOR, MINOR, OR NEUTRAL: THE THIRD HALFWAY?" : "THE RIFF, THEN AGAIN: WHICH NOTE BENT?";
@@ -184,7 +183,14 @@ function frAsk(){
 // player's to find, by ear.
 const frHarpAnswers=q=> !!(blast && blast.instrument && q && ["note","interval","riff"].includes(q.kind));
 function frHarpRank(q){ if(!frHarpAnswers(q) || !hasSetting(116)) return; const step=Math.round(mod(q.show.test,12)*2); borrow(116, step<12 ? 1 : 2); }
-function frReplay(){ if(blast && blast.kind==="frets" && blast.phase==="play" && blast.q && blast.q.step==="answer"){ const len=frPlay(blast.q); blast.q.at=performance.now()+len; } }
+// REPLAYS, chosen on the title: as many as you like, one, or none (each pair heard once) for more points
+const FR_REPLAYS=[Infinity,1,0];
+const frReplaysLeft=q=> FR_REPLAYS[saved.frReplays||0]-(q.replays||0);
+function frAgainButton(){ const b=blast.stageEl && blast.stageEl.querySelector(".fragain"); if(b && blast.q) b.disabled = frReplaysLeft(blast.q)<=0; }
+function frReplay(){ if(blast && blast.kind==="frets" && blast.phase==="play" && blast.q && blast.q.step==="answer"){
+  if(frReplaysLeft(blast.q)<=0){ heard("AGAIN", false, "NO REPLAYS LEFT"); return; }
+  blast.q.replays=(blast.q.replays||0)+1; frAgainButton();
+  const len=frPlay(blast.q); blast.q.at=performance.now()+len; } }
 document.addEventListener("keydown", e=>{ if(blast && blast.kind==="frets" && e.code==="KeyR" && !/INPUT|SELECT|TEXTAREA/.test(document.activeElement?.tagName||"")){ e.preventDefault(); frReplay(); } });
 function frSay(t){ const p=blast.stageEl && blast.stageEl.querySelector(".frprompt"); if(p) p.textContent=t; }
 function frTick(now){

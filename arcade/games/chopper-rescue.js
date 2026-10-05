@@ -200,9 +200,6 @@ function chBar(){
 const CHMENU_G={key:"chopper", title:"CHOPPER RESCUE",
   rules:()=>`<p>THE RADIO CALLS COORDINATES IN THEORY. DECODE THEM: "SURVIVORS AT vi IN G" IS Em.</p><p>TROUBLE BREAKS OUT IN MORE THAN ONE PLACE, AND ONLY THE RADIO SAYS WHICH. PLAY THE CHORD AND THE CHOPPER FLIES THERE.</p><p>A WRONG CHORD FLIES SOMEWHERE EMPTY AND BURNS TIME. DON'T LET THE FLARE BURN OUT.</p><p>NOW AND THEN A SUPPLY CRATE LANDS, MARKED WITH ITS CHORD. PLAY IT TO FLY OUT FOR A POWER-UP, IF THERE'S TIME.</p>`,
   stat:()=>`RESCUES ${blast.rescues}`,
-  rows:row=>{
-    row("SPEED", SPEEDS.map(x=>x[0].toUpperCase()), ()=>+saved.speed||0, i=>{ saved.speed=i; save(); });
-  },
   levels:CH_LEVELS,
   begin:i=>beginChopper(i), demo:()=>chDemo(), modNote:"title"};
 function chMenu(over){ arcadeMenu(CHMENU_G, over); }

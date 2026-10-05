@@ -250,19 +250,32 @@ const PAGE_SCRIPTS=(function(){
 .overlay p.starline{color:#7FE9FF;display:flex;align-items:center;justify-content:center;gap:.8em}
 .overlay p.starline .pstar{width:1.8em;height:1.4em;margin:0;flex:none;vertical-align:middle}   /* the star, bigger and centred on its line */
 .overlay .levels{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;max-width:560px}
-.overlay .optrow{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:10px}
-.overlay .optlabel{font:400 .55rem "Press Start 2P",monospace;color:#9A93B5}
-.overlay .optrow button{padding:.4rem .55rem}
-/* the options, in two columns wherever they appear (the title's options page, game over): every label
-   right-aligned in one, its buttons starting in the next */
-.overlay .optrow{display:grid;grid-template-columns:minmax(6.5rem,11rem) minmax(0,1fr);align-items:center;justify-content:stretch;gap:14px;width:min(720px,96%);text-align:left}
-.overlay .optrow .optlabel{justify-self:end;text-align:right;line-height:1.5}
-.overlay .optrow .levels{display:flex;flex-wrap:wrap;justify-content:flex-start;gap:6px;margin:0;max-width:none}
+/* the options (kit.js arcadeOpts): a list, one line each, its name, its value between arrows, and what
+   it scores; the game's lines under the score they make, the setup's after, and a line saying what the
+   value chosen means. A tap steps the value on, the left arrow back. */
+.opts{display:flex;flex-direction:column;align-items:stretch;gap:10px;width:min(30rem,100%)}
+.optlist{display:flex;flex-direction:column;gap:2px}
+.opthead{display:flex;justify-content:space-between;align-items:baseline;margin:10px 0 4px;padding:0 .7rem 5px;border-bottom:2px solid #2F2342;font:400 .5rem "Press Start 2P",monospace;color:#8A83A8;letter-spacing:.12em}
+.opthead:first-child{margin-top:0}
+.opthead b{font-weight:400;color:#7FE9FF;letter-spacing:.04em;font-size:.62rem}
+.opts button.opt{display:grid;grid-template-columns:minmax(0,1fr) 10.5em 4.6em;align-items:center;gap:8px;width:100%;margin:0;padding:.5rem .7rem;background:transparent;border:2px solid transparent;border-bottom-width:2px;color:#F1E8D2;text-align:left;cursor:pointer;font:400 .58rem/1.4 "Press Start 2P",monospace}
+.opts button.opt:hover,.opts button.opt:focus-visible{background:#1E1838;border-color:#3D3656;outline:none}
+.opts button.opt:focus-visible{border-color:#FFD35A}
+.opt .ol{color:#9A93B5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.opt .ov{display:flex;align-items:center;justify-content:space-between;gap:6px}
+.opt .ov b{flex:1;font-weight:400;text-align:center;color:#FFD35A;white-space:nowrap}
+.opt .arr{flex:none;width:.5em;height:.8em;background:#6E6890;font-style:normal}
+.opt .arr.prev{clip-path:polygon(100% 0,0 50%,100% 100%)}
+.opt .arr.next{clip-path:polygon(0 0,100% 50%,0 100%)}
+.opts button.opt:hover .arr,.opts button.opt:focus-visible .arr{background:#FFD35A}
+.opt .ox{text-align:right;color:#7FE9FF;white-space:nowrap}
+.opt .ox.warn{color:#FF9FC8;font-size:.85em}
+.opts p.opthint{min-height:3.4em;margin:0 auto;padding:0 .7rem;font-size:.48rem;line-height:1.8;color:#CFC6E6;text-align:center;max-width:none}
+@media (max-width:560px){.opts button.opt{grid-template-columns:minmax(0,1fr) 9em 3.8em;font-size:.5rem;padding:.55rem .4rem;gap:6px}}
 /* the levels: an even grid of equal buttons, each its number and then its name beside it */
 .overlay > .levels,.overlay .cab-levelpage > .levels{display:grid;grid-template-columns:repeat(auto-fill,minmax(11rem,1fr));gap:8px;width:min(720px,96%);max-width:none;justify-content:stretch}
 .overlay > .levels > button,.overlay .cab-levelpage > .levels > button{display:flex;align-items:center;justify-content:flex-start;gap:.7em;text-align:left;min-height:3.4em;padding:.45rem .7rem}
 .overlay > .levels > button small,.overlay .cab-levelpage > .levels > button small{display:block;margin:0;text-align:left;line-height:1.5}
-@media (max-width:560px){.overlay .optrow{grid-template-columns:1fr}.overlay .optrow .optlabel{justify-self:start;text-align:left}}
 .overlay button{font:400 .62rem "Press Start 2P",monospace;background:#16132A;color:#F1E8D2;border:2px solid #F1E8D2;border-bottom-width:4px;border-radius:0;padding:.55rem .7rem}
 .overlay button:hover{background:#2A2450}
 .overlay button.go{background:var(--felt);border-color:#FFD35A;color:#FFF8E7;font-size:.8rem;padding:.7rem 1.1rem}
@@ -607,16 +620,10 @@ body.kbplay #connect{opacity:.5}
 dialog.arcadedlg{background:#130D1E;color:#F1E8D2;border:4px solid #000;box-shadow:0 0 0 3px #2F2342,10px 10px 0 #000;border-radius:0;padding:22px 24px;max-width:min(720px,94vw);font:400 .56rem/1.9 "Press Start 2P",monospace}
 dialog.arcadedlg::backdrop{background:rgba(7,6,12,.78)}
 dialog.arcadedlg h2{margin:0 0 16px;font:400 .8rem "Press Start 2P",monospace;color:#FFD35A;text-align:center}
-.arows{display:grid;gap:12px}
-.arow{display:grid;grid-template-columns:11em 1fr;gap:12px;align-items:center}
-.alabel{color:#9A93B5}.alabel small{display:block;font-size:.8em;color:#6E6890}
-.achoices{display:flex;flex-wrap:wrap;gap:6px}
-.achoices button,.aend button{font:400 .5rem "Press Start 2P",monospace;background:#0E0A16;color:#F1E8D2;border:2px solid #2F2342;padding:7px 9px;cursor:pointer}
-.achoices button:hover{border-color:#FFD35A}
-.achoices button.on{background:#F1E8D2;color:#16132A;border-color:#F1E8D2}
-.amult{margin:16px 0 0;text-align:center;color:#7FE9FF}
+.aend button{font:400 .5rem "Press Start 2P",monospace;background:#0E0A16;color:#F1E8D2;border:2px solid #2F2342;padding:7px 9px;cursor:pointer}
+.arcadedlg .opts{margin:0 auto}
+.arcadedlg .anote{margin:-8px 0 14px;text-align:center;color:#6E6890;font-size:.85em}
 .aend{text-align:center;margin-top:12px}.aend button{padding:9px 18px;color:#FFD35A;border-color:#FFD35A}
-@media (max-width:560px){.arow{grid-template-columns:1fr}}
 
 /* the bezel's buttons: plain dark rectangles like an old console's, labelled above */
 html.arcadepage .gamebar{align-items:flex-end}
@@ -1027,6 +1034,7 @@ html:has(.fscab),html:has(.fscab) body{overflow:hidden;overscroll-behavior:none}
 .frrows{display:flex;flex-wrap:wrap;justify-content:center;gap:8px}
 .frrows span{font:400 .5rem "Press Start 2P","Minichord Lab Accidentals",monospace;color:#16132A;background:#F1E8D2;border:2px solid #000;padding:6px 8px}
 .fragain{position:absolute;right:16px;top:58px;z-index:4;pointer-events:auto;font:400 .5rem "Press Start 2P",monospace;color:#16132A;background:#F1E8D2;border:3px solid #000;padding:6px 8px;cursor:pointer;box-shadow:3px 3px 0 #000}
+.fragain:disabled{opacity:.35;cursor:default}   /* REPLAYS used up */
 .frrows span.harp{background:#FF5AA0;color:#16132A}
 .frtime{width:min(420px,70%);height:8px;border:2px solid #F1E8D2;background:#07060C}
 .frtime i{display:block;height:100%;background:#FF5AA0;transform-origin:left}

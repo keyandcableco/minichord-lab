@@ -9,24 +9,12 @@
 // where the modifier note goes) and arcadeMenu builds it, the same way for all of them; a demo
 // asks demoShell for its stage and its clock. A fix here lands in every game at once.
 
-// one option row: a label, and buttons of which the chosen one is lit
-function arcadeRow(parent, label, list, get, set){
-  const r=document.createElement("div"); r.className="optrow";
-  const l=document.createElement("span"); l.className="optlabel"; l.textContent=label;
-  const g=document.createElement("div"); g.className="levels";
-  const mark=b=>{ [...g.children].forEach(x=>{ x.style.background=""; x.style.color=""; x.setAttribute("aria-pressed","false"); });
-    b.style.background="#F1E8D2"; b.style.color="#16132A"; b.setAttribute("aria-pressed","true"); };
-  list.forEach((n,i)=>{ const b=document.createElement("button"); b.textContent=n; b.setAttribute("aria-pressed","false");
-    if(get()===i) mark(b); b.onclick=()=>{ set(i); mark(b); }; g.appendChild(b); });
-  r.append(l,g); parent.appendChild(r);
-  return r;
-}
 // a game's title screen or game over screen, from its description:
 //   key       where its best score is kept (saved.best[key])
 //   title     its name, as the title screen shows it
 //   rules()   the rules, as paragraphs
 //   stat()    what the game over line counts beside the score (the level, unless it says otherwise)
-//   rows(row) its option rows: row(label, list, get, set) for each
+//   (its options are ARCADE_OPTS's, below: the ones whose on(kind) is true for it)
 //   levels    its levels (objects with n, or plain names); ok(i) whether this minichord can play one,
 //             and needs, what to say when it can't; sig(), anything else its title screen depends on
 //   begin(i)  start at level i; demo(), its demo
@@ -45,7 +33,8 @@ function arcadeMenu(g, over){
     ov.innerHTML=`<h3>${g.title}</h3>${g.rules()}`;
     const how=document.createElement("button"); how.className="howto"; how.textContent="▶ HOW TO PLAY"; how.onclick=()=>g.demo(); ov.appendChild(how);
   }
-  if(g.rows) g.rows((...a)=>arcadeRow(ov,...a));
+  blast.menuAgain = over ? null : ()=>arcadeMenu(g);              // the title again, should an option change what it offers
+  ov.appendChild(arcadeOpts(over ? ["game"] : ["game","setup"]));
   const lp=document.createElement("p"); lp.className = over ? "" : "blink"; lp.textContent = over ? "OR START FROM" : "CHOOSE A LEVEL"; ov.appendChild(lp);
   const lv=document.createElement("div"); lv.className="levels";
   g.levels.forEach((L,i)=>{ const b=document.createElement("button"), ok=g.ok ? g.ok(i) : true, n=g.levelName ? g.levelName(i) : typeof L==="string" ? L : L.n;
@@ -155,50 +144,119 @@ function arcadeVolumeWatch(){
 // An optional old-monitor look for the arcade: scanlines, a soft glow, the picture's corners
 // darkened and rounded as a tube's are, a faint roll and flicker, and a slight colour fringe on the
 // lettering. All of it is drawn over the field by the browser's own compositor, so it costs next to
-// nothing, even on a slow machine. Switched on the title screens' options, and remembered.
+// nothing, even on a slow machine. Switched on the title screens' options (SCREEN), and remembered.
 // a field in the cabinet is CRT unless the cabinet's plain; one in the page, as the player chose
 function crtSync(){ document.querySelectorAll(".field.arcade").forEach(f=>{ const cab=f.closest(".fscab"); f.classList.toggle("crt", cab ? !cab.classList.contains("plain") : !!saved.crt); }); }
-function crtRow(opts){
-  const r=document.createElement("div"); r.className="optrow"; const l=document.createElement("span"); l.className="optlabel"; l.textContent="SCREEN";
-  const g=document.createElement("div"); g.className="levels";
-  const mark=b=>{ [...g.children].forEach(x=>{ x.style.background=""; x.style.color=""; }); b.style.background="#F1E8D2"; b.style.color="#16132A"; };
-  [["FLAT",false],["CRT",true]].forEach(([t,v])=>{ const b=document.createElement("button"); b.textContent=t; if(!!saved.crt===v) mark(b);
-    b.onclick=()=>{ saved.crt=v; save(); mark(b); crtSync(); }; g.appendChild(b); });
-  r.append(l,g);
-  const before=opts.querySelector("p.blink") || [...opts.querySelectorAll(".levels")].pop();
-  opts.insertBefore(r, before);
-}
 new MutationObserver(()=>{ if(saved.crt) crtSync(); }).observe(document.getElementById("special")||document.body, {childList:true});
 
 
-// ---------- the score multiplier ----------
-// Harder settings score more: every point a game awards is multiplied by the speed's factor, and
-// in Harp Command by how many notes fall at once, in Chord Breakout by the paddle's width. Set when
-// a game begins, shown beside the score, on the options screen as it's chosen, and on its own screen
-// in the title loop, with what each thing in the game is worth, the way Pac-Man listed its ghosts.
+// ---------- the options, and the score multiplier ----------
+// Every option an arcade game offers is in one table, ARCADE_OPTS: the title screen's options, game
+// over, the settings dialog, the score multiplier and the POINTS page all read it, so a game offers
+// the same things everywhere, and what an option scores is written once, beside its value.
+// Each option:
+//   id, label     its name, and what the screen calls it (label may be a function of the game)
+//   group         "game" (how it plays, and what scores more), "setup" (how it looks, sounds and is
+//                 steered, scoring nothing) or "arcade" (the whole arcade's, in the settings dialog only)
+//   on(k)         whether game k offers it (on this minichord, with these other options)
+//   vals(k)       its values: [word, multiplier, what it means, a tag for the score column]
+//   say           what it means, where a value doesn't say
+//   get(), set(i) where it's kept
+// Harder settings score more: every point a game awards is multiplied by the product of the game
+// group's multipliers, set when a game begins and shown beside the score, on the options screen as
+// they're chosen, and on its own screen in the title loop, the way Pac-Man listed its ghosts.
 const MULT_SPEED=[1,1.25,1.5,1.75,2];                      // Relaxed … Wild
-const MULT_DENSITY=[.8,1,1.25,1.5];                        // Harp Command: few, some, many, swarm
-const MULT_PADDLE=[1.3,1,.8];                              // Chord Breakout: narrow, normal, wide
-const MULT_GUIDE=[1,1.25,1.5];
 // Played on the screen, the harp's strings named, or bare as the instrument's are: offered wherever the
 // deck draws the twelve strings, and a quarter more where the game asks for notes by name (not Chord
 // Hunt, whose harp is only low or high, nor Between the Frets, whose harp goes in quarter-tones)
 const HARP_BY_NAME=new Set(["command","asteroids","breakout","fifths","chopper","fleet","sight"]);
 const harpOnScreen=kind=> typeof playOnScreen==="function" && playOnScreen() && typeof TD_PROFILES!=="undefined" && TD_PROFILES[kind]?.harp==="notes";
-const harpBareWord=kind=> HARP_BY_NAME.has(kind) ? "BARE ×1.25" : "BARE";
+const KM_GAMES=["snake","stack","sweeper","chomp"];          // the harp as a d-pad: its layout is how the game's played
+const KF_TORPS=[1,.85,.7];                                 // Key Fleet: plenty, fewer, few
+const SL_WINS=[38,24];                                     // Sight Line: loose, tight (pixels either side of the playhead)
+const has=(...ks)=>k=>ks.includes(k);
+const flag=(key)=>({get:()=>saved[key]?1:0, set:i=>{ saved[key]=!!i; save(); }});
+const ARCADE_OPTS=[
+  // ----- the game: how it plays, and what scores more
+  {id:"race", group:"game", label:"RACE", on:has("racer"), get:()=>saved.krMode?1:0, set:i=>{ saved.krMode=i; save(); },
+    vals:()=>[["GRAND PRIX",1,"EIGHT CIRCUITS, A KEY CENTRE EACH, QUALIFYING FIRST"],["ENDURANCE",1,"ROUND THE CIRCLE OF FIFTHS AGAINST THE CLOCK"]]},
+  {id:"matrix", group:"game", label:"CHORDS", on:k=>has("blaster","asteroids","stack","breakout","snake")(k) && typeof mxAvailable==="function" && mxAvailable().length>1,
+    get:()=>Math.max(0, mxAvailable().findIndex(([,v])=>v===mxChoice())), set:i=>{ saved.chordMatrix=mxAvailable()[i][1]; save(); optsMenuAgain(); },
+    vals:()=>mxAvailable().map(([t,v])=>[t,1, v==="standard" ? "THE MINICHORD'S OWN CHORD BUTTONS" : v==="alternate" ? "THE ALTERNATE LAYOUT: SUS4, SUS2 AND THE REST ON THE BUTTONS" : "THE CHORDS YOUR PRESET HAS LOADED ON THE BUTTONS"])},
+  {id:"speed", group:"game", label:"SPEED", on:k=>k!=="sweeper" && k!=="fleet", get:()=>+saved.speed||0, set:i=>{ saved.speed=i; save(); },
+    say:"HOW FAST IT COMES AT YOU", vals:()=>SPEEDS.map(([n],i)=>[n.toUpperCase(), MULT_SPEED[i]])},
+  {id:"torps", group:"game", label:"TORPEDOES", on:has("fleet"), get:()=>saved.kfTorps??0, set:i=>{ saved.kfTorps=i; save(); },
+    vals:()=>[["PLENTY",1,"EVERY FLEET'S FULL LOAD OF TORPEDOES"],["FEWER",1.25,"A SIXTH FEWER TORPEDOES FOR EACH FLEET"],["FEW",1.5,"A THIRD FEWER TORPEDOES: CALL SHIPS EARLY"]]},
+  {id:"density", group:"game", label:"NOTES AT ONCE", on:has("command"), get:()=>saved.hcDensity??1, set:i=>{ saved.hcDensity=i; save(); },
+    say:"HOW MANY NOTES FALL TOGETHER", vals:()=>[["FEW",.8],["SOME",1],["MANY",1.25],["SWARM",1.5]]},
+  {id:"paddle", group:"game", label:"PADDLE", on:has("breakout"), get:()=>saved.boPaddle??1, set:i=>{ saved.boPaddle=i; save(); },
+    say:"HOW WIDE THE PADDLE IS", vals:()=>[["NARROW",1.3],["NORMAL",1],["WIDE",.8]]},
+  {id:"guide", group:"game", label:"FIELD GUIDE", on:has("hunt"), get:()=>saved.hdGuide||0, set:i=>{ saved.hdGuide=i; save(); },
+    vals:()=>[["NAMES",1,"THE KEY'S CHORDS BY NAME AND NUMERAL"],["NUMERALS",1.25,"THE KEY'S CHORDS BY NUMERAL ONLY"],["NONE",1.5,"NO GUIDE: KNOW THE KEY'S CHORDS YOURSELF"]]},
+  {id:"aim", group:"game", label:"AIM", on:has("blaster","asteroids"), get:k=>(k==="asteroids" ? saved.asAim : saved.invAim)?1:0,
+    set:(i,k)=>{ saved[k==="asteroids" ? "asAim" : "invAim"]=i; save(); },
+    vals:k=>[["AUTO",1,"THE SHIP AIMS ITSELF AT THE CHORD YOU PLAY"],["MANUAL",2, k==="asteroids" ? "SPIN THE SHIP YOURSELF: A CHORD OR PLUCK FIRES WHERE IT POINTS" : "STEER UNDER A CHORD YOURSELF, THEN PLAY IT"]]},
+  {id:"steer", group:"game", label:"STEER", on:has("racer"), get:()=>saved.krSteer?1:0, set:i=>{ saved.krSteer=i; save(); },
+    vals:()=>[["HARP",1,"THE HARP'S TWELVE STRINGS ACROSS THE ROAD"],["KNOB",1.25,"A KNOB STEERS, THE HARP LEFT ALONE"]]},
+  {id:"hold", group:"game", label:"CHORDS", on:has("chomp"), ...flag("ccHold"),
+    vals:()=>[["LATCH",1,"A CHORD PLAYED ONCE STAYS ON TILL THE NEXT"],["HOLD",1.25,"A CHORD LASTS ONLY AS LONG AS IT'S HELD"]]},
+  {id:"glow", group:"game", label:"CHORD GLOW", on:has("snake","stack"), get:()=>saved.noGlow?1:0, set:i=>{ saved.noGlow=!!i; save(); },
+    vals:k=>[["ON",1, k==="snake" ? "CARRIED NOTES THAT SPELL A CHORD LIGHT UP" : "A ROW THAT HOLDS A CHORD LIGHTS UP"],["OFF",1.5,"NOTHING LIGHTS UP: SPOT THE CHORDS YOURSELF"]]},
+  {id:"next", group:"game", label:"NEXT PIECE", on:has("stack"), ...flag("stNoNext"),
+    vals:()=>[["SHOWN",1,"THE NEXT PIECE AND ITS NOTES, BESIDE THE WELL"],["HIDDEN",1.25,"NO PREVIEW: EACH PIECE IS A SURPRISE"]]},
+  {id:"circle", group:"game", label:"CIRCLE", on:has("fifths"), ...flag("fdBare"),
+    vals:()=>[["NAMED",1,"EVERY KEY NAMED ROUND THE RIM"],["BARE",1.5,"ONLY C NAMED: KNOW THE CIRCLE OF FIFTHS YOURSELF"]]},
+  {id:"replays", group:"game", label:"REPLAYS", on:has("frets"), get:()=>saved.frReplays||0, set:i=>{ saved.frReplays=i; save(); },
+    vals:()=>[["ANY",1,"HEAR EACH PAIR AGAIN AS OFTEN AS YOU LIKE"],["ONE",1.25,"ONE MORE LISTEN TO EACH PAIR"],["NONE",1.5,"EACH PAIR PLAYS ONCE"]]},
+  {id:"timing", group:"game", label:"TIMING", on:has("sight"), get:()=>saved.slTight?1:0, set:i=>{ saved.slTight=!!i; save(); },
+    vals:()=>[["LOOSE",1,"A NOTE COUNTS ANYWHERE IN THE WINDOW"],["TIGHT",1.5,"A NARROWER WINDOW: PLAY NEARER THE LINE"]]},
+  {id:"modifier", group:"game", label:"MODIFIER", on:k=>MOD_GAMES.has(k) && canWrite(), get:()=>autoMod()?0:1, set:i=>{ saved.autoMod=!i; save(); },
+    vals:()=>[["AUTO",1,"THE GAME SETS SHARP OR FLAT FOR THE CHORD YOU NEED NEXT"],["BY HAND",1.25,"YOU SET SHARP OR FLAT: DOUBLE-TAP THE MODIFIER"]]},
+  {id:"buttons", group:"game", label:"BUTTONS", on:k=>k!=="command" && typeof playOnScreen==="function" && playOnScreen(), ...flag("tdBare"),
+    set:i=>{ saved.tdBare=!!i; save(); if(typeof tdDraw==="function") tdDraw(); },
+    vals:()=>[["LABELLED",1,"EACH CHORD BUTTON ON THE SCREEN SHOWS ITS CHORD"],["BARE",1.25,"THE SCREEN'S CHORD BUTTONS BLANK, AS ON THE INSTRUMENT"]]},
+  {id:"strings", group:"game", label:"STRINGS", on:k=>harpOnScreen(k), ...flag("tdHarpBare"),
+    set:i=>{ saved.tdHarpBare=!!i; save(); if(typeof tdDraw==="function") tdDraw(); },
+    vals:k=>[["LABELLED",1,"EACH HARP STRING ON THE SCREEN SHOWS ITS NOTE"],["BARE",HARP_BY_NAME.has(k)?1.25:1,"THE SCREEN'S HARP STRINGS BLANK, AS ON THE INSTRUMENT"]]},
+  {id:"beginner", group:"game", label:"BEGINNER", on:()=>true, get:()=>saved.beginner?1:0, set:i=>{ saved.beginner=!!i; save(); helperSync(true); },
+    vals:()=>[["OFF",1,"PLAY IT STRAIGHT"],["ON",1,"THE MINICHORD ON SCREEN, LIT WITH WHAT TO PRESS. NO HIGH SCORES","UNRANKED"]]},
+  // ----- the setup: how it looks, sounds and is steered
+  {id:"harp", group:"setup", label:"HARP", on:k=>KM_GAMES.includes(k) || (saved.beginner && helpUsesHarp(k) && k!=="breakout"), get:harpLayoutIndex,
+    set:i=>{ saved.harpLayout=HARP_LAYOUTS[i][1]; save(); if(KM_GAMES.includes(cabKind())) kmRestrip(); else helperSync(true); },
+    vals:()=>[["STRIP",1,"THE STANDARD HARP: TWELVE STRINGS IN A LINE"],["GRID",1,"THE KEYMASTER'S FOUR ROWS OF THREE"],["D-PAD",1,"THE KEYMASTER AS A D-PAD"]]},
+  {id:"harpAs", group:"setup", label:"HARP AS", on:k=>harpOnScreen(k), ...flag("tdPiano"),
+    set:i=>{ saved.tdPiano=!!i; save(); if(typeof tdSync==="function") tdSync(); },
+    vals:()=>[["STRINGS",1,"THE SCREEN'S HARP AS THE MINICHORD'S TWELVE STRINGS"],["PIANO",1,"THE SCREEN'S HARP AS AN OCTAVE OF PIANO KEYS, C TO B"]]},
+  {id:"harpSound", group:"setup", label:"HARP SOUND", on:has("snake","stack","sweeper","racer","chomp"), get:()=>saved.harpSound??1,
+    set:i=>{ saved.harpSound=i; save(); if(blast && blast.setupDone) kmHarp(); },
+    say:"THE HARP STEERS HERE: HOW MUCH OF IT YOU HEAR", vals:()=>[["NORMAL",1],["QUIET",1],["OFF",1]]},
+  {id:"knob", group:"setup", label:"KNOB", on:k=>knobsReady() && (has("breakout","fifths","stack","asteroids","sight")(k) || (k==="blaster" && saved.invAim) || (k==="racer" && saved.krSteer)),
+    get:()=>steerKnob(), set:i=>{ saved.steerKnob=i; save(); }, say:"WHICH OF THE MINICHORD'S KNOBS STEERS", vals:()=>KNOB_NAMES.map(n=>[n,1])},
+  {id:"size", group:"setup", label:k=>k==="command" ? "NOTE SIZE" : "LABEL SIZE", on:has("blaster","asteroids","breakout","command"), get:()=>saved.chordSize??1,
+    set:i=>{ saved.chordSize=i; save(); applyChordSize(); }, say:"HOW BIG THE LETTERING IS", vals:()=>SIZES.map(([n])=>[n,1])},
+  {id:"sound", group:"setup", label:"SOUND", on:()=>canWrite(), get:()=>saved.arcadeSound==="mine"?1:0, set:i=>{ saved.arcadeSound=i?"mine":"clean"; save(); },
+    vals:()=>[["CLEAN",1,"NO VIBRATO OR DELAY WHILE YOU PLAY, SO EVERY CHORD IS STEADY"],["MY PRESET",1,"YOUR PRESET'S OWN VIBRATO AND DELAY (GLIDE STAYS OFF)"]]},
+  {id:"crt", group:"setup", label:"SCREEN", on:()=>true, ...flag("crt"), set:i=>{ saved.crt=!!i; save(); crtSync(); },
+    vals:()=>[["FLAT",1,"A PLAIN, SHARP PICTURE"],["CRT",1,"AN OLD MONITOR: SCANLINES, GLOW AND ROUNDED CORNERS"]]},
+  // ----- the arcade's own, in the settings dialog
+  {id:"sounds", group:"arcade", label:"SOUNDS", on:()=>true, get:()=>settings.sounds?0:1, set:i=>{ settings.sounds=!i; save(); },
+    say:"THE CABINET'S OWN SOUNDS", vals:()=>[["ON",1],["OFF",1]]},
+  {id:"full", group:"arcade", label:"FULL SCREEN", on:()=>true, get:()=>FS_MODES.indexOf(fsMode()), set:i=>fsModeSet(i),
+    vals:()=>[["AUTO",1,"THE CABINET, OR PLAIN WHERE THE GRAPHICS CAN'T KEEP UP"],["CABINET",1,"ALWAYS THE CABINET: BEZEL, MARQUEE AND CRT"],["PLAIN",1,"ALWAYS PLAIN: THE SCREEN ALONE, FLAT"]]},
+  {id:"bonus", group:"arcade", label:"BONUS ROUNDS", on:()=>true, get:()=>saved.bonus===false?1:0, set:i=>{ saved.bonus=!i; save(); },
+    say:"A MINI-GAME EVERY TWO LEVELS, FOR POINTS ONLY", vals:()=>[["ON",1],["OFF",1]]},
+  {id:"tap", group:"arcade", label:"DOUBLE TAP", on:()=>true, get:()=>settings.modTap==="off"?1:0, set:i=>{ settings.modTap=i?"off":"on"; save(); if(!i) modTap(); },
+    vals:()=>[["FLIPS",1,"A DOUBLE TAP ON THE MODIFIER FLIPS SHARP AND FLAT"],["MY PRESET",1,"THE DOUBLE TAP DOES WHAT YOUR PRESET SAYS"]]},
+];
+const optLabel=(o,k)=> typeof o.label==="function" ? o.label(k) : o.label;
+const optsFor=(k, groups)=> ARCADE_OPTS.filter(o=>groups.includes(o.group) && o.on(k));
 function diffMult(kind=cabKind()){
-  let m = kind==="sweeper" ? 1 : MULT_SPEED[+saved.speed||0]||1;            // Chord Sweeper has no speed
-  if(kind==="command") m*=MULT_DENSITY[saved.hcDensity??1]??1;
-  if(kind==="breakout") m*=MULT_PADDLE[saved.boPaddle??1]??1;
-  if(kind==="hunt") m*=MULT_GUIDE[saved.hdGuide||0]??1;
-  if(kind==="racer" && saved.krSteer) m*=1.25;                                 // Key Racer steered with a knob, the harp left alone
-  if(kind==="chomp" && saved.ccHold) m*=1.25;                                  // Chord Chomp's chords held, not latched
-  if((kind==="asteroids" && saved.asAim) || (kind==="blaster" && saved.invAim)) m*=2;   // manual aim: harder, so double
-  if(MOD_GAMES.has(kind) && !autoMod()) m*=1.25;                              // the modifier set by hand: a quarter more
-  if(kind!=="command" && saved.tdBare && typeof playOnScreen==="function" && playOnScreen()) m*=1.25;   // the screen's chord buttons bare: a quarter more
-  if(saved.tdHarpBare && HARP_BY_NAME.has(kind) && harpOnScreen(kind)) m*=1.25;   // and its harp's strings: a quarter more again
+  let m=1;
+  for(const o of optsFor(kind, ["game"])){ const v=o.vals(kind)[o.get(kind)]; if(v) m*=v[1]; }
   return Math.round(m*100)/100;
 }
+// a menu's matrix changed: the menu again, so its level names follow
+function optsMenuAgain(){ if(blast && blast.menuAgain && blast.overlay && ["menu","over"].includes(blast.phase)) menuRebuild(blast.menuAgain); }
 const mulPts=p=>Math.round(p*(blast.mult||1));
 const multTag=()=> blast && blast.mult && blast.mult!==1 ? ` ×${blast.mult}` : "";
 // what each game's things are worth at level 1 (all of it times the level)
@@ -206,7 +264,7 @@ const POINTS_FOR={
   blaster:()=>[...BLAST_TIERS.map(([,n,sp,v])=>[n,String(v),sp]), ["NEEDS THE MODIFIER","× 1.5"], ["SLASH CHORD","× 1.5"], ["★ CHORD","× 5"], ["KEY SET","25"], ["BY THE BEAM","THE SAME"], powerRow(POWERS)],
   command:()=>[["NOTE","10"],["★ NOTE","50"],powerRow(HC_POWERS)],
   snake:[["CHORD CASHED IN","15 A NOTE"],["★ NOTE","50"],["NOTE DROPPED","−5"]],
-  asteroids:()=>[...BLAST_TIERS.map(([,n,sp,v])=>[n,String(v),sp]), ["NEEDS THE MODIFIER","× 1.5"], ["★ ROCK","× 3"], ["NOTE SHOT","10"], ["CHORD CLEARED","25"], ["MANUAL AIM","EVERYTHING × 2"], powerRow(AS_POWERS)],
+  asteroids:()=>[...BLAST_TIERS.map(([,n,sp,v])=>[n,String(v),sp]), ["NEEDS THE MODIFIER","× 1.5"], ["★ ROCK","× 3"], ["NOTE SHOT","10"], ["CHORD CLEARED","25"], powerRow(AS_POWERS)],
   stack:()=>[...BLAST_TIERS.map(([,n,sp,v])=>[n,`${v} A NOTE`,sp]), ["ITS NOTES SIDE BY SIDE","× 2"], ["A WHOLE ROW OF ONE CHORD","× 5"], ["CHORDS AT ONCE","× CHORDS"]],
   breakout:()=>[...BLAST_TIERS.map(([,n,sp,v])=>[n,String(v),sp]), ["NEEDS THE MODIFIER","× 1.5"], ["SLASH CHORD","× 1.5"], ["★ BRICK","× 5"], ["RALLY","UP TO × 4"], ["ARPEGGIO TONE SHOT","20"], ["WHOLE CHORD SHOT","× 2"], ["CODA","50 A BRICK, DRAINING"], powerRow(BO_POWERS, "CAPSULES")],
   fifths:[["ENEMY","10"],["HIT FAR OUT","UP TO +10"],["★ ENEMY","50"]],
@@ -222,15 +280,8 @@ const POINTS_FOR={
 // the POINTS page's line for a game's power-ups (or capsules): their icons, then their names
 const powerRow=(table, word="POWER-UPS")=>{ const P=Object.values(table); return [P.map(p=>p.icon).join(" ")+" "+word, P.map(p=>p.name).join(" · ")]; };
 function multRows(kind){
-  const rows = kind==="sweeper" ? [] : [["SPEED", SPEEDS.map((x,i)=>`${x[0].toUpperCase()} ×${MULT_SPEED[i]}`)]];
-  if(kind==="command") rows.push(["NOTES AT ONCE", ["FEW","SOME","MANY","SWARM"].map((n,i)=>`${n} ×${MULT_DENSITY[i]}`)]);
-  if(kind==="breakout") rows.push(["PADDLE", ["NARROW","NORMAL","WIDE"].map((n,i)=>`${n} ×${MULT_PADDLE[i]}`)]);
-  if(kind==="hunt") rows.push(["FIELD GUIDE", ["NAMES","NUMERALS","NONE"].map((n,i)=>`${n} ×${MULT_GUIDE[i]}`)]);
-  if(kind==="racer") rows.push(["STEER", ["HARP ×1","KNOB ×1.25"]]);
-  if(kind==="chomp") rows.push(["CHORDS", ["LATCH ×1","HOLD ×1.25"]]);
-  if(kind!=="command" && typeof playOnScreen==="function" && playOnScreen()) rows.push(["BUTTONS", ["LABELLED ×1","BARE ×1.25"]]);
-  if(HARP_BY_NAME.has(kind) && harpOnScreen(kind)) rows.push(["STRINGS", ["LABELLED ×1","BARE ×1.25"]]);
-  return rows;
+  return optsFor(kind, ["game"]).map(o=>[optLabel(o,kind), o.vals(kind)]).filter(([,v])=>v.some(x=>x[1]!==1))
+    .map(([n,v])=>[n, v.map(([t,x])=>`${t} ×${x}`)]);
 }
 // the points screen in the title loop: the table filling in line by line, then the multipliers
 const pointsFor=k=>{ const p=POINTS_FOR[k]; return typeof p==="function" ? p() : (p||[]); };
@@ -274,61 +325,81 @@ function pointsRender(el){
   el.innerHTML=`<h3>POINTS</h3><ul class="ptable${long?" long":""}">${pts.map(([a,b,sp])=>`<li ${d()}><span>${a}</span>${sp?`<em class="pspell">${sp}</em>`:""}<i></i><b>${b}</b></li>`).join("")}<li class="ptnote" ${d()}>ALL TIMES THE LEVEL</li></ul>
     ${multRows(k).length?`<p class="ptsub" ${d()}>HARDER PLAY SCORES MORE</p>`:""}<ul class="ptable mult">${multRows(k).map(([n,list])=>`<li ${d()}><span>${n}</span><em>${list.join(" · ")}</em></li>`).join("")}</ul>`;
 }
-// the options screen: the multiplier for what's chosen, as it's chosen
-function multLine(opts){
-  const p=document.createElement("p"); p.className="multline";
-  const upd=()=>{ p.textContent=`SCORE ×${diffMult()} FOR THESE SETTINGS`; };
-  upd(); opts.addEventListener("click", ()=>setTimeout(upd));
-  const before=opts.querySelector("p.blink") || [...opts.querySelectorAll(".levels")].pop();
-  opts.insertBefore(p, before);
+// The options as a list, one line each: its name, its value between arrows, and what it scores. A tap
+// or click on a line steps to the next value, on the left arrow back; on the keyboard ↑ ↓ move between
+// lines and ← → change one. The game's lines come first under the score they make, the setup's after,
+// and one line at the foot says what the value chosen means. Lines that depend on another (the harp's
+// layout on beginner mode, say) come and go as it changes.
+//   groups   which groups to show: ["game","setup"] on the title, ["game"] at game over, all three in
+//            the settings dialog
+const OPT_HEAD={game:"GAME", setup:"SETUP", arcade:"ARCADE"};
+const optTag=(v)=> v[3] || (v[1]!==1 ? `×${v[1]}` : "");
+function arcadeOpts(groups){
+  const box=document.createElement("div"); box.className="opts";
+  const list=document.createElement("div"); list.className="optlist";
+  const hint=document.createElement("p"); hint.className="opthint";
+  const idle=()=> playOnScreen() ? "TAP AN OPTION TO CHANGE IT" : "CLICK AN OPTION TO CHANGE IT, OR USE THE ARROW KEYS";
+  hint.textContent=idle();
+  box.append(list, hint);
+  const k=()=>cabKind() || settings.mode;
+  const say=o=>{ const v=o.vals(k())[o.get(k())]; hint.textContent = v ? `${v[0]}: ${v[2] || o.say || ""}` : idle(); };
+  const render=()=>{
+    const kind=k(), had=document.activeElement && box.contains(document.activeElement) ? document.activeElement.dataset.opt : null;
+    list.innerHTML="";
+    groups.forEach(gr=>{
+      const os=optsFor(kind, [gr]); if(!os.length) return;
+      const h=document.createElement("div"); h.className="opthead";
+      h.innerHTML=`<span>${OPT_HEAD[gr]}</span>${gr==="game" ? `<b>${saved.beginner ? "UNRANKED" : `SCORE ×${diffMult(kind)}`}</b>` : ""}`;
+      list.appendChild(h);
+      os.forEach(o=>{
+        const vs=o.vals(kind), i=Math.max(0, Math.min(vs.length-1, o.get(kind))), v=vs[i], b=document.createElement("button");
+        b.type="button"; b.className="opt"; b.dataset.opt=o.id;
+        const tag=optTag(v);
+        b.innerHTML=`<span class="ol">${optLabel(o,kind)}</span><span class="ov"><i class="arr prev" aria-hidden="true"></i><b>${v[0]}</b><i class="arr next" aria-hidden="true"></i></span><span class="ox${v[3]?" warn":""}">${tag}</span>`;
+        b.setAttribute("aria-label", `${optLabel(o,kind)}: ${v[0]}${tag?`, ${tag}`:""}. ${vs.length} choices`);
+        const step=d=>{ o.set(((i+d)%vs.length+vs.length)%vs.length, kind); sfx("press"); render(); const n=list.querySelector(`[data-opt="${o.id}"]`); if(n) n.focus({preventScroll:true}); say(o); };
+        // a click on the left arrow (or just short of it) steps back; anywhere else, and Enter, on
+        b.onclick=e=>{ e.stopPropagation(); const a=b.querySelector(".prev").getBoundingClientRect(); step(e.detail && e.clientX<a.right+8 && e.clientX>a.left-16 ? -1 : 1); };
+        b.addEventListener("keydown", e=>{
+          if(e.code==="ArrowLeft" || e.code==="ArrowRight"){ e.preventDefault(); e.stopPropagation(); step(e.code==="ArrowLeft" ? -1 : 1); }
+          else if(e.code==="ArrowUp" || e.code==="ArrowDown"){ e.preventDefault(); e.stopPropagation();
+            const all=[...list.querySelectorAll(".opt")], at=all.indexOf(b), n=all[at+(e.code==="ArrowUp"?-1:1)]; if(n) n.focus(); }
+        });
+        b.addEventListener("focus", ()=>say(o)); b.addEventListener("mouseenter", ()=>say(o));
+        list.appendChild(b);
+      });
+    });
+    if(had){ const n=list.querySelector(`[data-opt="${had}"]`); if(n) n.focus({preventScroll:true}); }
+  };
+  box.refresh=render;
+  render();
+  return box;
+}
+// every list on the page drawn again: what's offered depends on the minichord (a modifier, knobs, the
+// screen's own buttons), so when that changes, and when the options page comes up
+const optsRefresh=()=>document.querySelectorAll(".opts").forEach(b=>b.refresh && b.refresh());
+mc.addEventListener("device", optsRefresh);
+mc.addEventListener("status", optsRefresh);
+// an option set from outside the list (the minichord's minor row sets the speed): set, and shown
+function optSet(id, i){
+  const o=ARCADE_OPTS.find(x=>x.id===id), k=cabKind(); if(!o || !o.on(k) || i>=o.vals(k).length) return false;
+  o.set(i, k); optsRefresh(); return true;
 }
 
 
 // ---------- an arcade game's own settings ----------
 // On an arcade game's page the settings button opens the arcade's settings, not the Practice Room's:
-// sounds, speed, beginner mode, the screen, the harp's layout and sound, the steering knob, the size
-// of the lettering, the game's own options, and the double tap on the modifier. Everything is saved
-// and shared with the title screens' options; the speed and the game's options apply from the next
-// game, with the score multiplier they give.
+// every option the game offers (ARCADE_OPTS), its title screen's and the arcade's own: sounds, full
+// screen, bonus rounds and the double tap. Everything is saved and shared with the title screens'
+// options; the game's options apply from the next game, with the score multiplier they give.
 function arcadeSettings(){
   const k=settings.mode, dlg=document.createElement("dialog"); dlg.id="arcadeDlg"; dlg.className="arcadedlg";
-  const rows=[];
-  const choice=(label, list, get, set, note)=>rows.push({label, list, get, set, note});
-  choice("SOUNDS", ["ON","OFF"], ()=>settings.sounds?0:1, i=>{ settings.sounds=!i; save(); });
-  if(k!=="sweeper") choice("SPEED", SPEEDS.map(x=>x[0].toUpperCase()), ()=>+saved.speed||0, i=>{ saved.speed=i; save(); }, "FROM THE NEXT GAME");
-  if(k==="command") choice("NOTES AT ONCE", ["FEW","SOME","MANY","SWARM"], ()=>saved.hcDensity??1, i=>{ saved.hcDensity=i; save(); }, "FROM THE NEXT GAME");
-  if(k==="breakout") choice("PADDLE", ["NARROW","NORMAL","WIDE"], ()=>saved.boPaddle??1, i=>{ saved.boPaddle=i; save(); }, "FROM THE NEXT GAME");
-  if(k==="chomp") choice("CHORDS", ["LATCH","HOLD ×1.25"], ()=>saved.ccHold?1:0, i=>{ saved.ccHold=i; save(); }, "LATCHED, A CHORD STAYS ON TILL ANOTHER · HELD SCORES MORE");
-  if(k==="hunt") choice("FIELD GUIDE", ["NAMES","NUMERALS","NONE"], ()=>saved.hdGuide||0, i=>{ saved.hdGuide=i; save(); }, "FROM THE NEXT GAME · LESS TO READ SCORES MORE");
-  if(k!=="command" && typeof playOnScreen==="function" && playOnScreen()) choice("BUTTONS", ["LABELLED","BARE ×1.25"], ()=>saved.tdBare?1:0, i=>{ saved.tdBare=!!i; save(); if(typeof tdDraw==="function") tdDraw(); }, "THE CHORD BUTTONS ON THE SCREEN · BARE SCORES MORE");
-  if(harpOnScreen(k)) choice("HARP AS", ["STRINGS","PIANO KEYS"], ()=>saved.tdPiano?1:0, i=>{ saved.tdPiano=!!i; save(); if(typeof tdSync==="function") tdSync(); }, "THE HARP ON THE SCREEN: THE MINICHORD'S TWELVE STRINGS, OR AN OCTAVE OF A PIANO");
-  if(harpOnScreen(k)) choice("STRINGS", ["LABELLED",harpBareWord(k)], ()=>saved.tdHarpBare?1:0, i=>{ saved.tdHarpBare=!!i; save(); if(typeof tdDraw==="function") tdDraw(); }, HARP_BY_NAME.has(k) ? "THE HARP'S STRINGS ON THE SCREEN · BARE SCORES MORE" : "THE HARP'S STRINGS ON THE SCREEN");
-  choice("BEGINNER", ["OFF","SHOW WHAT TO PRESS"], ()=>saved.beginner?1:0, i=>{ saved.beginner=!!i; save(); helperSync(true); }, "NO HIGH SCORES WITH IT ON");
-  choice("SCREEN", ["FLAT","CRT"], ()=>saved.crt?1:0, i=>{ saved.crt=!!i; save(); crtSync(); });
-  choice("FULL SCREEN", ["AUTO","CABINET","PLAIN"], ()=>FS_MODES.indexOf(fsMode()), i=>fsModeSet(i), "AUTO GOES PLAIN WHERE THE GRAPHICS CAN'T KEEP UP");
-  choice("BONUS ROUNDS", ["ON","OFF"], ()=>saved.bonus===false?1:0, i=>{ saved.bonus=!i; save(); }, "A MINI-GAME EVERY TWO LEVELS");
-  if(["blaster","asteroids","breakout","fifths","command"].includes(k))
-    choice("LETTERING", SIZES.map(x=>x[0]), ()=>saved.chordSize??1, i=>{ saved.chordSize=i; save(); applyChordSize(); });
-  if(["snake","stack","command","asteroids","fifths","sweeper","sight","chomp"].includes(k))
-    choice("HARP", HARP_LAYOUTS.map(([t])=>t.replace("STANDARD ","")), harpLayoutIndex, i=>{ saved.harpLayout=HARP_LAYOUTS[i][1]; save(); if(["snake","stack","chomp"].includes(k)) kmRestrip(); else helperSync(true); });
-  if(["snake","stack","sweeper","racer","chomp"].includes(k))
-    choice("HARP SOUND", ["NORMAL","QUIET","OFF"], ()=>saved.harpSound??1, i=>{ saved.harpSound=i; save(); if(blast && blast.setupDone) kmHarp(); });
-  if(["breakout","fifths","stack","racer"].includes(k))
-    choice("STEER WITH", ["CHORD KNOB","HARP KNOB","MOD KNOB"], ()=>steerKnob(), i=>{ saved.steerKnob=i; save(); });
-  choice("DOUBLE TAP", ["FLIPS THE MODIFIER","AS MY PRESET HAS IT"], ()=>settings.modTap==="off"?1:0, i=>{ settings.modTap=i?"off":"on"; save(); if(!i) modTap(); });
-  dlg.innerHTML=`<h2>${LABELS[k].toUpperCase()} · SETTINGS</h2><div class="arows"></div><p class="amult"></p><div class="aend"><button type="button" class="aclose">DONE</button></div>`;
-  const box=dlg.querySelector(".arows"), mult=dlg.querySelector(".amult");
-  const upd=()=>{ mult.textContent=`SCORE ×${diffMult()} FOR THESE SETTINGS`; };
-  rows.forEach(r=>{
-    const row=document.createElement("div"); row.className="arow";
-    row.innerHTML=`<span class="alabel">${r.label}${r.note?`<small>${r.note}</small>`:""}</span><div class="achoices"></div>`;
-    const g=row.querySelector(".achoices");
-    const mark=()=>[...g.children].forEach((b,i)=>b.classList.toggle("on", i===r.get()));
-    r.list.forEach((t,i)=>{ const b=document.createElement("button"); b.type="button"; b.textContent=t; b.onclick=()=>{ r.set(i); mark(); upd(); }; g.appendChild(b); });
-    mark(); box.appendChild(row);
-  });
-  upd();
+  dlg.innerHTML=`<h2>${LABELS[k].toUpperCase()} · SETTINGS</h2><p class="anote">THE GAME'S OPTIONS APPLY FROM THE NEXT GAME</p><div class="aend"><button type="button" class="aclose">DONE</button></div>`;
+  const opts=arcadeOpts(["game","setup","arcade"]);
+  dlg.insertBefore(opts, dlg.querySelector(".aend"));
+  // the title screen behind shows the same options: it follows what's changed here
   dlg.querySelector(".aclose").onclick=()=>dlg.close();
+  dlg.addEventListener("close", optsRefresh);
   dlg.addEventListener("click", e=>{ if(e.target===dlg) dlg.close(); });   // a click outside closes it
   document.body.appendChild(dlg);
   return dlg;

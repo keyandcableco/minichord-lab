@@ -57,10 +57,12 @@ const t=inv, {check, sleep}=t;
     w.eval("saved.tdBare=false; tdDraw()"); await sleep(20);
     check("labelled again, they say their chords", d.querySelector('.tdcell[data-r="1"][data-c="1"]').textContent==="Cm");
     // the choice, on a title screen's options
-    const opts=d.createElement("div"); opts.innerHTML='<div class="levels"></div>'; w.eval("window.__opts=null"); w.__opts=opts;
-    w.eval("beginnerRow(window.__opts)");
-    check("the options offer the buttons labelled or bare", [...opts.querySelectorAll(".optlabel")].some(l=>l.textContent==="BUTTONS") && /BARE ×1.25/.test(opts.textContent));
-    check("but not the strings, with no harp on the deck", ![...opts.querySelectorAll(".optlabel")].some(l=>l.textContent==="STRINGS")); }
+    const opts=w.eval('arcadeOpts(["game","setup"])'), line=id=>opts.querySelector(`.opt[data-opt="${id}"]`);
+    check("the options offer the buttons labelled or bare", !!line("buttons") && /LABELLED/.test(line("buttons").textContent));
+    line("buttons").click();
+    check("bare, a quarter more", /BARE/.test(line("buttons").textContent) && /×1.25/.test(line("buttons").querySelector(".ox").textContent) && w.eval("saved.tdBare")===true);
+    line("buttons").click();
+    check("but not the strings, with no harp on the deck", !line("strings")); }
 
   // ---------- the harp's strings bare ----------
   { const {w, d}=bo;
@@ -71,10 +73,9 @@ const t=inv, {check, sleep}=t;
     w.eval("saved.tdHarpBare=true; tdDraw()"); await sleep(20);
     check("played bare, they show nothing, as on the instrument", strings().length===12 && strings().every(t=>t===""));
     check("and score a quarter more", Math.abs(w.eval("diffMult('breakout')")-m0*1.25)<.02, `${m0} → ${w.eval("diffMult('breakout')")}`);
-    check("but not in Chord Hunt, whose harp is only low or high", w.eval("HARP_BY_NAME.has('hunt')")===false && w.eval("harpBareWord('hunt')")==="BARE");
-    const opts=d.createElement("div"); opts.innerHTML='<div class="levels"></div>'; w.__opts=opts;
-    w.eval("beginnerRow(window.__opts)");
-    check("the options offer the strings labelled or bare", [...opts.querySelectorAll(".optlabel")].some(l=>l.textContent==="STRINGS"));
+    check("but not in Chord Hunt, whose harp is only low or high", w.eval("HARP_BY_NAME.has('hunt')")===false && w.eval("ARCADE_OPTS.find(o=>o.id==='strings').vals('hunt')[1][1]")===1);
+    const opts=w.eval('arcadeOpts(["game","setup"])');
+    check("the options offer the strings labelled or bare", !!opts.querySelector('.opt[data-opt="strings"]'));
     check("the points page lists it", w.eval("multRows('breakout').some(([n])=>n==='STRINGS')"));
     w.eval("saved.tdHarpBare=false; tdDraw()"); await sleep(20);
     check("labelled again, they say their notes", strings()[0]==="C");

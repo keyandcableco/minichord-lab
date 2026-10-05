@@ -90,12 +90,6 @@ function boBar(){
 }
 const BOMENU_G={key:"breakout", title:"CHORD BREAKOUT",
   rules:()=>`<p>${playOnScreen() ? "MOVE THE PADDLE: DRAG THE KNOB UNDER THE GAME, OR A FINGER ACROSS THE FIELD." : knobsReady() ? "TURN A KNOB ON THE MINICHORD TO MOVE THE PADDLE (THE MOD KNOB, OR CHOOSE ANOTHER)." : "MOVE THE PADDLE WITH THE MOUSE OR THE ARROW KEYS. WITH FIRMWARE 17, A KNOB ON THE MINICHORD DOES IT."}</p><p>THE BALL CRACKS A CHORD BRICK. PLAY ITS CHORD BEFORE THE BALL COMES BACK AND IT BREAKS.</p><p>MISS IT AND THE BRICK HEALS. LET THE BALL PAST AND IT COSTS A LIFE.</p><p>CATCH A FALLING CAPSULE WITH THE PADDLE FOR A POWER-UP.</p><p>THE LAST FEW BRICKS ARE THE CODA: THEY OPEN UP, SO PLAY THEIR CHORDS, QUICK, FOR A BONUS.</p><p class="starline">${PIXEL_STAR}BRICKS SCORE FIVE TIMES AS MUCH.</p>`,
-  rows:row=>{
-    mxRow(row, ()=>menuRebuild(()=>boMenu()));
-    row("SPEED", SPEEDS.map(x=>x[0].toUpperCase()), ()=>+saved.speed||0, i=>{ saved.speed=i; save(); });
-    row("LABEL SIZE", SIZES.map(x=>x[0]), ()=>saved.chordSize??1, i=>{ saved.chordSize=i; save(); applyChordSize(); });
-    row("PADDLE", ["NARROW","NORMAL","WIDE"], ()=>saved.boPaddle??1, i=>{ saved.boPaddle=i; save(); });
-  },
   levels:BO_LEVELS, ok:boLevelOk, levelName:boLevelName, needs:"NEEDS THE TEST FIRMWARE", sig:()=>String(knobsReady())+mxAvailable().length,
   begin:i=>beginBreakout(i), demo:()=>boDemo(), modNote:"title"};
 function boMenu(over){ arcadeMenu(BOMENU_G, over); }

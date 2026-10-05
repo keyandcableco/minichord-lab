@@ -87,7 +87,7 @@ function load(slug, {storage, every}={}){
   async function start(level=0, {speed}={}){
     key("KeyJ"); await sleep(30);
     const ov=overlay();
-    if(speed!=null){ const sp=[...ov.querySelectorAll(".cab-options .optrow")].find(r=>/SPEED/.test(r.textContent)); sp && sp.querySelectorAll("button")[speed].click(); }
+    if(speed!=null) w.eval(`optSet("speed", ${speed})`);
     [...ov.querySelectorAll(".cab-options .levels")].pop().querySelectorAll("button")[level].click();
     await sleep(150);
     return sb.arcade;

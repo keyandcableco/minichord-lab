@@ -40,7 +40,8 @@ const SL_TUNES=[
 ];
 const SL_KEYS=[1,2,3,4,-1,-2,-3,-4];                      // key signatures, in fifths: G D A E, F B♭ E♭ A♭
 const SL_TONIC={0:"C",1:"G",2:"D",3:"A",4:"E",5:"B",6:"F♯","-1":"F","-2":"B♭","-3":"E♭","-4":"A♭","-5":"D♭","-6":"G♭"};
-const SL_WIN=38, SL_DEAD=14;                               // pixels either side of the playhead: in time, and dead on
+const SL_DEAD=14;                                          // pixels either side of the playhead to be dead on
+const slWin=()=> SL_WINS[saved.slTight && blast && blast.phase==="play" ? 1 : 0];   // and to be in time: TIMING tight, narrower
 const SL_INV=["ROOT","1ST INV","2ND INV"];
 const slSpeed=()=>(58+6*(blast.level||0))/speedMul();    // pixels a second, the same in the demo as in play
 function genSight(){
@@ -101,7 +102,7 @@ function slDrawStaff(){
     slSig(blast.keyF||0, clef, 62);
   }
   const top=blast.yT-SP, bot=(L.clefs.length>1?blast.yB:blast.yT)+5*SP;
-  slSvg("rect",{x:blast.ph-SL_WIN,y:top,width:SL_WIN*2,height:bot-top,class:"swin"});
+  slSvg("rect",{x:blast.ph-slWin(),y:top,width:slWin()*2,height:bot-top,class:"swin"});
   slSvg("line",{x1:blast.ph,x2:blast.ph,y1:top-6,y2:bot+6,class:"shead"});
   if(L.inversions){ const t=slSvg("text",{x:blast.ph,y:top-14,class:"sinv"}); t.textContent=`VOICING: ${SL_INV[blast.inv||0]}`; blast.invEl=t; } else blast.invEl=null;
   blast.noteLayer=slSvg("g",{});
@@ -134,7 +135,6 @@ function slBar(){
 const SLMENU_G={key:"sight", title:"SIGHT LINE",
   rules:()=>`<p>NOTES SCROLL ALONG THE STAFF TO THE PLAYHEAD. PLUCK EACH ONE ON THE HARP, AND PLAY EACH CHORD ON THE BUTTONS, AS IT REACHES THE LINE: DEAD ON SCORES DOUBLE.</p><p>THE HARP FOLLOWS THE STAFF: A NOTE WRITTEN HIGH OR LOW SOUNDS IN ITS OWN OCTAVE.</p><p>A KEY SIGNATURE'S SHARPS AND FLATS APPLY TO EVERY NOTE ON THEIR LETTER. WHEN THE KEY CHANGES, SET THE MINICHORD TO IT.</p><p>A CHORD WITH ITS 3RD OR 5TH IN THE BASS IS AN INVERSION: SWING THE VOICING WITH A KNOB, OR ↑ ↓.</p>`,
   stat:()=>`NOTES ${blast.hits}`,
-  rows:row=>{ row("SPEED", SPEEDS.map(x=>x[0].toUpperCase()), ()=>+saved.speed||0, i=>{ saved.speed=i; save(); }); },
   levels:SL_LEVELS, begin:i=>beginSight(i), demo:()=>slDemo(), modNote:false};
 function slMenu(over){ arcadeMenu(SLMENU_G, over); }
 function beginSight(level){
@@ -199,7 +199,7 @@ function slTick(now){
       n.x-=slSpeed()*dt; n.el && n.el.setAttribute("transform",`translate(${n.x},0)`);
       if(n.change && !n.done && n.x<=blast.ph){ n.done=true; slKeyChange(n.f, n); }
       if(blast.phase==="demo" && !n.done && !n.change && n.x-blast.ph<=4) slDemoHit(n);     // reached or passed: a slow frame can step clean over the line, and a note never read would leave the demo running forever
-      if(blast.phase==="play" && !n.done && !n.change && n.x < blast.ph-SL_WIN) slMiss(n);
+      if(blast.phase==="play" && !n.done && !n.change && n.x < blast.ph-slWin()) slMiss(n);
       if(n.x < -40){ n.gone=true; n.el && n.el.remove(); } }
     blast.notes=blast.notes.filter(n=>!n.gone);
     const next=blast.notes.find(n=>!n.done && !n.change);
@@ -230,7 +230,7 @@ function slKeyChange(f, n){
   sfx("level");
 }
 // what's at the line, if anything
-const slAt=()=>blast.notes.filter(n=>!n.done && !n.change && Math.abs(n.x-blast.ph)<=SL_WIN).sort((a,b)=>a.x-b.x)[0];
+const slAt=()=>blast.notes.filter(n=>!n.done && !n.change && Math.abs(n.x-blast.ph)<=slWin()).sort((a,b)=>a.x-b.x)[0];
 function slScore(n){
   n.done=true; n.el && n.el.classList.add("hit");
   const dead=Math.abs(n.x-blast.ph)<=SL_DEAD, mult=Math.min(4,1+Math.floor(blast.streak/8));

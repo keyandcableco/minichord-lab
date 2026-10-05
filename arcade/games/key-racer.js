@@ -219,11 +219,6 @@ const krSteer=()=> saved.krSteer===1 && knobsReady() ? "knob" : saved.krSteer===
 const KRMENU_G={key:"racer", title:"KEY RACER",
   rules:()=>`<p>THE KEY'S CHORDS ARE FUEL: DRIVE THROUGH THEM. CHORDS OUT OF THE KEY ARE OIL: STEER ROUND THEM.</p><p>STEER ON THE HARP: ITS LOW STRINGS ARE THE LEFT OF THE ROAD, ITS HIGH ONES THE RIGHT. OR STEER WITH A KNOB, FOR A QUARTER MORE.</p><p>FROM THE FOURTH CIRCUIT A GATE ONLY OPENS IF YOU PLAY ITS CHORD ON THE WAY IN.</p><p>PLAY A CAR'S CHORD AND IT PULLS OVER. A CAR OUT OF THE KEY HAS TO BE STEERED ROUND. V THEN I IS THE TURBO.</p><p>GRAND PRIX: QUALIFY BY PLAYING THE KEY'S SEVEN CHORDS, THEN RACE THE CIRCUIT. ENDURANCE: ROUND THE CIRCLE OF FIFTHS AGAINST THE CLOCK, A KEY CHANGE AT EVERY CHECKPOINT. PLAY THE NEW KEY'S I BEFORE IT FOR EXTRA TIME.</p>`,
   stat:()=> blast.mode==="endurance" ? `LAP ${blast.lap||1} · PASSED ${blast.passed||0}` : `CHAMPIONSHIP ${blast.champ||0} PTS`,
-  rows:row=>{
-    row("RACE", ["GRAND PRIX","ENDURANCE"], ()=>saved.krMode?1:0, i=>{ saved.krMode=i; save(); });
-    row("STEER", ["HARP","KNOB ×1.25"], ()=>saved.krSteer?1:0, i=>{ saved.krSteer=i; save(); });
-    row("SPEED", SPEEDS.map(x=>x[0].toUpperCase()), ()=>+saved.speed||0, i=>{ saved.speed=i; save(); });
-  },
   levels:KR_LEVELS, begin:i=>beginRacer(i), demo:()=>krDemo(), modNote:"title"};
 function krMenu(over){ arcadeMenu(KRMENU_G, over); }
 function beginRacer(level){

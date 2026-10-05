@@ -57,11 +57,6 @@ function mxApply(){
   ensure(39,1);
   if(c==="alternate" && hasSetting(202)) for(let i=0;i<7;i++) ensure(202+i,0);
 }
-// the option row, for a game's menu; picking redraws the menu, so the level names follow
-function mxRow(row, redraw){
-  const av=mxAvailable(); if(av.length<2) return;
-  row("CHORDS", av.map(([t])=>t), ()=>Math.max(0, av.findIndex(([,v])=>v===mxChoice())), i=>{ saved.chordMatrix=av[i][1]; save(); if(redraw) redraw(); });
-}
 const mxStandard=()=>mxChoice()==="standard";
 // a chord type as a game names it, dealt on the chosen matrix (on the standard one it stays as it is)
 const mxQ=q=> mxStandard() ? q : mxMap(q);

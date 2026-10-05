@@ -51,17 +51,6 @@ mc.addEventListener("knob", e=>{
 // the mouse steers only when the knobs can't: no minichord sending them, and none turned lately (on a
 // virtual minichord a finger on the field steers as well as its knob, but not straight after the knob)
 const mouseMaySteer=()=> (!knobsReady() || !!mc.virtual) && performance.now()-(blast?.knobAt||0)>4000;
-// the knob games' title screens: which knob steers
-function knobRow(opts){
-  const r=document.createElement("div"); r.className="optrow"; const l=document.createElement("span"); l.className="optlabel"; l.textContent="STEER WITH";
-  const g=document.createElement("div"); g.className="levels";
-  const mark=b=>{ [...g.children].forEach(x=>{ x.style.background=""; x.style.color=""; }); b.style.background="#F1E8D2"; b.style.color="#16132A"; };
-  KNOB_NAMES.forEach((n,i)=>{ const b=document.createElement("button"); b.textContent=`${n} KNOB`; if(steerKnob()===i) mark(b);
-    b.onclick=()=>{ saved.steerKnob=i; save(); mark(b); }; g.appendChild(b); });
-  r.append(l,g);
-  const before=opts.querySelector("p.blink") || [...opts.querySelectorAll(".levels")].pop();
-  opts.insertBefore(r, before);
-}
 
 // ---------- the harp as notes ----------
 // the harp plays notes, not a d-pad: chromatic from C, untransposed, at its own volume (Chord
