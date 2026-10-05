@@ -90,6 +90,19 @@ const t=require("./harness").load("key-fleet");
   check("out of order, or another progression's chords, it doesn't", !plays("deceptive","C",["Am","G7","Dm"]) && !plays("turnaround","C",["Dm","G7","Am"]) && !plays("secondary","C",["Dm","G7","C"]));
   check("a key's chords in any order ending on I, or its V7 then I", plays("major","C",["G","F","C"]) && plays("major","C",["G7","C"]) && plays("minor","A",["E7","Am"]) && !plays("major","C",["F","C","G"]) && !plays("major","C",["F","C"]));
   check("a whole key: IV, V and I, ending on I", plays("whole","C",["F","G","C"]) && plays("whole","C",["F","Dm","G","C"]) && !plays("whole","C",["Am","Dm","C"]));
+  // levels 9 to 11: each ship's hits in its colour, the fleet listed by colour with its lengths
+  a.level=8; const progFlags=new Set(); let distinct=0;
+  for(let n=0;n<20;n++){ sb.kfWave(); const fl=a.ships.map(s=>s.flag && s.flag.name); if(new Set(fl).size===a.ships.length && fl.every(Boolean)) distinct++;
+    a.ships.filter(s=>w.eval(`!!KF_PROGS[${JSON.stringify(s.kind)}]`)).forEach(s=>progFlags.add(s.flag.name)); }
+  check("there each ship flies its own colour", distinct===20, distinct);
+  check("handed out at random, so a colour doesn't say what kind of ship it is", progFlags.size>=3, [...progFlags].join(","));
+  const fs=a.ships[1], [fc,fr]=fs.cells[0]; a.shots.set(fc+","+fr,"hit"); fs.hits.add(fc+","+fr); w.eval("kfDraw()");
+  const cell=[...t.d.querySelectorAll(".kfcell.hit")].find(e=>e.style.getPropertyValue("--ship"));
+  check("a hit is marked in its ship's colour", !!cell && cell.classList.contains("flag") && cell.style.getPropertyValue("--ship")===fs.flag.c, cell && cell.getAttribute("style"));
+  const roster=[...t.d.querySelectorAll(".kffleet li")].map(e=>e.textContent);
+  check("the fleet's listed by colour, each ship's length and hits", roster.length===a.ships.length && roster.some(r=>r.startsWith(fs.flag.name) && r.includes(`${fs.cells.length} CHORDS · 1 HIT`)), roster.join(" | "));
+  a.level=7; sb.kfWave(); w.eval("kfDraw()");
+  check("before level 9 ships fly no colours and no fleet's listed", a.ships.every(s=>!s.flag) && !t.d.querySelector(".kffleet"));
   check("a progression's chords apart in a row are drawn as two boats", w.eval("kfRuns([[2,0],[0,0],[4,1],[5,1]]).length")===3);
   // from level 7 a key can be called before a hit: proved by the chart, a big bonus; guessed, less;
   // wrong, two torpedoes

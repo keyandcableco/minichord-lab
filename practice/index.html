@@ -855,6 +855,9 @@ html.arcadepage .gamebar{align-items:flex-end}
 .kfcell small{position:absolute;left:5px;top:4px;font:400 .45rem "Press Start 2P","Minichord Lab Accidentals",monospace;color:rgba(241,232,210,.45)}
 .kfcell.hit{background:rgba(255,75,62,.18)}
 .kfcell.hit b{font:400 1.5rem "Press Start 2P",monospace;color:#FF8A3D;text-shadow:0 0 10px #FF4B3E;animation:blink .6s steps(2) infinite;font-weight:400}
+/* the last levels: a hit in its ship's colour (key-fleet.js, KF_FLAGS) */
+.kfcell.hit.flag{background:color-mix(in srgb,var(--ship) 20%,transparent)}
+.kfcell.hit.flag b{color:var(--ship);text-shadow:0 0 10px var(--ship)}
 .kfcell.miss i{font:400 1.6rem "Press Start 2P",monospace;color:#7FE9FF;font-style:normal}
 .kfcol{position:absolute;transform:translate(-50%,-50%);font:400 .6rem "Press Start 2P","Minichord Lab Accidentals",monospace;color:#9A93B5}
 .kfrow{position:absolute;transform:translate(-100%,-50%);font:400 .45rem "Press Start 2P",monospace;color:#9A93B5}
@@ -883,6 +886,10 @@ html.arcadepage .gamebar{align-items:flex-end}
 .kfcount.done{color:#6E6890;text-shadow:none}
 .kfside .kfhow{color:#9A93B5;margin-top:14px;font-size:.92em}
 /* CALL IT: the harp's job, on the screen; lit while a call's open, with what's been played */
+.kfside ul.kffleet{margin:8px 0 0}
+.kfside .kffleet li{color:var(--ship)}
+.kfside .kffleet li i{display:inline-block;width:10px;height:10px;margin-right:6px;background:var(--ship);vertical-align:-1px}
+.kfside .kffleet li.sunk{opacity:.5;text-decoration:line-through}
 .kfside .kfcallbtn{display:block;margin:10px 0 0;padding:8px 12px;font:400 .55rem "Press Start 2P",monospace;color:#16132A;background:#FFD35A;border:0;border-bottom:3px solid #B8902A;border-radius:4px;cursor:pointer}
 .kfside .kfcallbtn:hover{background:#FFE08A}
 .kfside .kfcallbtn.on{background:#7FE9FF;border-bottom-color:#3A9AB0}

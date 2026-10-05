@@ -22,7 +22,9 @@
 // first levels a key can only be called once one of its chords is hit; from level 7 it can be called
 // sight unseen, and a wrong call costs two torpedoes, so calling keys at random runs the player dry.
 // The last fleets sail as progressions (I–vi–ii–V, the Andalusian cadence…), a key's chords as they're
-// played together, landing scattered across the chart: their shape no longer gives the key away.
+// played together, landing scattered across the chart: their shape no longer gives the key away. Each
+// ship there flies a colour, its hits are marked in it, and the fleet's listed with each ship's length,
+// as Battleship's are: which hits go together is told, what they are isn't.
 // The sea is a line of fifths. The plain buttons, F C G D A E B, are its middle; the modifier reaches
 // past both ends, flattening B, E, A, D and G to the flat side and sharpening F, C and G to the sharp
 // side. The first levels sail only the plain buttons; the later ones open the flat waters, the sharp
@@ -48,10 +50,13 @@ const KF_LEVELS=[
   {n:"Puzzle waters", fleet:["major","minor","cadence"], torps:9, counts:true, islands:1, span:"near"},
   {n:"Whole keys", fleet:["whole","any"], torps:12, islands:1, span:"near"},
   {n:"Chains and puzzles", fleet:["chain","cadence","key"], torps:10, counts:true, islands:1, span:"near"},
-  {n:"Flat progressions", fleet:["prog","key","key"], torps:12, islands:1, span:"flat"},
-  {n:"Sharp progressions", fleet:["prog","prog","key"], torps:12, islands:1, span:"sharp"},
-  {n:"Every key", fleet:["prog","prog","whole"], torps:15, islands:2, counts:true, span:"all"},
+  {n:"Flat progressions", fleet:["prog","key","key"], torps:12, islands:1, span:"flat", flags:true},
+  {n:"Sharp progressions", fleet:["prog","prog","key"], torps:12, islands:1, span:"sharp", flags:true},
+  {n:"Every key", fleet:["prog","prog","whole"], torps:15, islands:2, counts:true, span:"all", flags:true},
 ];
+// flags: the ships' colours, handed out at random (so a colour never says which kind of ship it is),
+// told apart by most colour-blind eyes too, and named in the fleet list
+const KF_FLAGS=[{name:"GOLD", c:"#FFD35A"}, {name:"PINK", c:"#FF5AA0"}, {name:"VIOLET", c:"#9A8CFF"}];
 // blind: from here on a key can be called before any of its chords is hit
 KF_LEVELS.forEach((L,i)=>{ if(i>=6) L.blind=true; });
 // Progressions: a key's chords as they're played together, each [columns from the tonic, row]. They
@@ -223,7 +228,8 @@ function kfDraw(){
   for(let r=0;r<3;r++) for(let c=0;c<KF_COLS.length;c++){
     const shot=blast.shots.get(kfKey(c,r)), x=blast.sx+c*cw, y=blast.sy+r*rh;
     if(blast.islands && blast.islands.has(kfKey(c,r))){ h+=`<span class="kfcell island" style="left:${x}px;top:${y}px;width:${cw}px;height:${rh}px"><small>${KF_COLS[c]}${KF_ROWS[r]}</small>${KF_ROCK}</span>`; continue; }
-    h+=`<span class="kfcell${shot?" "+shot:""}" style="left:${x}px;top:${y}px;width:${cw}px;height:${rh}px"><small>${KF_COLS[c]}${KF_ROWS[r]}</small>${shot==="hit"?"<b>✹</b>":shot==="miss"?"<i>·</i>":""}</span>`;
+    const flag=shot==="hit" && L.flags && blast.ships.find(s=>s.flag && s.cells.some(([sc,sr])=>sc===c && sr===r))?.flag;
+    h+=`<span class="kfcell${shot?" "+shot:""}${flag?" flag":""}" style="left:${x}px;top:${y}px;width:${cw}px;height:${rh}px${flag?`;--ship:${flag.c}`:""}"><small>${KF_COLS[c]}${KF_ROWS[r]}</small>${shot==="hit"?"<b>✹</b>":shot==="miss"?"<i>·</i>":""}</span>`;
   }
   // sunk ships show themselves, named for their key
   for(const s of blast.ships){ if(!s.sunk && blast.phase!=="reveal") continue;
@@ -278,6 +284,9 @@ function kfSide(){
   if(!blast.sideEl) return;
   const L=KF_LEVELS[blast.level||0], afloat=blast.ships.filter(s=>!s.sunk).length;
   let h=`<div class="kftorps"><span>TORPEDOES</span><div>${"<i></i>".repeat(Math.max(0,blast.torps))}</div></div><p>SHIPS AFLOAT: ${afloat}</p>`;
+  // the fleet, by colour: each ship's length, and how much of it is found
+  if(L.flags) h+=`<ul class="kffleet">${KF_FLAGS.map(f=>blast.ships.find(s=>s.flag===f)).filter(Boolean).map(s=>
+    `<li class="${s.sunk?"sunk":""}" style="--ship:${s.flag.c}"><i></i>${s.flag.name} · ${s.cells.length} CHORDS · ${s.sunk?"SUNK":s.hits.size+" HIT"}</li>`).join("")}</ul>`;
   if(blast.phase==="play"){ const cl=blast.calling;
     h+=`<button type="button" class="kfcallbtn${cl?" on":""}">${cl?"CALLING…":"CALL IT"}</button>`;
     if(cl) h+=`<p class="kfcalling">${cl.names.length ? cl.names.join(" → ") : "PLAY THE SHIP'S CHORDS"}</p>`; }
@@ -324,7 +333,8 @@ function beginFleet(level){
 // a new fleet: the ships hidden, the sea clear, the torpedoes loaded
 function kfWave(){
   const L=KF_LEVELS[blast.level]; kfSetSea(L); kfLayout();
-  blast.ships=kfFleet(L); blast.shots=new Map(); blast.lastHit=null; blast.busy=false; blast.phase="play"; kfCallEnd();
+  blast.ships=kfFleet(L); blast.shots=new Map();
+  if(L.flags){ const f=[...KF_FLAGS].sort(()=>Math.random()-.5); blast.ships.forEach((s,i)=>s.flag=f[i]); } blast.lastHit=null; blast.busy=false; blast.phase="play"; kfCallEnd();
   blast.torps=Math.max(5, Math.round(L.torps*(KF_TORPS[saved.kfTorps??0]??1)));   // fewer torpedoes, chosen on the title, score more
   kfBar(); kfDraw();
 }
