@@ -50,6 +50,7 @@ its own before it counts: the checks keep real time, and a busy machine can make
 | `minichord-contact` | a gentle press whose contact flickers is read as its one chord, quickly; firm presses, new chords and letting go as before |
 | `harp-off` | a harp string let go is a `harpoff`, from the harp's port and its channel in single port mode; a chord note's release stays the chord's |
 | `harp-held` | a zone is held from a string's touch to its release, the newest arrow held the way, a zone held while any of its strings is, all let go when the page loses the focus; on firmware 22 and up the harp sounds at the touch and lets go at the lift, with no palm mute, given back after |
+| `voicing` | the firmware's chord inversion (37) and spacing (38), ported: voices stacked from the inversion's tone, drops counted from the top, a spread, a drop with no room not made; the screen's minichord voices by them |
 | `counterpoint` | `core/counterpoint.js` on its own: Choir's parallels as they were; intervals by degree in the mode (d5, A4, ficta); the first, second and fourth species' rules, each caught at its bar (suspensions: 7–6 and 4–3 above, 2–3 below, resolved down by step; fifths on the upbeats; ties not counted as repeats); the solver's lines break no rule, in every mode, above and below |
 | `pixel-minichord` | what's made from the pixel minichord's grid is up to date; Ben holds it |
 | `chord-matrix-stack` | the alternate matrix sets the layout and deals sus chords that light and clear; the helper's buttons; the custom matrix follows the preset's slots |

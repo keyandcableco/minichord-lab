@@ -253,8 +253,9 @@ function vmSound(){
   vm.sounding=key; if(ch) vm.soundAt=now;
   let v=[];
   if(ch){
-    const tones=(VL_TONES[ch.q]||FORM[ch.q].map(f=>f[1]));
-    v=firmwareVoicing(ch.pc, tones, null, mc.params[112]??12).map(x=>x+48);
+    const tones=(VL_TONES[ch.q]||FORM[ch.q].map(f=>f[1])), P=mc.params, inv=P[37]|0, sp=P[38]|0;
+    if(inv || sp){ const base=SHUFFLE_BASE[P[120]??2]??12; v=firmwareStack(ch.pc, tones, inv, sp, base).map(x=>x-base+48); }   // voiced by the inversion and spacing
+    else v=firmwareVoicing(ch.pc, tones, null, P[112]??12).map(x=>x+48);
     if(ch.bass!=null){ const rest=v.slice(1), low=Math.min(...rest); let b=low-mod(low-ch.bass,12); if(b===low) b-=12; v=[b, ...rest]; }
   }
   mc.notes.clear();

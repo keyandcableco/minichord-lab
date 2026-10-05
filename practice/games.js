@@ -508,6 +508,21 @@ function firmwareVoicing(root, tones, prev, range=12){
   for(let v=3;v>=1;v--){ out[v]=pool[idx]; const ni=cI[v][idx][m], nm=cM[v][idx][m]; idx=ni; m=nm; }
   out[0]=pool[idx]; return out;
 }
+// The four chord voices as the minichord's inversion (address 37: 0 root position to 3) and spacing
+// (38: 0 close, 1 drop 2, 2 drop 3, 3 drop 2 and 4, 4 spread) set them, low to high: the firmware's
+// inverted_voice_offset and chord_spacing_shift. The voices stack up through the chord's tones from
+// the inversion's, so a triad's fourth voice is its bass again an octave up; then the spacing takes
+// a voice or two down an octave (counted from the top: drop 2 is the second voice down), or spreads
+// the outer two. A move that would take a voice below one octave above its base, or above eight, isn't
+// made, so pitches count from the base the chord shuffling (120) gives the voices: none for row 0,
+// an octave for 1 to 4 (the default, 2), two for 5, where every move has room.
+const SHUFFLE_BASE=[0,12,12,12,12,24];
+const SPACING_SHIFT=[[0,0,0,0],[0,0,-12,0],[0,-12,0,0],[-12,0,-12,0],[-12,0,0,12]];
+function firmwareStack(root, tones, inversion=0, spacing=0, base=24){
+  const t=[...new Set(tones.map(x=>mod(x,12)))].sort((a,b)=>a-b), n=t.length, shift=SPACING_SHIFT[spacing]||SPACING_SHIFT[0];
+  return [0,1,2,3].map(v=>{ const k=v+inversion, note=base+root+t[k%n]+12*Math.floor(k/n), moved=note+shift[v];
+    return moved<12 || moved>96 ? note : moved; }).sort((a,b)=>a-b);
+}
 const VL_TONES={"":[0,4,7],"m":[0,3,7],"7":[0,4,7,10],"maj7":[0,4,7,11],"m7":[0,3,7,10],"°":[0,3,6],"+":[0,4,8]};
 let smooth={from:null};                 // the chord you're holding: {v:[four pitches, bass to top], name}
 const pcsOf=v=>[...new Set(v.map(p=>mod(Math.round(p),12)))].sort((a,b)=>a-b).join();
