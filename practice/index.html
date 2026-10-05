@@ -272,10 +272,30 @@ const PAGE_SCRIPTS=(function(){
 .opt .ox.warn{color:#FF9FC8;font-size:.85em}
 .opts p.opthint{min-height:3.4em;margin:0 auto;padding:0 .7rem;font-size:.48rem;line-height:1.8;color:#CFC6E6;text-align:center;max-width:none}
 @media (max-width:560px){.opts button.opt{grid-template-columns:minmax(0,1fr) 9em 3.8em;font-size:.5rem;padding:.55rem .4rem;gap:6px}}
-/* the levels: an even grid of equal buttons, each its number and then its name beside it */
-.overlay > .levels,.overlay .cab-levelpage > .levels{display:grid;grid-template-columns:repeat(auto-fill,minmax(11rem,1fr));gap:8px;width:min(720px,96%);max-width:none;justify-content:stretch}
-.overlay > .levels > button,.overlay .cab-levelpage > .levels > button{display:flex;align-items:center;justify-content:flex-start;gap:.7em;text-align:left;min-height:3.4em;padding:.45rem .7rem}
-.overlay > .levels > button small,.overlay .cab-levelpage > .levels > button small{display:block;margin:0;text-align:left;line-height:1.5}
+/* the levels (kit.js levelList): a list like the options, a line each: the level's number in a badge
+   that warms from cyan to pink as the levels get harder, its name, and the chord button that starts it
+   from the minichord; a head line with the best score, and a line at the foot */
+.lvbox{display:flex;flex-direction:column;align-items:stretch;gap:6px;width:min(30rem,100%)}
+.overlay .lvbox .levels{display:flex;flex-direction:column;gap:2px;max-width:none}
+.overlay .lvbox .levels>button{display:grid;grid-template-columns:2.6em minmax(0,1fr) auto .5em;align-items:center;gap:12px;width:100%;margin:0;padding:.4rem .7rem;
+  background:transparent;border:2px solid transparent;color:#F1E8D2;text-align:left;cursor:pointer;font:400 .6rem/1.5 "Press Start 2P","Minichord Lab Accidentals",monospace}
+.overlay .lvbox .levels>button:not(:disabled):hover,.overlay .lvbox .levels>button:focus-visible{background:#1E1838;border-color:#3D3656;outline:none}
+.overlay .lvbox .levels>button:focus-visible{border-color:#FFD35A}
+.lvnum{display:flex;align-items:center;justify-content:center;height:2.2em;background:#0E0B1A;border:2px solid var(--heat,#FFD35A);color:var(--heat,#FFD35A);box-shadow:3px 3px 0 #000;font-size:1.05em}
+.levels>button:not(:disabled):hover .lvnum,.levels>button:focus-visible .lvnum{background:var(--heat,#FFD35A);color:#16132A}
+.lvname{min-width:0;overflow-wrap:anywhere}
+.overlay .lvname small{display:block;margin-top:4px;font-size:.78em;color:#FF9FC8}
+.lvkey{min-width:2.2em;padding:.45em .4em;box-sizing:border-box;text-align:center;background:#3A3150;border:2px solid #0E0A16;border-radius:4px;box-shadow:inset 0 -3px 0 rgba(0,0,0,.35);color:#CFC6E6;font-size:.85em}
+.levels>button:not(:disabled):hover .lvkey,.levels>button:focus-visible .lvkey{background:#FFD35A;color:#16132A}
+.lvbox .arr{width:.5em;height:.8em;background:#4A4468;clip-path:polygon(0 0,100% 50%,0 100%)}
+.levels>button:not(:disabled):hover .arr,.levels>button:focus-visible .arr{background:#FFD35A}
+.overlay .lvbox .levels>button:disabled{opacity:.5}
+.lvbox p.opthint{min-height:1.8em}
+/* a short screen (a phone held sideways): no room for the title over the list, or the credit under it */
+@media (max-height:520px){
+  .cab-levelpage>h3,.cab-levelpage>p.credit{display:none}
+  .overlay .lvbox .levels>button{padding:.25rem .6rem}
+}
 .overlay button{font:400 .62rem "Press Start 2P",monospace;background:#16132A;color:#F1E8D2;border:2px solid #F1E8D2;border-bottom-width:4px;border-radius:0;padding:.55rem .7rem}
 .overlay button:hover{background:#2A2450}
 .overlay button.go{background:var(--felt);border-color:#FFD35A;color:#FFF8E7;font-size:.8rem;padding:.7rem 1.1rem}
@@ -365,6 +385,8 @@ const PAGE_SCRIPTS=(function(){
 .overlay[data-stage="rules"] .cab-title,.overlay[data-stage="rules"] .cab-options,
 .overlay[data-stage="options"] .cab-title,.overlay[data-stage="options"] .cab-rules{display:none!important}
 .overlay[data-stage="title"],.overlay[data-stage="rules"]{background:rgba(7,6,12,.55);cursor:pointer}
+.overlay[data-stage="options"]{background:rgba(7,6,12,.9)}
+.field:has(>.overlay[data-stage="options"]:not([hidden])) .hud{visibility:hidden}   /* the options and levels, clear of the game's own score and hearts */
 .cab-title{display:flex;flex-direction:column;align-items:center;gap:28px}
 .cab-title .cabtitle{font-size:clamp(1.8rem,6vw,3.4rem);line-height:1.25;text-align:center;animation:cabin 1.4s cubic-bezier(.2,1.4,.4,1) both, cabglow 2.4s ease-in-out 1.4s infinite}
 @keyframes cabin{0%{transform:scale(.1) rotate(-6deg);opacity:0;letter-spacing:.8em}100%{transform:none;opacity:1;letter-spacing:.02em}}

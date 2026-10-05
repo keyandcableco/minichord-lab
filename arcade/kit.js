@@ -35,13 +35,8 @@ function arcadeMenu(g, over){
   }
   blast.menuAgain = over ? null : ()=>arcadeMenu(g);              // the title again, should an option change what it offers
   ov.appendChild(arcadeOpts(over ? ["game"] : ["game","setup"]));
-  const lp=document.createElement("p"); lp.className = over ? "" : "blink"; lp.textContent = over ? "OR START FROM" : "CHOOSE A LEVEL"; ov.appendChild(lp);
-  const lv=document.createElement("div"); lv.className="levels";
-  g.levels.forEach((L,i)=>{ const b=document.createElement("button"), ok=g.ok ? g.ok(i) : true, n=g.levelName ? g.levelName(i) : typeof L==="string" ? L : L.n;
-    b.innerHTML=`${i+1}<small>${n}${ok?"":`<br>${g.needs}`}</small>`; b.disabled=!ok; b.onclick=()=>g.begin(i); lv.appendChild(b); });
-  ov.appendChild(lv);
+  ov.appendChild(levelList(g, over, best));
   if(g.ok) blast.menuSig=g.levels.map((_,i)=>g.ok(i)).join()+(g.sig ? g.sig() : "");
-  if(!over && best){ const p=document.createElement("p"); p.textContent=`BEST ${best}`; ov.appendChild(p); }
   if(g.modNote==="always" || (g.modNote==="title" && !over)) arcadeModNote(ov);
   arcadeKeys(ov);
   if(!over) arcadeCredit(ov);
@@ -49,6 +44,38 @@ function arcadeMenu(g, over){
   blast.field.appendChild(ov); blast.overlay=ov;
   if(over) overTimeout(ov, ()=>arcadeMenu(g));
   else cabinet(ov);
+}
+// The levels as a list, the way the options are: a line each, its number in a badge that warms from
+// cyan to pink as the levels get harder, its name, and the chord button that starts it from the
+// minichord (a column's major row: F C G D A E B for levels 1 to 7). A head line says what to do and
+// the best score; a line at the foot says what the level under the finger or the keys needs.
+const LV_HEAT=["#7FE9FF","#7FE08A","#FFD35A","#FF8A3D","#FF5AA0"];
+function levelList(g, over, best){
+  const box=document.createElement("div"); box.className="lvbox";
+  const head=document.createElement("div"); head.className="opthead";
+  head.innerHTML=`<span class="${over?"":"blink"}">${over ? "OR START FROM" : "CHOOSE A LEVEL"}</span>${!over && best ? `<b>BEST ${best}</b>` : ""}`;
+  const lv=document.createElement("div"); lv.className="levels";
+  const hint=document.createElement("p"); hint.className="opthint";
+  const idle=()=> playOnScreen() ? "TAP A LEVEL, OR PLAY THE CHORD BESIDE IT" : "CLICK A LEVEL, OR PLAY THE CHORD BESIDE IT ON THE MINICHORD";
+  hint.textContent=idle();
+  const N=g.levels.length, f=devFifths();
+  g.levels.forEach((L,i)=>{
+    const b=document.createElement("button"), ok=g.ok ? g.ok(i) : true, n=g.levelName ? g.levelName(i) : typeof L==="string" ? L : L.n;
+    const heat=LV_HEAT[Math.round(i/Math.max(1,N-1)*(LV_HEAT.length-1))];
+    const c=COLUMN_LETTERS[i], key=c ? c+ACC[keyAcc(LETTERS.indexOf(c), f)] : "";
+    b.type="button"; b.disabled=!ok; b.style.setProperty("--heat", heat);
+    b.innerHTML=`<span class="lvnum">${i+1}</span><span class="lvname">${n}${ok ? "" : `<small>${g.needs}</small>`}</span>${ok && key ? `<span class="lvkey" title="${key} on the minichord">${key}</span>` : "<span></span>"}<i class="arr next" aria-hidden="true"></i>`;
+    b.setAttribute("aria-label", `Level ${i+1}: ${n}${ok ? "" : `. ${g.needs.toLowerCase()}`}`);
+    b.onclick=()=>g.begin(i);
+    const say=()=>{ hint.textContent = !ok ? `LEVEL ${i+1} ${g.needs}` : key ? `LEVEL ${i+1}: ${playOnScreen() ? "TAP IT" : "CLICK IT"}, OR PLAY ${key} MAJOR` : `LEVEL ${i+1}: ${playOnScreen() ? "TAP IT" : "CLICK IT, OR PRESS ENTER"}`; };
+    b.addEventListener("focus", say); b.addEventListener("mouseenter", say);
+    b.addEventListener("keydown", e=>{ if(e.code!=="ArrowUp" && e.code!=="ArrowDown") return; e.preventDefault(); e.stopPropagation();
+      const all=[...lv.querySelectorAll("button:not(:disabled)")], at=all.indexOf(b), nx=all[at+(e.code==="ArrowUp"?-1:1)]; if(nx) nx.focus(); });
+    lv.appendChild(b);
+  });
+  lv.addEventListener("mouseleave", ()=>{ if(!lv.contains(document.activeElement)) hint.textContent=idle(); });
+  box.append(head, lv, hint);
+  return box;
 }
 // a demo's stage: the DEMO banner with its title and caption, a skip button, the token that stops it,
 // and its clock (step throws once the demo has been stopped, which ends the script)

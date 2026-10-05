@@ -284,7 +284,7 @@ function cabStage(ov, stage){
 // second page; everything else on the first.
 function cabPages(opts, ov){
   const kids=[...opts.children], h3=opts.querySelector("h3");
-  const toLevels=c=> c.classList.contains("levels") || (c.tagName==="P" && (c.classList.contains("blink") || /^BEST /.test(c.textContent) || c.classList.contains("padhint") || c.classList.contains("credit")));
+  const toLevels=c=> c.classList.contains("lvbox") || (c.tagName==="P" && (c.classList.contains("blink") || /^BEST /.test(c.textContent) || c.classList.contains("padhint") || c.classList.contains("credit")));
   const p1=document.createElement("div"); p1.className="cab-optpage";
   const p2=document.createElement("div"); p2.className="cab-levelpage";
   if(h3) p2.appendChild(h3.cloneNode(true));
@@ -297,7 +297,8 @@ function cabPages(opts, ov){
 // the keyboard between the two pages: Enter on to the levels, Escape back to the options
 document.addEventListener("keydown", e=>{
   const ov=blast && blast.overlay; if(!ov || ov.hidden || ov.dataset.stage!=="options" || /INPUT|SELECT|TEXTAREA/.test(document.activeElement?.tagName||"")) return;
-  if(e.code==="Enter" && ov.dataset.optpage!=="levels" && !/BUTTON/.test(document.activeElement?.tagName||"")){ e.preventDefault(); ov.dataset.optpage="levels"; sfx("press"); }
+  if(e.code==="Enter" && ov.dataset.optpage!=="levels" && !/BUTTON/.test(document.activeElement?.tagName||"")){ e.preventDefault(); ov.dataset.optpage="levels"; sfx("press");
+    ov.querySelector(".cab-levelpage .levels button:not(:disabled)")?.focus({preventScroll:true}); }   // so ↑ ↓ and Enter carry on from here
   else if((e.code==="Escape" || e.code==="Backspace") && ov.dataset.optpage==="levels"){ e.preventDefault(); ov.dataset.optpage="options"; sfx("press"); }
 });
 // someone's here: show the options
