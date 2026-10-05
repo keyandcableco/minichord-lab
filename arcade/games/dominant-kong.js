@@ -668,16 +668,16 @@ function kongHarp(pc){
 
 // ---------- drawing ----------
 // Its own screen at the old game's resolution, as Chord Chomp's: the girders 224 across, every sprite
-// and letter drawn pixel by pixel, shown at a whole number of screen pixels a pixel, the view following
-// the player where it must be bigger than the field allows.
-const DK_SMALL=1.6;
+// and letter drawn pixel by pixel, shown at a whole number of screen pixels a pixel. Where the whole
+// stage would come out at one pixel a pixel (a phone, either way up), too small to read a barrel's
+// chord, it's shown twice the size and the view follows the player up and across it, as Chord Chomp's
+// does, the player low in it, to see what's coming down.
+const DK_MINK=2, DK_LOOK=.62;                                          // screen pixels a pixel, at the least; how far down the view the player is kept
 function dkLayout(){
   const fw=fieldW(), fh=fieldH();
   const side = !kmStripShown() ? 16 : (saved.beginner || blast.phase==="demo") ? Math.ceil(Math.min(fw*.3, 300))+20 : (kmLayout().cols===3 ? 150 : 84);
   const aw=fw-side-8, ah=fh-40-28;
-  let k=Math.floor(Math.min(aw/DK_W, ah/DK_H));
-  if(k<DK_SMALL) k=Math.max(k, Math.min(3, Math.floor(Math.max(aw/DK_W, ah/DK_H))));
-  k=Math.max(1,k);
+  const k=Math.max(DK_MINK, Math.floor(Math.min(aw/DK_W, ah/DK_H)));
   const w=Math.min(DK_W, Math.floor(aw/k)), h=Math.min(DK_H, Math.floor(ah/k));
   Object.assign(blast, {k, view:{x:0, y:0, w, h}, scrolls:DK_W>w || DK_H>h, cam:null, girderCv:null});
   blast.scrLeft=8+Math.floor((aw-w*k)/2); blast.scrTop=40+Math.floor((ah-h*k)/2);
@@ -686,14 +686,14 @@ function dkLayout(){
 }
 function dkCamera(dt){
   const v=blast.view, H=blast.hero || {x:DK_W/2, y:DK_H/2};
-  const axis=(len, all, focus, was)=>{
+  const axis=(len, all, focus, at, was)=>{
     if(all<=len) return Math.floor((len-all)/2);
-    const want=Math.max(len-all, Math.min(0, len/2-focus));
+    const want=Math.max(len-all, Math.min(0, len*at-focus));
     if(was==null || !dt) return want;
     return was+(want-was)*Math.min(1, dt*7);
   };
   const c=blast.cam||{};
-  c.x=axis(v.w, DK_W, H.x, c.x); c.y=axis(v.h, DK_H, H.y-8, c.y);
+  c.x=axis(v.w, DK_W, H.x, .5, c.x); c.y=axis(v.h, DK_H, H.y-8, DK_LOOK, c.y);
   blast.cam=c; blast.ox=Math.round(c.x); blast.oy=Math.round(c.y);
 }
 
@@ -846,7 +846,30 @@ function kongDraw(_, now){
     if(clock<(blast.hammerUntil||0)){ const up=Math.floor(clock*6)%2, hx=H.x+(H.dir==="left" ? -9 : 9);
       g.drawImage(pxSprite("dkhammer", DK_HAMMER, {T:"#C88850", W:"#F1E8D2"}), Math.round(ox+hx-5), Math.round(oy+H.y-(up ? 24 : 12))); }
   }
-  if(blast.st==="ready") pxText(g, "READY!", ox+DK_W/2, oy+DK_H/2-30, "#FFE600");
+  if(blast.scrolls) dkOffscreen(g);
+  if(blast.st==="ready") pxText(g, "READY!", blast.scrolls ? ox+H.x : ox+DK_W/2, blast.scrolls ? oy+H.y-34 : oy+DK_H/2-30, "#FFE600");
+}
+// Scrolling, the barrels and fires out of view: a pointer at the edge of the view nearest each, in its
+// colour, with its chord, so one rolling down from above is seen before it's on you.
+const DK_POINT=["...#","..##",".###","####",".###","..##","...#"];
+function dkOffscreen(g){
+  const v=blast.view, ox=blast.ox, oy=blast.oy;
+  const edge=(e, col, label, ink)=>{
+    const x=ox+e.x, y=oy+e.y-5, out= y<0 ? "up" : y>v.h ? "down" : x<0 ? "left" : x>v.w ? "right" : null;
+    if(!out) return;
+    const rows= out==="left" ? DK_POINT : out==="right" ? DK_POINT.map(r=>[...r].reverse().join(""))
+      : [0,1,2,3].map(i=>DK_POINT.map(r=>r[out==="up" ? i : 3-i]).join(""));      // turned, its tip to the edge
+    const arrow=pxSprite(`dkpoint|${out}|${col}`, rows, {"#":col}), n=[...label].length*4;
+    if(out==="up" || out==="down"){
+      const ax=Math.round(Math.max(n+2, Math.min(v.w-n-2, x))), ay= out==="up" ? 1 : v.h-1-arrow.height;
+      g.drawImage(arrow, ax-3, ay); pxText(g, label, ax, out==="up" ? ay+arrow.height+1 : ay-9, ink);
+    } else {
+      const ay=Math.round(Math.max(8, Math.min(v.h-8, y))), ax= out==="left" ? 1 : v.w-1-arrow.width;
+      g.drawImage(arrow, ax, ay-3); pxText(g, label, out==="left" ? ax+arrow.width+2+n : ax-2-n, ay-4, ink);
+    }
+  };
+  for(const b of blast.barrels) edge(b, "#C87830", dkLabel(b.chord), "#F1E8D2");
+  for(const e of blast.fires) edge(e, "#FF3B30", e.chord.sym, "#FF9A3C");
 }
 function dkPop(e, text, colour){
   if(!blast.field || blast.phase!=="play" || !blast.k) return;

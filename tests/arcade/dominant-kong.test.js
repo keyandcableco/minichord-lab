@@ -39,6 +39,17 @@ const t=require("./harness").load("dominant-kong");
   const H=a.hero;
   check("the girders, the home ladder locked for its I", a.st==="go" && a.stage===E("DK_GIRDERS") && [...a.locks].join()==="5" && a.floorChord[6].sym==="C");
   a.throwAt=1e9;
+  // the screen: on a wide field the whole stage at a whole number of pixels, nothing scrolling; on a
+  // phone (an iPhone 15 upright) twice the size, the view following the player from the bottom girder
+  // to home, and a barrel above the view pointed to
+  const cam=E(`(()=>{ const fx=blast.fx, was=[fx.ro, fx.fw, fx.fh]; fx.ro=fx.ro||{}; fx.fw=1088; fx.fh=596; dkLayout();
+    const wide={scrolls:blast.scrolls, k:blast.k}; fx.fw=389; fx.fh=330; dkLayout(); const H=blast.hero, at=[H.x, H.y], v=blast.view, seen=[];
+    for(const [x,y] of [[48, dkSurf(0,48)], [200, dkSurf(2,200)], [100, DK_GIRDERS.floors[6].yL]]){ Object.assign(H, {x, y}); dkCamera(0); seen.push(blast.ox+x>=0 && blast.ox+x<=v.w && blast.oy+y-16>=0 && blast.oy+y<=v.h); }
+    Object.assign(H, {x:at[0], y:at[1]}); dkCamera(0);
+    const out={wide, scrolls:blast.scrolls, k:blast.k, seen, above:blast.oy+dkSurf(5,24)<0};
+    [fx.ro, fx.fw, fx.fh]=was; blast.layoutKey=null; return out; })()`);
+  check("on a wide field the whole stage is in view, at two screen pixels a pixel, nothing scrolling", !cam.wide.scrolls && cam.wide.k===2, JSON.stringify(cam.wide));
+  check("on a phone it's twice the size and scrolls, keeping the player in view from the bottom girder to home, a barrel at the top out of view", cam.scrolls && cam.k===2 && cam.seen.every(Boolean) && cam.above, JSON.stringify(cam));
   // walking and jumping
   hold(RIGHT); await sleep(500); lift(RIGHT); await sleep(100);
   check("a way held walks the player along the girder, on its slope", H.x>60 && Math.abs(H.y-E(`dkSurf(0, ${H.x})`))<.01, `${H.x.toFixed(1)}`);
