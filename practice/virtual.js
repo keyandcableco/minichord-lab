@@ -46,7 +46,7 @@ const vmOn=()=> vm.on && !!(typeof mc!=="undefined" && mc.virtual);
 function vmDefaults(){
   const p={};
   for(let a=0;a<256;a++) p[a]=0;
-  Object.assign(p, {2:80, 3:80, 7:0, 31:0, 35:0, 36:0, 39:0, 97:150, 99:1, 112:12, 200:0, 201:0});   // 99: the harp sounding as written
+  Object.assign(p, {2:80, 3:80, 7:0, 31:0, 35:0, 36:0, 39:0, 97:150, 99:1, 112:12, 120:2, 200:0, 201:0});   // 99: the harp sounding as written; 120: the chord shuffling the firmware starts with
   return p;
 }
 // A front end takes the virtual minichord up, or puts it down; it's a minichord while any front end

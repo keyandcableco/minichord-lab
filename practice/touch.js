@@ -29,6 +29,7 @@ const TD_PROFILES={
   hunt:     {chords:1, harp:"notes"},
   racer:    {chords:1, harp:"notes", knob:1},
   chomp:    {chords:1, harp:"dpad"},
+  burger:   {chords:1, harp:"dpad", knob:2},            // its two knobs voice the chord: inversion and spacing
 };
 const TD_EVERYTHING={chords:1, harp:"notes"};                // the Practice Room's own games
 function tdProfile(){
@@ -130,7 +131,8 @@ function tdBuild(){
   const top=document.createElement("div"); top.className="tdtop"; deck.appendChild(top);
   if(p.harp==="notes") top.appendChild(tdHarp());
   if(p.harp==="dpad") top.appendChild(tdDpad());
-  if(p.knob===2){ top.appendChild(tdKnob("ORBIT", ()=>steerKnob())); top.appendChild(tdKnob("AIM", ()=>asAimKnob())); }
+  if(p.knob===2 && blast && blast.kind==="burger"){ top.appendChild(tdKnob("INVERSION", ()=>steerKnob())); top.appendChild(tdKnob("SPACING", ()=>bkSpaceKnob())); }
+  else if(p.knob===2){ top.appendChild(tdKnob("ORBIT", ()=>steerKnob())); top.appendChild(tdKnob("AIM", ()=>asAimKnob())); }
   else if(p.knob) top.appendChild(tdKnob("KNOB", ()=> blast && blast.kind==="chopper" ? 0 : steerKnob()));
   const now=document.createElement("span"); now.className="tdnow"; top.appendChild(now);
   if(p.chords){ const g=document.createElement("div"); g.className="tdgrid"; deck.appendChild(g); tdGrid(g); }

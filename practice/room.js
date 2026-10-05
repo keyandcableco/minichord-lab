@@ -329,6 +329,7 @@ function nextQuestion(){
   if(q.kind==="hunt") startHunt();
   if(q.kind==="racer") startRacer();
   if(q.kind==="chomp") startChomp();
+  if(q.kind==="burger") startBurger();
   if(q.kind==="simon") setTimeout(simonPlay,700);
 }
 function feedback(text,kind="",small=""){ const f=$("feedback"); f.className="feedback "+kind; f.textContent=text; if(small){ const s=document.createElement("small"); s.textContent=small; f.appendChild(s); } }
@@ -446,6 +447,7 @@ function answerChord(voices){
   if(q.answer.type==="hunt") return huntChord(voices);
   if(q.answer.type==="racer") return racerChord(voices);
   if(q.answer.type==="chomp") return chompChord(voices);
+  if(q.answer.type==="burger") return burgerChord(voices);
   if(q.answer.type==="diatonic") return answerDiatonic(voices);
   if(q.answer.type==="reshape") return answerReshape(voices);
   if(q.answer.type==="alt") return answerAltChord(voices);
@@ -496,6 +498,7 @@ function answerNote(pc, pickedName){
   if(q && q.kind==="hunt") return huntNote(pc);
   if(q && q.kind==="racer") return racerNote(pc);
   if(q && q.kind==="chomp") return chompHarp(pc);
+  if(q && q.kind==="burger") return burgerHarp(pc);
   if(!q || solved) return;
   if(q.answer.type==="note" && pc===q.answer.pc && pickedName && q.answer.name && pickedName!==q.answer.name)
     return correct(`Right note: ${q.answer.name}. Here it's spelled ${q.answer.name}, not ${pickedName}.`);
@@ -662,7 +665,7 @@ async function startTones(){
   if(!canWrite()){ tones.sim=make((tuneState.secret+tuneState.nudge)/10,.1,settings.tuneWave); tones.push(tones.sim); }   // no minichord: simulate it
 }
 function buildSpecial(){
-  const box=$("special"); box.innerHTML=""; box.hidden = !(q && ["tune","melody","smooth","simon","directions","pluckchord","buildscale","blaster","command","snake","asteroids","stack","breakout","fifths","chopper","fleet","sweeper","frets","sight","hunt","racer","chomp","diatonic","reshape","hidden","oddone","shades"].includes(q.kind)); if(box.hidden) return;
+  const box=$("special"); box.innerHTML=""; box.hidden = !(q && ["tune","melody","smooth","simon","directions","pluckchord","buildscale","blaster","command","snake","asteroids","stack","breakout","fifths","chopper","fleet","sweeper","frets","sight","hunt","racer","chomp","burger","diatonic","reshape","hidden","oddone","shades"].includes(q.kind)); if(box.hidden) return;
   if(q.kind==="command"){ buildCommandField(box); return; }
   if(q.kind==="snake"){ buildSnakeField(box); return; }
   if(q.kind==="asteroids"){ buildAsteroidsField(box); return; }
@@ -677,6 +680,7 @@ function buildSpecial(){
   if(q.kind==="hunt"){ buildHuntField(box); return; }
   if(q.kind==="racer"){ buildRacerField(box); return; }
   if(q.kind==="chomp"){ buildChompField(box); return; }
+  if(q.kind==="burger"){ buildBurgerField(box); return; }
   if(q.kind==="blaster"){
     const field=document.createElement("div"); field.className="field arcade"; field.setAttribute("aria-label","Falling chords");
     const ground=document.createElement("div"); ground.className="ground"; field.appendChild(ground);
@@ -788,7 +792,7 @@ function setMode(m){
   $("nowPlaying").textContent = `Playing: ${LABELS[m]||m}`;
   settings.mode=m; save();
   document.querySelectorAll(".modes button[data-mode]").forEach(x=>x.setAttribute("aria-pressed",x.dataset.mode===m));
-  $("sprint").disabled = MYSTERY.has(m) || m==="blaster" || m==="command" || m==="snake" || m==="asteroids" || m==="stack" || m==="breakout" || m==="fifths" || m==="chopper" || m==="fleet" || m==="sweeper" || m==="frets" || m==="sight" || m==="hunt" || m==="racer" || m==="chomp";
+  $("sprint").disabled = MYSTERY.has(m) || m==="blaster" || m==="command" || m==="snake" || m==="asteroids" || m==="stack" || m==="breakout" || m==="fifths" || m==="chopper" || m==="fleet" || m==="sweeper" || m==="frets" || m==="sight" || m==="hunt" || m==="racer" || m==="chomp" || m==="burger";
   stats.streak=0; scoreboard(); nextQuestion();
   if(switching){
     const back=restoreExcept(new Set([...(q.needs||[]).map(n=>n.addr), ...(q.borrows||[]), ...roundBorrows, 31]));   // keep what the new game uses
@@ -798,7 +802,7 @@ function setMode(m){
   }
 }
 document.querySelectorAll(".modes button[data-mode]").forEach(b=>{ b.setAttribute("aria-pressed", b.dataset.mode===settings.mode); b.onclick=()=>setMode(b.dataset.mode); });
-$("sprint").disabled = MYSTERY.has(settings.mode) || settings.mode==="blaster" || settings.mode==="command" || settings.mode==="snake" || settings.mode==="asteroids" || settings.mode==="stack" || settings.mode==="breakout" || settings.mode==="fifths" || settings.mode==="chopper" || settings.mode==="fleet" || settings.mode==="sweeper" || settings.mode==="frets" || settings.mode==="sight" || settings.mode==="hunt" || settings.mode==="racer" || settings.mode==="chomp";
+$("sprint").disabled = MYSTERY.has(settings.mode) || settings.mode==="blaster" || settings.mode==="command" || settings.mode==="snake" || settings.mode==="asteroids" || settings.mode==="stack" || settings.mode==="breakout" || settings.mode==="fifths" || settings.mode==="chopper" || settings.mode==="fleet" || settings.mode==="sweeper" || settings.mode==="frets" || settings.mode==="sight" || settings.mode==="hunt" || settings.mode==="racer" || settings.mode==="chomp" || settings.mode==="burger";
 $("nowPlaying").textContent = `Playing: ${LABELS[settings.mode]||settings.mode}`;
 for(const [id,key] of [["gameMenu","menuOpen"]]){
   const d=$(id); if(saved[key]===false) d.open=false;
@@ -879,6 +883,7 @@ mc.addEventListener("device", ()=>{
   else if(blast && blast.kind==="hunt") hdDevice();
   else if(blast && blast.kind==="racer") krDevice();
   else if(blast && blast.kind==="chomp") ccDevice();
+  else if(blast && blast.kind==="burger") bkDevice();
   else if(blast){ blastSetup(); if(blast.phase!=="play") blastHomeKey(); blastKey(); if(blast.kind==="blaster") blastDevice(); }   // Chord Invaders (and its key bars), the catch-all
   arcadeVolumeWatch();
   if(q && !solved && !rebuilding) applyNeeds();

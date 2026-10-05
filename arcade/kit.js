@@ -128,7 +128,7 @@ function arcadeKnobsInert(){
 // The minichord's chord and harp volumes (addresses 3 and 2, on the knobs by default) are also its MIDI
 // velocities: turned right down, it sends notes a game can't hear. So a game turns up whichever it
 // listens to, if it's down, for as long as it plays, and says so; and if one goes down mid-game, it says that.
-const ARCADE_HARP=new Set(["command","snake","asteroids","stack","fifths","breakout","fleet","sweeper","racer","chomp"]);
+const ARCADE_HARP=new Set(["command","snake","asteroids","stack","fifths","breakout","fleet","sweeper","racer","chomp","burger"]);
 const ARCADE_CHORDS=k=>k!=="command";
 function arcadeVolumes(){
   const up=[];
@@ -174,7 +174,7 @@ const MULT_SPEED=[1,1.25,1.5,1.75,2];                      // Relaxed … Wild
 // Hunt, whose harp is only low or high, nor Between the Frets, whose harp goes in quarter-tones)
 const HARP_BY_NAME=new Set(["command","asteroids","breakout","fifths","chopper","fleet","sight"]);
 const harpOnScreen=kind=> typeof playOnScreen==="function" && playOnScreen() && typeof TD_PROFILES!=="undefined" && TD_PROFILES[kind]?.harp==="notes";
-const KM_GAMES=["snake","stack","sweeper","chomp"];          // the harp as a d-pad: its layout is how the game's played
+const KM_GAMES=["snake","stack","sweeper","chomp","burger"];          // the harp as a d-pad: its layout is how the game's played
 const KF_TORPS=[1,.85,.7];                                 // Key Fleet: plenty, fewer, few
 const SL_WINS=[38,24];                                     // Sight Line: loose, tight (pixels either side of the playhead)
 const has=(...ks)=>k=>ks.includes(k);
@@ -203,6 +203,8 @@ const ARCADE_OPTS=[
     vals:()=>[["HARP",1,"THE HARP'S TWELVE STRINGS ACROSS THE ROAD"],["KNOB",1.25,"A KNOB STEERS, THE HARP LEFT ALONE"]]},
   {id:"hold", group:"game", label:"CHORDS", on:has("chomp"), ...flag("ccHold"),
     vals:()=>[["LATCH",1,"A CHORD PLAYED ONCE STAYS ON TILL THE NEXT"],["HOLD",1.25,"A CHORD LASTS ONLY AS LONG AS IT'S HELD"]]},
+  {id:"voicing", group:"game", label:"VOICING", on:has("burger"), get:()=>saved.bkAuto?0:1, set:i=>{ saved.bkAuto=!i; save(); },
+    vals:()=>[["SET FOR ME",1,"THE GAME TURNS THE KNOBS TO EACH PLATE: YOU NAME THE CHORD"],["MINE",1.5,"YOU TURN THE KNOBS: VOICE EACH PLATE AS IT'S STACKED"]]},
   {id:"glow", group:"game", label:"CHORD GLOW", on:has("snake","stack"), get:()=>saved.noGlow?1:0, set:i=>{ saved.noGlow=!!i; save(); },
     vals:k=>[["ON",1, k==="snake" ? "CARRIED NOTES THAT SPELL A CHORD LIGHT UP" : "A ROW THAT HOLDS A CHORD LIGHTS UP"],["OFF",1.5,"NOTHING LIGHTS UP: SPOT THE CHORDS YOURSELF"]]},
   {id:"next", group:"game", label:"NEXT PIECE", on:has("stack"), ...flag("stNoNext"),
@@ -230,10 +232,10 @@ const ARCADE_OPTS=[
   {id:"harpAs", group:"setup", label:"HARP AS", on:k=>harpOnScreen(k), ...flag("tdPiano"),
     set:i=>{ saved.tdPiano=!!i; save(); if(typeof tdSync==="function") tdSync(); },
     vals:()=>[["STRINGS",1,"THE SCREEN'S HARP AS THE MINICHORD'S TWELVE STRINGS"],["PIANO",1,"THE SCREEN'S HARP AS AN OCTAVE OF PIANO KEYS, C TO B"]]},
-  {id:"harpSound", group:"setup", label:"HARP SOUND", on:has("snake","stack","sweeper","racer","chomp"), get:()=>saved.harpSound??1,
+  {id:"harpSound", group:"setup", label:"HARP SOUND", on:has("snake","stack","sweeper","racer","chomp","burger"), get:()=>saved.harpSound??1,
     set:i=>{ saved.harpSound=i; save(); if(blast && blast.setupDone) kmHarp(); },
     say:"THE HARP STEERS HERE: HOW MUCH OF IT YOU HEAR", vals:()=>[["NORMAL",1],["QUIET",1],["OFF",1]]},
-  {id:"knob", group:"setup", label:"KNOB", on:k=>knobsReady() && (has("breakout","fifths","stack","asteroids","sight")(k) || (k==="blaster" && saved.invAim) || (k==="racer" && saved.krSteer)),
+  {id:"knob", group:"setup", label:"KNOB", on:k=>knobsReady() && (has("breakout","fifths","stack","asteroids","sight","burger")(k) || (k==="blaster" && saved.invAim) || (k==="racer" && saved.krSteer)),
     get:()=>steerKnob(), set:i=>{ saved.steerKnob=i; save(); }, say:"WHICH OF THE MINICHORD'S KNOBS STEERS", vals:()=>KNOB_NAMES.map(n=>[n,1])},
   {id:"size", group:"setup", label:k=>k==="command" ? "NOTE SIZE" : "LABEL SIZE", on:has("blaster","asteroids","breakout","command"), get:()=>saved.chordSize??1,
     set:i=>{ saved.chordSize=i; save(); applyChordSize(); }, say:"HOW BIG THE LETTERING IS", vals:()=>SIZES.map(([n])=>[n,1])},
@@ -279,6 +281,7 @@ const POINTS_FOR={
   hunt:()=>[["DUCK","20"],["QUICK SHOT","UP TO +30"],["FIRST SHOT","× 2"],["PURE EAR","UP TO × 4"],["GOLDEN DUCK","× 3"],["WHOLE FLOCK","+25 A DUCK"],["PERFECT ROUND","100"],["KEY SET YOURSELF","50"],powerRow(HD_POWERS)],
   racer:()=>[["GATE OF THE KEY","10"],["GATE PLAYED OPEN","20"],["PIVOT CHORD","× 2"],["CAR PULLED OVER","30"],["CAR OVERTAKEN","10"],["TURBO","15"],["CHECKPOINT, HOME PLAYED","50"],["FINISH","50 A PLACE ABOVE 9TH"],["TIME LEFT","10 A SECOND"],powerRow(KR_POWERS, "CAPSULES")],
   chomp:()=>[["DOT","10"],["POWER PELLET","50"],["GHOST CAUGHT","200, 400, 800, 1600"],["HALF CADENCE","200"],["PLAGAL OR DECEPTIVE","300"],["PERFECT CADENCE","500"],["FULL CADENCE","1500"],["KEY SET","500, +250 A FIFTH"],powerRow(CC_POWERS, "CAPSULES")],
+  burger:()=>[["INGREDIENT DROPPED","50"],["SOUR NOTE SQUASHED","500"],["RIDDEN DOWN","1000, 2000, 4000, 8000"],["PLATE SERVED","500, 800 A SEVENTH"],["NOT IN ROOT POSITION","× 1.5"],["AN OPEN VOICING","× 2"],["SERVED HOT","× 1.5"],["TICKET FILLED","1000"],["SOUR NOTES PEPPERED","100, 200, 400"],["COMBO MEAL","1500"],["KEY SET","500, +250 A FIFTH"],["KITCHEN CLEAR","1000, +100 A SHAKE LEFT"],powerRow(BK_POWERS, "BONUS FOOD")],
 };
 // the POINTS page's line for a game's power-ups (or capsules): their icons, then their names
 const powerRow=(table, word="POWER-UPS")=>{ const P=Object.values(table); return [P.map(p=>p.icon).join(" ")+" "+word, P.map(p=>p.name).join(" · ")]; };
@@ -300,11 +303,12 @@ const POWERS_FOR={
   hunt:()=>Object.entries(HD_POWERS).map(([k,P])=>({look:hdTagLook(k,"G"), name:P.name, text:P.page})),
   racer:()=>Object.entries(KR_POWERS).map(([k,P])=>({look:krPowerLook(k), name:P.name, text:P.page})),
   chomp:()=>Object.entries(CC_POWERS).map(([k,P])=>({look:ccPowerLook(k), name:P.name, text:P.page})),
+  burger:()=>Object.entries(BK_POWERS).map(([k,P])=>({look:bkPowerLook(k), name:P.name, text:P.page})),
 };
 const powersFor=k=> POWERS_FOR[k] ? POWERS_FOR[k]() : [];
 function powersRender(el){
   let i=0; const d=()=>`style="animation-delay:${(i++)*.6}s"`;
-  el.innerHTML=`<h3>POWER-UPS</h3><p class="ptsub">${cabKind()==="blaster" ? "PLAY A POWER-UP'S CHORD TO TAKE IT" : cabKind()==="command" ? "PLUCK A POWER-UP'S STRING TO TAKE IT" : cabKind()==="asteroids" ? "CRACK A POWER-UP ROCK WITH ITS CHORD TO TAKE IT" : cabKind()==="breakout" ? "BREAK A BRICK THAT HOLDS ONE AND CATCH ITS CAPSULE" : cabKind()==="chopper" ? "PLAY A SUPPLY CRATE'S CHORD TO FLY OUT FOR IT" : cabKind()==="hunt" ? "THE DOG FETCHES THEM: PLAY THE CHORD ON THE TAG" : cabKind()==="racer" ? "CAPSULES ON THE ROAD: DRIVE THROUGH ONE TO TAKE IT" : cabKind()==="chomp" ? "CAPSULES IN THE MAZE: RUN THROUGH ONE TO TAKE IT" : "THEY TURN UP NOW AND THEN"}</p>
+  el.innerHTML=`<h3>POWER-UPS</h3><p class="ptsub">${cabKind()==="blaster" ? "PLAY A POWER-UP'S CHORD TO TAKE IT" : cabKind()==="command" ? "PLUCK A POWER-UP'S STRING TO TAKE IT" : cabKind()==="asteroids" ? "CRACK A POWER-UP ROCK WITH ITS CHORD TO TAKE IT" : cabKind()==="breakout" ? "BREAK A BRICK THAT HOLDS ONE AND CATCH ITS CAPSULE" : cabKind()==="chopper" ? "PLAY A SUPPLY CRATE'S CHORD TO FLY OUT FOR IT" : cabKind()==="hunt" ? "THE DOG FETCHES THEM: PLAY THE CHORD ON THE TAG" : cabKind()==="racer" ? "CAPSULES ON THE ROAD: DRIVE THROUGH ONE TO TAKE IT" : cabKind()==="chomp" ? "CAPSULES IN THE MAZE: RUN THROUGH ONE TO TAKE IT" : cabKind()==="burger" ? "BONUS FOOD IN THE KITCHEN: WALK THROUGH IT TO TAKE IT" : "THEY TURN UP NOW AND THEN"}</p>
     <ul class="pwtable">${powersFor(cabKind()).map(p=>`<li ${d()}><span class="pwlook">${p.look}</span><div><b>${p.name}</b><em>${p.text}</em></div></li>`).join("")}</ul>`;
 }
 // The lives, as pixel hearts in the HUD: a full heart for each life left, a dark empty one for each
@@ -488,7 +492,7 @@ const HS_SECONDS=20;        // the countdown on the initials, as a cabinet has
 // what's shown if the shared one can't be reached.
 const SCORES_API=String(SCORES_HOST||"").replace(/\/+$/,"");   // the Funnel address of arcade-scores (core/scores.js), no trailing slash
 const scoresOnline=()=> !!SCORES_API && !SCORES_API.includes("SCORES-HOST");
-const HS_SLUG={blaster:"invaders", command:"harp-command", snake:"chord-snake", asteroids:"chord-asteroids", stack:"chord-stack", breakout:"chord-breakout", fifths:"fifths-defender", chopper:"chopper-rescue", fleet:"key-fleet", sweeper:"chord-sweeper", frets:"between-the-frets", sight:"sight-line", hunt:"chord-hunt", racer:"key-racer", chomp:"chord-chomp"};
+const HS_SLUG={blaster:"invaders", command:"harp-command", snake:"chord-snake", asteroids:"chord-asteroids", stack:"chord-stack", breakout:"chord-breakout", fifths:"fifths-defender", chopper:"chopper-rescue", fleet:"key-fleet", sweeper:"chord-sweeper", frets:"between-the-frets", sight:"sight-line", hunt:"chord-hunt", racer:"key-racer", chomp:"chord-chomp", burger:"chord-burger"};
 const HS_CHARS="ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 const hsCache={};                                        // the shared boards, as last fetched
 const hsSlug=()=> HS_SLUG[cabKind()];
