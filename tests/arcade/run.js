@@ -23,7 +23,7 @@ const runOne=(f, stream=jobs===1)=>new Promise(done=>{
   const out=d=>{ buf+=d; const lines=buf.split("\n"); buf=lines.pop();
     for(const l of lines) if(l.trim()) say(indent(l)); };
   child.stdout.on("data", out); child.stderr.on("data", out);
-  const timer=setTimeout(()=>{ child.kill(); say("  ✗ timed out\n"); }, 150000);
+  const timer=setTimeout(()=>{ child.kill(); say("  ✗ timed out\n"); }, 240000);   // the tests that walk every game (pages, demos, title-cycle) grow with the arcade
   child.on("close", code=>{ clearTimeout(timer); if(buf.trim()) say(indent(buf.trim()));
     const secs=(Date.now()-t0)/1000; times[name]=Math.round(secs); say(`  (${mmss(secs)})\n`);
     done({name, ok:code===0, block}); });
