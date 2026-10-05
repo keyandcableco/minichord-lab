@@ -12,6 +12,7 @@ GAME_SFX.kong={
   hop:     ({tone})=>{ [1047,1319,1568].forEach((f,i)=>tone("square",f,0,i*.05,.06,.3)); },
   throw:   ({tone,noise})=>{ noise(0,.12,800,200,.5); tone("square",110,70,0,.12,.4); },
   bounce:  ({tone})=>tone("square",220,110,0,.06,.3),
+  boing:   ({tone})=>tone("triangle",180,520,0,.12,.3),                               // a spring, bouncing along the top
   break:   ({tone,noise})=>{ noise(0,.25,4000,300,.7); tone("square",330,110,0,.15,.4); },
   quench:  ({noise,tone})=>{ noise(0,.4,9000,1200,.5,"highpass"); tone("triangle",880,440,0,.25,.4); },
   flare:   ({noise})=>noise(0,.5,600,3000,.5,"bandpass",2),

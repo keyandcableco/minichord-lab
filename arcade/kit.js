@@ -237,7 +237,7 @@ const ARCADE_OPTS=[
   {id:"harpSound", group:"setup", label:"HARP SOUND", on:has("snake","stack","sweeper","racer","chomp","burger","kong"), get:()=>saved.harpSound??1,
     set:i=>{ saved.harpSound=i; save(); if(blast && blast.setupDone) kmHarp(); },
     say:"THE HARP STEERS HERE: HOW MUCH OF IT YOU HEAR", vals:()=>[["NORMAL",1],["QUIET",1],["OFF",1]]},
-  {id:"knob", group:"setup", label:"KNOB", on:k=>knobsReady() && (has("breakout","fifths","stack","asteroids","sight","burger")(k) || (k==="blaster" && saved.invAim) || (k==="racer" && saved.krSteer)),
+  {id:"knob", group:"setup", label:"KNOB", on:k=>knobsReady() && (has("breakout","fifths","stack","asteroids","sight","burger","kong")(k) || (k==="blaster" && saved.invAim) || (k==="racer" && saved.krSteer)),
     get:()=>steerKnob(), set:i=>{ saved.steerKnob=i; save(); }, say:"WHICH OF THE MINICHORD'S KNOBS STEERS", vals:()=>KNOB_NAMES.map(n=>[n,1])},
   {id:"size", group:"setup", label:k=>k==="command" ? "NOTE SIZE" : "LABEL SIZE", on:has("blaster","asteroids","breakout","command"), get:()=>saved.chordSize??1,
     set:i=>{ saved.chordSize=i; save(); applyChordSize(); }, say:"HOW BIG THE LETTERING IS", vals:()=>SIZES.map(([n])=>[n,1])},

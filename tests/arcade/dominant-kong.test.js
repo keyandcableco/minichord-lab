@@ -28,7 +28,7 @@ const t=require("./harness").load("dominant-kong");
   const spelled=E(`(()=>{ const out=[], was=blast.level;
     for(let lv=0; lv<DK_LEVELS.length; lv++) for(const f of [-3,-2,-1,0,1,2,3]){ const L=DK_LEVELS[lv]; if(Math.abs(f)>(L.keys||0)) continue;
       const key=dkKey(f, L.rivets==="minor");
-      if(L.stage==="girders"){ for(const id of [...L.barrels, ...DK_CHAIN]){ const b=dkBarrel(key,id); if(!b.root || !/^[A-G]/.test(b.root)) out.push(lv+" "+key.name+" "+id); } if(!dkSpell(key,0,0,"","I")) out.push(lv+" "+key.name+" home"); }
+      if(L.stage!=="rivets"){ for(const id of [...L.barrels, ...DK_CHAIN]){ const b=dkBarrel(key,id); if(!b.root || !/^[A-G]/.test(b.root)) out.push(lv+" "+key.name+" "+id); } if(!dkSpell(key,0,0,"","I")) out.push(lv+" "+key.name+" home"); }
       else for(const [num,st,se,q] of DK_RIVET_SETS[L.rivets]) if(!dkSpell(key,st,se,q,num)) out.push(lv+" "+key.name+" "+num); }
     return out; })()`);
   check("every level's barrels, links and rivets spell in every key it deals", !spelled.length, spelled.slice(0,4).join("; "));
@@ -89,7 +89,7 @@ const t=require("./harness").load("dominant-kong");
   check("walked off a girder's end, a long fall is fatal", a.st==="dying", a.st);
   await sleep(2000); await sleep(1900);
   // the drum and a fireball (from the fire levels on)
-  a.level=4; mk("V7", 0, 20); a.barrels[a.barrels.length-1].dir=-1; await sleep(300);
+  a.level=5; mk("V7", 0, 20); a.barrels[a.barrels.length-1].dir=-1; await sleep(300);
   check("a barrel rolled into the drum comes out a fireball", a.fires.length===1, `${a.fires.length}`);
   const fire=a.fires[0], s5=a.score; fire.x=150; fire.f=3; fire.y=E("dkSurf(3,150)");
   const up=[...fire.chord.to][1]; await play(tri(up));
@@ -113,6 +113,32 @@ const t=require("./harness").load("dominant-kong");
   // the bonus run out
   await sleep(1900); a.bonusPts=1; await sleep(400);
   check("the bonus run out costs a life", a.st==="dying" && /RAN OUT/.test(t.heard()), t.heard());
+  // the lifts: the right one goes where the steering knob's turned; the left one rises, carrying the
+  // player, and crushes one carried past the top; Kong's springs hop along the top and drop down the
+  // far side, resolved like any barrel; home up the far tower
+  E(`blast.setupDone=false; blast.phase="menu"; blast.overlay && blast.overlay.remove(); blast.overlay=null; dkMenu()`);
+  const l=await t.start(3); await sleep(2100); l.throwAt=1e9;
+  const LS=l.stage, knobF=LS.plats.find(f=>LS.floors[f].knob), riseF=LS.plats.filter(f=>!LS.floors[f].knob);
+  check("the lifts: one lift rising in three platforms, the other the knob's", riseF.length===3 && knobF!=null && mc.params[238]===1);
+  t.knob(127); await sleep(3200);
+  check("the knob turned up, its lift rises to the top", LS.floors[knobF].yL<LS.top+10, LS.floors[knobF].yL.toFixed(0));
+  t.knob(0); await sleep(3200);
+  check("turned down, it comes back down", LS.floors[knobF].yL>LS.bottom-10, LS.floors[knobF].yL.toFixed(0));
+  const LH=l.hero, rf=riseF[0], RF=LS.floors[rf]; RF.yL=RF.yR=200; Object.assign(LH, {x:60, y:200, f:rf, state:"walk"}); await sleep(600);
+  check("standing on the rising lift, the player rises with it", LH.y<199 && LH.f===rf && Math.abs(LH.y-RF.yL)<.01, LH.y.toFixed(1));
+  RF.yL=RF.yR=LS.top+1; LH.y=RF.yL; await sleep(300);
+  check("carried past the top, crushed", l.st==="dying", l.st);
+  await sleep(2000); await sleep(1900);
+  l.throwAt=l.clock; await sleep(150); l.throwAt=1e9;
+  const sp=l.barrels[0];
+  check("Kong throws a spring, a dominant seventh, hopping along the top", sp && sp.state==="spring" && sp.y<LS.top);
+  await sleep(4500);
+  check("at the far side it drops down", sp.state==="drop" || sp.gone, sp.state);
+  l.barrels.length=0; l.throwAt=l.clock; await sleep(150); l.throwAt=1e9;
+  const sp2=l.barrels[0]; await play(tri(sp2.chord.to));
+  check("and like a barrel, its resolution breaks it", !l.barrels.includes(sp2));
+  const s7=l.score; Object.assign(l.hero, {x:214, y:86, f:6, state:"walk"}); hold(UP); await sleep(2600); lift(UP); await sleep(50);
+  check("up the far tower: HOME", l.st==="clear" && l.score>s7, l.st);
   sb.restoreAll(); await sleep(50);
   check("leaving gives the harp back", mc.params[98]===0);
   t.done();

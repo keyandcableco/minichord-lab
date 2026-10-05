@@ -29,8 +29,11 @@
 // The player walks while a way's held on the harp (kmHeld, ../controller.js) or the arrow keys.
 // LABELS on the title screen: chords by NAME, or by NUMERAL for half as much again.
 //
-// Still to come, the old game's other two stages: the elevators, one of them a knob (its lift going
-// where the knob's turned), and the conveyors, the cement pans each a chord to sort, in the key or not.
+// And the lifts, the old game's elevators: up a tower, onto a lift rising (and off it before it reaches
+// the top), across to the second lift, which is a knob (it goes where the steering knob's turned), and
+// up to home, while Kong throws springs that bounce along the top and drop down the far side, each a
+// dominant seventh like the barrels. Without the knobs, the second lift runs down on its own, as the
+// old game's did. Still to come, the old game's conveyors: the cement pans each a chord to sort.
 
 // ---------- the stages ----------
 // A floor is a girder from x0 to x1, its top at yL on the left and yR on the right (sloped, the old
@@ -49,6 +52,15 @@ const DK_RIVETS={
   rivets:[[1,40],[1,184],[2,40],[2,184],[3,40],[3,184],[4,40],[4,184]].map(([f,x])=>({f, x})),
   start:{f:0, x:40}, kong:{f:4, x:112},
 };
+// the lifts: towers and ledges, two shafts (the left one rising, the right one the knob), Kong on a
+// ledge at the top left, home at the top right
+const DK_LIFTS={
+  floors:[{x0:0,x1:40,yL:236,yR:236}, {x0:0,x1:40,yL:186,yR:186}, {x0:0,x1:40,yL:136,yR:136}, {x0:84,x1:116,yL:196,yR:196}, {x0:84,x1:116,yL:136,yR:136},
+    {x0:168,x1:224,yL:136,yR:136}, {x0:168,x1:224,yL:86,yR:86}, {x0:204,x1:224,yL:40,yR:40, home:true}, {x0:0,x1:44,yL:44,yR:44}],
+  ladders:[[0,1,20],[1,2,20],[3,4,100],[5,6,184],[6,7,214]].map(([lo,hi,x])=>({lo, hi, x})),
+  lifts:[{x:60, way:-1}, {x:142, knob:true}], top:50, bottom:240,
+  start:{f:0, x:16}, kong:{f:8, x:22}, drop:198, lifts_:true,
+};
 const DK_EPS=1e-3;
 const dkStage=()=> blast.stage;
 const dkSurf=(f, x, S=dkStage())=>{ const F=S.floors[f]; return F.yL+(x-F.x0)*(F.yR-F.yL)/(F.x1-F.x0); };
@@ -56,6 +68,43 @@ const dkGap=(f, x)=> (blast.gaps||[]).some(g=>g.f===f && x>g.x-4 && x<g.x+4);
 const dkOn=(f, x, S=dkStage())=>{ const F=S.floors[f]; return !!F && x>=F.x0-DK_EPS && x<=F.x1+DK_EPS && !dkGap(f,x); };
 // the way a girder runs downhill: right where its right end's lower
 const dkDownhill=f=>{ const F=dkStage().floors[f]; return F.yR>F.yL ? 1 : -1; };
+// The lifts' stage: its own copy, the platforms appended as floors. The rising lift has three, a third
+// of the shaft apart, coming up from the bottom and gone at the top; the knob's lift one, going where the
+// knob's turned (or, without the knobs, three running down, as the old game's).
+function dkLiftStage(){
+  const S={...DK_LIFTS, floors:DK_LIFTS.floors.map(F=>({...F})), plats:[]};
+  const span=DK_LIFTS.bottom-DK_LIFTS.top;
+  for(const lift of DK_LIFTS.lifts){
+    const knob=lift.knob && knobsReady(), n=knob ? 1 : 3, way=lift.way || (knob ? 0 : 1);
+    for(let i=0;i<n;i++){ const y=knob ? DK_LIFTS.bottom-4 : DK_LIFTS.top+span*(i+.5)/n;
+      const F={x0:lift.x-11, x1:lift.x+11, yL:y, yR:y, plat:true, lift, way, knob}; S.plats.push(S.floors.length); S.floors.push(F); }
+  }
+  return S;
+}
+// the platforms moved: the rising ones up and round, the knob's toward where it's turned; a player on
+// one goes with it, crushed if it's carried past the top or down off the bottom
+function dkLifts(dt){
+  const S=dkStage(); if(!S.plats) return;
+  const H=blast.hero, span=S.bottom-S.top, pace=dkPace();
+  for(const f of S.plats){
+    const F=S.floors[f]; let y=F.yL;
+    if(F.knob){ const want=S.bottom-4-(blast.liftKnob??0)*(span-4); y+=Math.max(-70*dt, Math.min(70*dt, want-y)); }
+    else {
+      y+=F.way*24*pace*dt;
+      if(y<S.top || y>S.bottom){
+        if(H.state==="walk" && H.f===f && blast.phase==="play"){ F.yL=F.yR=y; H.y=y; return dkDie(y<S.top ? "THE TOP" : "THE BOTTOM"); }
+        y+= F.way<0 ? span : -span;
+      }
+    }
+    F.yL=F.yR=y;
+    if(H.state==="walk" && H.f===f) H.y=y;
+  }
+}
+const dkKnobLift=()=> !!blast && !!dkStage() && dkStage().plats && dkStage().plats.some(f=>dkStage().floors[f].knob);
+function dkKnob(knob, v){
+  if(!blast || blast.kind!=="kong" || knob!==steerKnob()) return;
+  blast.liftKnob=v;
+}
 // a ladder's lock: the floor above's chord not played yet
 const dkLocked=L=> !!blast.locks && blast.locks.has(L.lo);
 
@@ -71,7 +120,7 @@ const DK_BARRELS={
 const DK_RES={dom:5, sub:11, back:2};
 // the chain home, from the floor under home down: V7, V of V, and each a fifth further round
 const DK_CHAIN=["V7","V/V","V/ii","V/vi","V/iii"];
-// The levels, a stage each: the girders and the rivets in turn. barrels: what Kong throws; chain: how
+// The levels, a stage each: the girders, the lifts and the rivets in turn. barrels: what Kong throws; chain: how
 // many of the ladders up are locked, from home down; fire: barrels in the drum come out fireballs;
 // keys: how far round the circle of fifths the stage's key can be; rivets: the eight chords; minor:
 // a minor key's; numerals: labelled by numeral whatever LABELS says.
@@ -79,15 +128,17 @@ const DK_LEVELS=[
   {n:"V7 to I",                 stage:"girders", barrels:["V7"], chain:1},
   {n:"The key's chords",        stage:"rivets",  rivets:"triads"},
   {n:"V of V",                  stage:"girders", barrels:["V7","V/V"], chain:2, keys:1},
+  {n:"The lifts",               stage:"lifts",   barrels:["V7","V/V"], keys:1},
   {n:"Rivets by numeral",       stage:"rivets",  rivets:"triads", numerals:true, keys:2},
   {n:"Secondary dominants",     stage:"girders", barrels:["V7","V/V","V/ii","V/vi"], chain:4, fire:true, keys:2},
+  {n:"The lifts, substituted",  stage:"lifts",   barrels:["V7","subV","V/V","subV/V"], keys:2},
   {n:"Rivets in sevenths",      stage:"rivets",  rivets:"sevenths", fire:true, keys:2},
   {n:"Tritone substitutes",     stage:"girders", barrels:["V7","subV","V/V","subV/V"], chain:5, fire:true, keys:2},
   {n:"Rivets in a minor key",   stage:"rivets",  rivets:"minor", fire:true, keys:2},
   {n:"The backdoor",            stage:"girders", barrels:["V7","back","subV","V/ii","V/vi"], chain:6, fire:true, keys:3},
   {n:"The whole chain, by numeral", stage:"girders", barrels:["V7","V/V","V/ii","V/vi","subV","back"], chain:6, fire:true, numerals:true, keys:3},
 ];
-const dkLevel=(i=blast.level)=> DK_LEVELS[i<DK_LEVELS.length ? i : 4+((i-DK_LEVELS.length)%(DK_LEVELS.length-4))];
+const dkLevel=(i=blast.level)=> DK_LEVELS[i<DK_LEVELS.length ? i : 5+((i-DK_LEVELS.length)%(DK_LEVELS.length-5))];
 const dkNumerals=()=> !!saved.dkNumerals || !!(blast && blast.phase!=="menu" && dkLevel().numerals);
 const DK_RIVET_SETS={
   triads:  [["I",0,0,""],["ii",1,2,"m"],["iii",2,4,"m"],["IV",3,5,""],["V",4,7,""],["vi",5,9,"m"],["vii°",6,11,"°"],["I",0,0,""]],
@@ -142,7 +193,7 @@ function startKong(){
 // the harp chromatic, a d-pad; the key signature the stage's
 function dkDevice(){
   if(!blast || blast.kind!=="kong" || !canWrite()) return;
-  arcadeSetup(()=>{ kmHarp(); if(hasSetting(35)) borrow(35, keyIndexOf(blast.key ? blast.key.f : 0)); });
+  arcadeSetup(()=>{ kmHarp(); if(hasSetting(35)) borrow(35, keyIndexOf(blast.key ? blast.key.f : 0)); if(knobsReady()) borrow(238,1); });   // the knobs sending where they are, for the lifts
   dkKeyCheck();
   if(blast.phase==="play" && !pollT) poll(true);
 }
@@ -183,12 +234,12 @@ function beginKong(level){
   dkLevelBanner();
   sfx("start"); dkBar();
 }
-function dkLevelBanner(){ banner(`LEVEL ${blast.level+1}`, `${dkLevel().n.toUpperCase()} · ${blast.key.label}`); }
+function dkLevelBanner(){ banner(`LEVEL ${blast.level+1}`, `${dkLevel().n.toUpperCase()} · ${blast.key.label}${dkKnobLift() ? " · THE RIGHT LIFT IS YOUR KNOB" : ""}`); }
 
 // A fresh stage: its girders, its key, the locks on the chain home or the rivets dealt, the bonus.
 function dkNewStage(){
   const L=dkLevel();
-  blast.stage = L.stage==="rivets" ? DK_RIVETS : DK_GIRDERS;
+  blast.stage = L.stage==="rivets" ? DK_RIVETS : L.stage==="lifts" ? dkLiftStage() : DK_GIRDERS;
   const f = L.keys ? rnd([...Array(2*L.keys+1).keys()].map(i=>i-L.keys)) : 0;
   dkSetKey(dkKey(f, L.rivets==="minor"));
   blast.gaps=[]; blast.locks=new Set(); blast.chainWrong=false;
@@ -200,13 +251,15 @@ function dkNewStage(){
     blast.floorChord=floors;
     for(let k=0; k<Math.min(6, L.chain||0); k++) blast.locks.add(5-k);
     blast.hammers=DK_GIRDERS.hammers.map(h=>({...h, taken:false})); blast.rivets=null;
+  } else if(L.stage==="lifts"){
+    blast.floorChord=[]; blast.floorChord[5]={...dkBarrel(blast.key,"V7"), q:"7"}; blast.rivets=null; blast.hammers=[];
   } else {
     blast.floorChord=null;
     const set=DK_RIVET_SETS[L.rivets], chords=shuffle(set.map(([num,st,se,q])=>dkSpell(blast.key, st, se, q, num)));
     blast.rivets=DK_RIVETS.rivets.map((r,i)=>({...r, chord:chords[i], pulled:false}));
     blast.hammers=[];
   }
-  blast.bonusPts=L.stage==="rivets" ? 6000 : 5000;
+  blast.bonusPts=L.stage==="girders" ? 5000 : 6000;
   blast.kongDown=0; blast.stageAt=blast.clock; blast.girderCv=null;
 }
 function dkSetKey(key){
@@ -242,6 +295,8 @@ function dkStep(dt){
   if(blast.st==="ready"){ if(blast.clock>=blast.stUntil) blast.st="go"; return; }
   if(blast.st==="dying"){ if(blast.clock>=blast.stUntil) dkAfterDeath(); return; }
   if(blast.st==="clear"){ dkClearing(dt); return; }
+  if(blast.st!=="go") return;
+  dkLifts(dt);
   if(blast.st!=="go") return;
   dkHero(dt);
   if(blast.st!=="go") return;
@@ -315,7 +370,7 @@ function dkHero(dt){
     const y0=H.y; H.vy+=DK_GRAV*pace*pace*dt; H.x=Math.max(2, Math.min(DK_W-2, H.x+H.vx*pace*dt)); H.y+=H.vy*dt;
     dkHammerGrab();
     if(H.vy>0){
-      const land=S.floors.map((F,f)=>f).filter(f=>dkOn(f, H.x) && y0<=dkSurf(f,H.x)+.5 && H.y>=dkSurf(f,H.x)).sort((a,b)=>dkSurf(a,H.x)-dkSurf(b,H.x))[0];
+      const land=S.floors.map((F,f)=>f).filter(f=>dkOn(f, H.x) && y0<=dkSurf(f,H.x)+(S.floors[f].plat ? 3 : .5) && H.y>=dkSurf(f,H.x)).sort((a,b)=>dkSurf(a,H.x)-dkSurf(b,H.x))[0];
       if(land!=null){
         const drop=dkSurf(land,H.x)-H.fromY;
         Object.assign(H, {state:"walk", f:land, y:dkSurf(land,H.x), vx:0, vy:0});
@@ -356,12 +411,13 @@ function dkLockSay(L){
 const dkThrowGap=()=> Math.max(1.5, 3.6-.18*blast.level-.05*(blast.stageN||0))*Math.sqrt(speedMul());
 function dkKong(dt){
   const L=dkLevel();
-  if(L.stage!=="girders") return;
+  if(L.stage==="rivets") return;
   if(blast.clock>=blast.throwAt-.5) blast.kongPose=1;
   if(blast.clock>=blast.throwAt){
     blast.throwAt=blast.clock+dkThrowGap()*(.8+Math.random()*.4); blast.kongPose=2; blast.poseUntil=blast.clock+.35;
-    const id=rnd(L.barrels), chord=dkBarrel(blast.key, id), K=DK_GIRDERS.kong;
-    blast.barrels.push({x:K.x+20, y:dkSurf(K.f, K.x+20), f:K.f, dir:1, state:"roll", chord, spin:0, tried:new Set()});
+    const id=rnd(L.barrels), chord=dkBarrel(blast.key, id), K=dkStage().kong;
+    if(L.stage==="lifts") blast.barrels.push({x:K.x+16, y:dkSurf(K.f, K.x), f:K.f, dir:1, state:"spring", vy:-60, chord, spin:0, tried:new Set()});
+    else blast.barrels.push({x:K.x+20, y:dkSurf(K.f, K.x+20), f:K.f, dir:1, state:"roll", chord, spin:0, tried:new Set()});
     sfx("throw");
   }
   if(blast.kongPose===2 && blast.clock>=blast.poseUntil) blast.kongPose=0;
@@ -372,6 +428,13 @@ function dkRoll(dt){
   const S=dkStage(), H=blast.hero, pace=dkPace();
   for(const b of blast.barrels){
     b.spin+=dt*10;
+    if(b.state==="spring"){
+      b.vy+=DK_GRAV*.7*pace*pace*dt; b.y+=b.vy*dt; b.x+=44*pace*dt;
+      if(b.x>=S.drop){ b.x=S.drop; b.state="drop"; b.vy=40; continue; }
+      if(b.y>=S.top-6 && b.vy>0){ b.y=S.top-6; b.vy=-95*pace; sfx("boing"); }
+      continue;
+    }
+    if(b.state==="drop"){ b.vy+=DK_GRAV*.8*dt; b.y+=b.vy*dt; if(b.y>DK_H+12) b.gone=true; continue; }
     if(b.state==="roll"){
       const nx=b.x+b.dir*DK_ROLL*pace*dt;
       const L=S.ladders.find(L=>L.hi===b.f && (L.x-b.x)*(L.x-nx)<=0 && !b.tried.has(L));
@@ -467,7 +530,7 @@ function dkAfterDeath(){
   blast.lives--; dkBar();
   if(blast.lives<=0) return dkOver();
   banner(`${blast.lives} ${blast.lives===1?"LIFE":"LIVES"} LEFT`, "");
-  blast.bonusPts=dkLevel().stage==="rivets" ? 6000 : 5000;
+  blast.bonusPts=dkLevel().stage==="girders" ? 5000 : 6000;
   dkPlace();
 }
 function dkOver(){
@@ -698,6 +761,7 @@ function dkPaint(){
     if(locked){ g.fillStyle="#FF3B30"; for(let y=top+2; y<top+8; y+=3) g.fillRect(L.x-6, y, 12, 1); }
   }
   S.floors.forEach((F,f)=>{
+    if(F.plat) return;
     for(let x=Math.round(F.x0); x<Math.round(F.x1); x++){
       if(dkGap(f, x+.5)) continue;
       const y=Math.round(dkSurf(f, x));
@@ -719,7 +783,7 @@ function kongDraw(_, now){
   const S=dkStage(), ox=blast.ox, oy=blast.oy, clock=blast.clock, H=blast.hero;
   g.imageSmoothingEnabled=false;
   g.fillStyle="#000"; g.fillRect(0,0,s.width,s.height);
-  const sig=`${S===DK_RIVETS}|${[...(blast.locks||[])].join()}|${(blast.gaps||[]).map(x=>x.f+":"+x.x).join()}|${(blast.rivets||[]).filter(r=>r.pulled).length}`;
+  const sig=`${S===DK_RIVETS}|${!!S.plats}|${[...(blast.locks||[])].join()}|${(blast.gaps||[]).map(x=>x.f+":"+x.x).join()}|${(blast.rivets||[]).filter(r=>r.pulled).length}`;
   if(!blast.girderCv || blast.girderSig!==sig){ blast.girderCv=dkPaint(); blast.girderSig=sig; }
   g.drawImage(blast.girderCv, ox, oy);
   const spr=(cv, x, y)=>g.drawImage(cv, Math.round(ox+x-cv.width/2), Math.round(oy+y-cv.height));
@@ -737,6 +801,15 @@ function kongDraw(_, now){
     g.fillStyle="#2A5BD7"; g.fillRect(ox+d.x-8, oy+dy-14, 16, 14); g.fillStyle="#7FB0FF"; g.fillRect(ox+d.x-8, oy+dy-11, 16, 1); g.fillRect(ox+d.x-8, oy+dy-4, 16, 1);
     if(clock-(blast.flareAt||-9)<.6 || (dkLevel().fire && Math.floor(clock*6)%2)){ g.fillStyle="#FF9A3C"; for(let i=0;i<5;i++) g.fillRect(ox+d.x-6+i*3, oy+dy-16-((i*7+Math.floor(clock*12))%4), 2, 3); }
   }
+  // the lifts: each shaft's cables top and bottom, the platforms, the knob's lift marked KNOB
+  if(S.plats){
+    for(const lift of S.lifts){ g.fillStyle="#9A93B5"; g.fillRect(ox+lift.x-10, oy+S.top-8, 1, S.bottom-S.top+8); g.fillRect(ox+lift.x+10, oy+S.top-8, 1, S.bottom-S.top+8);
+      g.fillStyle="#E8323C"; g.fillRect(ox+lift.x-12, oy+S.top-10, 25, 3); g.fillRect(ox+lift.x-12, oy+S.bottom, 25, 3);
+      if(lift.knob && dkKnobLift()) pxText(g, "KNOB", ox+lift.x, oy+S.top-22, "#7FE9FF"); }
+    for(const f of S.plats){ const F=S.floors[f], y=Math.round(F.yL); g.fillStyle=F.knob ? "#7FE9FF" : "#E8323C"; g.fillRect(ox+F.x0, oy+y, F.x1-F.x0, 3); g.fillStyle="#16132A"; g.fillRect(ox+F.x0+2, oy+y+1, F.x1-F.x0-4, 1); }
+    const hm=S.floors[7]; spr(pxSprite("dkhome", DK_HOME, {R:"#FF5AA0", W:"#F1E8D2", Y:"#FFD35A", D:"#7A4A2A"}), hm.x0+10, hm.yL);
+    pxText(g, "HOME", ox+hm.x0-6, oy+hm.yL-20, "#FF5AA0");
+  }
   // the rivets' chords, under their girders
   for(const r of blast.rivets||[]){ if(r.pulled) continue; const y=dkSurf(r.f, r.x);
     const near=H.f===r.f && Math.abs(H.x-r.x)<8; pxText(g, dkLabel(r.chord), ox+r.x, oy+y+9, near ? "#FFFFFF" : "#FFD35A"); }
@@ -749,7 +822,7 @@ function kongDraw(_, now){
     if(blast.kongDown){ const t=clock-blast.kongDown; ky=Math.min(DK_H, ky+Math.max(0,t-.6)**2*160); }
     const pose= S===DK_RIVETS ? (Math.floor(clock*3)%2 ? 2 : 0) : blast.kongPose||0;
     spr(dkKongSprite(pose), kx, ky);
-    pxText(g, dkNumerals() ? "V7" : (blast.floorChord ? blast.floorChord[5].sym : "V7"), ox+kx, oy+ky-16, "#16132A", false);
+    pxText(g, dkNumerals() ? "V7" : (blast.floorChord && blast.floorChord[5] ? blast.floorChord[5].sym : "V7"), ox+kx, oy+ky-16, "#16132A", false);
   }
   // the barrels, rolling, each with its chord
   for(const b of blast.barrels){

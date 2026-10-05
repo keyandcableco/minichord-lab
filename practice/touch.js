@@ -39,6 +39,7 @@ function tdProfile(){
   // a knob where the game wants one now: Chord Invaders' manual aim steers the ship on one, and a
   // bonus round tuned by a knob (TUNE IT) has one while it plays, whatever the game
   if(blast && blast.kind==="blaster" && (blast.aimManual || saved.invAim)) return {...p, knob:1};
+  if(blast && blast.kind==="kong" && typeof dkKnobLift==="function" && dkKnobLift()) return {...p, knob:1};   // Dominant Kong's lifts: one is a knob
   if(blast && blast.bonus && !blast.bonus.over && blast.bonus.g && blast.bonus.g.knob && !p.knob) return {...p, knob:1};
   // and a bonus round played on the harp's notes (MISSING NOTE) has the strings while it plays, in a
   // game whose harp is a d-pad

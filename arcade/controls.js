@@ -32,7 +32,8 @@ mc.addEventListener("knob", e=>{
   if(blast.helpBoard && typeof helpKnob==="function") helpKnob(knob, value);   // the on-screen minichord's knob turns too
   if(blast.kind==="chopper"){ chopperKnob(value); return; }                   // any knob tunes the radio
   if(blast.kind==="asteroids" && blast.aimManual && knob===asAimKnob()){ asAim(value); return; }
-  if(blast.kind==="burger"){ bkKnob(knob, value); return; }                    // both knobs voice the chord   // manual aim: the other knob spins the ship
+  if(blast.kind==="burger"){ bkKnob(knob, value); return; }                    // both knobs voice the chord
+  if(blast.kind==="kong"){ dkKnob(knob, value); return; }                      // the lifts: the steering knob is one   // manual aim: the other knob spins the ship
   if(knob!==steerKnob()) return;
   const step=Math.round(value*127), h=knobHold[knob] || (knobHold[knob]={last:null, dir:0});
   const d = h.last==null ? 1 : step-h.last;                                   // the first reading always counts
