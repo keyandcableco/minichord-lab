@@ -57,6 +57,11 @@ const t=require("./harness").load("dominant-kong");
   check("A on the harp jumps", H.state==="air" && H.y<E(`dkSurf(0, ${H.x})`)-3);
   await sleep(1400);
   check("and the player lands back on the girder", H.state==="walk" && H.f===0);
+  // steering in the air: a jump from standing, then a way held, carries the player that way
+  const x0=H.x; hold(A); lift(A); await sleep(80); hold(RIGHT); await sleep(400); lift(RIGHT);
+  check("a way held in the air steers the jump that way", H.state==="air" && H.x>x0+8 && H.vx>0, `${(H.x-x0).toFixed(1)} ${H.vx}`);
+  await sleep(1200);
+  check("and it lands on the girder further along", H.state==="walk" && H.f===0 && H.x>x0+8);
   // a ladder: up from the bottom at x 80, open; the home ladder locked till C
   Object.assign(H, {x:80, y:E("dkSurf(0,80)"), f:0}); hold(UP); await sleep(2200); lift(UP); await sleep(50);
   check("up held at a ladder climbs it to the next girder", H.f===1 && H.state==="walk", `${H.f} ${H.state}`);

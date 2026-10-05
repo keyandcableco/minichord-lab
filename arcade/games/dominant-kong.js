@@ -290,6 +290,7 @@ function dkTick(now){
 // how fast, in pixels a second: slower at the relaxed speeds, a little faster each stage
 const dkPace=()=> (1+.03*Math.min(blast.stageN||0,10))/Math.sqrt(speedMul());
 const DK_WALK=46, DK_CLIMB=30, DK_JUMP=130, DK_GRAV=360, DK_FALL_OK=14, DK_ROLL=52;   // the jump: up 23 pixels, in the air 0.7 of a second, long enough to clear a barrel coming at you
+const DK_AIR=300;                                                      // steering in the air: from standing to a walk in a sixth of a second
 function dkStep(dt){
   blast.clock+=dt;
   if(blast.st==="ready"){ if(blast.clock>=blast.stUntil) blast.st="go"; return; }
@@ -335,7 +336,8 @@ window.addEventListener("blur", ()=>dkKeysHeld.clear());
 // Walking: along the girder, its slope under the feet; off its end, or into a pulled rivet's gap, a
 // fall. A way up or down taken onto a ladder within four pixels, if it isn't locked (up) and no hammer's
 // carried. Climbing: up or down the ladder only. In the air: the jump's arc, or a fall, landing on
-// the first girder the feet come down through; down further than a short drop, it's fatal.
+// the first girder the feet come down through; down further than a short drop, it's fatal. A way held
+// in the air steers, picking up to a walk's speed that way; let go, and the jump carries on as it was.
 function dkHero(dt){
   const H=blast.hero, S=dkStage(), ways=dkWays(), pace=dkPace(), hammer=blast.clock<(blast.hammerUntil||0);
   H.moving=false;
@@ -367,6 +369,9 @@ function dkHero(dt){
     return;
   }
   if(H.state==="air"){
+    const w=ways.find(w=>w==="left" || w==="right");
+    if(w){ const want=(w==="left" ? -1 : 1)*DK_WALK, step=DK_AIR*pace*dt;
+      H.vx= H.vx<want ? Math.min(want, H.vx+step) : Math.max(want, H.vx-step); H.dir=w; H.moving=true; }
     const y0=H.y; H.vy+=DK_GRAV*pace*pace*dt; H.x=Math.max(2, Math.min(DK_W-2, H.x+H.vx*pace*dt)); H.y+=H.vy*dt;
     dkHammerGrab();
     if(H.vy>0){
