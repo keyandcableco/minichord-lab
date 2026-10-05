@@ -596,22 +596,13 @@ function ccCamera(dt){
 const ccInView=(x,y,m=0)=>{ const v=blast.view; return !v || (x>=v.x-m && x<=v.x+v.w+m && y>=v.y-m*2 && y<=v.y+v.h+m); };
 
 // ---------- sprites ----------
-// each drawn once from rows of characters, a colour for each, and kept
-const CC_SPR=new Map();
-function ccSprite(key, rows, pal){
-  let cv=CC_SPR.get(key); if(cv) return cv;
-  cv=document.createElement("canvas"); cv.width=rows[0].length; cv.height=rows.length;
-  const g=cv.getContext("2d");
-  if(g && g.fillRect) rows.forEach((r,y)=>[...r].forEach((c,x)=>{ const col=pal[c]; if(col){ g.fillStyle=col; g.fillRect(x,y,1,1); } }));
-  CC_SPR.set(key, cv); return cv;
-}
 // the player: a disc 13 across, its mouth open by an angle, facing its way
 function ccPacSprite(dir, open, col){
   const rot={right:0, down:Math.PI/2, left:Math.PI, up:-Math.PI/2}[dir||"left"], rows=[];
   for(let y=0;y<13;y++){ let r=""; for(let x=0;x<13;x++){ const dx=x-6, dy=y-6, d2=dx*dx+dy*dy;
     let a=Math.atan2(dy,dx)-rot; a=Math.atan2(Math.sin(a),Math.cos(a));
     r+= d2<=42 && !(open>0 && Math.abs(a)<open/2 && d2>0) ? "#" : "."; } rows.push(r); }
-  return ccSprite(`pac|${dir}|${open.toFixed(2)}|${col}`, rows, {"#":col});
+  return pxSprite(`pac|${dir}|${open.toFixed(2)}|${col}`, rows, {"#":col});
 }
 // a ghost, 14 square: its body and hem (two of them, for the wiggle), its eyes looking its way; or
 // frightened, blue with a wobbly mouth; or only its eyes, going home
@@ -620,7 +611,7 @@ const CC_GHOST_BODY=[".....####.....","...########...","..##########..",".######
 const CC_GHOST_HEM=[["##.###..###.##","#...##..##...#"], ["####.####.####",".##...##...##."]];
 const CC_LOOK={left:[-1,0,0,2], right:[1,0,2,2], up:[0,-1,1,0], down:[0,1,1,3]};   // the whites' shift, then the pupils' place in them
 function ccGhostSprite(col, frame, look, mode){
-  return ccSprite(`gh|${col}|${frame}|${look}|${mode}`, (()=>{
+  return pxSprite(`gh|${col}|${frame}|${look}|${mode}`, (()=>{
     const rows=(mode==="eyes" ? Array(14).fill(".".repeat(14)) : [...CC_GHOST_BODY, ...CC_GHOST_HEM[frame]]).map(r=>[...r]);
     const put=(x,y,c)=>{ if(rows[y] && x>=0 && x<14) rows[y][x]=c; };
     if(mode==="scared" || mode==="ending"){
@@ -645,43 +636,13 @@ const CC_ICONS={
 // pixel-minichord.txt), as the lobby's INSERT MINICHORD sign has it: 36 by 19, pixel for pixel, in its
 // gold, dark and red. It fits the side tunnel's run exactly.
 function ccMiniSprite(){
-  let cv=CC_SPR.get("mini"); if(cv) return cv;
+  let cv=PX_SPR.get("mini"); if(cv) return cv;
   const W=typeof PIXEL_MINICHORD_W!=="undefined" ? PIXEL_MINICHORD_W : 1, H=typeof PIXEL_MINICHORD_H!=="undefined" ? PIXEL_MINICHORD_H : 1;
   const rows=Array.from({length:H}, ()=>Array(W).fill("."));
   if(typeof PIXEL_MINICHORD_PATHS!=="undefined") for(const m of PIXEL_MINICHORD_PATHS.matchAll(/fill="([^"]+)" d="([^"]+)"/g))
     for(const p of m[2].matchAll(/M(\d+) (\d+)/g)) rows[+p[2]][+p[1]]=m[1];
   const pal={}; rows.flat().forEach(c=>{ if(c!==".") pal[c]=c; });          // each pixel's own colour
-  return ccSprite("mini", rows.map(r=>r.map(c=>c==="." ? "." : c)), pal);
-}
-
-// ---------- the arcade's lettering ----------
-// Press Start 2P, the arcade's font, is an eight-pixel font: each letter drawn once at eight pixels and
-// made all or nothing, pixel by pixel, so none comes out soft. Sharps, flats and the diminished ring,
-// which it hasn't got, drawn to match.
-const CC_HAND={
-  "♭":[".#......",".#......",".#......",".####...",".#..#...",".#.#....",".##.....","........"],
-  "♯":["..#.#...",".#####..","..#.#...","..#.#...",".#####..","..#.#...","........","........"],
-  "°":[".##.....","#..#....",".##.....","........","........","........","........","........"],
-};
-const CC_GLYPH=new Map();
-let ccFontAsked=false;
-function ccGlyph(ch, col){
-  const key=ch+"|"+col; let cv=CC_GLYPH.get(key); if(cv) return cv;
-  if(CC_HAND[ch]) return ccSprite("hand|"+key, CC_HAND[ch], {"#":col});
-  const fonts=document.fonts, face='8px "Press Start 2P"';
-  if(fonts && fonts.check && !fonts.check(face)){ if(!ccFontAsked && fonts.load){ ccFontAsked=true; fonts.load(face).then(()=>CC_GLYPH.clear()).catch(()=>{}); } return null; }
-  cv=document.createElement("canvas"); cv.width=8; cv.height=8;
-  const g=cv.getContext("2d"); if(!g || !g.fillText) return cv;
-  g.font=face; g.textBaseline="top"; g.fillStyle=col; g.fillText(ch, 0, 0);
-  const im=g.getImageData && g.getImageData(0,0,8,8);
-  if(im && im.data && im.data.length){ for(let i=3;i<im.data.length;i+=4) im.data[i]=im.data[i]>=110 ? 255 : 0; g.putImageData(im,0,0); }
-  CC_GLYPH.set(key, cv); return cv;
-}
-// a line of lettering, centred on x, its top at y, black round it so it reads over the maze
-function ccText(g, text, cx, y, col, outline=true){
-  const chars=[...text], x0=Math.round(cx-chars.length*4); y=Math.round(y);
-  if(outline) for(const [dx,dy] of [[-1,0],[1,0],[0,-1],[0,1],[1,1]]) chars.forEach((ch,i)=>{ const m=ccGlyph(ch,"#000"); if(m) g.drawImage(m, x0+i*8+dx, y+dy); });
-  chars.forEach((ch,i)=>{ const m=ccGlyph(ch,col); if(m) g.drawImage(m, x0+i*8, y); });
+  return pxSprite("mini", rows.map(r=>r.map(c=>c==="." ? "." : c)), pal);
 }
 
 // ---------- the maze ----------
@@ -729,7 +690,7 @@ function ccDraw(_, now){
   if(!blast.mazeCv || blast.mazeCol!==mcol){ blast.mazeCv=ccMazePaint(mcol); blast.mazeCol=mcol; }
   g.drawImage(blast.mazeCv, ox, oy);
   // the dots, and the pellets blinking
-  const blink=Math.floor(clock*3)%2===0 || blast.st!=="go", pel=ccSprite("pellet", CC_PELLET, {"#":"#FFB8AE"});
+  const blink=Math.floor(clock*3)%2===0 || blast.st!=="go", pel=pxSprite("pellet", CC_PELLET, {"#":"#FFB8AE"});
   g.fillStyle="#FFB8AE";
   for(let y=0;y<CC_ROWS;y++) for(let x=0;x<CC_COLS;x++){
     const v=blast.dots[y][x]; if(!v) continue;
@@ -743,7 +704,7 @@ function ccDraw(_, now){
   for(const c of blast.caps){ if(c.until-clock<2.5 && Math.floor(clock*6)%2) continue;
     const p={x:ox+(c.x+.5)*t, y:oy+(c.y+.5)*t};
     spr(ccPacSprite("right", 0, c.k==="dacapo" ? "#FF4B3E" : "#FF5AA0"), p);
-    spr(ccSprite("icon|"+c.k, CC_ICONS[c.k], {"#":"#16132A"}), p); }
+    spr(pxSprite("icon|"+c.k, CC_ICONS[c.k], {"#":"#16132A"}), p); }
   // the little minichord, in the tunnel, bobbing
   const mi=blast.mini;
   if(mi && !(mi.until-clock<2.5 && Math.floor(clock*6)%2)) spr(ccMiniSprite(), {x:ox+(mi.x+.5)*t, y:oy+(mi.y+.5)*t}, Math.round(Math.sin(clock*5)));
@@ -752,8 +713,8 @@ function ccDraw(_, now){
   if(fr && !(fr.until-clock<3 && Math.floor(clock*5)%2)){
     const cx=ox+(CC_FRUIT.x+.5)*t, cy=oy+(CC_FRUIT.y+.5)*t, n=[...fr.key.name].length, w=n*8+6, x0=Math.round(cx-w/2), y0=Math.round(cy-6);
     g.fillStyle="#FFD35A"; g.fillRect(x0-1, y0-1, w+2, 14); g.fillStyle="#16132A"; g.fillRect(x0, y0, w, 12);
-    ccText(g, fr.key.name, cx, y0+2, "#FFD35A", false);
-    if(fr.f) ccText(g, `${Math.abs(fr.f)}${fr.f>0?"♯":"♭"}`, cx, y0-11, "#F1E8D2");
+    pxText(g, fr.key.name, cx, y0+2, "#FFD35A", false);
+    if(fr.f) pxText(g, `${Math.abs(fr.f)}${fr.f>0?"♯":"♭"}`, cx, y0-11, "#F1E8D2");
   }
   // the ghosts, then the player over them
   const dying=blast.st==="dying", wig=Math.floor(now/140)%2;
@@ -771,7 +732,7 @@ function ccDraw(_, now){
   // the chords the ghosts wear, the pointers to the ones out of view, READY!
   if(!dying || clock-blast.diedAt<.5) for(const gh of blast.ghosts) ccGhostLabel(g, gh, at(gh));
   if(blast.scrolls) ccOffscreen(g, at);
-  if(blast.st==="ready") ccText(g, "READY!", ox+(CC_FRUIT.x+.5)*t, oy+CC_FRUIT.y*t, "#FFE600");
+  if(blast.st==="ready") pxText(g, "READY!", ox+(CC_FRUIT.x+.5)*t, oy+CC_FRUIT.y*t, "#FFE600");
 }
 // the player: its mouth opening and closing as it goes, three frames; caught, it turns up and opens
 // all the way round till it's gone, as the old game's did
@@ -791,9 +752,9 @@ function ccGhostLabel(g, gh, p){
   const col = gh.scared ? "#FFFFFF" : power && gh.state==="out" ? (Math.floor(blast.clock*4)%2 ? "#FFD35A" : "#FFF4C2") : "#F1E8D2";
   let top=p.y-7-10; const up=L.names ? 9 : 0;
   if(top-up<1) top=p.y+8+up;                                             // on the top row: under it, not off the screen
-  if(L.names){ ccText(g, gh.chord.sym, p.x, top, col); ccText(g, gh.num, p.x, top-9, "#9A93B5"); }
-  else ccText(g, gh.num, p.x, top, col);
-  if(blast.clock<blast.fermataUntil) g.drawImage(ccSprite("icon|fermata|w", CC_ICONS.fermata, {"#":"#FFFFFF"}), Math.round(p.x-3), Math.round(p.y+8));
+  if(L.names){ pxText(g, gh.chord.sym, p.x, top, col); pxText(g, gh.num, p.x, top-9, "#9A93B5"); }
+  else pxText(g, gh.num, p.x, top, col);
+  if(blast.clock<blast.fermataUntil) g.drawImage(pxSprite("icon|fermata|w", CC_ICONS.fermata, {"#":"#FFFFFF"}), Math.round(p.x-3), Math.round(p.y+8));
 }
 // Scrolling, the ghosts out of view: a pointer at the edge of the view in each one's colour (blue if
 // it's the one held), level with it, and its chord, so a ghost to catch or to keep clear of is never
@@ -805,10 +766,10 @@ function ccOffscreen(g, at){
     if(gh.state==="eyes" || (gh.state!=="out" && blast.st!=="jam")) continue;
     const p=at(gh); if(p.x>=v.x && p.x<=v.x+v.w) continue;
     const left=p.x<v.x, y=Math.round(Math.max(v.y+8, Math.min(v.y+v.h-8, p.y))), col=gh.scared ? "#2121FF" : gh.col;
-    const arrow=ccSprite(`point|${left}|${col}`, left ? CC_POINT : CC_POINT.map(r=>[...r].reverse().join("")), {"#":col});
+    const arrow=pxSprite(`point|${left}|${col}`, left ? CC_POINT : CC_POINT.map(r=>[...r].reverse().join("")), {"#":col});
     const x=left ? v.x+1 : v.x+v.w-1-arrow.width; g.drawImage(arrow, x, y-3);
     const label=L.names ? gh.chord.sym : gh.num, lx= left ? x+arrow.width+2+[...label].length*4 : x-2-[...label].length*4;
-    ccText(g, label, lx, y-4, gh.scared ? "#FFFFFF" : power ? "#FFD35A" : "#F1E8D2");
+    pxText(g, label, lx, y-4, gh.scared ? "#FFFFFF" : power ? "#FFD35A" : "#F1E8D2");
   }
 }
 // a popup over a place in the maze
