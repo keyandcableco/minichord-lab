@@ -116,10 +116,13 @@ function arcadeSetup(fn){ if(blast.setupDone) return; blast.setupDone=true; poll
 // their volumes, and the mod knob's main function is a setting of the preset. On firmware with knob
 // layer (19), a game puts the knobs on their alternates and points those at unused addresses, so
 // turning them changes nothing while "knobs send MIDI" still reports where they are. False without it.
+// An alternate can point at 21 to 219; 217, 218 and 219 are the ones no firmware uses (213 to 215 were,
+// until firmware 22 made them the palm mute and the harp's note-off on lift).
+const KNOBS_NOWHERE=[217,218,219];
 function arcadeKnobsInert(){
   if(!canWrite() || !hasSetting(117) || (mc.params[7]??0)<19) return false;
   if(knobsReady()) borrow(238,1);
-  borrow(117,1); borrow(10,213); borrow(12,214); borrow(16,215);
+  borrow(117,1); borrow(10,KNOBS_NOWHERE[0]); borrow(12,KNOBS_NOWHERE[1]); borrow(16,KNOBS_NOWHERE[2]);
   return true;
 }
 // The minichord's chord and harp volumes (addresses 3 and 2, on the knobs by default) are also its MIDI

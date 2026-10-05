@@ -15,7 +15,7 @@ const t=require("./harness").load("chord-asteroids");
   // manual aim
   w.eval("saved.asAim=1"); const a=await t.start(0, {speed:4});
   check("the arcade's double tap does one job: a preset's other pairs are set aside", mc.params[209]===0 && mc.params[211]===0, `${mc.params[209]} ${mc.params[211]}`);
-  check("manual aim puts the knobs on their alternates, pointed at unused addresses", mc.params[117]===1 && mc.params[10]===213 && mc.params[12]===214 && mc.params[16]===215);
+  check("manual aim puts the knobs on their alternates, pointed at unused addresses", mc.params[117]===1 && mc.params[10]===217 && mc.params[12]===218 && mc.params[16]===219);
   const ang0=a.shipAng; knob(0,20); await sleep(300);
   check("the other knob spins the ship", Math.abs(a.shipAng-ang0)>1, `${ang0.toFixed(2)} → ${a.shipAng.toFixed(2)}`);
   // clear the sky, and put a note where the ship points, and one off to its side

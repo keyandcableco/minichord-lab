@@ -5,7 +5,7 @@ const t=require("./harness").load("invaders");
   const {w, sleep, chord, check, knob, mc}=t;
   await sleep(150); t.connect({extra:{7:19, 117:0, 238:1}}); await sleep(100);
   w.eval("saved.invAim=1"); const a=await t.start(0, {speed:1});
-  check("manual aim puts the knobs on inert alternates", mc.params[117]===1 && mc.params[16]===215);
+  check("manual aim puts the knobs on inert alternates", mc.params[117]===1 && mc.params[16]===219);
   check("and the score multiplier counts it: × 2 on top of the speed", a.mult===w.eval("MULT_SPEED[+saved.speed||0]")*2, `× ${a.mult}`);
   knob(0,22); await sleep(500); const left=a.shipF; knob(127,22); await sleep(700);
   check("the steering knob slides the ship", left<.2 && a.shipF>.8, `${left.toFixed(2)} → ${a.shipF.toFixed(2)}`);
