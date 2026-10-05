@@ -30,6 +30,7 @@ const TD_PROFILES={
   racer:    {chords:1, harp:"notes", knob:1},
   chomp:    {chords:1, harp:"dpad"},
   burger:   {chords:1, harp:"dpad", knob:2},            // its two knobs voice the chord: inversion and spacing
+  kong:     {chords:1, harp:"dpad"},
 };
 const TD_EVERYTHING={chords:1, harp:"notes"};                // the Practice Room's own games
 function tdProfile(){

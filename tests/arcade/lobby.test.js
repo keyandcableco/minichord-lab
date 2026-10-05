@@ -11,7 +11,7 @@ w.eval("(async()=>{"+src+"})()");
 setTimeout(()=>{
   const results=[]; const check=(n,ok,det="")=>{ results.push(ok); console.log(`${ok?"  ✓":"  ✗"} ${n}${det?`  (${det})`:""}`); };
   const cabs=[...d.querySelectorAll(".cab h3")].map(x=>x.textContent);
-  check("a cabinet for every game", cabs.length===16, cabs.join(", "));
+  check("a cabinet for every game", cabs.length===17, cabs.join(", "));
   check("a best score on its cabinet", d.getElementById("hi-chord-snake").textContent==="HI 12,345 GKY");
   check("an empty board invites a first score", /BE THE FIRST/.test(d.getElementById("hi-invaders").textContent));
   check("the ticker carries the leaders", /CHORD SNAKE.*GKY 12,345/.test(d.getElementById("ticker").textContent));

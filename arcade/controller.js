@@ -99,7 +99,7 @@ function kmRestrip(){
   blast.strip=kmStrip(blast.field);
   if(blast.kind==="snake"){ snLayout(); snDraw(); }
   if(blast.kind==="sweeper"){ swLayout(); swDraw(); }
-  if(blast.kind==="chomp" || blast.kind==="burger") blast.layoutKey=null;
+  if(blast.kind==="chomp" || blast.kind==="burger" || blast.kind==="kong") blast.layoutKey=null;
   helperSync(true);
 }
 function kmFlash(strip, pc){ if(!strip) return; const c=strip.querySelector(`[data-pc="${mod(pc,12)}"]`); if(!c) return; c.classList.remove("hit"); void c.offsetWidth; c.classList.add("hit"); }
