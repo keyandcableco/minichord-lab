@@ -42,6 +42,26 @@ const kmGlyph=z=>{ if(z==null) return "";
   return (pics && pics[z]) || KM_GLYPH[z]; };
 const kmControl=pc=>kmLayout().byString[mod(pc,12)];
 
+// ---------- the harp held ----------
+// A walk goes on for as long as its way is held, so a game that walks reads the strings held, not
+// only those plucked. A string is held from its "harp" to its "harpoff": the minichord's note-off as
+// the finger lifts (harpInOrder makes sure it comes then), and the screen's d-pad and the keyboard's
+// number row send the same. Kept by pitch class, as the layouts read them; a zone is held while any
+// of its strings is.
+const kmHeldAt=new Map();     // pitch class → when it was touched
+mc.addEventListener("harp", e=>kmHeldAt.set(mod(e.detail.note,12), performance.now()));
+mc.addEventListener("harpoff", e=>kmHeldAt.delete(mod(e.detail.note,12)));
+// a page that loses the focus never hears its keys let go
+window.addEventListener("blur", ()=>kmHeldAt.clear());
+/** the zones held now, the one touched last first */
+function kmHeld(){
+  const at={};
+  for(const [pc,t] of kmHeldAt){ const z=kmControl(pc); if(z && !(at[z]>=t)) at[z]=t; }
+  return Object.keys(at).sort((a,b)=>at[b]-at[a]);
+}
+/** the way the d-pad is held: of the arrows held, the one touched last; null with none */
+const kmHeldWay=()=> kmHeld().find(z=>z==="up" || z==="down" || z==="left" || z==="right") ?? null;
+
 // The keymaster harp as it looks: a leaning black plate with its twelve white notes in four rising
 // rows of three, strings 1 to 3 the lowest row, 10 to 12 the top. Positions are percentages of the
 // plate, measured from a photograph of it.
@@ -86,7 +106,11 @@ function kmFlash(strip, pc){ if(!strip) return; const c=strip.querySelector(`[da
 // set the harp up as a controller: chromatic, first rank, untransposed, and as loud as the player chose
 // A preset's harp shuffling (address 40) swaps strings round, so the section you touch plays another
 // string's note: every game that reads the harp turns it off while it plays, and gives it back after.
-const harpInOrder=()=>{ if(hasSetting(40)) ensure(40,0); };
+// And from firmware 22 a string can sound as the finger lifts (pluck on lift, 216), its note can last
+// until the sound dies rather than the finger (215), and a few pads down at once can be a palm that
+// silences them (213): a game wants each string as it's touched, held until it's let go, every one.
+const HARP_AT_TOUCH={40:0, 216:0, 215:1, 213:0};
+const harpInOrder=()=>{ for(const [a,v] of Object.entries(HARP_AT_TOUCH)) if(hasSetting(+a)) ensure(+a,v); };
 function kmHarp(){
   if(!canWrite()) return;
   harpInOrder();
