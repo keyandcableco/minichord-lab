@@ -17,13 +17,13 @@
 // Left flipped too long, a pest rights itself, faster; one that walks off the bottom unresolved goes
 // down the pipe and comes back out at the top, faster again. Unresolved tension keeps coming round.
 //
-// On a minichord that can load its own alternate layout (firmware with the slots, 202 to 208, or the
-// screen's), the game loads the sus layout while it plays: major, minor and 7 where they always are,
-// sus4 on major and 7 held together, sus2 on minor and 7, 7sus4 on major and minor, °7 on all three.
-// Then a pest is cleared by playing the suspension and then its resolution, the 4–3 played out: hold
-// a column's major and 7 for Csus4, let go of the 7, and it's C. SUSPENSIONS on the title screen:
-// SUSPEND (half as much again), or RESOLVE, the resolution alone, on the standard
-// layout.
+// A pest flipped sounds its suspension, the tension hanging, and the player's chord completes it: the
+// resolution's all a flipped pest needs, on the minichord's own buttons. SUSPENSIONS on the title
+// screen, for half as much again, where the minichord can load its alternate layout's slots (firmware
+// with 202 to 208, or the screen's): SUSPEND loads the sus layout while the game plays (major, minor and
+// 7 where they always are, sus4 on major and 7 held together, sus2 on minor and 7, 7sus4 on major and
+// minor, °7 on all three), and a pest is cleared by playing its suspension and then its resolution, the
+// 4–3 played out: hold a column's major and 7 for Csus4, let go of the 7, and it's C.
 //
 // Every pest cleared sends a coin out of a pipe; the coins are the key's scale, each collected
 // sounding its note, so a phase's coins run up the scale. The POW block, bumped from underneath,
@@ -74,7 +74,7 @@ const sbLevel=(i=blast.level)=> SB_LEVELS[Math.min(i, SB_LEVELS.length-1)];
 // minor, °7 on all three.
 const SB_SLOTS=["","m","7","sus4","sus2","7sus4","°7"].map(q=>MX_CATALOGUE.indexOf(q)+1);
 const sbLayoutOk=()=> canWrite() && hasSetting(39) && hasSetting(202);
-const sbBoth=()=> sbLayoutOk() && !saved.sbResolveOnly;
+const sbBoth=()=> sbLayoutOk() && !!saved.sbSuspend;            // SUSPEND, chosen on the title screen
 function sbKey(f){ const name=KEY_BY_FIFTHS[f]; return {f, name, label:`${name} MAJOR`, pc:pcOfName(name)}; }
 // a chord of the key on a degree, its quality given
 function sbChord(key, deg, q){
@@ -117,10 +117,16 @@ function sbDevice(){
   arcadeSetup(()=>{
     kmHarp();
     if(hasSetting(35)) borrow(35, keyIndexOf(blast.key ? blast.key.f : 0));
-    if(sbBoth()){ ensure(39,1); SB_SLOTS.forEach((v,i)=>ensure(202+i, v)); }
-    else if(hasSetting(39)) ensure(39,0);
+    sbLayoutNow();
   });
   if(blast.phase==="play" && !pollT) poll(true);
+}
+// the layout SUSPENSIONS asks for, as each game starts (it's chosen on the title screen, after the
+// setup): the sus layout for SUSPEND, the standard one otherwise
+function sbLayoutNow(){
+  if(!canWrite()) return;
+  if(sbBoth()){ ensure(39,1); SB_SLOTS.forEach((v,i)=>ensure(202+i, v)); }
+  else if(hasSetting(39)) ensure(39,0);
 }
 function buildBrosField(box){
   const field=document.createElement("div"); field.className="field arcade bros"; field.setAttribute("aria-label","The pipes");
@@ -142,7 +148,7 @@ function sbBar(){
 
 // ---------- the title screen ----------
 const SBMENU_G={key:"bros", title:"SUS BROS.",
-  rules:()=>`<p>EVERY PEST IS A SUSPENDED CHORD. JUMP UP UNDER THE FLOOR IT'S WALKING ON TO FLIP IT, THEN ${sbBoth() ? "PLAY ITS SUSPENSION AND THEN ITS RESOLUTION: Dsus4, THEN Dm. THE SUS CHORDS ARE ON TWO BUTTONS: MAJOR AND 7 FOR sus4, MINOR AND 7 FOR sus2, MAJOR AND MINOR FOR 7sus4" : "PLAY ITS RESOLUTION: Dsus4 RESOLVES TO Dm, THE 4TH FALLING TO THE 3RD"}.</p><p>THE CRABS ARE 7sus4: BUMP ONE AND IT'S A DOMINANT SEVENTH, ANGRY; BUMP IT AGAIN, AND RESOLVE IT HOME. THE ICE IS A DIMINISHED SEVENTH: MELT IT WITH A CHORD A SEMITONE ABOVE ANY OF ITS NOTES.</p><p>LEAVE ONE FLIPPED TOO LONG, OR LET IT DOWN THE PIPE, AND IT COMES BACK FASTER. THE POW BLOCK FLIPS EVERYTHING.</p><p>${playOnScreen() ? "WALK WITH THE ARROWS UNDER THE GAME, A TO JUMP" : "WALK ON THE HARP OR THE ARROW KEYS, HOLDING THE WAY; A OR SPACE TO JUMP"}.</p>`,
+  rules:()=>`<p>EVERY PEST IS A SUSPENDED CHORD. JUMP UP UNDER THE FLOOR IT'S WALKING ON TO FLIP IT, THEN ${sbBoth() ? "PLAY ITS SUSPENSION AND THEN ITS RESOLUTION: Dsus4, THEN Dm. THE SUS CHORDS ARE ON TWO BUTTONS: MAJOR AND 7 FOR sus4, MINOR AND 7 FOR sus2, MAJOR AND MINOR FOR 7sus4" : "IT SOUNDS ITS SUSPENSION: PLAY WHERE IT RESOLVES. Dsus4 RESOLVES TO Dm, THE 4TH FALLING TO THE 3RD"}.</p><p>THE CRABS ARE 7sus4: BUMP ONE AND IT'S A DOMINANT SEVENTH, ANGRY; BUMP IT AGAIN, AND RESOLVE IT HOME. THE ICE IS A DIMINISHED SEVENTH: MELT IT WITH A CHORD A SEMITONE ABOVE ANY OF ITS NOTES.</p><p>LEAVE ONE FLIPPED TOO LONG, OR LET IT DOWN THE PIPE, AND IT COMES BACK FASTER. THE POW BLOCK FLIPS EVERYTHING.</p><p>${playOnScreen() ? "WALK WITH THE ARROWS UNDER THE GAME, A TO JUMP" : "WALK ON THE HARP OR THE ARROW KEYS, HOLDING THE WAY; A OR SPACE TO JUMP"}.</p>`,
   levels:SB_LEVELS, begin:i=>beginBros(i), demo:()=>sbDemo(), modNote:"title"};
 function sbMenu(over){ arcadeMenu(SBMENU_G, over); }
 function beginBros(level){
@@ -151,6 +157,7 @@ function beginBros(level){
   if(blast.overlay){ blast.overlay.remove(); blast.overlay=null; }
   Object.assign(blast,{score:0, lives:3, level, startLevel:level, phaseN:0, phase:"play", over:false, clock:0, pow:3});
   if(canWrite() && hasSetting(33)) ensure(33,0);
+  sbLayoutNow();
   saved.brosStart=level; save();
   stats.streak=0; scoreboard();
   sbNewPhase(); sbPlace();
@@ -280,6 +287,15 @@ function sbHit(e){
   e.state="flipped"; e.until=blast.clock+sbFlipSecs(); e.suspended=false;
   if(blast.phase==="play"){ const p=mulPts(10*(blast.level+1)); blast.score+=p; sbBar(); }
   sfx("flip");
+  if(!sbBoth()) sbSound(sbPestChords(e).sus);
+}
+// the suspension sounded on the page's piano, the tension the player's chord resolves
+function sbSound(c){
+  if(!c) return;
+  blast.sounded=c.sym;
+  if(!settings.sounds || !piano.ctx) return;
+  const v=FORM[c.q].map(f=>48+c.pc+f[1]), go=()=>piano.play(v, {when:.12, dur:1.6, vel:70});
+  piano.ctx.state==="running" ? go() : piano.ctx.resume().then(go).catch(()=>{});
 }
 const sbFlipSecs=()=> Math.max(3.5, 7-.5*blast.level-.2*(blast.phaseN||0))*Math.sqrt(speedMul());
 function sbRight(e){ e.state="walk"; e.tier=Math.min(3, e.tier+1); e.suspended=false; sfx("right"); }
@@ -585,7 +601,7 @@ function sbDemo(){
       H.x=70; say("BUMP IT FROM UNDER", "JUMP UP UNDER THE FLOOR IT'S WALKING ON, AND IT FLIPS OVER."); await step(2400);
       zones("A"); sbJump(); await step(900); zones(); await step(900);
       const c=sbPestChords(e);
-      say("SUSPEND AND RESOLVE",`IT'S ${c.sus.sym}: PLAY IT, THEN LET THE 4TH FALL TO THE 3RD. ${c.sus.sym}, THEN ${c.res.sym}.`); await step(2600);
+      say("RESOLVE IT", sbBoth() ? `IT'S ${c.sus.sym}: PLAY IT, THEN LET THE 4TH FALL TO THE 3RD. ${c.sus.sym}, THEN ${c.res.sym}.` : `IT'S ${c.sus.sym}, HANGING: PLAY WHERE IT RESOLVES, THE 4TH FALLING TO THE 3RD. ${c.res.sym}.`); await step(2600);
       if(sbBoth()) play(c.sus); else e.suspended=true;
       await step(1400); play(c.res); await step(1800);
       say("THE COINS","EACH ONE RESOLVED SENDS A COIN OUT OF A PIPE: THE KEY'S SCALE, A NOTE A COIN."); await step(3600);

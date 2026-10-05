@@ -1,5 +1,6 @@
 // Sus Bros.: every phase's pests spell in every key it deals; the sus layout loaded where the minichord
-// has the alternate layout's slots, and given back; the player walks while a way's held and jumps on A,
+// has the alternate layout's slots and SUSPEND is chosen, and given back, and left alone by default
+// (RESOLVE), a flipped pest sounding its suspension then; the player walks while a way's held and jumps on A,
 // bumping the floor above and flipping what's on it there, a second bump righting it; RESOLVE
 // clears a flipped pest with its resolution; SUSPEND wants its sus chord first; the crab
 // angered by one bump, a dominant then, flipped by the second and resolved home; the ice melted a
@@ -25,8 +26,9 @@ const t=require("./harness").load("sus-bros");
   check("every phase's pests, and what resolves them, spell in every key it deals", !spelled.length, spelled.slice(0,4).join("; "));
   check("a sus2 pest's 2nd is in the key: never on iii", E(`(()=>{ const k=sbKey(0); return SB_SUS2_OK.every(d=>{ const c=sbChord(k,d,"sus2"); const s=spellChord(c.root,"sus2"); return s.every(n=>MAJOR.includes(mod(pcOfName(n),12))); }); })()`));
 
+  E(`saved.sbSuspend=true`);                                           // SUSPEND, for the bonus: the sus layout
   const a=await t.start(0); await sleep(2100);
-  check("the sus layout loaded: the alternate layout on, its slots major, minor, 7, sus4, sus2, 7sus4, °7",
+  check("SUSPEND: the sus layout loaded: the alternate layout on, its slots major, minor, 7, sus4, sus2, 7sus4, °7",
     mc.params[39]===1 && [202,203,204,205,206,207,208].map(x=>mc.params[x]).join()===E("SB_SLOTS").join() && E("SB_SLOTS").join()==="1,2,3,12,13,14,10");
   a.queue.splice(0, a.queue.length, {kind:"creeper", deg:"I"}); a.pests.length=0; a.nextOut=1e9;   // one left in the pipe, never let out, so the phase isn't over
   const H=a.hero;
@@ -40,25 +42,26 @@ const t=require("./harness").load("sus-bros");
   await sleep(500); Object.assign(H, {x:60, y:204, f:0, state:"walk"}); hold(A); lift(A); await sleep(500);
   check("bumped again, a flipped pest rights itself, a step faster", e.state==="walk" && e.tier===1);
   E(`sbHit(blast.pests[0])`);
-  // SUSPEND AND RESOLVE (the default here): the resolution alone isn't enough
+  // SUSPEND: the resolution alone isn't enough
   const c=E(`sbPestChords(blast.pests[0])`);
   check("a creeper on IV in C is Fsus4, resolving to F", c.sus.sym==="Fsus4" && c.res.sym==="F");
   await play(ch(c.res));
-  check("SUSPEND AND RESOLVE: the resolution alone doesn't clear it, and says to suspend first", e.state==="flipped" && /SUSPENSION FIRST: Fsus4/.test(t.heard()), t.heard());
+  check("SUSPEND: the resolution alone doesn't clear it, and says to suspend first", e.state==="flipped" && /SUSPENSION FIRST: Fsus4/.test(t.heard()), t.heard());
   const s0=a.score; await play(ch(c.sus)); await play(ch(c.res));
   check("its sus chord, then its resolution, clears it", !a.pests.includes(e) && a.score-s0===Math.round(1610*1.5) || (!a.pests.includes(e) && a.score-s0>=1600), `${a.score-s0}`);
   check("and a coin of the scale comes out of a pipe", a.coins.length===1 && a.coins[0].note==="C");
   // the coin taken: its note
   const coin=a.coins[0]; Object.assign(coin, {x:H.x, y:H.y, f:H.f}); await sleep(80);
   check("walked into, the coin's taken", a.coins.length===0);
-  // RESOLVE
-  E(`saved.sbResolveOnly=true`);
-  const e2=mk("creeper","ii",1,60); E(`sbHit(blast.pests[0])`);
+  // RESOLVE, the default: a flipped pest sounds its suspension, and its resolution alone clears it
+  E(`saved.sbSuspend=false`);
+  const e2=mk("creeper","ii",1,60); a.sounded=null; E(`sbHit(blast.pests[0])`);
+  check("RESOLVE: flipped, a pest sounds its suspension (Dsus4)", a.sounded==="Dsus4", a.sounded);
   await play(ch(E(`sbChord(blast.key,"ii","")`)));
-  check("RESOLVE ONLY: a wrong chord (D for Dsus4 in C, not Dm) leaves it", e2.state==="flipped");
+  check("RESOLVE: a wrong chord (D for Dsus4 in C, not Dm) leaves it", e2.state==="flipped");
   await play(ch(E(`sbChord(blast.key,"ii","m")`)));
   check("its resolution, Dm, clears it", !a.pests.includes(e2));
-  E(`saved.sbResolveOnly=false`);
+  E(`saved.sbSuspend=true`);
   // the crab: angry at the first bump (a dominant seventh), flipped at the second, resolved home
   const k=mk("crab","V",1,60); E(`sbHit(blast.pests[0])`);
   check("the crab's first bump angers it: G7sus4 is G7 now", k.angry && k.state==="walk" && E(`sbPestChords(blast.pests[0]).sus.sym`)==="G7");
@@ -94,6 +97,11 @@ const t=require("./harness").load("sus-bros");
   check("and the next phase begins", a.level===1 && a.queue.length===5);
   sb.restoreAll(); await sleep(50);
   check("leaving gives the layout and its slots back", mc.params[39]===0 && mc.params[202]===0);
+  // RESOLVE, the default: the minichord's own layout left alone
+  E(`saved.sbSuspend=false; blast.setupDone=false; blast.phase="menu"; blast.overlay && blast.overlay.remove(); blast.overlay=null; sbMenu()`);
+  await t.start(0); await sleep(300);
+  check("by default (RESOLVE) the minichord's own layout is left alone", mc.params[39]===0 && mc.params[205]===0);
+  sb.restoreAll(); await sleep(50);
 
   // the screen's minichord plays the sus layout: C's major and 7 together, Csus4
   w.eval("keyboardMinichord(true)"); await sleep(100);
