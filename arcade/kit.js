@@ -128,7 +128,7 @@ function arcadeKnobsInert(){
 // The minichord's chord and harp volumes (addresses 3 and 2, on the knobs by default) are also its MIDI
 // velocities: turned right down, it sends notes a game can't hear. So a game turns up whichever it
 // listens to, if it's down, for as long as it plays, and says so; and if one goes down mid-game, it says that.
-const ARCADE_HARP=new Set(["command","snake","asteroids","stack","fifths","breakout","fleet","sweeper","racer","chomp","burger","kong"]);
+const ARCADE_HARP=new Set(["command","snake","asteroids","stack","fifths","breakout","fleet","sweeper","racer","chomp","burger","kong","bros"]);
 const ARCADE_CHORDS=k=>k!=="command";
 function arcadeVolumes(){
   const up=[];
@@ -174,7 +174,7 @@ const MULT_SPEED=[1,1.25,1.5,1.75,2];                      // Relaxed … Wild
 // Hunt, whose harp is only low or high, nor Between the Frets, whose harp goes in quarter-tones)
 const HARP_BY_NAME=new Set(["command","asteroids","breakout","fifths","chopper","fleet","sight"]);
 const harpOnScreen=kind=> typeof playOnScreen==="function" && playOnScreen() && typeof TD_PROFILES!=="undefined" && TD_PROFILES[kind]?.harp==="notes";
-const KM_GAMES=["snake","stack","sweeper","chomp","burger","kong"];          // the harp as a d-pad: its layout is how the game's played
+const KM_GAMES=["snake","stack","sweeper","chomp","burger","kong","bros"];          // the harp as a d-pad: its layout is how the game's played
 const KF_TORPS=[1,.85,.7];                                 // Key Fleet: plenty, fewer, few
 const SL_WINS=[38,24];                                     // Sight Line: loose, tight (pixels either side of the playhead)
 const has=(...ks)=>k=>ks.includes(k);
@@ -207,6 +207,8 @@ const ARCADE_OPTS=[
     vals:()=>[["SET FOR ME",1,"THE GAME TURNS THE KNOBS TO EACH PLATE: YOU NAME THE CHORD"],["MINE",1.5,"YOU TURN THE KNOBS: VOICE EACH PLATE AS IT'S STACKED"]]},
   {id:"labels", group:"game", label:"LABELS", on:has("kong"), ...flag("dkNumerals"),
     vals:()=>[["NAMES",1,"EVERY BARREL, LOCK AND RIVET BY ITS CHORD'S NAME"],["NUMERALS",1.5,"BY NUMERAL IN THE KEY: WORK OUT EACH CHORD YOURSELF"]]},
+  {id:"sus", group:"game", label:"SUSPENSIONS", on:k=>k==="bros" && typeof sbLayoutOk==="function" && sbLayoutOk(), get:()=>saved.sbResolveOnly?0:1, set:i=>{ saved.sbResolveOnly=!i; save(); },
+    vals:()=>[["RESOLVE",1,"PLAY A FLIPPED PEST'S RESOLUTION ALONE: Dsus4 GOES TO Dm"],["SUSPEND",1.5,"PLAY ITS sus CHORD, THEN ITS RESOLUTION: THE GAME LOADS THE SUS LAYOUT"]]},
   {id:"glow", group:"game", label:"CHORD GLOW", on:has("snake","stack"), get:()=>saved.noGlow?1:0, set:i=>{ saved.noGlow=!!i; save(); },
     vals:k=>[["ON",1, k==="snake" ? "CARRIED NOTES THAT SPELL A CHORD LIGHT UP" : "A ROW THAT HOLDS A CHORD LIGHTS UP"],["OFF",1.5,"NOTHING LIGHTS UP: SPOT THE CHORDS YOURSELF"]]},
   {id:"next", group:"game", label:"NEXT PIECE", on:has("stack"), ...flag("stNoNext"),
@@ -234,7 +236,7 @@ const ARCADE_OPTS=[
   {id:"harpAs", group:"setup", label:"HARP AS", on:k=>harpOnScreen(k), ...flag("tdPiano"),
     set:i=>{ saved.tdPiano=!!i; save(); if(typeof tdSync==="function") tdSync(); },
     vals:()=>[["STRINGS",1,"THE SCREEN'S HARP AS THE MINICHORD'S TWELVE STRINGS"],["PIANO",1,"THE SCREEN'S HARP AS AN OCTAVE OF PIANO KEYS, C TO B"]]},
-  {id:"harpSound", group:"setup", label:"HARP SOUND", on:has("snake","stack","sweeper","racer","chomp","burger","kong"), get:()=>saved.harpSound??1,
+  {id:"harpSound", group:"setup", label:"HARP SOUND", on:has("snake","stack","sweeper","racer","chomp","burger","kong","bros"), get:()=>saved.harpSound??1,
     set:i=>{ saved.harpSound=i; save(); if(blast && blast.setupDone) kmHarp(); },
     say:"THE HARP STEERS HERE: HOW MUCH OF IT YOU HEAR", vals:()=>[["NORMAL",1],["QUIET",1],["OFF",1]]},
   {id:"knob", group:"setup", label:"KNOB", on:k=>knobsReady() && (has("breakout","fifths","stack","asteroids","sight","burger","kong")(k) || (k==="blaster" && saved.invAim) || (k==="racer" && saved.krSteer)),
@@ -284,6 +286,7 @@ const POINTS_FOR={
   racer:()=>[["GATE OF THE KEY","10"],["GATE PLAYED OPEN","20"],["PIVOT CHORD","× 2"],["CAR PULLED OVER","30"],["CAR OVERTAKEN","10"],["TURBO","15"],["CHECKPOINT, HOME PLAYED","50"],["FINISH","50 A PLACE ABOVE 9TH"],["TIME LEFT","10 A SECOND"],powerRow(KR_POWERS, "CAPSULES")],
   chomp:()=>[["DOT","10"],["POWER PELLET","50"],["GHOST CAUGHT","200, 400, 800, 1600"],["HALF CADENCE","200"],["PLAGAL OR DECEPTIVE","300"],["PERFECT CADENCE","500"],["FULL CADENCE","1500"],["KEY SET","500, +250 A FIFTH"],powerRow(CC_POWERS, "CAPSULES")],
   burger:()=>[["INGREDIENT DROPPED","50"],["SOUR NOTE SQUASHED","500"],["RIDDEN DOWN","1000, 2000, 4000, 8000"],["PLATE SERVED","500, 800 A SEVENTH"],["NOT IN ROOT POSITION","× 1.5"],["AN OPEN VOICING","× 2"],["SERVED HOT","× 1.5"],["TICKET FILLED","1000"],["SOUR NOTES PEPPERED","100, 200, 400"],["COMBO MEAL","1500"],["KEY SET","500, +250 A FIFTH"],["KITCHEN CLEAR","1000, +100 A SHAKE LEFT"],powerRow(BK_POWERS, "BONUS FOOD")],
+  bros:[["PEST FLIPPED","10"],["RESOLVED","800"],["SUSPENDED, THEN RESOLVED","1600"],["ICE MELTED","800"],["COIN","800"],["PHASE CLEAR","1000"]],
   kong:[["BARREL JUMPED","100"],["BARREL RESOLVED","300, DOUBLING"],["DECEPTIVE RESOLUTION","500"],["FIREBALL PUT OUT","500"],["HAMMER","300 A BARREL"],["A LOCK OPENED","200"],["THE WHOLE CHAIN","500 A LINK"],["RIVET PULLED","200"],["KEY SET","500, +250 A FIFTH"],["BONUS LEFT","PAID AT THE END"]],
 };
 // the POINTS page's line for a game's power-ups (or capsules): their icons, then their names
@@ -495,7 +498,7 @@ const HS_SECONDS=20;        // the countdown on the initials, as a cabinet has
 // what's shown if the shared one can't be reached.
 const SCORES_API=String(SCORES_HOST||"").replace(/\/+$/,"");   // the Funnel address of arcade-scores (core/scores.js), no trailing slash
 const scoresOnline=()=> !!SCORES_API && !SCORES_API.includes("SCORES-HOST");
-const HS_SLUG={blaster:"invaders", command:"harp-command", snake:"chord-snake", asteroids:"chord-asteroids", stack:"chord-stack", breakout:"chord-breakout", fifths:"fifths-defender", chopper:"chopper-rescue", fleet:"key-fleet", sweeper:"chord-sweeper", frets:"between-the-frets", sight:"sight-line", hunt:"chord-hunt", racer:"key-racer", chomp:"chord-chomp", burger:"chord-burger", kong:"dominant-kong"};
+const HS_SLUG={blaster:"invaders", command:"harp-command", snake:"chord-snake", asteroids:"chord-asteroids", stack:"chord-stack", breakout:"chord-breakout", fifths:"fifths-defender", chopper:"chopper-rescue", fleet:"key-fleet", sweeper:"chord-sweeper", frets:"between-the-frets", sight:"sight-line", hunt:"chord-hunt", racer:"key-racer", chomp:"chord-chomp", burger:"chord-burger", kong:"dominant-kong", bros:"sus-bros"};
 const HS_CHARS="ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 const hsCache={};                                        // the shared boards, as last fetched
 const hsSlug=()=> HS_SLUG[cabKind()];

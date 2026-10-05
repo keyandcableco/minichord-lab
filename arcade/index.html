@@ -4,12 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Minichord Arcade</title>
-<meta name="description" content="Seventeen arcade games played on the minichord itself: shoot down chords, command the harp, steer a snake, crack chord asteroids, stack intervals, break out, defend the circle of fifths, fly rescue missions, hunt a fleet of keys, sweep a minefield of tension for its keys, hear the notes between the frets, read music at sight, hunt ducks by ear, race through the key, chomp through a maze of chords, serve burgers stacked as chords and resolve the dominant barrels Kong throws. Free, in the browser, from Minichord Lab.">
+<meta name="description" content="Eighteen arcade games played on the minichord itself: shoot down chords, command the harp, steer a snake, crack chord asteroids, stack intervals, break out, defend the circle of fifths, fly rescue missions, hunt a fleet of keys, sweep a minefield of tension for its keys, hear the notes between the frets, read music at sight, hunt ducks by ear, race through the key, chomp through a maze of chords, serve burgers stacked as chords, resolve the dominant barrels Kong throws and flip suspended chords to resolve them. Free, in the browser, from Minichord Lab.">
 <!-- the card a link to this page unfurls into -->
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Minichord Lab">
 <meta property="og:title" content="Minichord Arcade">
-<meta property="og:description" content="Seventeen arcade games played on the minichord itself. Free, in the browser.">
+<meta property="og:description" content="Eighteen arcade games played on the minichord itself. Free, in the browser.">
 <meta property="og:url" content="https://chordlab.keyandcable.com/arcade/">
 <meta property="og:image" content="https://chordlab.keyandcable.com/arcade/card.png">
 <meta property="og:image:width" content="1200">
@@ -119,7 +119,7 @@ footer a{color:var(--gold);text-decoration:none;border-bottom:2px solid rgba(255
   <header class="marquee">
     <div class="bulbs" aria-hidden="true"></div><div class="bulbs side" aria-hidden="true"></div>
     <h1><small>KEY &amp; CABLE PRESENTS</small>MINICHORD<br>ARCADE</h1>
-    <p>SEVENTEEN GAMES, PLAYED ON THE MINICHORD ITSELF</p>
+    <p>EIGHTEEN GAMES, PLAYED ON THE MINICHORD ITSELF</p>
     <div class="insert" id="insert" aria-hidden="true">
       <span data-pixel-minichord></span><script>document.querySelectorAll("[data-pixel-minichord]").forEach(el=>el.outerHTML=PIXEL_MINICHORD_SVG)</script>
       <span id="insert-text">INSERT MINICHORD</span>
@@ -181,6 +181,7 @@ const GAMES=[
   {slug:"chord-chomp", path:"chord-chomp", name:"CHORD CHOMP", plays:["HARP D-PAD","CHORDS"], pitch:"The maze game: hold a chord and the dots sing it. After a power pellet, hold a ghost's chord to catch it, in a cadence for a bonus."},
   {slug:"chord-burger", path:"chord-burger", name:"CHORD BURGER", plays:["HARP D-PAD","CHORDS","KNOBS"], pitch:"The kitchen game, where a burger is a chord: walk the ingredients down, read the plate from the bottom bun up, and serve it by playing it, voiced as stacked."},
   {slug:"dominant-kong", path:"dominant-kong", name:"DOMINANT KONG", plays:["HARP D-PAD","CHORDS"], pitch:"Every barrel Kong throws is a dominant seventh: jump it, or play where it resolves. The way up is a chain of fifths home; the rivets are the key's chords."},
+  {slug:"sus-bros", path:"sus-bros", name:"SUS BROS.", plays:["HARP D-PAD","CHORDS"], pitch:"The pipe game, where every pest is a suspended chord: bump the floor under it to flip it, then play the suspension and its resolution. Csus4, then C."},
 ];
 
 const grid=document.getElementById("games");

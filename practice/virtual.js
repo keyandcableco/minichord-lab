@@ -14,7 +14,18 @@ const VM_QUALITY={"0":"", "1":"m", "2":"7", "0,2":"maj7", "1,2":"m7", "0,1":"°"
 // Barry Harris mode (address 33), as the firmware has it: the major, minor and diminished buttons
 // play 6, m6 and °7 instead, so a game that switches it on gets its sixths from the screen as well
 const VM_BARRY={"":"6", "m":"m6", "°":"°7"};
-const vmQuality=rows=>{ const q=VM_QUALITY[rows]; return q!=null && mc.params[33]===1 ? (VM_BARRY[q]??q) : q; };
+// The alternate layout (address 39), as the firmware has it: each of the seven combinations plays its
+// slot's chord (202 to 208, from the firmware's catalogue, ../arcade/matrix.js), or the stock sus4, sus2,
+// 7sus4, maj9, m9, add9 and 6/9 where a slot's left at its default
+function vmAlternate(rows){
+  const i=MX_COMBO_ROWS.findIndex(r=>r.join()===rows); if(i<0) return null;
+  const v=mc.params[202+i]|0;
+  return MX_CATALOGUE[(v<=0 || v>MX_CATALOGUE.length) ? MX_SLOT_DEFAULT[i] : v-1];
+}
+const vmQuality=rows=>{
+  if(mc.params[39]===1 && typeof MX_COMBO_ROWS!=="undefined") return vmAlternate(rows);
+  const q=VM_QUALITY[rows]; return q!=null && mc.params[33]===1 ? (VM_BARRY[q]??q) : q;
+};
 // The firmware's timings (firmware/src/main.cpp), so a hand moves on this one as on the instrument:
 //   GRACE    a change to an established chord's buttons stands this long before it's believed, so
 //            going from C to C7 (the seventh down a moment before the major's up) never sounds Cmaj7,
