@@ -44,6 +44,13 @@ const t=require("./harness").load("chord-breakout");
   const pd=[0xF0]; for(let k=0;k<256;k++){ let v=t.mc.params[k]||0; if(k>=40 && k<60) v=(v+5)%100; if(k===238) v=0; pd.push(v&127, v>>7); } pd.push(0xF7);
   t.mc._asked=0; t.mc._dump(pd); await sleep(80);
   check("after a preset change on the instrument, the knobs are switched back on", t.mc.params[238]===1);
+  // A phone held upright (a Pixel 7, a minichord plugged in): the bricks taller, the wall set down from
+  // the top, the run to the paddle still most of the field, the ball faster across it. On the field as
+  // it was (wider than it's tall), the wall and the ball as they always were.
+  const fit=t.w.eval(`(()=>{ const f=blast.field, size=(w,h)=>{ Object.defineProperty(f,"clientWidth",{value:w, configurable:true}); Object.defineProperty(f,"clientHeight",{value:h, configurable:true}); boLayout(); boWall(); const b=blast.bricks[0]; return {h:b.h, y:b.y, end:blast.wallEnd, pad:blast.padY, pace:boPace()}; };
+    const tall=size(408,913), wide=(delete f.clientWidth, delete f.clientHeight, boLayout(), boWall(), {h:blast.bricks[0].h, y:blast.bricks[0].y, pace:boPace()}); return {tall, wide}; })()`);
+  check("on a phone held upright: taller bricks, the wall set down from the top, the run to the paddle most of the field, the ball faster", fit.tall.h>30 && fit.tall.y>56 && fit.tall.pad-fit.tall.end>=fit.tall.pad*.45 && fit.tall.pace>1 && fit.tall.pace<=1.4, JSON.stringify(fit.tall));
+  check("on a field wider than it's tall, the wall and the ball as they were", fit.wide.h===30 && fit.wide.y===56 && fit.wide.pace===1, JSON.stringify(fit.wide));
   sb.restoreAll();
   check("leaving switches the knobs back off", t.mc.params[238]===0);
   t.done();

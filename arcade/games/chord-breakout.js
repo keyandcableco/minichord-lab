@@ -93,7 +93,12 @@ const BOMENU_G={key:"breakout", title:"CHORD BREAKOUT",
   levels:BO_LEVELS, ok:boLevelOk, levelName:boLevelName, needs:"NEEDS THE TEST FIRMWARE", sig:()=>String(knobsReady())+mxAvailable().length,
   begin:i=>beginBreakout(i), demo:()=>boDemo(), modNote:"title"};
 function boMenu(over){ arcadeMenu(BOMENU_G, over); }
-// the wall: rows of chord bricks across the top, sized to the field
+// The wall: rows of chord bricks across the top, sized to the field. On a field taller than it's wide
+// (a phone held upright) the bricks are taller, as Arkanoid's, up to half as tall as they're wide, and
+// the wall's set down from the top, a gap above it for the ball to get into, so the wall fills more of
+// the field and the run from it to the paddle isn't twice a desktop's; never so far down that the run's
+// less than BO_RUN of the paddle's height. What's left of the run, the ball crosses faster (boPace).
+const BO_RUN=.45;
 function boLayout(){
   const f=blast.field, W=f.clientWidth, H=f.clientHeight;
   blast.W=W; blast.H=H;
@@ -101,9 +106,24 @@ function boLayout(){
   blast.padEl.style.width=p.w+"px"; blast.padEl.style.top=blast.padY+"px";
   if(p.x==null || p.x===0) p.x=(W-p.w)/2;
   p.x=Math.max(0, Math.min(W-p.w, p.x));
-  const cols=blast.cols||8, bw=(W-40)/cols;
-  blast.bricks.forEach(b=>{ b.x=20+b.c*bw+2; b.y=56+b.r*36; b.w=bw-4; b.h=30;
+  const cols=blast.cols||8, bw=(W-40)/cols, rows=blast.bricks.reduce((n,b)=>Math.max(n, b.r+1), 0);
+  let bh=30, gap=0;
+  if(H>W*1.2 && rows){
+    const room=blast.padY-Math.max(200, blast.padY*BO_RUN)-56, wall=(h,g)=>g+rows*(h+6)-6;
+    bh=Math.max(30, Math.min(44, Math.round(bw/2))); gap=Math.round(H*.08);
+    while(wall(bh,gap)>room && gap>0) gap=Math.max(0, gap-8);
+    while(wall(bh,gap)>room && bh>30) bh--;
+  }
+  blast.wallEnd=56+gap+rows*(bh+6)-6;
+  blast.bricks.forEach(b=>{ b.x=20+b.c*bw+2; b.y=56+gap+b.r*(bh+6); b.w=bw-4; b.h=bh;
     b.el.style.cssText=`left:${b.x}px;top:${b.y}px;width:${b.w}px;height:${b.h}px`; boFit(b.el); });
+}
+// The ball's pace on a field taller than it's wide: the run from the wall to the paddle crossed in about
+// the time a desktop's is (some 290 pixels at the ball's speed), up to two fifths faster. Elsewhere, as it was.
+function boPace(){
+  const W=blast.W||600, H=blast.H||400;
+  if(!(H>W*1.2) || blast.wallEnd==null) return 1;
+  return Math.max(1, Math.min(1.4, (blast.padY-blast.wallEnd)/290));
 }
 // a chord too long for its brick (a slash chord on a phone) set smaller until it fits, never below half
 function boFit(el){
@@ -143,7 +163,7 @@ function boWall(){
 // sends it back, up to a quarter more, and starts again from the level's speed with the next serve.
 function boServe(){
   boExtraClear();
-  const p=blast.paddle, sp=(300/speedMul())*Math.pow(1.05,blast.level)*(blast.faster||1);
+  const p=blast.paddle, sp=(300/speedMul())*Math.pow(1.05,blast.level)*(blast.faster||1)*boPace();
   blast.ballEl.classList.remove("caught");
   blast.balls=[{x:p.x+p.w/2, y:blast.padY-BO_R-2, vx:0, vy:0, stuck:true, speed:sp, base:sp, el:blast.ballEl}];
   blast.serveAt=performance.now()+1300; blast.boTouchAt=performance.now();
