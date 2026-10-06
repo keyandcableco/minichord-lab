@@ -37,6 +37,14 @@ const t=require("./harness").load("chord-burger");
     blast.level=was; return out; })()`);
   check("every level deals chords that spell, voiced as the minichord voices them", !dealt.length, dealt.slice(0,3).join("; "));
 
+  // the demo's cook walks to the squares it stops at and stands there, not rocking either side of them
+  E(`bkDemo()`); const stood=new Set();
+  for(let i=0; i<300 && stood.size<2; i++){ await sleep(50);
+    const c=E(`blast.cook && !blast.cook.moving && !(blast.demoWays||[]).length ? blast.cook.x+","+blast.cook.y : ""`);
+    if(["8,4","20,3"].includes(c)) stood.add(c); }
+  E(`endBkDemo(blast.demo)`); await sleep(50);
+  check("the demo's cook stops on each square it walks to", stood.size===2, [...stood].join(" "));
+
   const a=await t.start(0); await sleep(2100);
   check("the minichord set up: two octaves up, no voice leading, the chord octave down one, the voicing at root", mc.params[120]===5 && mc.params[111]===0 && mc.params[198]===1 && mc.params[37]===0 && mc.params[38]===0,
     `120=${mc.params[120]} 111=${mc.params[111]} 198=${mc.params[198]}`);

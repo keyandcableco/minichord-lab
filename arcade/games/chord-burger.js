@@ -101,7 +101,9 @@ function bkMove(a, dist, ways, tread){
     }
     if(plan.w==="left" || plan.w==="right"){
       const s= plan.w==="left" ? -1 : 1, f=Math.round(a.y);
+      if(a.goal!=null && Math.abs(a.goal-a.x)<BK_EPS) return;        // the demo's cook stands on the square it walked to
       let stop=plan.lim;
+      if(a.goal!=null && (a.goal-a.x)*s>0 && (a.goal-stop)*s<0) stop=a.goal;
       if(ways.some(w=>w==="up" || w==="down"))
         for(const gap of [f-1,f]) for(const col of bkKitchen().ladders[gap]||[]) if((col-a.x)*s>BK_EPS && (col-stop)*s<0) stop=col;
       const d=Math.min(dist, Math.abs(stop-a.x)); a.x+=s*d; dist-=d;
@@ -877,17 +879,17 @@ function bkDemo(){
   const walkTo=async(x, f)=>{
     for(let k=0; k<160; k++){
       const C=blast.cook, onF=bkOnFloor(C);
-      if(onF && Math.round(C.y)===f && Math.abs(C.x-x)<BK_EPS){ blast.demoWays=[]; zones(); return; }
-      let ways;
+      if(onF && Math.round(C.y)===f && Math.abs(C.x-x)<BK_EPS){ blast.demoWays=[]; C.goal=null; zones(); return; }
+      let ways; C.goal=null;
       if(!onF || Math.round(C.y)!==f){ const v= f<C.y ? "up" : "down", gap= v==="up" ? Math.round(C.y)-1 : Math.round(C.y);
         const cols=onF ? bkKitchen().ladders[gap].filter(c=>bkSeg(Math.round(C.y),c)===bkSeg(Math.round(C.y),C.x)) : [];
         const best=cols.length ? cols.reduce((a,b)=>Math.abs(b-C.x)+Math.abs(b-x)<Math.abs(a-C.x)+Math.abs(a-x) ? b : a) : C.x;
         ways= !onF ? [C.dir==="up"||C.dir==="down" ? C.dir : v] : [v, best<C.x ? "left" : "right"]; }
-      else ways=[x<C.x ? "left" : "right"];
+      else { ways=[x<C.x ? "left" : "right"]; C.goal=x; }
       blast.demoWays=ways; zones(ways[0]);
       await step(60);
     }
-    blast.demoWays=[]; zones();
+    blast.demoWays=[]; blast.cook.goal=null; zones();
   };
   const fill=P=>{ for(const ing of blast.ings.filter(i=>i.p===P.p && i.state==="rest").sort((a,b)=>b.f-a.f)){ ing.state="plate"; ing.k=P.stack.length; P.stack.push(ing); } P.state="ready"; P.readyAt=blast.clock; };
   const serve=P=>{ demoPlay(P.chord.pitches.map(p=>p-12)); bkServe(P, {ok:true}); };
