@@ -463,15 +463,15 @@ function brosHarp(pc){
 
 // ---------- drawing ----------
 // Its own screen at the old game's resolution, as Chord Chomp's: 240 by 216, every sprite and letter
-// drawn pixel by pixel, at a whole number of screen pixels a pixel; bigger, the view following the
-// player, where the field's too small for that.
+// drawn pixel by pixel, at a whole number of screen pixels a pixel, two at the least (a phone, either
+// way up), the view following the player where it's bigger than the field; on a wide field, zoomed in
+// further (pxZoom), the pests out of view pointed to.
+const SB_MINK=2;
 function sbLayout(){
   const fw=fieldW(), fh=fieldH();
   const side = !kmStripShown() ? 16 : (saved.beginner || blast.phase==="demo") ? Math.ceil(Math.min(fw*.3, 300))+20 : (kmLayout().cols===3 ? 150 : 84);
   const aw=fw-side-8, ah=fh-40-28;
-  let k=Math.floor(Math.min(aw/SB_W, ah/SB_H));
-  if(k<2) k=Math.max(k, Math.min(3, Math.floor(Math.max(aw/SB_W, ah/SB_H))));
-  k=Math.max(1,k);
+  const k=pxZoom(Math.max(SB_MINK, Math.floor(Math.min(aw/SB_W, ah/SB_H))), aw, ah, SB_W, SB_H);
   const w=Math.min(SB_W, Math.floor(aw/k)), h=Math.min(SB_H, Math.floor(ah/k));
   Object.assign(blast, {k, view:{x:0, y:0, w, h}, scrolls:SB_W>w || SB_H>h, cam:null});
   blast.scrLeft=8+Math.floor((aw-w*k)/2); blast.scrTop=40+Math.floor((ah-h*k)/2);
@@ -556,7 +556,7 @@ function brosDraw(_, now){
     const c=sbPestChords(e), label = e.kind==="ice" ? e.dim.sym : c.sus.sym;
     let ly=e.y-23; while(labelled.some(o=>Math.abs(o.y-ly)<8 && Math.abs(sbDx(o.x,e.x))<(o.w+[...label].length*8)/2+2)) ly-=9;   // clear of a neighbour's
     labelled.push({x:e.x, y:ly, w:[...label].length*8});
-    pxText(g, label, ox+e.x, oy+ly, flipped ? (e.suspended ? "#FFFFFF" : "#FFD35A") : e.angry ? "#FF9A3C" : "#F1E8D2");
+    if(oy+e.y>=5) pxText(g, label, ox+e.x, Math.max(1, oy+ly), flipped ? (e.suspended ? "#FFFFFF" : "#FFD35A") : e.angry ? "#FF9A3C" : "#F1E8D2");
   }
   // the poofs of the resolved
   blast.poofs=(blast.poofs||[]).filter(p=>clock-p.at<.5);
@@ -569,6 +569,8 @@ function brosDraw(_, now){
     g.drawImage(sbHeroSprite(pose, H.dir==="left"), Math.round(ox+H.x-6), Math.round(oy+H.y-16));
     if(H.x<6 || H.x>SB_W-6) g.drawImage(sbHeroSprite(pose, H.dir==="left"), Math.round(ox+H.x-6+(H.x<6 ? SB_W : -SB_W)), Math.round(oy+H.y-16));   // round the side
   }
+  if(blast.scrolls) pxOffscreen(g, blast.view, ox, oy, blast.pests.filter(e=>e.state!=="piped" && e.state!=="gone")
+    .map(e=>({x:e.x, y:e.y, col:"#2EB872", label:e.kind==="ice" ? e.dim.sym : sbPestChords(e).sus.sym, ink:"#F1E8D2"})));
   if(blast.st==="ready") pxText(g, `PHASE ${blast.level+1}`, ox+SB_W/2, oy+SB_FLOORS[2].y+24, "#FFE600");
 }
 // a sprite facing the other way, kept

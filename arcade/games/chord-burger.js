@@ -714,16 +714,15 @@ function bkVoice(inv, sp, byHand){
 
 // ---------- drawing ----------
 // An arcade screen of its own, as Chord Chomp's: eight pixels a square, the kitchen 232 by 204, every
-// sprite and letter drawn pixel by pixel, shown at a whole number of screen pixels a pixel; where that
-// would be too small to play (a phone held upright), bigger, the view following the cook.
-const BK_SMALL=14, BK_BIGK=4, BK_W=BK_COLS*BK_T, BK_H=204;
+// sprite and letter drawn pixel by pixel, shown at a whole number of screen pixels a pixel, two at the
+// least (a phone, either way up), the view following the cook where it's bigger than the field; on a
+// wide field, zoomed in further (pxZoom), the sour notes out of view pointed to.
+const BK_MINK=2, BK_W=BK_COLS*BK_T, BK_H=204;
 function bkLayout(){
   const fw=fieldW(), fh=fieldH();
   const side = !kmStripShown() ? 16 : (saved.beginner || blast.phase==="demo") ? Math.ceil(Math.min(fw*.3, 300))+20 : (kmLayout().cols===3 ? 150 : 84);
   const aw=fw-side-8, ah=fh-40-28;
-  let k=Math.floor(Math.min(aw/BK_W, ah/BK_H));
-  if(k*BK_T<BK_SMALL) k=Math.max(k, Math.min(BK_BIGK, Math.floor(Math.max(aw/BK_W, ah/BK_H))));
-  k=Math.max(1,k);
+  const k=pxZoom(Math.max(BK_MINK, Math.floor(Math.min(aw/BK_W, ah/BK_H))), aw, ah, BK_W, BK_H);
   const w=Math.min(BK_W, Math.floor(aw/k)), h=Math.min(BK_H, Math.floor(ah/k));
   Object.assign(blast, {k, view:{x:0, y:0, w, h}, scrolls:BK_W>w || BK_H>h, cam:null});
   blast.scrLeft=8+Math.floor((aw-w*k)/2); blast.scrTop=40+Math.floor((ah-h*k)/2);
@@ -843,7 +842,7 @@ function burgerDraw(_, now){
     const spr=bkSourSprite(e.kind, e.moving||e.state==="ride" ? wig : 0, sweet);
     g.drawImage(spr, Math.round(x-6), Math.round(foot-14));
     const still=clock<blast.fermataUntil;
-    pxText(g, e.name, x, foot-25, sweet ? "#FFC8F0" : still ? "#8FA3C8" : "#F1E8D2");
+    if(foot>=5) pxText(g, e.name, x, Math.max(1, foot-25), sweet ? "#FFC8F0" : still ? "#8FA3C8" : "#F1E8D2");     // kept in the view; above it, pointed to
     if(sweet && clock-(e.pepperAt||0)<.5) for(let i=0;i<6;i++){ const a=i*1.05+clock*9, r=6+(clock-e.pepperAt)*16; g.fillStyle="#FFFFFF"; g.fillRect(Math.round(x+Math.cos(a)*r), Math.round(foot-7+Math.sin(a)*r), 1, 1); }
   }
   // the cook
@@ -854,6 +853,8 @@ function burgerDraw(_, now){
     const spr=bkCookSprite(pose, C.dir==="left" || (climbing && Math.floor(clock*6)%2), dying ? "#FF4B3E" : null);
     g.drawImage(spr, Math.round(ox+(C.x+.5)*T-6), Math.round(oy+bkFloorPx(C.y)-16));
   }
+  if(blast.scrolls) pxOffscreen(g, blast.view, ox, oy, blast.sour.filter(e=>e.state!=="wait" && e.state!=="squashed")
+    .map(e=>({x:(e.x+.5)*T, y:bkFloorPx(e.y), col:e.state==="sweet" ? "#FF5AA0" : "#F1E8D2", label:e.name, ink:"#F1E8D2"})));
   if(blast.st==="ready") pxText(g, "READY!", ox+BK_W/2, oy+bkFloorPx(2)-20, "#FFE600");
 }
 // a popup over a place in the kitchen (x in squares, y in floors)

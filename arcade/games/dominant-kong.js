@@ -676,13 +676,13 @@ function kongHarp(pc){
 // and letter drawn pixel by pixel, shown at a whole number of screen pixels a pixel. Where the whole
 // stage would come out at one pixel a pixel (a phone, either way up), too small to read a barrel's
 // chord, it's shown twice the size and the view follows the player up and across it, as Chord Chomp's
-// does, the player low in it, to see what's coming down.
+// does, the player low in it, to see what's coming down. On a wide field, zoomed in further (pxZoom).
 const DK_MINK=2, DK_LOOK=.62;                                          // screen pixels a pixel, at the least; how far down the view the player is kept
 function dkLayout(){
   const fw=fieldW(), fh=fieldH();
   const side = !kmStripShown() ? 16 : (saved.beginner || blast.phase==="demo") ? Math.ceil(Math.min(fw*.3, 300))+20 : (kmLayout().cols===3 ? 150 : 84);
   const aw=fw-side-8, ah=fh-40-28;
-  const k=Math.max(DK_MINK, Math.floor(Math.min(aw/DK_W, ah/DK_H)));
+  const k=pxZoom(Math.max(DK_MINK, Math.floor(Math.min(aw/DK_W, ah/DK_H))), aw, ah, DK_W, DK_H);
   const w=Math.min(DK_W, Math.floor(aw/k)), h=Math.min(DK_H, Math.floor(ah/k));
   Object.assign(blast, {k, view:{x:0, y:0, w, h}, scrolls:DK_W>w || DK_H>h, cam:null, girderCv:null});
   blast.scrLeft=8+Math.floor((aw-w*k)/2); blast.scrTop=40+Math.floor((ah-h*k)/2);
@@ -832,11 +832,11 @@ function kongDraw(_, now){
   // the barrels, rolling, each with its chord
   for(const b of blast.barrels){
     spr(pxSprite(`dkbarrel|${Math.floor(b.spin)%2}`, DK_BARREL[Math.floor(b.spin)%2], {O:"#5A2E0A", B:"#C87830"}), b.x, b.y);
-    pxText(g, dkLabel(b.chord), ox+b.x, oy+b.y-19, "#F1E8D2");
+    if(oy+b.y>=5) pxText(g, dkLabel(b.chord), ox+b.x, Math.max(1, oy+b.y-19), "#F1E8D2");     // kept in the view; above it, pointed to
   }
   for(const e of blast.fires){
     spr(pxSprite(`dkfire|${Math.floor(clock*6)%2}`, DK_FIRE[Math.floor(clock*6)%2], {R:"#FF3B30", Y:"#FFD35A", W:"#FFFFFF", K:"#16132A"}), e.x, e.y);
-    pxText(g, e.chord.sym, ox+e.x, oy+e.y-19, "#FF9A3C");
+    if(oy+e.y>=5) pxText(g, e.chord.sym, ox+e.x, Math.max(1, oy+e.y-19), "#FF9A3C");
   }
   // the breaks: a burst of splinters, or of sparks
   blast.breaks=(blast.breaks||[]).filter(k=>clock-k.at<.5);
@@ -854,27 +854,11 @@ function kongDraw(_, now){
   if(blast.scrolls) dkOffscreen(g);
   if(blast.st==="ready") pxText(g, "READY!", blast.scrolls ? ox+H.x : ox+DK_W/2, blast.scrolls ? oy+H.y-34 : oy+DK_H/2-30, "#FFE600");
 }
-// Scrolling, the barrels and fires out of view: a pointer at the edge of the view nearest each, in its
-// colour, with its chord, so one rolling down from above is seen before it's on you.
-const DK_POINT=["...#","..##",".###","####",".###","..##","...#"];
+// Scrolling, the barrels and fires out of view pointed to at the edge, with their chords
 function dkOffscreen(g){
-  const v=blast.view, ox=blast.ox, oy=blast.oy;
-  const edge=(e, col, label, ink)=>{
-    const x=ox+e.x, y=oy+e.y-5, out= y<0 ? "up" : y>v.h ? "down" : x<0 ? "left" : x>v.w ? "right" : null;
-    if(!out) return;
-    const rows= out==="left" ? DK_POINT : out==="right" ? DK_POINT.map(r=>[...r].reverse().join(""))
-      : [0,1,2,3].map(i=>DK_POINT.map(r=>r[out==="up" ? i : 3-i]).join(""));      // turned, its tip to the edge
-    const arrow=pxSprite(`dkpoint|${out}|${col}`, rows, {"#":col}), n=[...label].length*4;
-    if(out==="up" || out==="down"){
-      const ax=Math.round(Math.max(n+2, Math.min(v.w-n-2, x))), ay= out==="up" ? 1 : v.h-1-arrow.height;
-      g.drawImage(arrow, ax-3, ay); pxText(g, label, ax, out==="up" ? ay+arrow.height+1 : ay-9, ink);
-    } else {
-      const ay=Math.round(Math.max(8, Math.min(v.h-8, y))), ax= out==="left" ? 1 : v.w-1-arrow.width;
-      g.drawImage(arrow, ax, ay-3); pxText(g, label, out==="left" ? ax+arrow.width+2+n : ax-2-n, ay-4, ink);
-    }
-  };
-  for(const b of blast.barrels) edge(b, "#C87830", dkLabel(b.chord), "#F1E8D2");
-  for(const e of blast.fires) edge(e, "#FF3B30", e.chord.sym, "#FF9A3C");
+  pxOffscreen(g, blast.view, blast.ox, blast.oy, [
+    ...blast.barrels.map(b=>({x:b.x, y:b.y, col:"#C87830", label:dkLabel(b.chord), ink:"#F1E8D2"})),
+    ...blast.fires.map(e=>({x:e.x, y:e.y, col:"#FF3B30", label:e.chord.sym, ink:"#FF9A3C"}))]);
 }
 function dkPop(e, text, colour){
   if(!blast.field || blast.phase!=="play" || !blast.k) return;
