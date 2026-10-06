@@ -1,5 +1,5 @@
 // Key Fleet: fleets never touch end to end; hits cripple; a ship's called by opening a call (the harp,
-// CALL IT, Space) and playing it: a key's chords ending on I, its V7 → I, a progression in its order.
+// CALL IT, Space) and naming its key, its home chord, or, a progression, playing it in its order.
 const t=require("./harness").load("key-fleet");
 (async()=>{
   const {sb, sleep, chord, note, check, mc, w}=t;
@@ -23,8 +23,10 @@ const t=require("./harness").load("key-fleet");
   const [iv,i1,v]=s0.cells.map(([c,r])=>COLS[c]);
   chord(iv); await sleep(120); chord(i1); await sleep(120);
   check("chords in a call fire no torpedo", a.torps===tc && a.shots.size===shots && !s0.sunk);
-  chord(v); await sleep(300);
-  check("a key's chords as they lie on the chart (F C G) sink it, the moment they're all played", s0.sunk && !a.calling, `${iv} ${i1} ${v}: ${t.heard()}`);
+  chord(v); await sleep(2900);
+  check("playing back the ship's chords (F C G) doesn't call it: a wrong call", !s0.sunk && !a.calling && a.torps===tc-1, `${iv} ${i1} ${v}: ${t.heard()}`);
+  note(0); await sleep(50); chord(i1); await sleep(300);
+  check("its key named, its home chord alone (C), sinks it at once", s0.sunk && !a.calling, `${i1}: ${t.heard()}`);
   await sleep(2600);                                          // the fleet is sunk: the next one sails in
   a.level=2; sb.kfWave(); a.torps=20; const s1=a.ships.find(s=>s.kind==="major"||s.kind==="minor")||a.ships[0];
   const fire=(c,r)=>{ const nm=w.eval(`KF_COLS[${c}]`); mc.params[31]=nm.includes("♭")?1:0; chord(nm, ROWS[r]); };   // the sea's own columns, the modifier set for a sharp or flat
@@ -34,17 +36,17 @@ const t=require("./harness").load("key-fleet");
   const tv=a.torps; mc.params[31]=V.includes("♭")?1:0; chord(V,"7"); await sleep(100);
   check("out of a call a 7 chord fires at once", a.torps===tv-1, a.torps);
   await sleep(500);
-  w.eval("kfCallKey()"); mc.params[31]=V.includes("♭")?1:0; chord(V,"7"); await sleep(2000); chord(s1.tonic, s1.minor?"m":""); await sleep(300);
-  check("in a call, its V7 then I sinks it, the V7 held a while first", s1.sunk, `${V}7 → ${s1.tonic}${s1.minor?"m":""}`);
+  w.eval("kfCallKey()"); mc.params[31]=s1.tonic.includes("♭")?1:0; chord(s1.tonic, s1.minor?"m":""); await sleep(300);
+  check("in a call, its home chord sinks it", s1.sunk, `${s1.tonic}${s1.minor?"m":""}: ${t.heard()}`);
   // a cadence whose V7 lies off the sea still calls: F-sharp minor's C-sharp 7 is past this sea's edge
   a.level=2; sb.kfWave(); a.torps=20; await sleep(30);
   a.ships=[{kind:"minor", cells:[[6,1],[7,1],[8,1]], name:"F♯ MINOR", detail:"", tonic:"F♯", minor:true, hits:new Set(["7,1"]), sunk:false, misses:0}];
-  w.eval("kfCallKey()"); mc.params[31]=0; chord("C♯","7"); await sleep(150); chord("F♯","m"); await sleep(300);
-  check("a cadence calls even when its V7 is off the sea", a.ships[0].sunk, t.heard());
+  w.eval("kfCallKey()"); mc.params[31]=0; chord("F♯","m"); await sleep(300);
+  check("a minor ship's called by its i, F♯m for F♯ minor, at the sea's edge", a.ships[0].sunk, t.heard());
   await sleep(2600);                                          // that fleet's sunk: the next one sails in
   a.ships=[{kind:"major", cells:[[0,0],[1,0],[2,0]], name:"C MAJOR", detail:"", tonic:"C", minor:false, hits:new Set(), sunk:false, misses:0}];
   // a call on a ship not yet hit is blind, and costs a torpedo
-  const tb=a.torps; w.eval("kfCallKey()"); chord("G","7"); await sleep(150); chord("C"); await sleep(300);
+  const tb=a.torps; w.eval("kfCallKey()"); chord("C"); await sleep(300);
   check("a key can't be called on a ship not yet hit", !a.ships[0].sunk && a.torps===tb-1 && /NO CONTACT/.test(t.heard()), t.heard());
   a.ships[0].hits.add("1,0");                                 // contact: one of its chords hit
   mc._asked=0; const dump=[0xF0]; for(let k=0;k<256;k++){ const v=mc.params[k]||0; dump.push(v&127, v>>7); } dump.push(0xF7); dump[71]=0; dump[72]=0;
@@ -88,8 +90,19 @@ const t=require("./harness").load("key-fleet");
   a.level=10; sb.kfWave();
   check("a progression in its order calls it", plays("deceptive","C",["Dm","G7","Am"]) && plays("andalusian","A",["Am","G","F","E7"]) && plays("turnaround","C",["C","Am","Dm","G7","C"]));
   check("out of order, or another progression's chords, it doesn't", !plays("deceptive","C",["Am","G7","Dm"]) && !plays("turnaround","C",["Dm","G7","Am"]) && !plays("secondary","C",["Dm","G7","C"]));
-  check("a key's chords in any order, or its V7 then I", plays("major","C",["F","C","G"]) && plays("major","C",["G","F","C"]) && plays("major","C",["G7","C"]) && plays("minor","A",["Dm","Am","Em"]) && plays("minor","A",["E7","Am"]) && !plays("major","C",["F","C"]) && !plays("major","C",["F","C","D"]));
-  check("a whole key: IV, I and V among its chords", plays("whole","C",["F","C","G"]) && plays("whole","C",["F","Dm","G","C"]) && !plays("whole","C",["Am","Dm","Em"]));
+  // where progressions sail, a home chord waits in case it starts one: Dm, a D minor ship's, starts the
+  // deceptive cadence in C, which played through sinks that, not D minor
+  a.level=8; sb.kfWave(); a.torps=20;
+  const mk=(kind,tonic)=>{ const sh=w.eval(`kfShapes(${JSON.stringify(kind)}).find(s=>s.tonic===${JSON.stringify(tonic)})`); return {...sh, hits:new Set([sh.cells[0].join(",")]), sunk:false, misses:0}; };
+  a.ships=[mk("minor","D"), mk("deceptive","C")];
+  w.eval("kfCallKey()"); chord("D","m"); await sleep(300);
+  check("there, a home chord waits a moment, in case a progression follows", !a.ships[0].sunk && !!a.calling);
+  chord("G","7"); await sleep(150); chord("A","m"); await sleep(300);
+  check("and the progression played through sinks it, not the key", a.ships[1].sunk && !a.ships[0].sunk, t.heard());
+  w.eval("kfCallKey()"); chord("D","m"); await sleep(2900);
+  check("the home chord alone, the moment past, calls its key", a.ships[0].sunk, t.heard());
+  check("a key ship: its home chord alone; never its own chords played back, nor V7 then I", plays("major","C",["C"]) && plays("minor","G",["Gm"]) && !plays("minor","G",["G"]) && !plays("major","C",["F","C","G"]) && !plays("minor","G",["Cm","Gm","Dm"]) && !plays("major","C",["G7","C"]) && !plays("minor","A",["E7","Am"]));
+  check("so too a whole key, a ii–V–I, dominants leading home", plays("whole","C",["C"]) && !plays("whole","C",["F","C","G"]) && plays("cadence","C",["C"]) && !plays("cadence","C",["Dm","G7","C"]) && w.eval(`kfPlays(kfShapes("chain").find(s=>s.tonic==="C"), ${JSON.stringify(toks(["C"]))})`));
   // levels 9 to 11: each ship's hits in its colour, the fleet listed by colour with its lengths
   a.level=8; const progFlags=new Set(); let distinct=0;
   for(let n=0;n<20;n++){ sb.kfWave(); const fl=a.ships.map(s=>s.flag && s.flag.name); if(new Set(fl).size===a.ships.length && fl.every(Boolean)) distinct++;

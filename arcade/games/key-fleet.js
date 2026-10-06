@@ -12,11 +12,15 @@
 // keys (the three majors and the three minors three columns along, a six-chord ship across two
 // rows) and dominant pairs in the 7 row (G7 and D7: V and V of V in C). Torpedoes are limited: run
 // out with ships afloat and it costs a life.
-// Hitting a ship's chords only cripples it: it sinks when the player calls it, by playing it. A pluck
-// of the harp (or CALL IT on the screen, or Space) opens a call; chords played then fire nothing, and
-// the moment they call a ship it sinks, and if they stop short of one they're judged a wrong call: a
-// progression's chords in its order (Dm G7 C for ii–V–I in C), a key's three in any order (F C G),
-// a whole key's IV, I and V the same way, or any key's V7 then I (G7 C). A ship can be called before all its chords are hit, for a
+// Hitting a ship's chords only cripples it: it sinks when the player calls it. A pluck of the harp (or
+// CALL IT on the screen, or Space) opens a call; chords played then fire nothing, and the moment they
+// call a ship it sinks, and if they stop short of one they're judged a wrong call. A ship that's a key
+// (IV I V, a whole key, a ii–V–I, dominants leading home) is called by naming its key: its home chord,
+// its I, alone (C for F C G, Gm for Cm Gm Dm), so the player has to know which chord is home; playing
+// back the chords on the chart calls nothing. (Not V7 then I: a minor key's V7 is the harmonic minor's,
+// a chord its ship doesn't hold, and these are a beginner's levels.) A progression (the last levels) is
+// called by playing it, in its order, the chords not yet found among it. A ship can be
+// called before all its chords are hit, for a
 // bonus: sunk by deduction, if the chart proves it (kfForced: every fleet the chart still allows has a
 // ship in that key); a right call the chart didn't prove is a lucky one, and sinks for less. At the
 // first levels a key can only be called once one of its chords is hit; from level 7 it can be called
@@ -303,7 +307,7 @@ function kfSide(){
   if(blast.islands && blast.islands.size) h+=`<p class="kfhow">ROCKS: NO SHIP THERE.</p>`;
   if(L.counts) h+=`<p class="kfhow">THE NUMBERS: HOW MANY SHIP CHORDS IN EACH COLUMN AND ROW.</p>`;
   if(kfWide()) h+=`<p class="kfmod">MODIFIER: <b>${kfSharp()?"♯ SHARPENS":"♭ FLATTENS"}</b><br><span>${kfHarpFlips()?"PLUCK THE HARP":"DOUBLE-TAP IT"} TO FLIP IT</span></p>`;
-  h+=`<p class="kfhow">SINK A SHIP BY CALLING IT: ${kfHarpFlips() && kfWide() ? "CALL IT (OR SPACE)" : "PLUCK THE HARP (OR CALL IT, OR SPACE)"}, THEN PLAY IT. A PROGRESSION IN ITS ORDER; A KEY'S CHORDS IN ANY ORDER; OR ITS V7 THEN I.<br>${L.blind ? "CALL A SHIP BEFORE A HIT IF THE CHART PROVES IT, FOR A BIG BONUS. A GUESS SINKS FOR LESS; A WRONG CALL COSTS TWO TORPEDOES." : "ONLY A SHIP YOU'VE HIT CAN BE CALLED; A WRONG OR BLIND CALL COSTS A TORPEDO."}</p>`;
+  h+=`<p class="kfhow">SINK A SHIP BY CALLING IT: ${kfHarpFlips() && kfWide() ? "CALL IT (OR SPACE)" : "PLUCK THE HARP (OR CALL IT, OR SPACE)"}, THEN NAME ITS KEY: PLAY ITS HOME CHORD, ITS I (C FOR F C G, GM FOR CM GM DM). ${L.fleet.includes("prog") ? "A PROGRESSION: PLAY IT, IN ITS ORDER." : ""}<br>${L.blind ? "CALL A SHIP BEFORE A HIT IF THE CHART PROVES IT, FOR A BIG BONUS. A GUESS SINKS FOR LESS; A WRONG CALL COSTS TWO TORPEDOES." : "ONLY A SHIP YOU'VE HIT CAN BE CALLED; A WRONG OR BLIND CALL COSTS A TORPEDO."}</p>`;
   blast.sideEl.innerHTML=h;
 }
 const kfWide=()=> !!KF_LEVELS[blast.level||0].span;
@@ -316,7 +320,7 @@ function kfBar(){
   blast.hud.innerHTML=`<span>SCORE ${blast.score}${multTag()}</span><span class="lvl">LEVEL ${blast.level+1} · ${KF_LEVELS[blast.level].n.toUpperCase()}</span><span class="lives">${livesHtml()}</span>`;
 }
 const KFMENU_G={key:"fleet", title:"KEY FLEET",
-  rules:()=>`<p>THE ENEMY'S SHIPS ARE KEYS, HIDDEN ON THE CHORD CHART. THREE CHORDS SIDE BY SIDE IN A ROW ARE A KEY'S IV, I AND V: F C G IS C MAJOR.</p><p>FIRE BY PLAYING CHORDS. HITS CRIPPLE A SHIP; TO SINK IT, CALL IT: PLUCK THE HARP (OR CALL IT, OR SPACE), THEN PLAY IT. F C G CALLS C MAJOR, AS DOES G7 C.</p><p>ONCE YOU'VE HIT ONE OF A SHIP'S CHORDS, CALL IT EARLY: A BONUS IF THE CHART PROVES IT. A WRONG OR BLIND CALL COSTS A TORPEDO.</p><p>FROM LEVEL 7, CALL SHIPS SIGHT UNSEEN; THE LAST FLEETS SAIL AS PROGRESSIONS, PLAYED IN THEIR ORDER.</p>`,
+  rules:()=>`<p>THE ENEMY'S SHIPS ARE KEYS, HIDDEN ON THE CHORD CHART. THREE CHORDS SIDE BY SIDE IN A ROW ARE A KEY'S IV, I AND V: F C G IS C MAJOR.</p><p>FIRE BY PLAYING CHORDS. HITS CRIPPLE A SHIP; TO SINK IT, CALL IT: PLUCK THE HARP (OR CALL IT, OR SPACE), THEN NAME ITS KEY: PLAY ITS HOME CHORD. C CALLS F C G, C MAJOR; AM CALLS DM AM EM, A MINOR.</p><p>ONCE YOU'VE HIT ONE OF A SHIP'S CHORDS, CALL IT EARLY: A BONUS IF THE CHART PROVES IT. A WRONG OR BLIND CALL COSTS A TORPEDO.</p><p>FROM LEVEL 7, CALL SHIPS SIGHT UNSEEN; THE LAST FLEETS SAIL AS PROGRESSIONS, CALLED BY PLAYING THEM IN THEIR ORDER.</p>`,
   stat:()=>`FLEETS SUNK ${blast.waves}`,
   levels:KF_LEVELS,
   begin:i=>beginFleet(i), demo:()=>kfDemo(), modNote:"title"};
@@ -377,27 +381,14 @@ function kfToken(pitches){
   return q==null ? null : {t:id.root+q, name:kfSpell(id.root)+q};
 }
 const kfCellTok=([c,r])=>pcOfName(KF_COLS[c])+KF_ROWS[r];
-// Whether chords played call a ship. A progression, a ii–V–I, a chain of dominants: its chords in their
-// order, then its I if the player likes. A key (major, minor, whole, a minor with its V7): its chords,
-// all its row of three among them, in any order (F C G, as it lies on the chart); or its V7 then its I.
-const KF_KEYLIKE={major:1, minor:1, whole:1, minorV:1};
+// Whether chords played call a ship. A progression: its chords in their order (its cells are kept so),
+// then its I if the player likes. Any other ship, a key: its home chord, alone.
 function kfPlays(sh, toks){
-  const tonic=pcOfName(sh.tonic)+(sh.minor?"m":""), last=toks[toks.length-1];
-  if(KF_KEYLIKE[sh.kind]){
-    if(toks.length===2 && toks[0]===mod(pcOfName(sh.tonic)+7,12)+"7" && last===tonic) return true;
-    const mine=new Set(sh.cells.map(kfCellTok)), three=sh.cells.filter(([,r])=>r===sh.cells[0][1]).map(kfCellTok);
-    return toks.every(t=>mine.has(t)) && three.every(t=>toks.includes(t));
-  }
-  const order=kfPlayOrder(sh).map(kfCellTok);
-  const body=toks.length===order.length+1 && last===tonic && order[order.length-1]!==tonic ? toks.slice(0,-1) : toks;
+  const tonic=pcOfName(sh.tonic)+(sh.minor?"m":""), n=toks.length, last=toks[n-1];
+  if(!KF_PROGS[sh.kind]) return n===1 && last===tonic;
+  const order=sh.cells.map(kfCellTok);
+  const body=n===order.length+1 && last===tonic && order[order.length-1]!==tonic ? toks.slice(0,-1) : toks;
   return body.length===order.length && body.every((t,i)=>t===order[i]);
-}
-// a ship's chords in the order they're played (the shapes keep their cells in the chart's order)
-function kfPlayOrder(sh){
-  const c=sh.cells;
-  if(sh.kind==="cadence") return [c[2],c[1],c[0]];                                // ii V7 I
-  if(sh.kind==="dominant" || sh.kind==="chain") return [...c].reverse();         // V of V, then V
-  return c;                                                                        // the progressions are kept in order
 }
 // the call judged: the ship it plays sinks (kfCall), or it's a wrong call
 function kfJudge(){
@@ -415,7 +406,10 @@ function fleetChord(voices){
     const tk=kfToken(voices.map(v=>v.pitch)); if(!tk && !chordId(voices.map(v=>v.pitch))) return;
     cl.chords.push(tk ? tk.t : null); cl.names.push(tk ? tk.name : "?"); heard(cl.names.join(" → "),true);
     clearTimeout(cl.timer);
-    if(blast.ships.some(sh=>!sh.sunk && kfPlays(sh, cl.chords))){ kfJudge(); return; }   // it calls a ship: at once
+    // it calls a ship: judged at once. A key's home chord waits, where progressions sail, in case it's
+    // the first of one (Dm, a D minor ship's, starts the deceptive cadence in C)
+    const progs=KF_LEVELS[blast.level||0].fleet.includes("prog");
+    if(blast.ships.some(sh=>!sh.sunk && (KF_PROGS[sh.kind] || !progs) && kfPlays(sh, cl.chords))){ kfJudge(); return; }
     cl.timer=gameLater(()=>kfJudge(), KF_CALL_GAP); kfSide();
     return;
   }
@@ -534,10 +528,10 @@ function kfDemo(){
       blast.phase="play"; blast.lastHit=[2,0]; kfSide(); blast.phase="demo"; kfSideDemo();
       say("A HIT","G IS IN C MAJOR (F C G), G MAJOR (C G D) OR D MAJOR (G D A)."); await step(4200);
       say("","TRY D. A MISS, SO IT'S NOT G OR D MAJOR: IT'S C MAJOR."); await fire("D"); await step(2400);
-      say("CALL IT","ONCE A SHIP'S BEEN HIT, CALL IT: NO NEED TO HIT F AND C. PLUCK THE HARP, THEN PLAY THE SHIP: F G C."); await step(2600);
-      play([60]); await step(500); for(const l of ["F","G","C"]){ play(CH[l]); await step(650); } kfCall(s=>s.tonic==="C",null,true); await step(2800);
-      say("OR A CADENCE","IN A CALL, A KEY'S V7 THEN I CALLS IT TOO. B7 THEN E CALLS E MAJOR."); await step(2600);
-      play([64]); await step(500); play([59,63,66,69]); await step(800); play([52,56,59]); kfCall(s=>s.tonic==="E",null,true); await step(2800);
+      say("CALL IT","ONCE A SHIP'S BEEN HIT, CALL ITS KEY: NO NEED TO HIT F AND C. PLUCK THE HARP, THEN PLAY ITS HOME CHORD: C."); await step(2600);
+      play([60]); await step(600); play(CH.C); kfCall(s=>s.tonic==="C",null,true); await step(2800);
+      say("THE OTHER","A E B: HOME IS ALWAYS THE MIDDLE ONE. PLUCK, THEN E CALLS E MAJOR."); await step(2600);
+      play([64]); await step(600); play(CH.E); kfCall(s=>s.tonic==="E",null,true); await step(2800);
       say("READY?","SINK THE FLEET BEFORE THE TORPEDOES RUN OUT. LATER THE SEA WIDENS: B♭ AND F♯, THEN EVERY KEY."); sfx("level"); await step(2600);
       endKfDemo(token);
     }catch(e){ /* skipped */ }
