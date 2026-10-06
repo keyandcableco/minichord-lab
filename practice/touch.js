@@ -1,5 +1,6 @@
 // Playing without a minichord on a touch screen: the instrument drawn under the game, played with the
 // fingers. A front end on the virtual minichord (practice/virtual.js), as the computer keyboard is.
+// And a phone with a real minichord plugged in: the phone's cabinet with the game's screen alone.
 // Part of Minichord Lab's Practice Room page (practice/index.html), loaded there in order with the
 // others as plain scripts sharing one scope; see practice/boot.js.
 "use strict";
@@ -81,11 +82,13 @@ function touchMinichord(on=true){
   virtualMinichord("touch", on);
   document.body.classList.toggle("tdplay", on);
   if(on){
-    if(!document.getElementById("tdcss")){ const l=document.createElement("link"); l.id="tdcss"; l.rel="stylesheet"; l.href="touch.css"; document.head.appendChild(l); }
-    tdBuild(); tdTimer=setInterval(tdSync, 400); td.leftCab=false; setTimeout(tdSync, 50);
+    tdCss(); tdBuild(); tdTimer=setInterval(tdSync, 400); td.leftCab=false; setTimeout(tdSync, 50);
   } else {
     clearInterval(tdTimer); td.touches.clear();
-    const cab=document.querySelector(".fscab.phone"); if(cab){ cab.classList.remove("phone"); td.inCab=false; if(cab.classList.contains("pseudo")) fsExit(); else fsPlain(fsPlainWanted()); }
+    // put away for a minichord plugged in, the phone's cabinet stays up, the game's screen alone
+    const cab=document.querySelector(".fscab.phone"); if(cab){ td.inCab=false;
+      if(tdBareWanted()) tdBareUp(cab);
+      else { cab.classList.remove("phone"); if(cab.classList.contains("pseudo")) fsExit(); else fsPlain(fsPlainWanted()); } }
     tdWake();
     if(td.deck){ td.deck.remove(); td.deck=null; }
     document.documentElement.style.removeProperty("--td-h");
@@ -98,6 +101,7 @@ function touchMinichord(on=true){
   if(typeof arcadeRelayout==="function") setTimeout(arcadeRelayout, 60);
 }
 let tdTimer=0;
+const tdCss=()=>{ if(document.getElementById("tdcss")) return; const l=document.createElement("link"); l.id="tdcss"; l.rel="stylesheet"; l.href="touch.css"; document.head.appendChild(l); };
 
 // ---------- the deck ----------
 function tdBuild(){
@@ -214,9 +218,9 @@ function tdFullAtTap(){
   const req=cab.requestFullscreen || cab.webkitRequestFullscreen;
   try{ const p=req && req.call(cab); p && p.catch && p.catch(()=>{}); }catch(e){}
 }
-// the screen stays awake while the phone's cabinet is up
+// the screen stays awake while the phone's cabinet is up, played on the deck or on a minichord
 async function tdWake(){
-  const want=td.on && !!document.querySelector(".fscab.phone") && !document.hidden;
+  const want=!!document.querySelector(".fscab.phone") && !document.hidden;   // the deck's, or the minichord's (tdBareUp)
   if(want && !td.lock && navigator.wakeLock){ try{ td.lock=await navigator.wakeLock.request("screen"); td.lock.addEventListener("release", ()=>{ td.lock=null; }); }catch(e){} }
   else if(!want && td.lock){ td.lock.release().catch(()=>{}); td.lock=null; }
 }
@@ -231,7 +235,7 @@ document.addEventListener("visibilitychange", ()=>tdWake());
 const TD_MENU_ICON='<svg viewBox="0 0 16 14" shape-rendering="crispEdges" aria-hidden="true"><path fill="currentColor" d="M2 2h12v2H2zM2 6h12v2H2zM2 10h12v2H2z"/></svg>';
 function tdMenuButton(){
   const b=document.createElement("button"); b.type="button"; b.className="tdmenu"; b.innerHTML=TD_MENU_ICON;
-  b.setAttribute("aria-label", "Menu: sound, reset, settings"); b.title="Menu";
+  b.setAttribute("aria-label", "Menu: connect a minichord, sound, reset, settings"); b.title="Menu";
   b.addEventListener("click", e=>{ e.stopPropagation(); tdMenu(); });
   return b;
 }
@@ -249,6 +253,7 @@ function tdMenu(){
   };
   const shut=()=>dlg.close();
   const onOff=on=> on ? "ON" : `<em>OFF</em>`;
+  if(navigator.requestMIDIAccess && !tdReal()) row("MINICHORD", mc.midi ? `<em>NOT FOUND</em>` : "CONNECT ▶", ()=>{ shut(); tdConnect(); });
   row("SOUND", onOff(settings.sounds), b=>{
     const m=document.getElementById("muteBtn"); if(m) m.click(); else { settings.sounds=!settings.sounds; save(); }
     b.querySelector("b").innerHTML=onOff(settings.sounds);
@@ -267,6 +272,51 @@ function tdMenu(){
   dlg.addEventListener("close", ()=>dlg.remove());
   document.body.appendChild(dlg); dlg.showModal();
 }
+// ---------- a phone with the minichord plugged in ----------
+// An Android phone plays the arcade on the minichord itself, on a USB cable (an iPhone's browsers have
+// no Web MIDI). A page can't see what's plugged in until the browser's allowed it MIDI, so the first
+// time it's asked from the menu, MINICHORD, inside the cabinet; from then on the minichord's found by
+// itself, when the page opens and the moment it's plugged in. Found, the deck steps aside (virtual.js)
+// and the phone's cabinet is the game's screen alone, edge to edge: the minichord's the controller,
+// and its chord buttons run the title screens. A small ☰ in the corner is the menu still. Unplugged,
+// the deck comes back. Left for the page (THE WHOLE PAGE), it stays left, as the deck's cabinet does.
+const tdReal=()=> !!vm.stepAsideFor || (!!mc.out && mc.out.id!=="virtual");
+const tdBareWanted=()=> tdPhoneWanted() && tdReal();
+// Connect, as the page's own button does it (room.js), but without putting the deck away first: if MIDI
+// isn't allowed, or there's no minichord on the cable, the screen's minichord plays on.
+async function tdConnect(){
+  const c=document.getElementById("connect"); try{ piano.start(); }catch(e){}
+  if(!mc.midi){
+    if(c) c.disabled=true;
+    const ok=await mc.connect();
+    if(c){ if(ok) c.textContent="Connected"; else c.disabled=false; }
+    if(!ok){ tdToast("MIDI NOT ALLOWED", "ALLOW IT IN THE SITE'S SETTINGS", 3200); return; }
+  } else mc._ports();
+  if(!tdReal()) tdToast("NO MINICHORD FOUND", "PLUG IT IN: IT'S FOUND BY ITSELF", 3200);
+}
+// the phone's cabinet, the deck gone: the game's screen alone, and the corner ☰
+function tdBareUp(cab){
+  tdCss(); cab.classList.add("phone","bare"); fsPlain(true);
+  if(!cab.querySelector(":scope>.tdmenu")) cab.appendChild(tdMenuButton());
+  if(!cab._bareTap){ cab._bareTap=true; cab.addEventListener("pointerup", ()=>{ if(cab.classList.contains("bare")){ tdFullAtTap(); tdWake(); } }); }
+  td.bareIn=true; tdWake(); tdToast("MINICHORD CONNECTED", "PLAY ON THE INSTRUMENT");
+  if(typeof arcadeRelayout==="function") setTimeout(arcadeRelayout, 60);
+}
+function tdBareDown(cab){ cab.classList.remove("bare"); cab.querySelector(":scope>.tdmenu")?.remove(); }
+// kept up, or put up, as the minichord comes and goes
+function tdBareSync(){
+  if(td.on || !tdPhoneWanted()) return;
+  const cab=document.querySelector(".fscab");
+  if(cab && cab.classList.contains("bare")){
+    if(!tdReal()){ tdBareDown(cab); td.bareIn=false; touchMinichord(true); tdToast("MINICHORD UNPLUGGED", "PLAY ON THE SCREEN"); }   // the deck moves into this cabinet
+    return;
+  }
+  if(td.bareIn && !cab){ td.bareIn=false; td.bareLeft=true; }            // the player went back to the page
+  if(!cab && !td.bareLeft && tdReal() && blast && blast.field && typeof toggleFull==="function") toggleFull(blast.field, {auto:true});
+}
+mc.addEventListener("ports", ()=>setTimeout(tdBareSync, 0));   // after the deck's stepped aside (virtual.js)
+setInterval(tdBareSync, 500);                                    // and for a game that builds its field later
+
 // a button held by a finger: down and up, however the finger leaves
 function tdHold(el, down, up){
   el.addEventListener("pointerdown", e=>{ e.preventDefault(); tdCapture(el, e); el.classList.add("on"); down(e.pointerId); });
@@ -344,11 +394,15 @@ function tdSetKey(f){
   const root=mod(f*7, 12); vmPlay([60+root, 64+root, 67+root].map(n=>n>71 ? n-12 : n), {dur:.9, vel:70});
   const g=td.deck && td.deck.querySelector(".tdgrid");
   if(g){ g.classList.remove("keyset"); void g.offsetWidth; g.classList.add("keyset"); }
-  document.querySelectorAll(".tdkey").forEach(e=>e.remove());
+  tdToast(`KEY OF ${KEY_NAMES_BY_FIFTHS[f]}`, `${tdNoteAt(f+3)}m · ${sigText(f).toUpperCase()}`);
+}
+// a word over the game, gone in a moment: a key set, a minichord found
+function tdToast(big, small, ms=1600){
+  tdCss(); document.querySelectorAll(".tdkey").forEach(e=>e.remove());
   const b=document.createElement("div"); b.className="tdkey";
-  b.innerHTML=`KEY OF ${KEY_NAMES_BY_FIFTHS[f]}<small>${tdNoteAt(f+3)}m · ${sigText(f).toUpperCase()}</small>`;
+  b.innerHTML=`${big}<small>${small}</small>`;
   (document.querySelector(".fscab") || document.body).appendChild(b);
-  setTimeout(()=>b.classList.add("gone"), 1600); setTimeout(()=>b.remove(), 2100);
+  setTimeout(()=>b.classList.add("gone"), ms); setTimeout(()=>b.remove(), ms+500);
 }
 
 // The harp as a piano's keys instead: one octave, C to B, the white keys side by side and the black

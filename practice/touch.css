@@ -178,6 +178,13 @@ body.tdplay .field .kmstrip{display:none}                      /* the deck is th
   .fscab.phone .tdeck[data-chords=""] .tdmenu{left:max(6px,env(safe-area-inset-left,0px));height:44px}
   .fscab.phone .tdnow{min-width:0}
 }
+/* ---- a minichord plugged into the phone: the game's screen alone, edge to edge, and the ☰ small in
+   its bottom corner (the score and lives are along the top), faint till it's touched (touch.js tdBareUp) ---- */
+.fscab.phone.bare{padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px)}
+.fscab.phone.bare>.tdmenu{display:flex;position:absolute;z-index:4;top:auto;bottom:calc(env(safe-area-inset-bottom,0px) + 6px);right:calc(env(safe-area-inset-right,0px) + 6px);left:auto;
+  width:40px;height:40px;opacity:.5;background:rgba(22,19,42,.75)}
+.fscab.phone.bare>.tdmenu:active{opacity:1}
+.fscab.bare .field .kmstrip{display:none}   /* the harp's the minichord's own (controller.js kmStripShown) */
 /* the menu itself, the arcade's dialog with a line for each thing */
 dialog.tdmenudlg{width:min(22rem,88vw);box-sizing:border-box;padding:18px 16px}
 .tdmlist{display:flex;flex-direction:column;gap:2px;margin-bottom:14px}

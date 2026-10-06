@@ -291,7 +291,7 @@ document.getElementById("connect")?.addEventListener("click", vmStepAside, true)
 // than that. It steps aside the same way, and the real one is asked for its settings.
 mc.addEventListener("ports", ()=>{
   const out=mc.out; if(!vm.on || !out || out.id==="virtual") return;
-  vmStepAside();
+  vm.stepAsideFor=out; vmStepAside(); vm.stepAsideFor=null;      // what it steps aside for (touch.js keeps a phone's cabinet up for it)
   mc.out=out; mc.sysex=mc.sysexGranted;
   mc.dispatchEvent(new Event("device"));
   mc.requestDump();

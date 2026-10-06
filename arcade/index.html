@@ -62,7 +62,9 @@ main{position:relative;z-index:1;max-width:1180px;margin:0 auto;padding:22px 18p
 .marquee h1 small{display:block;font-size:.34em;letter-spacing:.3em;color:var(--cyan);text-shadow:0 0 8px var(--cyan),3px 3px 0 #000;margin-bottom:.6em}
 @keyframes neon{0%,18%,22%,62%,64%,100%{opacity:1}20%,63%{opacity:.55}}
 .marquee p{margin:18px 0 0;font-size:.7rem;color:var(--ink)}
-.insert{display:inline-flex;align-items:center;gap:12px;margin-top:20px;font-size:.8rem;color:var(--gold);animation:blink 1.1s steps(2) infinite}
+.insert{display:inline-flex;align-items:center;gap:12px;margin-top:20px;padding:0;background:none;border:0;font:inherit;font-size:.8rem;color:var(--gold);animation:blink 1.1s steps(2) infinite;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.insert:disabled{cursor:default;color:var(--gold)}
+.insert:focus-visible{outline:2px dashed var(--gold);outline-offset:6px}
 .insert svg{width:57px;height:30px}   /* a little pixel minichord: its case, three rows of buttons, the harp, the knobs, the light */
 /* a minichord connected: PLAYER 1 READY, steady and in minicontrol's arcade blue, the drawing turned 45 degrees like the favicon */
 .insert.on{color:var(--cyan);text-shadow:0 0 8px var(--cyan),2px 2px 0 #000;animation:none}
@@ -120,10 +122,10 @@ footer a{color:var(--gold);text-decoration:none;border-bottom:2px solid rgba(255
     <div class="bulbs" aria-hidden="true"></div><div class="bulbs side" aria-hidden="true"></div>
     <h1><small>KEY &amp; CABLE PRESENTS</small>MINICHORD<br>ARCADE</h1>
     <p>EIGHTEEN GAMES, PLAYED ON THE MINICHORD ITSELF</p>
-    <div class="insert" id="insert" aria-hidden="true">
+    <button type="button" class="insert" id="insert" disabled>
       <span data-pixel-minichord></span><script>document.querySelectorAll("[data-pixel-minichord]").forEach(el=>el.outerHTML=PIXEL_MINICHORD_SVG)</script>
       <span id="insert-text">INSERT MINICHORD</span>
-    </div>
+    </button>
   </header>
 
   <div class="ticker" aria-label="High scores"><div class="run" id="ticker">LOADING THE HIGH SCORES …</div></div>
@@ -156,11 +158,15 @@ import {SCORES_API} from "../core/scores.js";
 import {Minichord} from "../core/minichord.js";
 
 // the sign: INSERT MINICHORD, blinking, until one's connected, then PLAYER 1 READY. A minichord
-// connected on any of the Lab's pages before connects here by itself; until then the sign waits.
+// connected on any of the Lab's pages before connects here by itself; until then the sign waits, and
+// a tap on it asks the browser for MIDI (a phone's arcade, installed, has no Connect button to press).
 const mc=new Minichord(), sign=document.getElementById("insert");
 const ready=()=>{ const on=!!mc.out; sign.classList.toggle("on", on);
+  sign.disabled = on || !navigator.requestMIDIAccess;
+  sign.setAttribute("aria-label", on ? "Player 1 ready: a minichord is connected" : "Insert minichord: tap to connect one");
   document.getElementById("insert-text").textContent = on ? "PLAYER 1 READY" : "INSERT MINICHORD"; };
-mc.addEventListener("ports", ready);
+mc.addEventListener("ports", ready); ready();
+sign.addEventListener("click", ()=>{ if(!mc.out) mc.connect(); });
 
 // the games, in the order they arrived
 const GAMES=[

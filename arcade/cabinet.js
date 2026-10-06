@@ -78,8 +78,11 @@ function toggleFull(field, {auto=false}={}){
   fsConn(cab);
   fsHome={parent:field.parentNode, next:field.nextSibling, field};
   cab.querySelector(".fsscreen").appendChild(field); document.body.appendChild(cab);
-  const phone=typeof tdOn==="function" && tdOn(); cab.classList.toggle("phone", phone);
+  // the phone's cabinet also for a minichord plugged into the phone: the game's screen alone (touch.js tdBareUp)
+  const deck=typeof tdOn==="function" && tdOn(), bare=!deck && typeof tdBareWanted==="function" && tdBareWanted(), phone=deck || bare;
+  cab.classList.toggle("phone", phone);
   field.classList.add("crt","fscrt"); fxFresh(); if(fsPlainWanted() || phone) fsPlain(true);
+  if(bare) tdBareUp(cab);
   const req=cab.requestFullscreen || cab.webkitRequestFullscreen, pseudo=()=>cab.classList.add("pseudo");
   if(auto) pseudo();
   else try{ const p=req ? req.call(cab) : null; if(!req) pseudo(); else if(p && p.catch) p.catch(pseudo); }catch(e){ pseudo(); }

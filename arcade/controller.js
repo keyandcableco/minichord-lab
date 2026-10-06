@@ -78,8 +78,11 @@ function kmPlate(el, label){
 // played on a touch screen the deck under the game is the controller (practice/touch.js), so the one
 // beside the field isn't shown, and the games that leave room for it needn't; and the rules speak of
 // what's on the screen, not the keys and the mouse
+// A minichord plugged into a phone (touch.js tdBareUp) has the game's screen alone: the strip's room is
+// the game's on so small a screen (touch.css hides it), though beginner mode and the demos keep the room
+// they leave for the game's own minichord, which lights what to press.
 const playOnScreen=()=> typeof tdOn==="function" && tdOn();
-const kmStripShown=()=> !playOnScreen();
+const kmStripShown=()=> !playOnScreen() && !(document.querySelector(".fscab.bare") && !saved.beginner && !(blast && blast.phase==="demo"));
 /** the controller drawn beside the field, as the harp is laid out, lit as it's touched */
 function kmStrip(field){
   const L=kmLayout(), el=document.createElement("div"); el.setAttribute("aria-label","The harp as a controller");
