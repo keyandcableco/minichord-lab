@@ -5,11 +5,11 @@
 
 // ---------- Chord Chomp ----------
 // The old maze game, played on both halves of the minichord. The right hand steers on the harp, read
-// as a d-pad as Chord Snake reads it; the left hand holds chords. Eating the dots is as it always
-// was, with nothing to get right or wrong, but a chord held on the buttons makes them sing: each dot
-// plays the chord's next note, up through two octaves and back down, so a run down a corridor is an
-// arpeggio, and a corner taken with a new chord held changes the harmony. With nothing held they go
-// waka-waka, as they always did.
+// as a d-pad as Chord Snake reads it, or on a knob turned as a dial; the left hand holds chords.
+// Eating the dots is as it always was, with nothing to get right or wrong, but a chord held on the
+// buttons makes them sing: each dot plays the chord's next note, up through two octaves and back down,
+// so a run down a corridor is an arpeggio, and a corner taken with a new chord held changes the
+// harmony. With nothing held they go waka-waka, as they always did.
 //
 // A chord latches (the default): pressed, it stays on after the buttons are let go, until another is
 // pressed, or the same one again to let it go, so a thumb on a phone needn't hold it while the other
@@ -39,17 +39,32 @@
 
 // ---------- the maze ----------
 // # wall, . dot, o power pellet, - the ghosts' door, G inside their house, a space an empty path.
-// The middle row runs off both sides, a tunnel to the other.
+// The row through the ghosts' house runs off both sides, a tunnel to the other. Taller than it's wide,
+// as the old game's screen stood, so it fills a phone held upright as an arcade screen does.
 const CC_MAZE=[
   "###########################",
   "#o...........#...........o#",
   "#.###.###.##.#.##.###.###.#",
+  "#.###.###.##.#.##.###.###.#",
   "#.........................#",
   "#.###.#.###########.#.###.#",
+  "#.###.#.###########.#.###.#",
   "#.....#.............#.....#",
-  "#####.####.##-##.####.#####",
-  "     .#   .#GGG#.   #.     ",
-  "#####.#.##.#####.##.#.#####",
+  "#####.####.#####.####.#####",
+  "#####.#             #.#####",
+  "#####.# ## ##-## ## #.#####",
+  "     .  ## #GGG# ##  .     ",
+  "#####.# ## ##### ## #.#####",
+  "#####.#             #.#####",
+  "#####.#.###.###.###.#.#####",
+  "#.........................#",
+  "#.###.###.##.#.##.###.###.#",
+  "#.###.###.##.#.##.###.###.#",
+  "#o.......................o#",
+  "#####.##.#########.##.#####",
+  "#.....##.....#.....##.....#",
+  "#.######.###.#.###.######.#",
+  "#.######.###.#.###.######.#",
   "#.........................#",
   "#.###.###.###.###.###.###.#",
   "#o.......................o#",
@@ -57,17 +72,17 @@ const CC_MAZE=[
   "#.........................#",
   "###########################",
 ];
-const CC_COLS=CC_MAZE[0].length, CC_ROWS=CC_MAZE.length;
-const CC_START={x:13, y:11}, CC_FRUIT={x:13, y:9}, CC_OUT={x:13, y:5}, CC_IN={x:13, y:7};
+const CC_COLS=CC_MAZE[0].length, CC_ROWS=CC_MAZE.length, CC_TUNNEL=CC_MAZE.findIndex(r=>r[0]===" ");
+const CC_START={x:13, y:23}, CC_FRUIT={x:13, y:13}, CC_OUT={x:13, y:9}, CC_IN={x:13, y:11};
 const CC_DIRS={up:[0,-1], left:[-1,0], down:[0,1], right:[1,0]};
 const CC_OPP={up:"down", down:"up", left:"right", right:"left"};
 const CC_ORDER=["up","left","down","right"];                       // the old game's tie-break
 // the ghosts: where each starts, the corner it heads for when scattering, its colour
 const CC_GHOSTS=[
-  {at:{x:13,y:5}, corner:[25,-3], col:"#FF3B30"},
-  {at:{x:12,y:7}, corner:[1,-3],  col:"#FFB8FF"},
-  {at:{x:13,y:7}, corner:[26,17], col:"#00E5FF"},
-  {at:{x:14,y:7}, corner:[0,17],  col:"#FFB852"},
+  {at:{x:13,y:9},  corner:[25,-3], col:"#FF3B30"},
+  {at:{x:12,y:11}, corner:[1,-3],  col:"#FFB8FF"},
+  {at:{x:13,y:11}, corner:[26,CC_ROWS+2], col:"#00E5FF"},
+  {at:{x:14,y:11}, corner:[0,CC_ROWS+2],  col:"#FFB852"},
 ];
 // scatter, chase, scatter, chase … in seconds of play, then chase for good
 const CC_WAVES=[7,20,7,20,5,20,5];
@@ -151,10 +166,11 @@ function startChomp(){
   blast.raf=requestAnimationFrame(ccTick);
 }
 // the harp chromatic, so each section is a known note and the strip a d-pad; the key signature the
-// maze's, so a chord of the key is a plain button; and the key change combo listened for
+// maze's, so a chord of the key is a plain button; the knobs sending MIDI, to steer; and the key
+// change combo listened for
 function ccDevice(){
   if(!blast || blast.kind!=="chomp" || !canWrite()) return;
-  arcadeSetup(()=>{ kmHarp(); if(hasSetting(35)) borrow(35, keyIndexOf(blast.key ? blast.key.f : 0)); });
+  arcadeSetup(()=>{ kmHarp(); if(hasSetting(35)) borrow(35, keyIndexOf(blast.key ? blast.key.f : 0)); if(knobsReady()) borrow(238,1); });
   if(blast.phase==="menu" && blast.overlay && blast.ccSig!==ccMenuSig()) menuRebuild(()=>ccMenu());   // its rules say how a key's taken
   ccKeyCheck();
   if(blast.phase==="play" && !pollT) poll(true);
@@ -179,16 +195,17 @@ function ccBar(){
 }
 
 // ---------- the title screen ----------
-const ccMenuSig=()=> String(ccComboOk());
+const ccMenuSig=()=> `${ccComboOk()}|${knobsReady()}|${steerKnob()}`;
 const CCMENU_G={key:"chomp", title:"CHORD CHOMP",
-  rules:()=>`<p>EAT THE DOTS. PLAY A CHORD ON THE BUTTONS AND THEY SING IT, A NOTE A DOT. ${ccLatch() ? "IT STAYS ON TILL YOU PLAY ANOTHER, OR THE SAME AGAIN TO LET IT GO. OR CHOOSE HOLD, FOR A QUARTER MORE: THEN A CHORD ONLY COUNTS WHILE IT'S HELD." : "A CHORD ONLY COUNTS WHILE IT'S HELD (A QUARTER MORE POINTS); CHOOSE LATCH TO HAVE IT STAY ON."}</p><p>THE GHOSTS WEAR CHORDS OF THE KEY. EAT A POWER PELLET, THEN PLAY A GHOST'S CHORD: THAT GHOST TURNS BLUE AND YOU CAN CATCH IT. THE OTHERS STILL CHASE YOU.</p><p>CATCH THEM IN A CADENCE'S ORDER FOR A BONUS: V THEN I, OR IV, V THEN I FOR THE BIGGEST.</p><p>WHEN A KEY TURNS UP, ${ccComboOk() ? "SET IT WITH THE KEY CHANGE COMBO" : "PLAY ITS HOME CHORD"} BEFORE IT GOES, AND THE MAZE CHANGES KEY. FARTHER KEYS SCORE MORE.</p><p>${playOnScreen() ? "STEER WITH THE ARROWS UNDER THE GAME" : "STEER ON THE HARP OR THE ARROW KEYS"}.</p>`,
+  rules:()=>`<p>EAT THE DOTS. PLAY A CHORD ON THE BUTTONS AND THEY SING IT, A NOTE A DOT. ${ccLatch() ? "IT STAYS ON TILL YOU PLAY ANOTHER, OR THE SAME AGAIN TO LET IT GO. OR CHOOSE HOLD, FOR A QUARTER MORE: THEN A CHORD ONLY COUNTS WHILE IT'S HELD." : "A CHORD ONLY COUNTS WHILE IT'S HELD (A QUARTER MORE POINTS); CHOOSE LATCH TO HAVE IT STAY ON."}</p><p>THE GHOSTS WEAR CHORDS OF THE KEY. EAT A POWER PELLET, THEN PLAY A GHOST'S CHORD: THAT GHOST TURNS BLUE AND YOU CAN CATCH IT. THE OTHERS STILL CHASE YOU.</p><p>CATCH THEM IN A CADENCE'S ORDER FOR A BONUS: V THEN I, OR IV, V THEN I FOR THE BIGGEST.</p><p>WHEN A KEY TURNS UP, ${ccComboOk() ? "SET IT WITH THE KEY CHANGE COMBO" : "PLAY ITS HOME CHORD"} BEFORE IT GOES, AND THE MAZE CHANGES KEY. FARTHER KEYS SCORE MORE.</p><p>${playOnScreen() ? "STEER WITH THE ARROWS UNDER THE GAME." : knobsReady() ? `STEER ON THE HARP, THE ARROW KEYS, OR THE ${KNOB_NAMES[steerKnob()]} KNOB: IT POINTS THE WAY, UP IN THE MIDDLE, DOWN AT EITHER END. HOLD IT AT AN END AND IT KEEPS GOING ROUND.` : "STEER ON THE HARP OR THE ARROW KEYS."}</p>`,
   levels:CC_LEVELS, begin:i=>beginChomp(i), demo:()=>ccDemo(), modNote:"title"};
 function ccMenu(over){ blast.ccSig=ccMenuSig(); arcadeMenu(CCMENU_G, over); }
 function beginChomp(level){
   newRun();
   piano.start(); stopDemo(); clearTimeout(blast.attract);
   if(blast.overlay){ blast.overlay.remove(); blast.overlay=null; }
-  Object.assign(blast,{score:0, lives:3, level, startLevel:level, maze:0, phase:"play", over:false, clock:0, demoAuto:false, demoHeld:null, powerTold:false, modFor:null, jamUsed:false, jam:null, latched:null});
+  Object.assign(blast,{score:0, lives:3, level, startLevel:level, maze:0, phase:"play", over:false, clock:0, demoAuto:false, demoHeld:null, powerTold:false, modFor:null, jamUsed:false, jam:null, latched:null,
+    knobV:null, knobQ:null, knobOffset:0, knobDue:0, edgeAt:null});
   if(canWrite() && hasSetting(33)) ensure(33,0);                // no Barry Harris: the plain chords
   ccSetKey(ccKey(0));
   saved.chompStart=level; save();
@@ -228,6 +245,7 @@ function ccTick(now){
   if(!blast || blast.kind!=="chomp") return;
   const dt=Math.min(DT_MAX,(now-blast.last)/1000); blast.last=now;
   if((blast.phase==="play" || blast.phase==="demo") && blast.pac) ccStep(dt);
+  if(blast.phase==="play") ccKnobTick(now);
   if(blast.fx) fxDraw(now, dt);
   blast.raf=requestAnimationFrame(ccTick);
 }
@@ -237,7 +255,7 @@ function ccGhostSpeed(g){
   const s=ccSpeed();
   if(g.state==="eyes") return s*1.8;
   if(g.state!=="out") return s*.5;
-  if(g.y===7 && (g.x<6 || g.x>20)) return s*.5;                      // the tunnel slows them
+  if(g.y===CC_TUNNEL && (g.x<6 || g.x>20)) return s*.5;                      // the tunnel slows them
   if(g.scared) return s*.55;
   return s*Math.min(.97, .86+.02*blast.level+.01*(blast.maze||0))*(blast.demoAuto?.6:1);
 }
@@ -466,7 +484,7 @@ function ccKeyTo(fr){
     const pts=mulPts(fr.pts*(blast.level+1)); blast.score+=pts; ccPop(CC_FRUIT, `+${pts}`, "#FFD35A");
     const g=blast.ghosts.find(g=>/^V7?$/.test(g.num)) || blast.ghosts[0];
     banner(`→ ${fr.key.label}`, `${was.name} TO ${fr.key.name}: ${g.num} IS ${g.chord.sym} NOW`);
-    if(!blast.jamUsed){ blast.jamUsed=true; blast.mini={...rnd([{x:2,y:7},{x:24,y:7}]), until:blast.clock+10*Math.sqrt(speedMul())}; gameLater(()=>sfx("mini"), 900); }
+    if(!blast.jamUsed){ blast.jamUsed=true; blast.mini={...rnd([{x:2,y:CC_TUNNEL},{x:24,y:CC_TUNNEL}]), until:blast.clock+10*Math.sqrt(speedMul())}; gameLater(()=>sfx("mini"), 900); }
   }
   sfx("key", fr.key.home.pc); ccBar();
 }
@@ -495,7 +513,7 @@ const ccPowerLook=k=>`<span class="cccap pu-${k}"><i class="puicon">${CC_POWERS[
 function ccCapSpawn(){
   const P=blast.pac, spots=[];
   for(let y=0;y<CC_ROWS;y++) for(let x=0;x<CC_COLS;x++){ const c=CC_MAZE[y][x];
-    if((c==="." || c===" ") && !(y===7 && (x<5 || x>21)) && Math.abs(x-P.x)+Math.abs(y-P.y)>=8 && !(x===CC_FRUIT.x && y===CC_FRUIT.y)) spots.push({x,y}); }
+    if((c==="." || c===" ") && !(y===CC_TUNNEL && (x<5 || x>21)) && Math.abs(x-P.x)+Math.abs(y-P.y)>=8 && !(x===CC_FRUIT.x && y===CC_FRUIT.y)) spots.push({x,y}); }
   if(!spots.length) return;
   const at=rnd(spots); blast.caps.push({...at, k:powerPick(CC_POWERS), until:blast.clock+10});
 }
@@ -550,6 +568,29 @@ function ccTurn(d){
   blast.want=d;
   const P=blast.pac; if(P && P.p>0 && P.dir===CC_OPP[d]) ccReverse(P);
 }
+// The knob steers too, as a dial: its whole turn is one lap, up in the middle, right a quarter of the
+// way clockwise, left a quarter anticlockwise and down at either end, so it points roughly the way to
+// go. A way is taken once the knob has rested on it a moment, so one swept past on the way to another
+// (round through right, from up to down) isn't taken at a turning on the way; and the knob has to go
+// a little past the line between two ways to change, so one resting on the line holds still. And it
+// turns endlessly, as Fifths Defender's does: held against either end stop, the dial keeps stepping
+// round that way, the whole mapping turning with it, so the knob never has to jump back.
+const CC_KNOB=["up","right","down","left"];
+const CC_EDGE=.025, CC_EDGE_WAIT=380, CC_EDGE_STEP=380, CC_SETTLE=70, CC_STICK=.12;   // how close to a stop counts, how long before it steps and how often; how long a way's rested on; how far past the line (in quarter turns)
+function ccKnob(v){
+  if(!blast || blast.kind!=="chomp" || blast.phase!=="play") return;
+  blast.knobV=v;
+  const a=(v-.5)*4+(blast.knobOffset||0);                                // in quarter turns from up
+  if(blast.knobQ!=null && Math.abs(a-blast.knobQ)<.5+CC_STICK) return;
+  blast.knobQ=Math.round(a); blast.knobDue=performance.now()+CC_SETTLE;
+}
+function ccKnobTick(now){
+  const v=blast.knobV, end = v==null ? 0 : v<=CC_EDGE ? -1 : v>=1-CC_EDGE ? 1 : 0;
+  if(!end) blast.edgeAt=null;
+  else if(blast.edgeAt==null) blast.edgeAt=now+CC_EDGE_WAIT;
+  else if(now>=blast.edgeAt){ blast.edgeAt=now+CC_EDGE_STEP; blast.knobOffset=(blast.knobOffset||0)+end; ccKnob(v); }
+  if(blast.knobDue && now>=blast.knobDue){ blast.knobDue=0; ccTurn(CC_KNOB[mod(blast.knobQ,4)]); }
+}
 document.addEventListener("keydown", e=>{
   if(!q || q.kind!=="chomp" || /INPUT|SELECT|TEXTAREA/.test(document.activeElement?.tagName||"")) return;
   const letters = !(typeof kbOn==="function" && kbOn());          // in keyboard play the letters are the instrument's
@@ -559,23 +600,22 @@ document.addEventListener("keydown", e=>{
 
 // ---------- drawing ----------
 // An arcade screen of its own, at the old game's resolution: eight pixels a square, the whole maze 216
-// by 120, every sprite and letter drawn pixel by pixel with nothing smoothed, then shown at a whole
-// number of screen pixels a pixel, so each one is the same size and square. The arcade's own pixel
-// font for the chords and READY!, its sharps and flats drawn to match.
+// by 232, every sprite and letter drawn pixel by pixel with nothing smoothed, then shown at a whole
+// number of the screen's own pixels a pixel (a phone's, three to a CSS pixel, not only whole CSS
+// pixels), so each one is the same size and square. The arcade's own pixel font for the chords and
+// READY!, its sharps and flats drawn to match.
 // The whole maze in view where it fits with squares big enough to play on. Where it doesn't (a phone
-// held upright), it's shown bigger, up to CC_BIGK times, and the view follows the player across it, as
-// the old handheld versions scrolled theirs.
-const CC_T=8, CC_SMALL=16, CC_BIGK=4;                                  // native pixels a square; screen pixels a square, at the least; the most times over
+// with its minichord on the screen under the game, or held sideways), it's shown at the smallest size
+// that's big enough, and the view follows the player across it, as the old handheld versions scrolled theirs.
+const CC_T=8, CC_SMALL=12;                                             // native pixels a square; CSS pixels a square, at the least
 function ccLayout(){
-  const fw=fieldW(), fh=fieldH();
+  const fw=fieldW(), fh=fieldH(), dpr=window.devicePixelRatio||1;
   const side = !kmStripShown() ? 16 : (saved.beginner || blast.phase==="demo") ? Math.ceil(Math.min(fw*.3, 300))+20 : (kmLayout().cols===3 ? 150 : 84);
   const aw=fw-side-8, ah=fh-40-28, NW=CC_COLS*CC_T, NH=CC_ROWS*CC_T;
-  let k=Math.floor(Math.min(aw/NW, ah/NH));
-  if(k*CC_T<CC_SMALL) k=Math.max(k, Math.min(CC_BIGK, Math.floor(Math.max(aw/NW, ah/NH))));   // as big as fits the other way: upright, the whole height, scrolling across
-  k=Math.max(1,k);
-  const w=Math.min(NW, Math.floor(aw/k)), h=Math.min(NH, Math.floor(ah/k));
+  const d=Math.max(1, Math.floor(Math.min(aw/NW, ah/NH)*dpr), Math.ceil(CC_SMALL/CC_T*dpr));   // screen pixels a pixel: the whole maze, unless that's too small
+  const k=d/dpr, w=Math.min(NW, Math.floor(aw/k)), h=Math.min(NH, Math.floor(ah/k)), on=v=>Math.round(v*dpr)/dpr;   // on a screen pixel
   Object.assign(blast, {tile:CC_T, k, view:{x:0, y:0, w, h}, scrolls:NW>w || NH>h, cam:null, mazeCv:null});
-  blast.scrLeft=8+Math.floor((aw-w*k)/2); blast.scrTop=40+Math.floor((ah-h*k)/2);
+  blast.scrLeft=on(8+(aw-w*k)/2); blast.scrTop=on(40+(ah-h*k)/2);
   const s=blast.screen; if(s){ s.width=w; s.height=h; s.style.cssText=`left:${blast.scrLeft}px;top:${blast.scrTop}px;width:${w*k}px;height:${h*k}px`; }
   ccCamera(0);
 }
@@ -653,7 +693,7 @@ const ccWall=f=>`hsl(${mod(235+f*30,360)},85%,${f%2?58:62}%)`;
 function ccMazePaint(col){
   const T=CC_T, I=3, cv=document.createElement("canvas"); cv.width=CC_COLS*T; cv.height=CC_ROWS*T;
   const g=cv.getContext("2d"); if(!g || !g.fillRect) return cv;
-  const wall=(x,y)=> x<0 || x>=CC_COLS ? y!==7 : y<0 || y>=CC_ROWS ? true : "#-".includes(CC_MAZE[y][x]);
+  const wall=(x,y)=> x<0 || x>=CC_COLS ? y!==CC_TUNNEL : y<0 || y>=CC_ROWS ? true : "#-".includes(CC_MAZE[y][x]);
   const h=(x0,x1,y)=>g.fillRect(x0,y,x1-x0+1,1), v=(x,y0,y1)=>g.fillRect(x,y0,1,y1-y0+1);
   g.fillStyle=col;
   for(let y=0;y<CC_ROWS;y++) for(let x=0;x<CC_COLS;x++){
@@ -670,7 +710,7 @@ function ccMazePaint(col){
       v(cx, dy<0 ? Y : cy, dy<0 ? cy : Y+T-1); h(dx<0 ? X : cx, dx<0 ? cx : X+T-1, cy);
     }
   }
-  g.fillStyle="#FFB8FF"; g.fillRect(13*T, 6*T+I, T, 2);                  // the ghosts' door
+  g.fillStyle="#FFB8FF"; g.fillRect(CC_OUT.x*T, (CC_OUT.y+1)*T+I, T, 2);   // the ghosts' door
   return cv;
 }
 
@@ -678,7 +718,7 @@ function ccMazePaint(col){
 function ccDraw(_, now){
   const s=blast.screen, g=s && s.getContext("2d"); if(!g || !g.fillRect) return;
   if(!blast.dots){ g.clearRect(0,0,s.width,s.height); return; }
-  const lk=`${fieldW()}x${fieldH()}|${kmStripShown()}|${!!saved.beginner}|${blast.phase==="demo"}|${saved.harpLayout||""}`;
+  const lk=`${fieldW()}x${fieldH()}@${window.devicePixelRatio||1}|${kmStripShown()}|${!!saved.beginner}|${blast.phase==="demo"}|${saved.harpLayout||""}`;
   if(blast.layoutKey!==lk){ blast.layoutKey=lk; ccLayout(); }
   if(blast.scrolls){ ccCamera(Math.min(.1, (now-(blast.camAt||now))/1000)); blast.camAt=now; }
   const t=CC_T, ox=blast.ox, oy=blast.oy, clock=blast.clock;
@@ -862,6 +902,9 @@ function ccDemo(){
       const pad=saved.harpLayout==="kmpad", grid=kmLayout().cols===3;
       say("STEER ON THE HARP", pad ? "THE KEYMASTER AS A D-PAD: 5 UP, 4 LEFT, 3 RIGHT, 2 DOWN." : grid ? "ITS FOUR ROWS OF THREE ARE A D-PAD: TOP UP, SIDES LEFT AND RIGHT, BOTTOM DOWN." : "THE TOP THREE GO UP, THE NEXT TWO LEFT, TWO RIGHT BELOW A AND B, THE BOTTOM THREE DOWN.");
       for(const z of ["up","left","right","down"]){ zones(z); sfx("press"); await step(900); } zones();
+      if(knobsReady() && typeof helpKnob==="function"){
+        say("OR TURN THE KNOB", `THE ${KNOB_NAMES[steerKnob()]} KNOB POINTS THE WAY: UP IN THE MIDDLE, RIGHT, DOWN AT EITHER END, LEFT. HOLD IT AT AN END AND IT KEEPS GOING ROUND.`);
+        for(const v of [.5,.75,1,.25,.5]){ helpKnob(steerKnob(), v); await step(900); } }
       say("THE DOTS SING",`PLAY A CHORD AND EACH DOT YOU EAT PLAYS ITS NEXT NOTE. HERE, C.${ccLatch() ? " IT STAYS ON TILL YOU PLAY ANOTHER." : ""}`); hold(ccChord(blast.key,"I")); await step(4200);
       say("CHANGE THE CHORD",`F NOW, AND THE DOTS SING F. ${ccLatch() ? "PLAY F AGAIN TO LET IT GO" : "LET GO"}, AND THEY GO WAKA-WAKA.`); hold(ccChord(blast.key,"IV")); await step(4200);
       blast.demoHeld=null; helpChord(null);
@@ -878,7 +921,7 @@ function ccDemo(){
       ccKeyTo(fr);
       say("G MAJOR NOW","THE GHOSTS' NUMERALS NAME G'S CHORDS: V IS D NOW. KEYS FARTHER ROUND THE CIRCLE OF FIFTHS SCORE MORE."); await step(4400);
       say("CAPSULES",`${CC_POWERS.fermata.icon} FERMATA HOLDS THE GHOSTS STILL. ${CC_POWERS.rest.icon} REST HIDES YOU FROM THEM. ${DA_CAPO.icon} DA CAPO IS A LIFE. RUN THROUGH ONE TO TAKE IT.`); await step(4800);
-      say("READY?",`CHOOSE A LEVEL. ${playOnScreen() ? "STEER WITH THE ARROWS UNDER THE GAME" : "STEER ON THE HARP OR THE ARROW KEYS"}.`); sfx("level"); await step(2800);
+      say("READY?",`CHOOSE A LEVEL. ${playOnScreen() ? "STEER WITH THE ARROWS UNDER THE GAME" : knobsReady() ? `STEER ON THE HARP, THE ARROW KEYS OR THE ${KNOB_NAMES[steerKnob()]} KNOB` : "STEER ON THE HARP OR THE ARROW KEYS"}.`); sfx("level"); await step(2800);
       endCcDemo(token);
     }catch(e){ /* skipped */ }
   })();

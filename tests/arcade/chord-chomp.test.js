@@ -3,7 +3,7 @@
 // key that turns up taken by the combo (and by its home chord without one), capsules, and a maze cleared.
 const t=require("./harness").load("chord-chomp");
 (async()=>{
-  const {w, sb, sleep, key, note, chord, check, d, mc}=t;
+  const {w, sb, sleep, key, note, chord, knob, check, d, mc}=t;
   await sleep(150); t.connect({key:2}); await sleep(100);
   let sounding=[]; Object.defineProperty(mc,"voices",{get:()=>sounding.map((p,i)=>({note:p, pitch:p, voice:i})), configurable:true});
   const hold=(pc,q="")=>{ sounding=t.IV[q].map(x=>48+pc+x); };
@@ -37,27 +37,38 @@ const t=require("./harness").load("chord-chomp");
   chord("F"); await sleep(60);
   check("HOLD: a chord played and let go counts for nothing", !a.held && !a.latched);
   w.eval("saved.ccHold=0");
+  // the knob, as a dial: up in the middle, right a quarter round, down at either end, left a quarter back
+  const until=async(f, ms=3000)=>{ for(let t0=Date.now(); !f() && Date.now()-t0<ms;) await sleep(15); return f(); };
+  const ways=[]; for(const [v,want] of [[64,"up"],[96,"right"],[127,"down"],[32,"left"],[64,"up"]]){ knob(v); await until(()=>a.want===want, 1500); ways.push(a.want); }
+  check("the knob steers as a dial: up in the middle, right, down at the end, left, up", ways.join()==="up,right,down,left,up", ways.join());
+  w.eval("window.__turns=[]; const ccTurn0=ccTurn; ccTurn=d=>{ __turns.push(d); ccTurn0(d); }");
+  for(const v of [80,96,112,124]) knob(v); await until(()=>w.eval("__turns.length>0"));
+  check("swept from up round to down, the way it passes on the way isn't taken", w.eval("__turns.join()")==="down" && a.want==="down", w.eval("__turns.join()"));
+  w.eval("__turns.length=0"); await until(()=>a.want==="up", 4000);
+  knob(96); await until(()=>a.want!=="up", 1500);
+  check("held at its end, it keeps going round: left, then up", /^left,up/.test(w.eval("__turns.join()")), w.eval("__turns.join()"));
+  check("turned back off the end, the dial goes on from where it got to: a quarter back is left", a.want==="left", a.want);
   // power: only the ghost whose chord is held turns blue; the others still chase
   const place=(g,x,y)=>Object.assign(g,{state:"out", x, y, p:0, dir:"left", scared:false});
   w.eval("blast.fermataUntil=blast.clock+60; ccPowerStart()");          // the ghosts held still, to set the scene
-  const [g0,g1]=a.ghosts; place(g0,20,9); place(g1,6,9); a.ghosts.slice(2).forEach((g,i)=>place(g,3+i,13));
+  const [g0,g1]=a.ghosts; place(g0,20,15); place(g1,6,15); a.ghosts.slice(2).forEach((g,i)=>place(g,3+i,27));
   hold(g0.chord.pc, g0.chord.q); await sleep(60);
   check("power on, a ghost's chord held: that ghost is blue", g0.scared && !g1.scared);
   sounding=[]; chord(g1.chord.root, g1.chord.q); await sleep(60);
   check("latched, let go: the ghost whose chord it is turns blue, and the other back", g1.scared && !g0.scared);
   chord(g1.chord.root, g1.chord.q); hold(g0.chord.pc, g0.chord.q); await sleep(60);
   // run the player into it
-  Object.assign(a.pac,{x:19, y:9, p:0, dir:"right"}); a.want="right";
+  Object.assign(a.pac,{x:19, y:15, p:0, dir:"right"}); a.want="right";
   const s0=a.score; await sleep(400);
   check("the blue ghost is caught, for 200 a level", g0.state==="eyes" && a.score-s0>=200*2, `${a.score-s0}`);
   await sleep(700);
   // the next ghost not held: it catches the player
   sounding=[]; await sleep(30);
-  const lives=a.lives; Object.assign(a.pac,{x:8, y:9, p:0, dir:"left"}); a.want="left";
+  const lives=a.lives; Object.assign(a.pac,{x:8, y:15, p:0, dir:"left"}); a.want="left";
   for(let i=0;i<40 && a.st==="go";i++) await sleep(30);
   check("a ghost whose chord isn't held still catches you, power or not", a.st==="dying");
   await sleep(1900);
-  check("and it costs a life; everyone back in place", a.lives===lives-1 && a.pac.x===13 && a.pac.y===11);
+  check("and it costs a life; everyone back in place", a.lives===lives-1 && a.pac.x===13 && a.pac.y===23);
   // cadences
   check("cadences: IV V I full, V I perfect, IV I plagal, V vi deceptive, anything then V half",
     w.eval("[['IV','V','I'],['ii','V','I'],['vi','V','I'],['IV','I'],['V','vi'],['I','V'],['vi','IV']].map(l=>ccCadence(l)?.name||'-').join()")===
@@ -71,9 +82,9 @@ const t=require("./harness").load("chord-chomp");
   check("set with the combo: the maze is in G, the minichord with it, and it scores", a.key.name==="G" && !a.fruit && a.score>s1 && t.mc.params[35]===w.eval("keyIndexOf(1)"));
   check("the ghosts' numerals name G's chords now: V is D", V.chord.sym==="D");
   // the jam session: the key taken leaves a little minichord in the tunnel
-  check("taking a key leaves a little minichord in the tunnel", a.mini && a.mini.y===7 && [2,24].includes(a.mini.x) && a.jamUsed);
+  check("taking a key leaves a little minichord in the tunnel", a.mini && a.mini.y===11 && [2,24].includes(a.mini.x) && a.jamUsed);
   await sleep(1300);
-  w.eval("blast.fermataUntil=blast.clock+60; const m=blast.mini; Object.assign(blast.pac,{x:m.x+1, y:7, p:0, dir:'left'}); blast.want='left'");
+  w.eval("blast.fermataUntil=blast.clock+60; const m=blast.mini; Object.assign(blast.pac,{x:m.x+1, y:m.y, p:0, dir:'left'}); blast.want='left'");
   for(let i=0;i<30 && a.st!=="jam";i++) await sleep(30);
   check("eaten: a jam session, the ghosts' chords in a progression's order", a.st==="jam" && a.jam.seq.map(g=>g.num).join()==="I,vi,IV,V", a.jam && a.jam.seq.map(g=>g.num).join());
   check("and the band's chart up", !d.querySelector(".ccjam").hidden && d.querySelectorAll(".ccjamchips span").length===4);
@@ -94,13 +105,13 @@ const t=require("./harness").load("chord-chomp");
   const l0=a.lives; w.eval("ccPowerGet('dacapo')");
   check("DA CAPO: a life back", a.lives===l0+1);
   // the maze cleared: the next level
-  const lv=a.level; w.eval("blast.dots.forEach(r=>r.fill(0)); blast.dots[11][12]=1; blast.left=1; Object.assign(blast.pac,{x:13,y:11,p:0,dir:'left'}); blast.want='left'; blast.ghosts.forEach(g=>{g.state='house'; g.releaseAt=1e9;})");
+  const lv=a.level; w.eval("blast.dots.forEach(r=>r.fill(0)); blast.dots[23][12]=1; blast.left=1; Object.assign(blast.pac,{x:13,y:23,p:0,dir:'left'}); blast.want='left'; blast.ghosts.forEach(g=>{g.state='house'; g.releaseAt=1e9;})");
   for(let i=0;i<120 && a.level===lv;i++) await sleep(50);
   check("every dot eaten: the next level, a full maze, the key kept", a.level===lv+1 && a.left===a.total && a.key.name==="G");
   // a caught ghost's eyes run home, wait, and it comes out again (once, it was let out mid-step and stopped the game)
   const errs=[]; w.addEventListener("error", e=>errs.push(e.message));
   await sleep(1900);
-  w.eval("blast.ghosts.slice(1).forEach(g=>{ g.state='house'; g.releaseAt=1e9; }); Object.assign(blast.ghosts[0],{state:'out', x:20, y:9, p:.5, dir:'left', scared:false}); ccCatch(blast.ghosts[0])");
+  w.eval("blast.ghosts.slice(1).forEach(g=>{ g.state='house'; g.releaseAt=1e9; }); Object.assign(blast.ghosts[0],{state:'out', x:20, y:15, p:.5, dir:'left', scared:false}); ccCatch(blast.ghosts[0])");
   const g9=a.ghosts[0]; let home=false;
   for(let i=0;i<160 && !(home && g9.state==="out");i++){ await sleep(50); if(g9.state==="house") home=true; }
   check("a caught ghost's eyes go home, and it comes back out", home && g9.state==="out" && !errs.length, errs[0]||g9.state);
@@ -111,13 +122,25 @@ const t=require("./harness").load("chord-chomp");
   check("on firmware without the combo, the key's home chord takes it, and the minichord's set to it", a.key.name==="D" && t.mc.params[35]===w.eval("keyIndexOf(2)"));
   check("the little minichord turns up only once a game", !a.mini);
   t.mc.params[7]=17;
-  // a phone held upright: the maze fills the view's height, big enough to play on, and the view follows
-  // the player; on a wide field the whole maze shows and nothing scrolls
-  check("on a wide field the whole maze is in view, unscrolled, at a whole number of screen pixels a pixel", !a.scrolls && Number.isInteger(a.k) && a.k*8>=w.eval("CC_SMALL"), `${a.k*8} px squares`);
-  const cam=w.eval(`(()=>{ const fx=blast.fx; fx.ro=fx.ro||{}; fx.fw=375; fx.fh=513; PX=3; ccLayout(); const out=[];
-    for(const x of [1,13,25]){ Object.assign(blast.pac,{x, y:9, p:0}); ccCamera(0); const px=blast.ox+(x+.5)*blast.tile, v=blast.view; out.push(px>=v.x && px<=v.x+v.w); }
-    return {scrolls:blast.scrolls, sq:blast.tile*blast.k, seen:out}; })()`);
-  check("on a phone it scrolls, at twice the squares or more, keeping the player in view from end to end", cam.scrolls && cam.sq>=24 && cam.seen.every(Boolean), JSON.stringify(cam));
+  // The maze stands taller than it's wide. On a desktop's field the whole of it shows, at a whole
+  // number of screen pixels a pixel; on a phone held upright with a minichord plugged in (no strip of
+  // harp sections, no minichord on the screen) it fits too, at a whole number of the phone's own pixels
+  // a pixel; with the screen's minichord under it, or held sideways, it's shown at the smallest size big
+  // enough to play on, and the view follows the player.
+  const lay=(fw,fh,dpr)=>w.eval(`(()=>{ const fx=blast.fx; fx.ro=fx.ro||{}; fx.fw=${fw}; fx.fh=${fh}; Object.defineProperty(window,"devicePixelRatio",{value:${dpr}, configurable:true});
+    const bare=document.createElement("div"); bare.className="fscab bare"; document.body.appendChild(bare); ccLayout(); bare.remove(); const out=[];
+    for(const [x,y] of [[1,1],[13,11],[25,27],[1,27],[25,1]]){ Object.assign(blast.pac,{x, y, p:0}); ccCamera(0); const px=blast.ox+(x+.5)*blast.tile, py=blast.oy+(y+.5)*blast.tile, v=blast.view; out.push(px>=v.x && px<=v.x+v.w && py>=v.y && py<=v.y+v.h); }
+    return {scrolls:blast.scrolls, k:blast.k, dk:Math.round(blast.k*${dpr}*1000)/1000, sq:blast.tile*blast.k, w:blast.view.w, h:blast.view.h, seen:out}; })()`);
+  check("the maze is taller than it's wide", w.eval("CC_ROWS>CC_COLS"), w.eval("CC_COLS+'×'+CC_ROWS"));
+  const desk=lay(917,572,1);
+  check("on a desktop's field the whole maze is in view, unscrolled, at a whole number of screen pixels a pixel", !desk.scrolls && Number.isInteger(desk.k) && desk.sq>=w.eval("CC_SMALL"), JSON.stringify(desk));
+  const up=lay(393,659,3);
+  check("on a phone held upright, a minichord plugged in, the whole maze fits, at a whole number of the phone's pixels a pixel", !up.scrolls && Number.isInteger(up.dk) && up.sq>=w.eval("CC_SMALL") && up.seen.every(Boolean), JSON.stringify(up));
+  const deck=lay(393,362,3);
+  check("with the screen's minichord under it: as wide as the phone, scrolling up and down, the player kept in view", deck.scrolls && deck.w===216 && deck.h<232 && Number.isInteger(deck.dk) && deck.sq>=w.eval("CC_SMALL") && deck.seen.every(Boolean), JSON.stringify(deck));
+  const side=lay(734,343,3);
+  check("held sideways: big enough to play on, scrolling, the player kept in view", side.scrolls && side.sq>=w.eval("CC_SMALL") && side.sq<20 && side.seen.every(Boolean), JSON.stringify(side));
+  w.eval(`Object.defineProperty(window,"devicePixelRatio",{value:1, configurable:true})`);
   // leaving gives the key back
   sb.restoreAll();
   check("leaving gives back the minichord's own key", t.mc.params[35]===2);
