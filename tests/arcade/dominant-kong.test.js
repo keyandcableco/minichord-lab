@@ -16,15 +16,19 @@ const t=require("./harness").load("dominant-kong");
   const hold=pc=>mc._harp([0x90, 60+pc, 100]), lift=pc=>mc._harp([0x80, 60+pc, 0]);
   const RIGHT=3, LEFT=7, UP=10, A=6;
 
-  // the stages: every ladder lands on a girder at both ends, every girder's reached from the start
-  const stages=E(`[DK_GIRDERS, DK_RIVETS].map(S=>{
+  // the stages, at every size a phone makes them: every ladder lands on a girder at both ends, every
+  // girder's reached from the start
+  const stages=E(`[DK_GIRDERS, DK_RIVETS, dkGirders(8,40), dkGirders(10,46), dkRivets(7,56), dkRivets(9,56)].map(S=>{
     const bad=[], was=blast.stage; blast.stage=S; blast.gaps=[];
     for(const L of S.ladders) if(!dkOn(L.lo,L.x,S) || !dkOn(L.hi,L.x,S)) bad.push("ladder "+L.x+" off a girder");
     const seen=new Set([S.start.f]); let grew=true;
     while(grew){ grew=false; for(const L of S.ladders){ if(seen.has(L.lo) && !seen.has(L.hi)){ seen.add(L.hi); grew=true; } if(seen.has(L.hi) && !seen.has(L.lo)){ seen.add(L.lo); grew=true; } } }
     if(seen.size!==S.floors.length) bad.push("only "+seen.size+" of "+S.floors.length+" floors reached");
     blast.stage=was; return bad.join("; "); })`);
-  check("both stages hold together: ladders on girders at both ends, every floor reached", stages.every(b=>!b), stages.join(" / "));
+  check("both stages hold together at every size: ladders on girders at both ends, every floor reached", stages.every(b=>!b), stages.join(" / "));
+  const base=E(`JSON.stringify([dkGirders(6,33).floors, dkTowers(1).floors, dkTowers(1).top, dkTowers(1).bottom, DK_RIVETS.rivets.length, DK_GIRDERS.H, DK_RIVETS.H, dkTowers(1).H])`);
+  check("at their least, the stages are the old game's: the girders, eight rivets, the lifts, 244 tall", base===JSON.stringify([[{x0:0,x1:224,yL:236,yR:230},{x0:0,x1:208,yL:197,yR:203},{x0:16,x1:224,yL:170,yR:164},{x0:0,x1:208,yL:131,yR:137},{x0:16,x1:224,yL:104,yR:98},{x0:0,x1:208,yL:65,yR:71},{x0:80,x1:136,yL:34,yR:34,home:true}],
+    E("JSON.parse(JSON.stringify(DK_LIFTS.floors))"), 50, 240, 8, 244, 244, 244]), base);
   const spelled=E(`(()=>{ const out=[], was=blast.level;
     for(let lv=0; lv<DK_LEVELS.length; lv++) for(const f of [-3,-2,-1,0,1,2,3]){ const L=DK_LEVELS[lv]; if(Math.abs(f)>(L.keys||0)) continue;
       const key=dkKey(f, L.rivets==="minor");
@@ -37,7 +41,7 @@ const t=require("./harness").load("dominant-kong");
 
   const a=await t.start(0); await sleep(2100);
   const H=a.hero;
-  check("the girders, the home ladder locked for its I", a.st==="go" && a.stage===E("DK_GIRDERS") && [...a.locks].join()==="5" && a.floorChord[6].sym==="C");
+  check("the girders, the home ladder locked for its I", a.st==="go" && a.stage.kind==="girders" && a.stage.floors.length===7 && [...a.locks].join()==="5" && a.floorChord[6].sym==="C");
   a.throwAt=1e9;
   // the screen: on a wide field (a desktop) zoomed in to three times, the whole width in view and most of
   // the height, scrolling up and down; on a
@@ -51,11 +55,18 @@ const t=require("./harness").load("dominant-kong");
     [fx.ro, fx.fw, fx.fh]=was; blast.layoutKey=null; return out; })()`);
   check("on a wide field it's three times the size, the whole width in view and most of the height", cam.wide.k===3 && cam.wide.w===E("DK_W") && cam.wide.h>=.7*E("DK_H") && cam.wide.h<E("DK_H"), JSON.stringify(cam.wide));
   check("on a phone it's twice the size and scrolls, keeping the player in view from the bottom girder to home, a barrel at the top out of view", cam.scrolls && cam.k===2 && cam.seen.every(Boolean) && cam.above, JSON.stringify(cam));
-  // an iPhone 15 held upright, a minichord plugged in: the whole stage across the phone, at five of its pixels a pixel
-  const upright=E(`(()=>{ const fx=blast.fx, was=[fx.ro, fx.fw, fx.fh]; fx.ro=fx.ro||{}; fx.fw=389; fx.fh=659; Object.defineProperty(window,"devicePixelRatio",{value:3, configurable:true});
-    const bare=document.createElement("div"); bare.className="fscab bare"; document.body.appendChild(bare); dkLayout(); const out={k:blast.k, dk:Math.round(blast.k*3*1000)/1000, scrolls:blast.scrolls, w:blast.view.w, h:blast.view.h};
-    bare.remove(); Object.defineProperty(window,"devicePixelRatio",{value:1, configurable:true}); [fx.ro, fx.fw, fx.fh]=was; blast.layoutKey=null; dkLayout(); return out; })()`);
-  check("on a phone held upright, a minichord plugged in, the whole stage fits its width, at a whole number of the phone's pixels a pixel", !upright.scrolls && upright.dk===5 && upright.w===224, JSON.stringify(upright));
+  // An iPhone 15's screen held upright, a minichord plugged in: each stage built as tall as the room, more
+  // floors no further apart than reads well, the whole of it in view, right across and top to bottom.
+  const upright=E(`(()=>{ const fx=blast.fx, was=[fx.ro, fx.fw, fx.fh], st=blast.stage, wasH=DK_H; fx.ro=fx.ro||{}; fx.fw=389; fx.fh=659; Object.defineProperty(window,"devicePixelRatio",{value:3, configurable:true});
+    const bare=document.createElement("div"); bare.className="fscab bare"; document.body.appendChild(bare); const {aw, ah}=pxRoom(), out={};
+    for(const kind of ["girders","rivets","lifts"]){ const S=dkStageFor(kind); blast.stage= kind==="lifts" ? dkLiftStage(S) : S; DK_H=S.H; dkLayout();
+      const gaps=S.floors.filter(F=>!F.home && !F.plat).map(F=>(F.yL+F.yR)/2);
+      out[kind]={floors:S.floors.filter(F=>!F.plat).length, gap:Math.max(...gaps.slice(1).map((y,i)=>gaps[i]-y)), H:S.H, scrolls:blast.scrolls, w:blast.view.w, h:blast.view.h, across:blast.view.w*blast.k/aw, down:blast.view.h*blast.k/ah}; }
+    bare.remove(); Object.defineProperty(window,"devicePixelRatio",{value:1, configurable:true}); [fx.ro, fx.fw, fx.fh]=was; blast.stage=st; DK_H=wasH; blast.layoutKey=null; dkLayout(); return out; })()`);
+  const fills=o=>!o.scrolls && o.w===224 && o.h===o.H && o.across>.94 && o.down>.85;
+  check("on a phone held upright, a minichord plugged in: the girders taller, more of them, no more than 46 apart, the whole stage in view, filling the phone", upright.girders.floors>7 && upright.girders.gap<=46+6 && fills(upright.girders), JSON.stringify(upright.girders));
+  check("the rivets taller too, more floors of them", upright.rivets.floors>5 && upright.rivets.gap<=56 && fills(upright.rivets), JSON.stringify(upright.rivets));
+  check("and the lifts drawn out, filling it", upright.lifts.H>244 && fills(upright.lifts), JSON.stringify(upright.lifts));
   // walking and jumping
   hold(RIGHT); await sleep(500); lift(RIGHT); await sleep(100);
   check("a way held walks the player along the girder, on its slope", H.x>60 && Math.abs(H.y-E(`dkSurf(0, ${H.x})`))<.01, `${H.x.toFixed(1)}`);
@@ -137,7 +148,7 @@ const t=require("./harness").load("dominant-kong");
   const s6=a.score; Object.assign(a.hero, {x:124, y:E("dkSurf(5,124)"), f:5, state:"walk"}); hold(UP); await sleep(2600); lift(UP); await sleep(50);
   check("up the home ladder: HOME, the bonus paid", a.st==="clear" && a.score-s6>=1000, `${a.st} ${a.score-s6}`);
   await sleep(3200);
-  check("and the next stage is the rivets, its eight chords the key's", a.level===1 && a.stage===E("DK_RIVETS") && a.rivets.length===8 && a.rivets.map(r=>r.chord.num).sort().join()==="I,I,IV,V,ii,iii,vi,vii°", a.rivets.map(r=>r.chord.num).join());
+  check("and the next stage is the rivets, its eight chords the key's", a.level===1 && a.stage.kind==="rivets" && a.rivets.length===8 && a.rivets.map(r=>r.chord.num).sort().join()==="I,I,IV,V,ii,iii,vi,vii°", a.rivets.map(r=>r.chord.num).join());
   await sleep(1900);
   const r=a.rivets[0], R=a.hero; Object.assign(R, {x:r.x, y:E(`dkSurf(${r.f},${r.x})`), f:r.f, state:"walk"});
   await play(tri(mod7(r.chord.pc+1)));
@@ -147,7 +158,7 @@ const t=require("./harness").load("dominant-kong");
   for(const x of a.rivets.filter(x=>!x.pulled)){ Object.assign(R, {x:x.x, y:E(`dkSurf(${x.f},${x.x})`), f:x.f, state:"walk"}); await play(tri(x.chord.pc, x.chord.q)); }
   check("all eight pulled: Kong comes down", a.rivets.every(x=>x.pulled) && a.st==="clear" && a.kongDown>0);
   await sleep(3600);
-  check("and the next level's the girders again", a.level===2 && a.stage===E("DK_GIRDERS"));
+  check("and the next level's the girders again", a.level===2 && a.stage.kind==="girders");
   // the bonus run out
   await sleep(1900); a.bonusPts=1; await sleep(400);
   check("the bonus run out costs a life", a.st==="dying" && /RAN OUT/.test(t.heard()), t.heard());

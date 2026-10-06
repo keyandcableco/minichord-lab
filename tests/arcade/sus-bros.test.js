@@ -44,11 +44,14 @@ const t=require("./harness").load("sus-bros");
   hold(RIGHT); lift(RIGHT); await sleep(80);
   check("any touch on the harp jumps", H.state==="air");
   await sleep(1200); E("saved.pfKnob=0");
-  // an iPhone 15 held upright, a minichord plugged in: the whole screen in view, at four of its pixels a pixel
+  // An iPhone 15's screen held upright, a minichord plugged in: six floors, the same 48 apart, the top one
+  // the pipes' where it always was, the whole screen in view and right across
   const upright=E(`(()=>{ const fx=blast.fx, was=[fx.ro, fx.fw, fx.fh]; fx.ro=fx.ro||{}; fx.fw=389; fx.fh=659; Object.defineProperty(window,"devicePixelRatio",{value:3, configurable:true});
-    const bare=document.createElement("div"); bare.className="fscab bare"; document.body.appendChild(bare); sbLayout(); const out={k:blast.k, dk:Math.round(blast.k*3*1000)/1000, scrolls:blast.scrolls, w:blast.view.w, h:blast.view.h};
-    bare.remove(); Object.defineProperty(window,"devicePixelRatio",{value:1, configurable:true}); [fx.ro, fx.fw, fx.fh]=was; blast.layoutKey=null; sbLayout(); return out; })()`);
-  check("on a phone held upright, a minichord plugged in, the whole screen fits, at a whole number of the phone's pixels a pixel", !upright.scrolls && upright.dk===4 && upright.w===240 && upright.h===216, JSON.stringify(upright));
+    const bare=document.createElement("div"); bare.className="fscab bare"; document.body.appendChild(bare); sbBuild(sbFloorsFor()); sbLayout(); const {aw}=pxRoom();
+    const ys=SB_FLOORS.map(F=>F.y), out={floors:SB_FLOORS.length, ys, H:SB_H, pow:!!SB_FLOORS[1].pow, scrolls:blast.scrolls, w:blast.view.w, h:blast.view.h, across:blast.view.w*blast.k/aw};
+    bare.remove(); Object.defineProperty(window,"devicePixelRatio",{value:1, configurable:true}); [fx.ro, fx.fw, fx.fh]=was; sbBuild(sbFloorsFor()); blast.layoutKey=null; sbLayout(); return out; })()`);
+  check("on a phone held upright, a minichord plugged in: six floors, 48 apart, the pipes' at the top, the whole screen in view, right across", upright.floors===6 && upright.ys.every((y,i)=>!i || upright.ys[i-1]-y===48) && upright.ys[5]===60 && upright.pow && !upright.scrolls && upright.w===240 && upright.h===upright.H && upright.across>.94, JSON.stringify(upright));
+  check("on a desktop's field, the old game's four", E("SB_FLOORS.length")===4 && E("SB_H")===216 && E("JSON.stringify(SB_FLOORS.map(F=>F.y))")==="[204,156,108,60]");
   // a creeper on the first floor, over the player's head; a jump bumps the floor and flips it
   const mk=(kind, deg, f, x, dir=1)=>{ E(`blast.pests.push(Object.assign(sbSpawn({kind:"${kind}", deg:"${deg}"}, true), {x:${x}, f:${f}, y:SB_FLOORS[${f}].y, dir:${dir}}))`); const e=a.pests[a.pests.length-1]; e.stunUntil=1e9; return e; };
   const e=mk("creeper","IV",1,60); Object.assign(H, {x:60, y:204, f:0, state:"walk"});

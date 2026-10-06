@@ -77,11 +77,14 @@ const t=require("./harness").load("chord-burger");
   hold(LEFT); lift(LEFT); hold(UP); lift(UP); await sleep(30);
   check("a touch that isn't the harp's top or bottom flips; the top doesn't", E("__flips")===1);
   E(`saved.bkAuto=false; saved.pfKnob=0; bkVoice(${vw.inv}, ${vw.sp})`); await sleep(50);
-  // an iPhone 15 held upright, a minichord plugged in: the whole kitchen across the phone, at five of its pixels a pixel
+  // An iPhone 15's screen held upright, a minichord plugged in: the floors further apart, zoomed in to fill
+  // the height, the kitchen scrolling across, nearly half of it in view (two plates)
   const upright=E(`(()=>{ const fx=blast.fx, was=[fx.ro, fx.fw, fx.fh]; fx.ro=fx.ro||{}; fx.fw=389; fx.fh=659; Object.defineProperty(window,"devicePixelRatio",{value:3, configurable:true});
-    const bare=document.createElement("div"); bare.className="fscab bare"; document.body.appendChild(bare); bkLayout(); const out={k:blast.k, dk:Math.round(blast.k*3*1000)/1000, scrolls:blast.scrolls, w:blast.view.w, h:blast.view.h};
-    bare.remove(); Object.defineProperty(window,"devicePixelRatio",{value:1, configurable:true}); [fx.ro, fx.fw, fx.fh]=was; blast.layoutKey=null; bkLayout(); return out; })()`);
-  check("on a phone held upright, a minichord plugged in, the whole kitchen fits its width, at a whole number of the phone's pixels a pixel", !upright.scrolls && upright.dk===5 && upright.w===232, JSON.stringify(upright));
+    const bare=document.createElement("div"); bare.className="fscab bare"; document.body.appendChild(bare); bkFloorsApart(); bkLayout(); const {ah}=pxRoom();
+    const out={fh:BK_FH, H:BK_H, k:blast.k, scrolls:blast.scrolls, w:blast.view.w, h:blast.view.h, down:blast.view.h*blast.k/ah};
+    bare.remove(); Object.defineProperty(window,"devicePixelRatio",{value:1, configurable:true}); [fx.ro, fx.fw, fx.fh]=was; bkFloorsApart(); blast.layoutKey=null; bkLayout(); return out; })()`);
+  check("on a phone held upright, a minichord plugged in: floors further apart, the kitchen's height filling the phone, scrolling across, nearly half of it in view", upright.fh===32 && upright.h===upright.H && upright.down>.9 && upright.scrolls && upright.w>=Math.floor(.45*232) && upright.w<232, JSON.stringify(upright));
+  check("on a desktop's field, the floors as they were", E("BK_FH")===24 && E("BK_H")===204);
   // the arrow keys too
   a.cook.x=16; a.cook.y=3; const kd=c=>t.d.dispatchEvent(new w.KeyboardEvent("keydown",{code:c, bubbles:true})), ku=c=>t.d.dispatchEvent(new w.KeyboardEvent("keyup",{code:c, bubbles:true}));
   kd("ArrowLeft"); await sleep(250); ku("ArrowLeft"); await sleep(50);

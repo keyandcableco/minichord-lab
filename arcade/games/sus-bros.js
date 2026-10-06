@@ -35,16 +35,28 @@
 // ---------- the floors ----------
 // Four floors and the ground, each girders between x0 and x1 at a height; the POW block is a girder of
 // its own. Pipes in the top corners let the pests out, and in the bottom corners take them back in.
-const SB_W=240, SB_H=216, SB_T=6;                                    // the screen; a floor's thickness
-const SB_FLOORS=[
-  {y:204, segs:[[0,240]]},
-  {y:156, segs:[[0,96],[144,240]], pow:[108,132]},
-  {y:108, segs:[[0,24],[64,176],[216,240]]},
-  {y:60,  segs:[[0,104],[136,240]]},
-];
+// On a phone held upright there's room for more: a floor or two put in between, the same 48 pixels
+// apart (the jump reaches 52, so they can't be further), up to six; the pests have further to come down.
+const SB_W=240, SB_T=6, SB_GAP=48;                                    // the screen's width; a floor's thickness; floor to floor
+const SB_GROUND={segs:[[0,240]]}, SB_POW={segs:[[0,96],[144,240]], pow:[108,132]}, SB_TOPF={segs:[[0,104],[136,240]]};
+const SB_MIDS=[{segs:[[0,24],[64,176],[216,240]]}, {segs:[[0,56],[88,152],[184,240]]}];   // between, in turn from the POW floor up
+const SB_FEW=4, SB_MOST=6;
+let SB_FLOORS, SB_H;
+function sbBuild(n){
+  n=Math.max(SB_FEW, Math.min(SB_MOST, n));
+  const mids=Array.from({length:n-3}, (_,i)=>SB_MIDS[i%2]);
+  SB_H=216+SB_GAP*(n-SB_FEW);
+  SB_FLOORS=[SB_GROUND, SB_POW, ...mids, SB_TOPF].map((F,i)=>({...F, y:SB_H-12-SB_GAP*i}));   // the top floor's always at 60
+}
+sbBuild(SB_FEW);
+const sbTop=()=> SB_FLOORS.length-1;
+// as many floors as the room holds with the screen right across it (pixel.js)
+function sbFloorsFor(){
+  const {aw, ah}=pxRoom(), k=Math.max(SB_LEAST, aw/SB_W);
+  return SB_FEW+Math.floor((ah/k-216)/SB_GAP+1e-9);
+}
 const SB_START={x:60, f:0};
 const SB_PIPE_IN=14;                                                 // how far into the bottom corners a pest goes down its pipe
-const sbFloorsNow=()=> blast.floors || SB_FLOORS;
 // the segments of floor f, the POW block among them while it lasts
 const sbSegs=f=>{ const F=SB_FLOORS[f]; return F.pow && blast.pow>0 ? [...F.segs, F.pow] : F.segs; };
 const sbOn=(f, x)=> sbSegs(f).some(([a,b])=>x>=a && x<=b);
@@ -167,8 +179,10 @@ function beginBros(level){
   sfx("start"); sbBar();
 }
 function sbLevelBanner(){ banner(`PHASE ${blast.level+1}`, `${sbLevel().n.toUpperCase()} · ${blast.key.label}`); }
-// A fresh phase: its key, the pests it'll send out, in a shuffled order, the coins' scale from the bottom
+// A fresh phase: as many floors as the room holds, its key, the pests it'll send out, in a shuffled
+// order, the coins' scale from the bottom
 function sbNewPhase(){
+  sbBuild(sbFloorsFor()); blast.layoutKey=null;
   const L=sbLevel(), f = L.keys ? rnd([...Array(2*L.keys+1).keys()].map(i=>i-L.keys)) : 0;
   blast.key=sbKey(f);
   if(blast.phase==="play" && canWrite() && hasSetting(35)) borrow(35, keyIndexOf(f));
@@ -326,7 +340,7 @@ function sbOut(){
   sfx("pipe"); sbBar();
 }
 function sbSpawn(p, left, tier=0){
-  return {...p, x:left ? 18 : SB_W-18, y:SB_FLOORS[3].y, f:3, dir:left ? 1 : -1, state:"walk", tier, air:false, vy:0, hop:0,
+  return {...p, x:left ? 18 : SB_W-18, y:SB_FLOORS[sbTop()].y, f:sbTop(), dir:left ? 1 : -1, state:"walk", tier, air:false, vy:0, hop:0,
     dim: p.kind==="ice" ? (p.dim || sbDim()) : null, angry:false};
 }
 function sbPests(dt){
@@ -352,7 +366,7 @@ function sbPests(dt){
 function sbCoinOut(){
   const left=Math.random()<.5, step=[0,2,4,5,7,9,11,12][blast.coinNote++%8], pc=mod(blast.key.pc+step,12);
   const names=blast.key.f<0 ? FLAT_NAMES : SHARP_NAMES;
-  blast.coins.push({x:left ? 18 : SB_W-18, y:SB_FLOORS[3].y, f:3, dir:left ? 1 : -1, air:false, vy:0, note:names[pc], midi:60+blast.key.pc+step});   // up the scale from the key's middle C
+  blast.coins.push({x:left ? 18 : SB_W-18, y:SB_FLOORS[sbTop()].y, f:sbTop(), dir:left ? 1 : -1, air:false, vy:0, note:names[pc], midi:60+blast.key.pc+step});   // up the scale from the key's middle C
 }
 function sbCoins(dt){
   const sp=46*sbPace();
@@ -469,14 +483,15 @@ function brosHarp(pc){
 }
 
 // ---------- drawing ----------
-// Its own screen at the old game's resolution, as Chord Chomp's: 240 by 216, every sprite and letter
-// drawn pixel by pixel, at a whole number of the screen's own pixels a pixel (pxFit): on a phone held
-// upright, a minichord plugged in, the whole screen across its width; where that's too small to read
-// (the screen's minichord under it, or held sideways), the least size that reads, the view following
-// the player; on a wide field, zoomed in further (pxZoom), the pests out of view pointed to.
+// Its own screen at the old game's resolution, as Chord Chomp's: 240 across, every sprite and letter
+// drawn pixel by pixel, exactly as big as fits on a phone (pxFit's fill), a whole number of the screen's
+// pixels a pixel on a desktop: on a phone held upright the whole screen right across it, as tall as its
+// floors (sbFloorsFor); where that's too small to read (the screen's minichord under it, or held
+// sideways), the least size that reads, the view following the player; on a wide field, zoomed in
+// further (pxZoom), the pests out of view pointed to.
 const SB_LEAST=4/3;
 function sbLayout(){
-  const f=pxFit(SB_W, SB_H, SB_LEAST, true);
+  const f=pxFit(SB_W, SB_H, SB_LEAST, true, true);
   Object.assign(blast, {k:f.k, view:{x:0, y:0, w:f.w, h:f.h}, scrolls:SB_W>f.w || SB_H>f.h, cam:null, scrLeft:f.left, scrTop:f.top});
   pxPlace(blast.screen, f);
   sbCamera(0);
@@ -523,7 +538,7 @@ const SB_COIN=["..YYYY..",".YYOOYY.","YYOYYOYY","YYOYYOYY","YYOYYOYY","YYOYYOYY"
 function brosDraw(_, now){
   const s=blast.screen, g=s && s.getContext("2d"); if(!g || !g.fillRect) return;
   if(!blast.hero){ g.clearRect(0,0,s.width,s.height); return; }
-  const lk=`${fieldW()}x${fieldH()}@${window.devicePixelRatio||1}|${kmStripShown()}|${!!saved.beginner}|${blast.phase==="demo"}|${saved.harpLayout||""}`;
+  const lk=`${fieldW()}x${fieldH()}@${window.devicePixelRatio||1}|${SB_FLOORS.length}|${kmStripShown()}|${!!saved.beginner}|${blast.phase==="demo"}|${saved.harpLayout||""}`;
   if(blast.layoutKey!==lk){ blast.layoutKey=lk; sbLayout(); }
   if(blast.scrolls){ sbCamera(Math.min(.1, (now-(blast.camAt||now))/1000)); blast.camAt=now; }
   const ox=blast.ox, oy=blast.oy, clock=blast.clock, H=blast.hero;
@@ -543,7 +558,7 @@ function brosDraw(_, now){
   });
   // the pipes: in the top corners, out; in the bottom corners, in
   const pipe=(x, y, w, left)=>{ g.fillStyle="#2EB872"; g.fillRect(ox+x, oy+y, w, 16); g.fillStyle="#8FE0A8"; g.fillRect(ox+x, oy+y+2, w, 2); g.fillStyle="#1A6B42"; g.fillRect(ox+(left ? x+w-3 : x), oy+y-2, 3, 20); };
-  pipe(0, SB_FLOORS[3].y-30, 22, true); pipe(SB_W-22, SB_FLOORS[3].y-30, 22, false);
+  pipe(0, SB_FLOORS[sbTop()].y-30, 22, true); pipe(SB_W-22, SB_FLOORS[sbTop()].y-30, 22, false);
   pipe(0, SB_FLOORS[0].y-16, 14, true); pipe(SB_W-14, SB_FLOORS[0].y-16, 14, false);
   // the coins
   for(const c of blast.coins){ const spr=pxSprite("sbcoin", SB_COIN, {Y:"#FFD35A", O:"#B8860B"}); g.drawImage(spr, Math.round(ox+c.x-4), Math.round(oy+c.y-9)); pxText(g, c.note, ox+c.x, oy+c.y-19, "#FFD35A"); }
@@ -575,7 +590,7 @@ function brosDraw(_, now){
   if(blast.phase==="play") pxKnobMark(g, blast.pfAt!=null ? ox+blast.pfAt : null, blast.view.h);
   if(blast.scrolls) pxOffscreen(g, blast.view, ox, oy, blast.pests.filter(e=>e.state!=="piped" && e.state!=="gone")
     .map(e=>({x:e.x, y:e.y, col:"#2EB872", label:e.kind==="ice" ? e.dim.sym : sbPestChords(e).sus.sym, ink:"#F1E8D2"})));
-  if(blast.st==="ready") pxText(g, `PHASE ${blast.level+1}`, ox+SB_W/2, oy+SB_FLOORS[2].y+24, "#FFE600");
+  if(blast.st==="ready") pxText(g, `PHASE ${blast.level+1}`, ox+SB_W/2, oy+SB_FLOORS[sbTop()-1].y+24, "#FFE600");
 }
 // a sprite facing the other way, kept
 const SB_FLIPPED=new Map();

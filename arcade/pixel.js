@@ -80,18 +80,25 @@ function pxRoom(){
 // its pixels to a CSS pixel loses a fifth of its width to a whole number), a pixel of the picture a
 // screen pixel wider here and there than the next, too little to see; where the whole of it won't fit
 // at `least`, as wide as the room, the view following the player up and down, so long as half its
-// height is in view. A whole number still where that's within a twentieth of it, and always on a
+// height (with `zoom`, PX_SEEN of it) is in view; with `zoom`, on a wide field, zoomed as pxZoom does. A whole number still where that's within a twentieth of it, and always on a
 // desktop's screen, where a pixel twice as wide as the next would show.
+// `across`: on a field taller than the screen's shape (a phone held upright), zoomed in to fill its
+// height, so long as that fraction of its width is still in view, the view following the player
+// across it.
 // Gives k (CSS pixels a pixel), the view's w and h, and where it sits, left and top.
-function pxFit(W, H, least, zoom, fill){
+function pxFit(W, H, least, zoom, fill, across){
   const {left, aw, ah}=pxRoom(), dpr=window.devicePixelRatio||1;
   let k;
   if(fill && dpr>=2){
-    k=Math.min(aw/W, ah/H); if(k<least) k=Math.max(least, Math.min(aw/W, ah/(H/2)));
+    k=Math.min(aw/W, ah/H);
+    if(zoom) k=Math.max(k, Math.min(aw/W, ah/(H*PX_SEEN)));
+    if(k<least) k=Math.max(least, Math.min(aw/W, ah/(H*(zoom ? PX_SEEN : .5))));
+    if(across && ah/aw>H/W) k=Math.max(k, Math.min(ah/H, aw/(W*across)));
     const whole=Math.floor(k*dpr+1e-9)/dpr; if(whole>=k*.95 && whole>=least) k=whole;
   } else {
     let d=Math.max(1, Math.floor(Math.min(aw/W, ah/H)*dpr), Math.ceil(least*dpr-1e-9));       // screen pixels a pixel
     if(zoom) d=Math.max(d, Math.min(Math.floor(aw/W*dpr), Math.floor(ah/(H*PX_SEEN)*dpr)));
+    if(across && ah/aw>H/W) d=Math.max(d, Math.floor(Math.min(ah/H, aw/(W*across))*dpr));
     k=d/dpr;
   }
   const w=Math.min(W, Math.floor(aw/k+1e-9)), h=Math.min(H, Math.floor(ah/k+1e-9)), on=v=>Math.round(v*dpr)/dpr;   // on a screen pixel

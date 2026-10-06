@@ -260,6 +260,7 @@ function bkLevelBanner(){ banner(`LEVEL ${blast.level+1}`, `${bkLevel().n.toUppe
 // A fresh kitchen: its layout, its key, its progression dealt to the plates, the ingredients lettered
 // with their plates' notes, the pepper and flips topped up.
 function bkNewKitchen(){
+  bkFloorsApart(); blast.layoutKey=null;
   const L=bkLevel(), n=blast.kitchenN||0;
   blast.kitchen=BK_KITCHENS[n % BK_KITCHENS.length];
   const f = L.keys ? rnd([...Array(2*L.keys+1).keys()].map(i=>i-L.keys)) : 0;
@@ -451,7 +452,15 @@ function bkLand(ing){
 }
 
 // ---------- the plates ----------
-const BK_T=8, BK_FH=24, BK_TOP=30, BK_IH=8, BK_PLATE_DROP=48;           // a square, a floor's height, the top floor's girder, an ingredient's height, the plates under the bottom floor
+const BK_T=8, BK_TOP=30, BK_IH=8, BK_PLATE_DROP=48;                    // a square, the top floor's girder, an ingredient's height, the plates under the bottom floor
+// A floor's height: 24 pixels, as the old game's, or on a phone held upright, where the kitchen's zoomed
+// in to fill the height and scrolls across, 32, so there's more of the kitchen to see up and down and
+// less of it lost off the sides. Its height follows. Set as each kitchen starts (a floor's a floor
+// however tall: the cook and what falls go by floors).
+let BK_FH=24, BK_H=204;
+function bkFloorsApart(){
+  const {aw, ah}=pxRoom(); BK_FH= ah/aw>1.2 ? 32 : 24; BK_H=108+4*BK_FH;
+}
 const bkFloorPx=y=> BK_TOP+y*BK_FH;
 const bkPlateBase=()=> bkFloorPx(BK_NF-1)+BK_PLATE_DROP;
 // the height an ingredient lands at on a plate, k already under it, in floors
@@ -722,15 +731,16 @@ function bkVoice(inv, sp, byHand){
 }
 
 // ---------- drawing ----------
-// An arcade screen of its own, as Chord Chomp's: eight pixels a square, the kitchen 232 by 204, every
-// sprite and letter drawn pixel by pixel, shown at a whole number of the screen's own pixels a pixel
-// (pxFit): on a phone held upright, a minichord plugged in, the whole kitchen across its width; where
-// that's too small to read (the screen's minichord under it, or held sideways), the least size that
-// reads, the view following the cook; on a wide field, zoomed in further (pxZoom), the sour notes out
-// of view pointed to.
-const BK_LEAST=4/3, BK_W=BK_COLS*BK_T, BK_H=204;
+// An arcade screen of its own, as Chord Chomp's: eight pixels a square, the kitchen 232 across, every
+// sprite and letter drawn pixel by pixel, shown exactly as big as fits on a phone (pxFit's fill), a
+// whole number of the screen's own pixels a pixel on a desktop. On a phone held upright it's zoomed in
+// to fill the height, its floors further apart (bkFloorsApart), and scrolls across, the view following
+// the cook, so long as nearly half the kitchen (two of its plates) is in view (BK_ACROSS); where it's
+// too small to read (held sideways), the least size that reads; on a wide field, zoomed in further
+// (pxZoom). The sour notes out of view pointed to.
+const BK_LEAST=4/3, BK_W=BK_COLS*BK_T, BK_ACROSS=.45;
 function bkLayout(){
-  const f=pxFit(BK_W, BK_H, BK_LEAST, true);
+  const f=pxFit(BK_W, BK_H, BK_LEAST, true, true, BK_ACROSS);
   Object.assign(blast, {k:f.k, view:{x:0, y:0, w:f.w, h:f.h}, scrolls:BK_W>f.w || BK_H>f.h, cam:null, scrLeft:f.left, scrTop:f.top});
   pxPlace(blast.screen, f);
   bkCamera(0);
@@ -795,7 +805,7 @@ const bkGirder=f=> f ? "#FFFFFF" : "#2F6BFF";
 function burgerDraw(_, now){
   const s=blast.screen, g=s && s.getContext("2d"); if(!g || !g.fillRect) return;
   if(!blast.kitchen || !blast.cook){ g.clearRect(0,0,s.width,s.height); return; }
-  const lk=`${fieldW()}x${fieldH()}@${window.devicePixelRatio||1}|${kmStripShown()}|${!!saved.beginner}|${blast.phase==="demo"}|${saved.harpLayout||""}`;
+  const lk=`${fieldW()}x${fieldH()}@${window.devicePixelRatio||1}|${BK_FH}|${kmStripShown()}|${!!saved.beginner}|${blast.phase==="demo"}|${saved.harpLayout||""}`;
   if(blast.layoutKey!==lk){ blast.layoutKey=lk; bkLayout(); }
   if(blast.scrolls){ bkCamera(Math.min(.1, (now-(blast.camAt||now))/1000)); blast.camAt=now; }
   const K=bkKitchen(), ox=blast.ox, oy=blast.oy, clock=blast.clock, T=BK_T;
@@ -880,7 +890,7 @@ function bkDemo(){
   if(blast.overlay) blast.overlay.hidden=true;
   const {token, say, step}=demoShell(endBkDemo);
   blast.phase="demo"; blast.level=0; blast.kitchenN=0; blast.clock=0; blast.layoutKey=null;
-  blast.kitchen=BK_KITCHENS[0]; blast.key=bkKey(0);
+  blast.kitchen=BK_KITCHENS[0]; blast.key=bkKey(0); bkFloorsApart();
   bkDeal(); blast.pepper=5; blast.flips=0; blast.served=[]; blast.caps=[]; blast.fermataUntil=0;
   blast.cook={x:BK_START.x, y:BK_START.f, dir:"left", moving:false}; blast.sour=[]; blast.st="go"; blast.demoWays=[];
   const zones=(...zs)=>{ if(blast.strip) [...blast.strip.children].forEach(c=>c.classList.toggle("demo-on", zs.includes(c.dataset.zone))); };
