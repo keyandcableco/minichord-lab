@@ -51,6 +51,11 @@ const t=require("./harness").load("dominant-kong");
     [fx.ro, fx.fw, fx.fh]=was; blast.layoutKey=null; return out; })()`);
   check("on a wide field it's three times the size, the whole width in view and most of the height", cam.wide.k===3 && cam.wide.w===E("DK_W") && cam.wide.h>=.7*E("DK_H") && cam.wide.h<E("DK_H"), JSON.stringify(cam.wide));
   check("on a phone it's twice the size and scrolls, keeping the player in view from the bottom girder to home, a barrel at the top out of view", cam.scrolls && cam.k===2 && cam.seen.every(Boolean) && cam.above, JSON.stringify(cam));
+  // an iPhone 15 held upright, a minichord plugged in: the whole stage across the phone, at five of its pixels a pixel
+  const upright=E(`(()=>{ const fx=blast.fx, was=[fx.ro, fx.fw, fx.fh]; fx.ro=fx.ro||{}; fx.fw=389; fx.fh=659; Object.defineProperty(window,"devicePixelRatio",{value:3, configurable:true});
+    const bare=document.createElement("div"); bare.className="fscab bare"; document.body.appendChild(bare); dkLayout(); const out={k:blast.k, dk:Math.round(blast.k*3*1000)/1000, scrolls:blast.scrolls, w:blast.view.w, h:blast.view.h};
+    bare.remove(); Object.defineProperty(window,"devicePixelRatio",{value:1, configurable:true}); [fx.ro, fx.fw, fx.fh]=was; blast.layoutKey=null; dkLayout(); return out; })()`);
+  check("on a phone held upright, a minichord plugged in, the whole stage fits its width, at a whole number of the phone's pixels a pixel", !upright.scrolls && upright.dk===5 && upright.w===224, JSON.stringify(upright));
   // walking and jumping
   hold(RIGHT); await sleep(500); lift(RIGHT); await sleep(100);
   check("a way held walks the player along the girder, on its slope", H.x>60 && Math.abs(H.y-E(`dkSurf(0, ${H.x})`))<.01, `${H.x.toFixed(1)}`);
@@ -66,6 +71,22 @@ const t=require("./harness").load("dominant-kong");
   // a ladder: up from the bottom at x 80, open; the home ladder locked till C
   Object.assign(H, {x:80, y:E("dkSurf(0,80)"), f:0}); hold(UP); await sleep(2200); lift(UP); await sleep(50);
   check("up held at a ladder climbs it to the next girder", H.f===1 && H.state==="walk", `${H.f} ${H.state}`);
+  // STEER: KNOB: the knob is where to stand, the player walking there; the harp's top held is up, the
+  // first ladder on the way taken; a touch anywhere else on it jumps
+  E("saved.pfKnob=1");
+  check("STEER: KNOB is offered, the minichord sending its knobs", E("optsFor('kong',['game']).some(o=>o.id==='pfSteer')"));
+  const clear=()=>E("blast.barrels.length=0; blast.fires.length=0");     // nothing rolling down onto the player while it walks
+  const walkTo=async(x0, v)=>{ clear(); Object.assign(H, {x:x0, y:E(`dkSurf(0,${x0})`), f:0, state:"walk"}); t.knob(v); for(let i=0;i<150 && !(Math.abs(H.x-a.pfAt)<=1 && !H.moving);i++) await sleep(20); };
+  await walkTo(40, 64);
+  check("the knob is where to stand: the player walks there and stops", Math.abs(H.x-a.pfAt)<=1 && !H.moving && H.f===0 && Math.abs(a.pfAt-(8+64/127*208))<.01, `${H.x.toFixed(1)} → ${a.pfAt.toFixed(1)}`);
+  await walkTo(140, 20);
+  check("turned back, it walks back", Math.abs(H.x-a.pfAt)<=1 && H.x<60, H.x.toFixed(1));
+  hold(LEFT); lift(LEFT); await sleep(80);
+  check("a touch on the harp that isn't its top or bottom jumps", H.state==="air");
+  await sleep(1400);
+  clear(); Object.assign(H, {x:40, y:E("dkSurf(0,40)"), f:0, state:"walk"}); hold(UP); t.knob(64); for(let i=0;i<250 && H.f===0;i++) await sleep(20); await sleep(100); lift(UP); await sleep(50);
+  check("the harp's top held, walking: the first ladder up on the way is taken", H.f===1, `${H.f} ${H.state} ${H.x.toFixed(1)}`);
+  E("saved.pfKnob=0");
   Object.assign(H, {x:124, y:E("dkSurf(5,124)"), f:5, state:"walk"}); hold(UP); await sleep(400); lift(UP); await sleep(50);
   check("a locked ladder won't be climbed, and says what opens it", H.f===5 && H.state==="walk" && /PLAY IT TO CLIMB/.test(t.heard()), t.heard());
   await play(tri(2)); await sleep(30);

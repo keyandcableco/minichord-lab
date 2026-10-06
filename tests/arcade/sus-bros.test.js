@@ -34,6 +34,21 @@ const t=require("./harness").load("sus-bros");
   const H=a.hero;
   hold(RIGHT); await sleep(500); lift(RIGHT); await sleep(100);
   check("a way held on the harp walks the player", H.x>66 && H.state==="walk", H.x.toFixed(1));
+  // STEER: KNOB: the knob is where to stand, the player walking straight there, not round the sides;
+  // any touch on the harp jumps
+  E("saved.pfKnob=1");
+  check("STEER: KNOB is offered, the minichord sending its knobs", E("optsFor('bros',['game']).some(o=>o.id==='pfSteer')"));
+  Object.assign(H, {x:200, y:204, f:0, state:"walk"}); t.knob(20);
+  for(let i=0;i<200 && !(a.pfAt!=null && Math.abs(H.x-a.pfAt)<=1 && !H.moving);i++) await sleep(20);
+  check("the knob is where to stand: the player walks there, straight across, and stops", a.pfAt!=null && Math.abs(H.x-a.pfAt)<=1 && !H.moving && H.state==="walk", `${H.x.toFixed(1)} → ${a.pfAt}`);
+  hold(RIGHT); lift(RIGHT); await sleep(80);
+  check("any touch on the harp jumps", H.state==="air");
+  await sleep(1200); E("saved.pfKnob=0");
+  // an iPhone 15 held upright, a minichord plugged in: the whole screen in view, at four of its pixels a pixel
+  const upright=E(`(()=>{ const fx=blast.fx, was=[fx.ro, fx.fw, fx.fh]; fx.ro=fx.ro||{}; fx.fw=389; fx.fh=659; Object.defineProperty(window,"devicePixelRatio",{value:3, configurable:true});
+    const bare=document.createElement("div"); bare.className="fscab bare"; document.body.appendChild(bare); sbLayout(); const out={k:blast.k, dk:Math.round(blast.k*3*1000)/1000, scrolls:blast.scrolls, w:blast.view.w, h:blast.view.h};
+    bare.remove(); Object.defineProperty(window,"devicePixelRatio",{value:1, configurable:true}); [fx.ro, fx.fw, fx.fh]=was; blast.layoutKey=null; sbLayout(); return out; })()`);
+  check("on a phone held upright, a minichord plugged in, the whole screen fits, at a whole number of the phone's pixels a pixel", !upright.scrolls && upright.dk===4 && upright.w===240 && upright.h===216, JSON.stringify(upright));
   // a creeper on the first floor, over the player's head; a jump bumps the floor and flips it
   const mk=(kind, deg, f, x, dir=1)=>{ E(`blast.pests.push(Object.assign(sbSpawn({kind:"${kind}", deg:"${deg}"}, true), {x:${x}, f:${f}, y:SB_FLOORS[${f}].y, dir:${dir}}))`); const e=a.pests[a.pests.length-1]; e.stunUntil=1e9; return e; };
   const e=mk("creeper","IV",1,60); Object.assign(H, {x:60, y:204, f:0, state:"walk"});

@@ -32,8 +32,8 @@
 // And the lifts, the old game's elevators: up a tower, onto a lift rising (and off it before it reaches
 // the top), across to the second lift, which is a knob (it goes where the steering knob's turned), and
 // up to home, while Kong throws springs that bounce along the top and drop down the far side, each a
-// dominant seventh like the barrels. Without the knobs, the second lift runs down on its own, as the
-// old game's did. Still to come, the old game's conveyors: the cement pans each a chord to sort.
+// dominant seventh like the barrels. Without the knobs (or with the knob steering the player), the
+// second lift runs down on its own, as the old game's did. Still to come, the old game's conveyors: the cement pans each a chord to sort.
 
 // ---------- the stages ----------
 // A floor is a girder from x0 to x1, its top at yL on the left and yR on the right (sloped, the old
@@ -75,7 +75,7 @@ function dkLiftStage(){
   const S={...DK_LIFTS, floors:DK_LIFTS.floors.map(F=>({...F})), plats:[]};
   const span=DK_LIFTS.bottom-DK_LIFTS.top;
   for(const lift of DK_LIFTS.lifts){
-    const knob=lift.knob && knobsReady(), n=knob ? 1 : 3, way=lift.way || (knob ? 0 : 1);
+    const knob=lift.knob && knobsReady() && !pfKnob("kong"), n=knob ? 1 : 3, way=lift.way || (knob ? 0 : 1);
     for(let i=0;i<n;i++){ const y=knob ? DK_LIFTS.bottom-4 : DK_LIFTS.top+span*(i+.5)/n;
       const F={x0:lift.x-11, x1:lift.x+11, yL:y, yR:y, plat:true, lift, way, knob}; S.plats.push(S.floors.length); S.floors.push(F); }
   }
@@ -218,7 +218,7 @@ function dkBar(){
 
 // ---------- the title screen ----------
 const DKMENU_G={key:"kong", title:"DOMINANT KONG",
-  rules:()=>`<p>KONG IS THE DOMINANT. EVERY BARREL HE THROWS IS A DOMINANT SEVENTH: JUMP IT, OR PLAY THE CHORD IT RESOLVES TO AND IT BREAKS. G7 RESOLVES TO C; G7 TO Am IS DECEPTIVE, AND SCORES MORE.</p><p>THE WAY UP IS A CHAIN OF FIFTHS HOME: A LOCKED LADDER OPENS WHEN YOU PLAY THE CHORD OF THE FLOOR ABOVE IT. HOME IS THE KEY'S I, AT THE TOP.</p><p>ON THE RIVETS, STAND ON EACH AND PLAY ITS CHORD TO PULL IT. PULL ALL EIGHT AND KONG COMES DOWN.</p><p>${playOnScreen() ? "WALK WITH THE ARROWS UNDER THE GAME, A TO JUMP" : "WALK ON THE HARP OR THE ARROW KEYS, HOLDING THE WAY; A OR SPACE TO JUMP"}.</p>`,
+  rules:()=>`<p>KONG IS THE DOMINANT. EVERY BARREL HE THROWS IS A DOMINANT SEVENTH: JUMP IT, OR PLAY THE CHORD IT RESOLVES TO AND IT BREAKS. G7 RESOLVES TO C; G7 TO Am IS DECEPTIVE, AND SCORES MORE.</p><p>THE WAY UP IS A CHAIN OF FIFTHS HOME: A LOCKED LADDER OPENS WHEN YOU PLAY THE CHORD OF THE FLOOR ABOVE IT. HOME IS THE KEY'S I, AT THE TOP.</p><p>ON THE RIVETS, STAND ON EACH AND PLAY ITS CHORD TO PULL IT. PULL ALL EIGHT AND KONG COMES DOWN.</p><p>${playOnScreen() ? "WALK WITH THE ARROWS UNDER THE GAME, A TO JUMP" : pfKnob("kong") ? pfSteerSay("JUMP") : "WALK ON THE HARP OR THE ARROW KEYS, HOLDING THE WAY; A OR SPACE TO JUMP"}.</p>`,
   levels:DK_LEVELS, begin:i=>beginKong(i), demo:()=>dkDemo(), modNote:"title"};
 function dkMenu(over){ arcadeMenu(DKMENU_G, over); }
 function beginKong(level){
@@ -314,9 +314,15 @@ function dkStep(dt){
 const DK_ARROWS={ArrowUp:"up", ArrowDown:"down", ArrowLeft:"left", ArrowRight:"right"};
 const dkKeysHeld=new Map();
 function dkHeldReset(){ dkKeysHeld.clear(); }
+// Steered on the knob (pfKnob, ../controls.js): the way to where it points, after up or down held on the harp.
 function dkWays(){
   if(blast.phase==="demo") return blast.demoWays || [];
   const keys=[...dkKeysHeld.entries()].sort((a,b)=>b[1]-a[1]).map(([w])=>w);
+  if(pfKnob()){
+    const H=blast.hero; blast.pfAt=pfKnobAt(8, DK_W-8);
+    const t=H && pfToward(H.x, blast.pfAt, 1);
+    return [...new Set([...keys, ...pfHeld(), ...(t ? [t] : [])])];
+  }
   const harp=kmHeld().filter(z=>z==="up" || z==="down" || z==="left" || z==="right");
   return [...new Set([...keys, ...harp])];
 }
@@ -352,7 +358,7 @@ function dkHero(dt){
         if(w==="up" && dkLocked(L)){ if(!H.toldLock || blast.clock-H.toldLock>2){ H.toldLock=blast.clock; dkLockSay(L); } continue; }
         Object.assign(H, {state:"climb", L, x:L.x, dir:w}); break;
       }
-      const s= w==="left" ? -1 : 1, nx=H.x+s*DK_WALK*pace*dt;
+      const s= w==="left" ? -1 : 1, nx=pfKnob() ? pfStop(H.x, H.x+s*DK_WALK*pace*dt, blast.pfAt) : H.x+s*DK_WALK*pace*dt;
       H.dir=w; H.moving=true;
       if(!dkOn(H.f, nx) && nx>=0 && nx<=DK_W){ H.x=nx; dkTakeOff(0, 0); return; }
       H.x=Math.max(0, Math.min(DK_W, nx)); H.y=dkSurf(H.f, H.x);
@@ -665,30 +671,27 @@ function dkPlay(pitches, id){
 }
 // a chord as it's labelled: by name, or by numeral
 const dkLabel=c=> c ? (dkNumerals() && c.num ? c.num : c.sym) : "";
-// the harp: A jumps; the rest is read held (dkWays)
+// the harp: A jumps (steered on the knob, any touch but its top and bottom); the rest is read held (dkWays)
 function kongHarp(pc){
   if(!blast || blast.kind!=="kong") return;
   kmFlash(blast.strip, pc);
   if(blast.phase==="demo" && blast.demo){ endDkDemo(blast.demo); return; }
-  const z=kmControl(pc); if(z==="A" || z==="B") dkJump();
+  const z=kmControl(pc); if(pfKnob() ? pfHarpZone(pc)==="jump" : z==="A" || z==="B") dkJump();
 }
 
 // ---------- drawing ----------
 // Its own screen at the old game's resolution, as Chord Chomp's: the girders 224 across, every sprite
-// and letter drawn pixel by pixel, shown at a whole number of screen pixels a pixel. Where the whole
-// stage would come out at one pixel a pixel (a phone, either way up), too small to read a barrel's
-// chord, it's shown twice the size and the view follows the player up and across it, as Chord Chomp's
-// does, the player low in it, to see what's coming down. On a wide field, zoomed in further (pxZoom).
-const DK_MINK=2, DK_LOOK=.62;                                          // screen pixels a pixel, at the least; how far down the view the player is kept
+// and letter drawn pixel by pixel, shown at a whole number of the screen's own pixels a pixel (pxFit).
+// On a phone held upright, a minichord plugged in, the whole stage fills its width, as the old cabinet's
+// screen did. Where it would come out too small to read a barrel's chord (with the screen's minichord
+// under it, or held sideways), it's shown at the least size that reads and the view follows the player
+// up and across it, as Chord Chomp's does, the player low in it, to see what's coming down. On a wide
+// field, zoomed in further (pxZoom).
+const DK_LEAST=4/3, DK_LOOK=.62;                                       // CSS pixels a pixel, at the least; how far down the view the player is kept
 function dkLayout(){
-  const fw=fieldW(), fh=fieldH();
-  const side = !kmStripShown() ? 16 : (saved.beginner || blast.phase==="demo") ? Math.ceil(Math.min(fw*.3, 300))+20 : (kmLayout().cols===3 ? 150 : 84);
-  const aw=fw-side-8, ah=fh-40-28;
-  const k=pxZoom(Math.max(DK_MINK, Math.floor(Math.min(aw/DK_W, ah/DK_H))), aw, ah, DK_W, DK_H);
-  const w=Math.min(DK_W, Math.floor(aw/k)), h=Math.min(DK_H, Math.floor(ah/k));
-  Object.assign(blast, {k, view:{x:0, y:0, w, h}, scrolls:DK_W>w || DK_H>h, cam:null, girderCv:null});
-  blast.scrLeft=8+Math.floor((aw-w*k)/2); blast.scrTop=40+Math.floor((ah-h*k)/2);
-  const s=blast.screen; if(s){ s.width=w; s.height=h; s.style.cssText=`left:${blast.scrLeft}px;top:${blast.scrTop}px;width:${w*k}px;height:${h*k}px`; }
+  const f=pxFit(DK_W, DK_H, DK_LEAST, true);
+  Object.assign(blast, {k:f.k, view:{x:0, y:0, w:f.w, h:f.h}, scrolls:DK_W>f.w || DK_H>f.h, cam:null, girderCv:null, scrLeft:f.left, scrTop:f.top});
+  pxPlace(blast.screen, f);
   dkCamera(0);
 }
 function dkCamera(dt){
@@ -784,7 +787,7 @@ function dkPaint(){
 function kongDraw(_, now){
   const s=blast.screen, g=s && s.getContext("2d"); if(!g || !g.fillRect) return;
   if(!blast.stage || !blast.hero){ g.clearRect(0,0,s.width,s.height); return; }
-  const lk=`${fieldW()}x${fieldH()}|${kmStripShown()}|${!!saved.beginner}|${blast.phase==="demo"}|${saved.harpLayout||""}`;
+  const lk=`${fieldW()}x${fieldH()}@${window.devicePixelRatio||1}|${kmStripShown()}|${!!saved.beginner}|${blast.phase==="demo"}|${saved.harpLayout||""}`;
   if(blast.layoutKey!==lk){ blast.layoutKey=lk; dkLayout(); }
   if(blast.scrolls){ dkCamera(Math.min(.1, (now-(blast.camAt||now))/1000)); blast.camAt=now; }
   const S=dkStage(), ox=blast.ox, oy=blast.oy, clock=blast.clock, H=blast.hero;
@@ -853,6 +856,7 @@ function kongDraw(_, now){
     if(clock<(blast.hammerUntil||0)){ const up=Math.floor(clock*6)%2, hx=H.x+(H.dir==="left" ? -9 : 9);
       g.drawImage(pxSprite("dkhammer", DK_HAMMER, {T:"#C88850", W:"#F1E8D2"}), Math.round(ox+hx-5), Math.round(oy+H.y-(up ? 24 : 12))); }
   }
+  if(blast.phase==="play") pxKnobMark(g, blast.pfAt!=null ? ox+blast.pfAt : null, blast.view.h);
   if(blast.scrolls) dkOffscreen(g);
   if(blast.st==="ready") pxText(g, "READY!", blast.scrolls ? ox+H.x : ox+DK_W/2, blast.scrolls ? oy+H.y-34 : oy+DK_H/2-30, "#FFE600");
 }
@@ -900,7 +904,7 @@ function dkDemo(){
       say("THE CHAIN HOME","A LOCKED LADDER OPENS WHEN YOU PLAY THE CHORD OF THE FLOOR ABOVE. UNDER HOME, G7; UNDER THAT, D7: A CHAIN OF FIFTHS.");
       blast.locks=new Set([4,5]); blast.girderCv=null; await step(4600);
       say("RIVETS","EVERY OTHER STAGE, THE RIVETS: EACH IS A CHORD OF THE KEY. STAND ON ONE AND PLAY IT TO PULL IT. ALL EIGHT, AND KONG COMES DOWN."); await step(4600);
-      say("READY?",`CHOOSE A LEVEL. ${playOnScreen() ? "WALK WITH THE ARROWS UNDER THE GAME, A TO JUMP" : "WALK ON THE HARP OR THE ARROW KEYS, A TO JUMP"}.`); sfx("level"); await step(2800);
+      say("READY?",`CHOOSE A LEVEL. ${playOnScreen() ? "WALK WITH THE ARROWS UNDER THE GAME, A TO JUMP" : pfKnob("kong") ? "TURN THE KNOB TO WHERE YOU WANT TO STAND; TOUCH THE HARP TO JUMP" : "WALK ON THE HARP OR THE ARROW KEYS, A TO JUMP"}.`); sfx("level"); await step(2800);
       endDkDemo(token);
     }catch(e){ /* skipped */ }
   })();

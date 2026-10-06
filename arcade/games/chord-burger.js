@@ -237,7 +237,7 @@ function bkBar(){
 // ---------- the title screen ----------
 const bkAuto=()=> !!saved.bkAuto;
 const BKMENU_G={key:"burger", title:"CHORD BURGER",
-  rules:()=>`<p>WALK ACROSS AN INGREDIENT TO DROP IT A FLOOR. WALK THEM ALL DOWN ONTO THE PLATES.</p><p>A FULL PLATE IS A CHORD, READ FROM THE PLATE UP: THE BOTTOM BUN IS THE BASS. SERVE IT BY PLAYING IT, ${bkAuto() ? "THE KNOBS TURNED FOR YOU" : "VOICED AS STACKED: ONE KNOB PUTS THE RIGHT NOTE ON THE BOTTOM, THE OTHER OPENS IT OUT"}.</p><p>THE SOUR NOTES WEAR NOTES. PEPPER THEM WITH A CHORD THAT HAS THEIR NOTE IN IT, OR DROP AN INGREDIENT ON THEM.</p><p>SERVE THE PLATES LEFT TO RIGHT FOR A COMBO MEAL.</p><p>${playOnScreen() ? "WALK WITH THE ARROWS UNDER THE GAME" : "WALK ON THE HARP OR THE ARROW KEYS: HOLD THE WAY"}.</p>`,
+  rules:()=>`<p>WALK ACROSS AN INGREDIENT TO DROP IT A FLOOR. WALK THEM ALL DOWN ONTO THE PLATES.</p><p>A FULL PLATE IS A CHORD, READ FROM THE PLATE UP: THE BOTTOM BUN IS THE BASS. SERVE IT BY PLAYING IT, ${bkAuto() ? "THE KNOBS TURNED FOR YOU" : "VOICED AS STACKED: ONE KNOB PUTS THE RIGHT NOTE ON THE BOTTOM, THE OTHER OPENS IT OUT"}.</p><p>THE SOUR NOTES WEAR NOTES. PEPPER THEM WITH A CHORD THAT HAS THEIR NOTE IN IT, OR DROP AN INGREDIENT ON THEM.</p><p>SERVE THE PLATES LEFT TO RIGHT FOR A COMBO MEAL.</p><p>${playOnScreen() ? "WALK WITH THE ARROWS UNDER THE GAME" : pfKnob("burger") ? pfSteerSay("FLIP") : "WALK ON THE HARP OR THE ARROW KEYS: HOLD THE WAY"}.</p>`,
   levels:BK_LEVELS, ok:i=>bkLevelOk(i), needs:"NEEDS A MINICHORD THE GAME CAN VOICE", begin:i=>beginBurger(i), demo:()=>bkDemo(), modNote:"title"};
 function bkMenu(over){ arcadeMenu(BKMENU_G, over); }
 function beginBurger(level){
@@ -347,13 +347,20 @@ function bkStep(dt){
 }
 
 // ---------- the way held ----------
-// The harp's d-pad held (kmHeld), the arrow keys held, or the demo's ways: the newest first.
+// The harp's d-pad held (kmHeld), the arrow keys held, or the demo's ways: the newest first. Steered
+// on the knob (pfKnob, ../controls.js), the way to the square it points to, after up or down held on
+// the harp: walking with one held, the first ladder that way is taken.
 const BK_ARROWS={ArrowUp:"up", ArrowDown:"down", ArrowLeft:"left", ArrowRight:"right"};
 const bkKeysHeld=new Map();                                           // way → when its key went down
 function bkHeldReset(){ bkKeysHeld.clear(); }
 function bkWays(){
   if(blast.phase==="demo") return blast.demoWays || [];
   const keys=[...bkKeysHeld.entries()].sort((a,b)=>b[1]-a[1]).map(([w])=>w);
+  if(pfKnob()){
+    const C=blast.cook, at=pfKnobAt(1, BK_COLS-2); if(at!=null && C) C.goal=Math.round(at);
+    const t=C && pfToward(C.x, C.goal, BK_EPS);
+    return [...new Set([...keys, ...pfHeld(), ...(t ? [t] : [])])];
+  }
   const harp=kmHeld().filter(z=>z==="up" || z==="down" || z==="left" || z==="right");
   return [...new Set([...keys, ...harp])];
 }
@@ -675,12 +682,12 @@ function bkPepper(pitches, free){
   if(!free) heard(`${chordName(pitches, devFifths())} · ${hit.map(e=>e.name).join(" ")}`, true);
   bkBar(); return true;
 }
-// the harp: A flips; the rest is read held (bkWays)
+// the harp: A flips (steered on the knob, any touch but its top and bottom); the rest is read held (bkWays)
 function burgerHarp(pc){
   if(!blast || blast.kind!=="burger") return;
   kmFlash(blast.strip, pc);
   if(blast.phase==="demo" && blast.demo){ endBkDemo(blast.demo); return; }
-  if(kmControl(pc)==="A") bkFlip();
+  if(pfKnob() ? pfHarpZone(pc)==="jump" : kmControl(pc)==="A") bkFlip();
 }
 // FLIP: the ingredient underfoot swapped with the next one down its column (the Orders kitchens)
 function bkFlip(){
@@ -716,19 +723,16 @@ function bkVoice(inv, sp, byHand){
 
 // ---------- drawing ----------
 // An arcade screen of its own, as Chord Chomp's: eight pixels a square, the kitchen 232 by 204, every
-// sprite and letter drawn pixel by pixel, shown at a whole number of screen pixels a pixel, two at the
-// least (a phone, either way up), the view following the cook where it's bigger than the field; on a
-// wide field, zoomed in further (pxZoom), the sour notes out of view pointed to.
-const BK_MINK=2, BK_W=BK_COLS*BK_T, BK_H=204;
+// sprite and letter drawn pixel by pixel, shown at a whole number of the screen's own pixels a pixel
+// (pxFit): on a phone held upright, a minichord plugged in, the whole kitchen across its width; where
+// that's too small to read (the screen's minichord under it, or held sideways), the least size that
+// reads, the view following the cook; on a wide field, zoomed in further (pxZoom), the sour notes out
+// of view pointed to.
+const BK_LEAST=4/3, BK_W=BK_COLS*BK_T, BK_H=204;
 function bkLayout(){
-  const fw=fieldW(), fh=fieldH();
-  const side = !kmStripShown() ? 16 : (saved.beginner || blast.phase==="demo") ? Math.ceil(Math.min(fw*.3, 300))+20 : (kmLayout().cols===3 ? 150 : 84);
-  const aw=fw-side-8, ah=fh-40-28;
-  const k=pxZoom(Math.max(BK_MINK, Math.floor(Math.min(aw/BK_W, ah/BK_H))), aw, ah, BK_W, BK_H);
-  const w=Math.min(BK_W, Math.floor(aw/k)), h=Math.min(BK_H, Math.floor(ah/k));
-  Object.assign(blast, {k, view:{x:0, y:0, w, h}, scrolls:BK_W>w || BK_H>h, cam:null});
-  blast.scrLeft=8+Math.floor((aw-w*k)/2); blast.scrTop=40+Math.floor((ah-h*k)/2);
-  const s=blast.screen; if(s){ s.width=w; s.height=h; s.style.cssText=`left:${blast.scrLeft}px;top:${blast.scrTop}px;width:${w*k}px;height:${h*k}px`; }
+  const f=pxFit(BK_W, BK_H, BK_LEAST, true);
+  Object.assign(blast, {k:f.k, view:{x:0, y:0, w:f.w, h:f.h}, scrolls:BK_W>f.w || BK_H>f.h, cam:null, scrLeft:f.left, scrTop:f.top});
+  pxPlace(blast.screen, f);
   bkCamera(0);
 }
 function bkCamera(dt){
@@ -791,7 +795,7 @@ const bkGirder=f=> f ? "#FFFFFF" : "#2F6BFF";
 function burgerDraw(_, now){
   const s=blast.screen, g=s && s.getContext("2d"); if(!g || !g.fillRect) return;
   if(!blast.kitchen || !blast.cook){ g.clearRect(0,0,s.width,s.height); return; }
-  const lk=`${fieldW()}x${fieldH()}|${kmStripShown()}|${!!saved.beginner}|${blast.phase==="demo"}|${saved.harpLayout||""}`;
+  const lk=`${fieldW()}x${fieldH()}@${window.devicePixelRatio||1}|${kmStripShown()}|${!!saved.beginner}|${blast.phase==="demo"}|${saved.harpLayout||""}`;
   if(blast.layoutKey!==lk){ blast.layoutKey=lk; bkLayout(); }
   if(blast.scrolls){ bkCamera(Math.min(.1, (now-(blast.camAt||now))/1000)); blast.camAt=now; }
   const K=bkKitchen(), ox=blast.ox, oy=blast.oy, clock=blast.clock, T=BK_T;
@@ -855,6 +859,7 @@ function burgerDraw(_, now){
     const spr=bkCookSprite(pose, C.dir==="left" || (climbing && Math.floor(clock*6)%2), dying ? "#FF4B3E" : null);
     g.drawImage(spr, Math.round(ox+(C.x+.5)*T-6), Math.round(oy+bkFloorPx(C.y)-16));
   }
+  if(C && C.goal!=null && blast.phase==="play") pxKnobMark(g, ox+(C.goal+.5)*T, blast.view.h);
   if(blast.scrolls) pxOffscreen(g, blast.view, ox, oy, blast.sour.filter(e=>e.state!=="wait" && e.state!=="squashed")
     .map(e=>({x:(e.x+.5)*T, y:bkFloorPx(e.y), col:e.state==="sweet" ? "#FF5AA0" : "#F1E8D2", label:e.name, ink:"#F1E8D2"})));
   if(blast.st==="ready") pxText(g, "READY!", ox+BK_W/2, oy+bkFloorPx(2)-20, "#FFE600");
@@ -920,7 +925,7 @@ function bkDemo(){
       const d=[62,66,69]; demoPlay(d); bkPepper(d, true); await step(3200);
       say("RIDE THEM DOWN","DROP AN INGREDIENT WITH SOUR NOTES ON IT AND THEY RIDE IT DOWN, A FLOOR FURTHER FOR EACH, FOR A BONUS THAT DOUBLES."); await step(4200);
       say("SERVE THEM IN ORDER","SERVE THE PLATES LEFT TO RIGHT AND THEY'RE A PROGRESSION: A COMBO MEAL."); await step(3800);
-      say("READY?",`CHOOSE A LEVEL. ${playOnScreen() ? "WALK WITH THE ARROWS UNDER THE GAME" : "WALK ON THE HARP OR THE ARROW KEYS"}.`); sfx("level"); await step(2800);
+      say("READY?",`CHOOSE A LEVEL. ${playOnScreen() ? "WALK WITH THE ARROWS UNDER THE GAME" : pfKnob("burger") ? "TURN THE KNOB TO WHERE YOU WANT TO STAND" : "WALK ON THE HARP OR THE ARROW KEYS"}.`); sfx("level"); await step(2800);
       endBkDemo(token);
     }catch(e){ /* skipped */ }
   })();

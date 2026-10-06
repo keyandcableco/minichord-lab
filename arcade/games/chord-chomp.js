@@ -609,14 +609,9 @@ document.addEventListener("keydown", e=>{
 // that's big enough, and the view follows the player across it, as the old handheld versions scrolled theirs.
 const CC_T=8, CC_SMALL=12;                                             // native pixels a square; CSS pixels a square, at the least
 function ccLayout(){
-  const fw=fieldW(), fh=fieldH(), dpr=window.devicePixelRatio||1;
-  const side = !kmStripShown() ? 16 : (saved.beginner || blast.phase==="demo") ? Math.ceil(Math.min(fw*.3, 300))+20 : (kmLayout().cols===3 ? 150 : 84);
-  const aw=fw-side-8, ah=fh-40-28, NW=CC_COLS*CC_T, NH=CC_ROWS*CC_T;
-  const d=Math.max(1, Math.floor(Math.min(aw/NW, ah/NH)*dpr), Math.ceil(CC_SMALL/CC_T*dpr));   // screen pixels a pixel: the whole maze, unless that's too small
-  const k=d/dpr, w=Math.min(NW, Math.floor(aw/k)), h=Math.min(NH, Math.floor(ah/k)), on=v=>Math.round(v*dpr)/dpr;   // on a screen pixel
-  Object.assign(blast, {tile:CC_T, k, view:{x:0, y:0, w, h}, scrolls:NW>w || NH>h, cam:null, mazeCv:null});
-  blast.scrLeft=on(8+(aw-w*k)/2); blast.scrTop=on(40+(ah-h*k)/2);
-  const s=blast.screen; if(s){ s.width=w; s.height=h; s.style.cssText=`left:${blast.scrLeft}px;top:${blast.scrTop}px;width:${w*k}px;height:${h*k}px`; }
+  const NW=CC_COLS*CC_T, NH=CC_ROWS*CC_T, f=pxFit(NW, NH, CC_SMALL/CC_T);   // the whole maze, unless that's too small (pixel.js)
+  Object.assign(blast, {tile:CC_T, k:f.k, view:{x:0, y:0, w:f.w, h:f.h}, scrolls:NW>f.w || NH>f.h, cam:null, mazeCv:null, scrLeft:f.left, scrTop:f.top});
+  pxPlace(blast.screen, f);
   ccCamera(0);
 }
 // where the maze sits on the screen: whole, or the player in the middle of the view as far as the

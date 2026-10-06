@@ -46,12 +46,39 @@ function pxText(g, text, cx, y, col, outline=true){
   chars.forEach((ch,i)=>{ const m=pxGlyph(ch,col); if(m) g.drawImage(m, x0+i*8, y); });
 }
 
+// Steered on a knob (pfKnob, controls.js): where it points, a little gold mark along the bottom of the view
+const PX_MARK=["..#..",".###.","#####"];
+function pxKnobMark(g, x, h){
+  if(x==null || typeof pfKnob!=="function" || !pfKnob()) return;
+  g.drawImage(pxSprite("pxmark", PX_MARK, {"#":"#FFD35A"}), Math.round(x-2), h-PX_MARK.length-1);
+}
+
 // ---------- the screen, zoomed ----------
 // An upright arcade screen on a wide field (a desktop) fits its height long before its width, and a whole
 // number of screen pixels a pixel leaves it a narrow strip. So zoomed further, as far as its whole width
 // still fits and at least PX_SEEN of its height is in view, the view following the player up and down.
 const PX_SEEN=.7;
 function pxZoom(k, aw, ah, W, H){ return Math.max(k, Math.min(Math.floor(aw/W), Math.floor(ah/(H*PX_SEEN)))); }
+
+// ---------- the screen, fitted ----------
+// Where an arcade screen of its own (W by H pixels) goes in the field, and how big: a whole number of
+// the screen's own pixels a pixel, not only of CSS pixels, so on a phone (three of its pixels to a CSS
+// pixel) it can be four or five thirds of a CSS pixel a pixel, and an upright screen fills the phone's
+// width as an arcade cabinet's does. The whole of it in view where that's at least `least` CSS pixels
+// a pixel; where it isn't, that size, the view following the player. With nothing beside it (no strip
+// of harp sections) it may go right to the field's sides; on a wide field, zoomed further (pxZoom).
+// Gives k (CSS pixels a pixel), the view's w and h, and where it sits, left and top.
+function pxFit(W, H, least, zoom){
+  const fw=fieldW(), fh=fieldH(), dpr=window.devicePixelRatio||1, strip=kmStripShown();
+  const left= strip ? 8 : 0, side= !strip ? 0 : (saved.beginner || blast.phase==="demo") ? Math.ceil(Math.min(fw*.3, 300))+20 : (kmLayout().cols===3 ? 150 : 84);
+  const aw=fw-side-left, ah=fh-40-28;
+  let d=Math.max(1, Math.floor(Math.min(aw/W, ah/H)*dpr), Math.ceil(least*dpr-1e-9));       // screen pixels a pixel
+  if(zoom) d=Math.max(d, Math.min(Math.floor(aw/W*dpr), Math.floor(ah/(H*PX_SEEN)*dpr)));
+  const k=d/dpr, w=Math.min(W, Math.floor(aw/k+1e-9)), h=Math.min(H, Math.floor(ah/k+1e-9)), on=v=>Math.round(v*dpr)/dpr;   // on a screen pixel
+  return {k, w, h, left:on(left+(aw-w*k)/2), top:on(40+(ah-h*k)/2)};
+}
+// the screen's canvas put where pxFit says, at its size
+function pxPlace(s, f){ if(s){ s.width=f.w; s.height=f.h; s.style.cssText=`left:${f.left}px;top:${f.top}px;width:${f.w*f.k}px;height:${f.h*f.k}px`; } }
 // What's out of the view: a pointer at its edge nearest each, in its colour, with its chord, so what's
 // coming is seen before it's on you. things: {x, y (its feet), col, label, ink}, in the screen's pixels.
 const PX_POINT=["...#","..##",".###","####",".###","..##","...#"];

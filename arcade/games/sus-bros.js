@@ -117,6 +117,7 @@ function sbDevice(){
   arcadeSetup(()=>{
     kmHarp();
     if(hasSetting(35)) borrow(35, keyIndexOf(blast.key ? blast.key.f : 0));
+    if(knobsReady()) borrow(238,1);                                    // the knobs sending where they are, to steer on one
     sbLayoutNow();
   });
   if(blast.phase==="play" && !pollT) poll(true);
@@ -148,7 +149,7 @@ function sbBar(){
 
 // ---------- the title screen ----------
 const SBMENU_G={key:"bros", title:"SUS BROS.",
-  rules:()=>`<p>EVERY PEST IS A SUSPENDED CHORD. JUMP UP UNDER THE FLOOR IT'S WALKING ON TO FLIP IT, THEN ${sbBoth() ? "PLAY ITS SUSPENSION AND THEN ITS RESOLUTION: Dsus4, THEN Dm. THE SUS CHORDS ARE ON TWO BUTTONS: MAJOR AND 7 FOR sus4, MINOR AND 7 FOR sus2, MAJOR AND MINOR FOR 7sus4" : "IT SOUNDS ITS SUSPENSION: PLAY WHERE IT RESOLVES. Dsus4 RESOLVES TO Dm, THE 4TH FALLING TO THE 3RD"}.</p><p>THE CRABS ARE 7sus4: BUMP ONE AND IT'S A DOMINANT SEVENTH, ANGRY; BUMP IT AGAIN, AND RESOLVE IT HOME. THE ICE IS A DIMINISHED SEVENTH: MELT IT WITH A CHORD A SEMITONE ABOVE ANY OF ITS NOTES.</p><p>LEAVE ONE FLIPPED TOO LONG, OR LET IT DOWN THE PIPE, AND IT COMES BACK FASTER. THE POW BLOCK FLIPS EVERYTHING.</p><p>${playOnScreen() ? "WALK WITH THE ARROWS UNDER THE GAME, A TO JUMP" : "WALK ON THE HARP OR THE ARROW KEYS, HOLDING THE WAY; A OR SPACE TO JUMP"}.</p>`,
+  rules:()=>`<p>EVERY PEST IS A SUSPENDED CHORD. JUMP UP UNDER THE FLOOR IT'S WALKING ON TO FLIP IT, THEN ${sbBoth() ? "PLAY ITS SUSPENSION AND THEN ITS RESOLUTION: Dsus4, THEN Dm. THE SUS CHORDS ARE ON TWO BUTTONS: MAJOR AND 7 FOR sus4, MINOR AND 7 FOR sus2, MAJOR AND MINOR FOR 7sus4" : "IT SOUNDS ITS SUSPENSION: PLAY WHERE IT RESOLVES. Dsus4 RESOLVES TO Dm, THE 4TH FALLING TO THE 3RD"}.</p><p>THE CRABS ARE 7sus4: BUMP ONE AND IT'S A DOMINANT SEVENTH, ANGRY; BUMP IT AGAIN, AND RESOLVE IT HOME. THE ICE IS A DIMINISHED SEVENTH: MELT IT WITH A CHORD A SEMITONE ABOVE ANY OF ITS NOTES.</p><p>LEAVE ONE FLIPPED TOO LONG, OR LET IT DOWN THE PIPE, AND IT COMES BACK FASTER. THE POW BLOCK FLIPS EVERYTHING.</p><p>${playOnScreen() ? "WALK WITH THE ARROWS UNDER THE GAME, A TO JUMP" : pfKnob("bros") ? "THE KNOB IS WHERE YOU STAND: TURN IT AND YOU WALK THERE. TOUCH THE HARP ANYWHERE TO JUMP" : "WALK ON THE HARP OR THE ARROW KEYS, HOLDING THE WAY; A OR SPACE TO JUMP"}.</p>`,
   levels:SB_LEVELS, begin:i=>beginBros(i), demo:()=>sbDemo(), modNote:"title"};
 function sbMenu(over){ arcadeMenu(SBMENU_G, over); }
 function beginBros(level){
@@ -215,9 +216,15 @@ function sbStep(dt){
 const SB_ARROWS={ArrowUp:"up", ArrowDown:"down", ArrowLeft:"left", ArrowRight:"right"};
 const sbKeysHeld=new Map();
 function sbHeldReset(){ sbKeysHeld.clear(); }
+// Steered on the knob (pfKnob, ../controls.js): the way to where it points, straight there, not round the sides.
 function sbWays(){
   if(blast.phase==="demo") return blast.demoWays || [];
   const keys=[...sbKeysHeld.entries()].sort((a,b)=>b[1]-a[1]).map(([w])=>w);
+  if(pfKnob()){
+    const H=blast.hero; blast.pfAt=pfKnobAt(6, SB_W-6);
+    const t=H && pfToward(H.x, blast.pfAt, 1);
+    return [...new Set([...keys, ...(t ? [t] : [])])].filter(w=>w==="left" || w==="right");
+  }
   const harp=kmHeld().filter(z=>z==="left" || z==="right");
   return [...new Set([...keys, ...harp])].filter(w=>w==="left" || w==="right");
 }
@@ -243,7 +250,7 @@ function sbHero(dt){
   H.moving=false;
   if(H.state==="walk"){
     const w=ways[0];
-    if(w){ H.dir=w; H.moving=true; H.x=sbWrap(H.x+(w==="left" ? -1 : 1)*SB_WALK*pace*dt); }
+    if(w){ H.dir=w; H.moving=true; const nx=H.x+(w==="left" ? -1 : 1)*SB_WALK*pace*dt; H.x=sbWrap(pfKnob() ? pfStop(H.x, nx, blast.pfAt) : nx); }
     if(!sbOn(H.f, H.x)) Object.assign(H, {state:"air", vy:0, vx:0});
     return;
   }
@@ -453,29 +460,25 @@ function sbClearPest(e, pts){
   const c=sbPestChords(e); sfx("resolve", c.res ? c.res.pc : e.dim.pc);
   sbCoinOut();
 }
-// the harp: A (or B) jumps; walking is read held (sbWays)
+// the harp: A (or B) jumps (steered on the knob, any touch); walking is read held (sbWays)
 function brosHarp(pc){
   if(!blast || blast.kind!=="bros") return;
   kmFlash(blast.strip, pc);
   if(blast.phase==="demo" && blast.demo){ endSbDemo(blast.demo); return; }
-  const z=kmControl(pc); if(z==="A" || z==="B" || z==="up") sbJump();
+  const z=kmControl(pc); if(pfKnob() || z==="A" || z==="B" || z==="up") sbJump();
 }
 
 // ---------- drawing ----------
 // Its own screen at the old game's resolution, as Chord Chomp's: 240 by 216, every sprite and letter
-// drawn pixel by pixel, at a whole number of screen pixels a pixel, two at the least (a phone, either
-// way up), the view following the player where it's bigger than the field; on a wide field, zoomed in
-// further (pxZoom), the pests out of view pointed to.
-const SB_MINK=2;
+// drawn pixel by pixel, at a whole number of the screen's own pixels a pixel (pxFit): on a phone held
+// upright, a minichord plugged in, the whole screen across its width; where that's too small to read
+// (the screen's minichord under it, or held sideways), the least size that reads, the view following
+// the player; on a wide field, zoomed in further (pxZoom), the pests out of view pointed to.
+const SB_LEAST=4/3;
 function sbLayout(){
-  const fw=fieldW(), fh=fieldH();
-  const side = !kmStripShown() ? 16 : (saved.beginner || blast.phase==="demo") ? Math.ceil(Math.min(fw*.3, 300))+20 : (kmLayout().cols===3 ? 150 : 84);
-  const aw=fw-side-8, ah=fh-40-28;
-  const k=pxZoom(Math.max(SB_MINK, Math.floor(Math.min(aw/SB_W, ah/SB_H))), aw, ah, SB_W, SB_H);
-  const w=Math.min(SB_W, Math.floor(aw/k)), h=Math.min(SB_H, Math.floor(ah/k));
-  Object.assign(blast, {k, view:{x:0, y:0, w, h}, scrolls:SB_W>w || SB_H>h, cam:null});
-  blast.scrLeft=8+Math.floor((aw-w*k)/2); blast.scrTop=40+Math.floor((ah-h*k)/2);
-  const s=blast.screen; if(s){ s.width=w; s.height=h; s.style.cssText=`left:${blast.scrLeft}px;top:${blast.scrTop}px;width:${w*k}px;height:${h*k}px`; }
+  const f=pxFit(SB_W, SB_H, SB_LEAST, true);
+  Object.assign(blast, {k:f.k, view:{x:0, y:0, w:f.w, h:f.h}, scrolls:SB_W>f.w || SB_H>f.h, cam:null, scrLeft:f.left, scrTop:f.top});
+  pxPlace(blast.screen, f);
   sbCamera(0);
 }
 function sbCamera(dt){
@@ -520,7 +523,7 @@ const SB_COIN=["..YYYY..",".YYOOYY.","YYOYYOYY","YYOYYOYY","YYOYYOYY","YYOYYOYY"
 function brosDraw(_, now){
   const s=blast.screen, g=s && s.getContext("2d"); if(!g || !g.fillRect) return;
   if(!blast.hero){ g.clearRect(0,0,s.width,s.height); return; }
-  const lk=`${fieldW()}x${fieldH()}|${kmStripShown()}|${!!saved.beginner}|${blast.phase==="demo"}|${saved.harpLayout||""}`;
+  const lk=`${fieldW()}x${fieldH()}@${window.devicePixelRatio||1}|${kmStripShown()}|${!!saved.beginner}|${blast.phase==="demo"}|${saved.harpLayout||""}`;
   if(blast.layoutKey!==lk){ blast.layoutKey=lk; sbLayout(); }
   if(blast.scrolls){ sbCamera(Math.min(.1, (now-(blast.camAt||now))/1000)); blast.camAt=now; }
   const ox=blast.ox, oy=blast.oy, clock=blast.clock, H=blast.hero;
@@ -569,6 +572,7 @@ function brosDraw(_, now){
     g.drawImage(sbHeroSprite(pose, H.dir==="left"), Math.round(ox+H.x-6), Math.round(oy+H.y-16));
     if(H.x<6 || H.x>SB_W-6) g.drawImage(sbHeroSprite(pose, H.dir==="left"), Math.round(ox+H.x-6+(H.x<6 ? SB_W : -SB_W)), Math.round(oy+H.y-16));   // round the side
   }
+  if(blast.phase==="play") pxKnobMark(g, blast.pfAt!=null ? ox+blast.pfAt : null, blast.view.h);
   if(blast.scrolls) pxOffscreen(g, blast.view, ox, oy, blast.pests.filter(e=>e.state!=="piped" && e.state!=="gone")
     .map(e=>({x:e.x, y:e.y, col:"#2EB872", label:e.kind==="ice" ? e.dim.sym : sbPestChords(e).sus.sym, ink:"#F1E8D2"})));
   if(blast.st==="ready") pxText(g, `PHASE ${blast.level+1}`, ox+SB_W/2, oy+SB_FLOORS[2].y+24, "#FFE600");
@@ -614,7 +618,7 @@ function sbDemo(){
       say("HOME",`THEN THE DOMINANT RESOLVES HOME: G7, THEN C.`); await step(1600);
       if(sbBoth()) play(sbPestChords(k).sus); else k.suspended=true; await step(1200); play(sbPestChords(k).res); await step(2000);
       blast.demoStill=false;
-      say("READY?",`CHOOSE A PHASE. ${playOnScreen() ? "WALK WITH THE ARROWS UNDER THE GAME, A TO JUMP" : "WALK ON THE HARP OR THE ARROW KEYS, A TO JUMP"}.`); sfx("level"); await step(2800);
+      say("READY?",`CHOOSE A PHASE. ${playOnScreen() ? "WALK WITH THE ARROWS UNDER THE GAME, A TO JUMP" : pfKnob("bros") ? "TURN THE KNOB TO WHERE YOU WANT TO STAND; TOUCH THE HARP TO JUMP" : "WALK ON THE HARP OR THE ARROW KEYS, A TO JUMP"}.`); sfx("level"); await step(2800);
       endSbDemo(token);
     }catch(e){ /* skipped */ }
   })();

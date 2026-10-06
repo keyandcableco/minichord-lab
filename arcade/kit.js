@@ -232,6 +232,11 @@ const ARCADE_OPTS=[
     vals:()=>[["LATCH",1,"A CHORD PLAYED ONCE STAYS ON TILL THE NEXT"],["HOLD",1.25,"A CHORD LASTS ONLY AS LONG AS IT'S HELD"]]},
   {id:"voicing", group:"game", label:"VOICING", on:has("burger"), get:()=>saved.bkAuto?0:1, set:i=>{ saved.bkAuto=!i; save(); },
     vals:()=>[["SET FOR ME",1,"THE GAME TURNS THE KNOBS TO EACH PLATE: YOU NAME THE CHORD"],["MINE",1.5,"YOU TURN THE KNOBS: VOICE EACH PLATE AS IT'S STACKED"]]},
+  // the platformers steered on a knob (pfKnob, controls.js): only with the knobs sent, on the instrument
+  // itself, and in Chord Burger only when the game turns the voicing's knobs
+  {id:"pfSteer", group:"game", label:"STEER", on:k=>PF_KNOB.has(k) && knobsReady() && !playOnScreen() && (k!=="burger" || !!saved.bkAuto),
+    get:()=>saved.pfKnob?1:0, set:i=>{ saved.pfKnob=i; save(); },
+    vals:k=>[["HARP",1,"HOLD THE WAY ON THE HARP"],["KNOB",1, k==="bros" ? "THE KNOB IS WHERE YOU STAND; A TOUCH ON THE HARP JUMPS" : `THE KNOB IS WHERE YOU STAND; THE HARP'S TOP IS UP, ITS BOTTOM DOWN, ANYWHERE ELSE ${k==="burger" ? "FLIPS" : "JUMPS"}`]]},
   {id:"labels", group:"game", label:"LABELS", on:has("kong"), ...flag("dkNumerals"),
     vals:()=>[["NAMES",1,"EVERY BARREL, LOCK AND RIVET BY ITS CHORD'S NAME"],["NUMERALS",1.5,"BY NUMERAL IN THE KEY: WORK OUT EACH CHORD YOURSELF"]]},
   {id:"sus", group:"game", label:"SUSPENSIONS", on:k=>k==="bros" && typeof sbLayoutOk==="function" && sbLayoutOk(), get:()=>saved.sbSuspend?1:0, set:i=>{ saved.sbSuspend=!!i; save(); },
@@ -266,7 +271,7 @@ const ARCADE_OPTS=[
   {id:"harpSound", group:"setup", label:"HARP SOUND", on:has("snake","stack","sweeper","racer","chomp","burger","kong","bros"), get:()=>saved.harpSound??1,
     set:i=>{ saved.harpSound=i; save(); if(blast && blast.setupDone) kmHarp(); },
     say:"THE HARP STEERS HERE: HOW MUCH OF IT YOU HEAR", vals:()=>[["NORMAL",1],["QUIET",1],["OFF",1]]},
-  {id:"knob", group:"setup", label:"KNOB", on:k=>knobsReady() && (has("breakout","fifths","stack","asteroids","sight","burger","kong","chomp")(k) || (k==="blaster" && saved.invAim) || (k==="racer" && saved.krSteer)),
+  {id:"knob", group:"setup", label:"KNOB", on:k=>knobsReady() && (has("breakout","fifths","stack","asteroids","sight","burger","kong","chomp")(k) || (k==="blaster" && saved.invAim) || (k==="racer" && saved.krSteer) || (k==="bros" && saved.pfKnob)),
     get:()=>steerKnob(), set:i=>{ saved.steerKnob=i; save(); }, say:"WHICH OF THE MINICHORD'S KNOBS STEERS", vals:()=>KNOB_NAMES.map(n=>[n,1])},
   {id:"size", group:"setup", label:k=>k==="command" ? "NOTE SIZE" : "LABEL SIZE", on:has("blaster","asteroids","breakout","command"), get:()=>saved.chordSize??1,
     set:i=>{ saved.chordSize=i; save(); applyChordSize(); }, say:"HOW BIG THE LETTERING IS", vals:()=>SIZES.map(([n])=>[n,1])},

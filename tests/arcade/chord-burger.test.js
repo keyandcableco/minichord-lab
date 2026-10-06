@@ -61,6 +61,27 @@ const t=require("./harness").load("chord-burger");
   hold(RIGHT); await sleep(40); hold(UP); await sleep(900);
   check("up held while walking: the next ladder's taken", a.cook.x===21 && a.cook.y<4, `${a.cook.x.toFixed(2)}, ${a.cook.y.toFixed(2)}`);
   lift(UP); lift(RIGHT); await sleep(100);
+  // STEER: KNOB, offered with SET FOR ME (MINE's knobs are the voicing's): the knob is the square to
+  // stand on; the harp's top held is up, the first ladder on the way taken; any other touch flips
+  check("STEER isn't offered when the knobs are the voicing's (MINE)", !E("optsFor('burger',['game']).some(o=>o.id==='pfSteer')"));
+  E("saved.bkAuto=true; saved.pfKnob=1");
+  check("with SET FOR ME it is", E("optsFor('burger',['game']).some(o=>o.id==='pfSteer')"));
+  const vw=E("({...blast.voicing})");
+  a.cook.x=10; a.cook.y=4; t.knob(83);
+  for(let i=0;i<300 && !(a.cook.x===18 && !a.cook.moving);i++) await sleep(20);
+  check("the knob is the square to stand on: the cook walks there and stops", a.cook.x===18 && a.cook.y===4 && !a.cook.moving, a.cook.x.toFixed(2));
+  hold(UP); t.knob(112); for(let i=0;i<200 && a.cook.y===4;i++) await sleep(20); await sleep(100);
+  check("the harp's top held, walking: the first ladder up on the way is taken", a.cook.x===21 && a.cook.y<4, `${a.cook.x.toFixed(2)}, ${a.cook.y.toFixed(2)}`);
+  lift(UP); await sleep(50);
+  E("window.__flips=0; const bkFlip0=bkFlip; bkFlip=()=>{ __flips++; bkFlip0(); }");
+  hold(LEFT); lift(LEFT); hold(UP); lift(UP); await sleep(30);
+  check("a touch that isn't the harp's top or bottom flips; the top doesn't", E("__flips")===1);
+  E(`saved.bkAuto=false; saved.pfKnob=0; bkVoice(${vw.inv}, ${vw.sp})`); await sleep(50);
+  // an iPhone 15 held upright, a minichord plugged in: the whole kitchen across the phone, at five of its pixels a pixel
+  const upright=E(`(()=>{ const fx=blast.fx, was=[fx.ro, fx.fw, fx.fh]; fx.ro=fx.ro||{}; fx.fw=389; fx.fh=659; Object.defineProperty(window,"devicePixelRatio",{value:3, configurable:true});
+    const bare=document.createElement("div"); bare.className="fscab bare"; document.body.appendChild(bare); bkLayout(); const out={k:blast.k, dk:Math.round(blast.k*3*1000)/1000, scrolls:blast.scrolls, w:blast.view.w, h:blast.view.h};
+    bare.remove(); Object.defineProperty(window,"devicePixelRatio",{value:1, configurable:true}); [fx.ro, fx.fw, fx.fh]=was; blast.layoutKey=null; bkLayout(); return out; })()`);
+  check("on a phone held upright, a minichord plugged in, the whole kitchen fits its width, at a whole number of the phone's pixels a pixel", !upright.scrolls && upright.dk===5 && upright.w===232, JSON.stringify(upright));
   // the arrow keys too
   a.cook.x=16; a.cook.y=3; const kd=c=>t.d.dispatchEvent(new w.KeyboardEvent("keydown",{code:c, bubbles:true})), ku=c=>t.d.dispatchEvent(new w.KeyboardEvent("keyup",{code:c, bubbles:true}));
   kd("ArrowLeft"); await sleep(250); ku("ArrowLeft"); await sleep(50);
