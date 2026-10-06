@@ -254,6 +254,7 @@ function tdMenu(){
   const shut=()=>dlg.close();
   const onOff=on=> on ? "ON" : `<em>OFF</em>`;
   if(navigator.requestMIDIAccess && !tdReal()) row("MINICHORD", mc.midi ? `<em>NOT FOUND</em>` : "CONNECT ▶", ()=>{ shut(); tdConnect(); });
+  if(tdUsbAudio()!=null) row("SOUND OUT", TD_SOUND_OUT.find(o=>o.v===tdUsbAudio()).short, ()=>{ shut(); tdSoundOut(false); });
   row("SOUND", onOff(settings.sounds), b=>{
     const m=document.getElementById("muteBtn"); if(m) m.click(); else { settings.sounds=!settings.sounds; save(); }
     b.querySelector("b").innerHTML=onOff(settings.sounds);
@@ -308,6 +309,7 @@ function tdBareSync(){
   if(td.on || !tdPhoneWanted()) return;
   const cab=document.querySelector(".fscab");
   if(cab && cab.classList.contains("bare")){
+    if(!tdReal() && td.restartUntil && performance.now()<td.restartUntil) return;   // restarting for its USB audio: back in a moment
     if(!tdReal()){ tdBareDown(cab); td.bareIn=false; touchMinichord(true); tdToast("MINICHORD UNPLUGGED", "PLAY ON THE SCREEN"); }   // the deck moves into this cabinet
     return;
   }
@@ -316,6 +318,99 @@ function tdBareSync(){
 }
 mc.addEventListener("ports", ()=>setTimeout(tdBareSync, 0));   // after the deck's stepped aside (virtual.js)
 setInterval(tdBareSync, 500);                                    // and for a game that builds its field later
+
+// ---------- where the sound goes, a minichord on a phone ----------
+// From firmware 24 the minichord has a USB audio setting (address 244), the instrument's, not a
+// preset's: 0 as it always was, offered to the phone as a speaker and playing nothing sent there, so
+// the phone goes quiet; 1 the phone's sound played through the minichord, beside the instrument, to
+// play along; 2 no speaker, so the phone keeps its own sound. Changing to or from 2 restarts the
+// minichord, for the phone to see it. On an Android phone a minichord at 0 is asked about once, since
+// its phone has just gone quiet ("leave it" is remembered); SOUND OUT in the menu changes it later.
+// And at 2, the minichord's own sound can play through the phone too: the page plays what it sends
+// over USB, which the browser treats as a microphone, so it asks for that.
+const TD_USB_AUDIO=244;
+const TD_SOUND_OUT=[
+  {v:2, label:"THE PHONE", short:"PHONE", sub:"THE GAME'S SOUND STAYS ON THE PHONE"},
+  {v:1, label:"THE MINICHORD", short:"MINICHORD", sub:"THE PHONE'S SOUND COMES OUT OF THE MINICHORD'S JACK, WITH ITS OWN: TO PLAY ALONG"},
+  {v:0, label:"LEAVE IT", short:"<em>LOST</em>", sub:"AS IT WAS: THE PHONE'S SOUND GOES TO THE MINICHORD, WHICH DOESN'T PLAY IT"}];
+const tdUsbAudio=()=> tdReal() && canWrite() && (mc.params[7]??0)>=24 && Number.isFinite(mc.params[TD_USB_AUDIO]) ? mc.params[TD_USB_AUDIO] : null;
+const tdAndroid=()=> /Android/i.test(navigator.userAgent||"");
+// the card: asked (the phone's just gone quiet), or from the menu
+function tdSoundOut(ask){
+  document.getElementById("tdMenuDlg")?.remove();
+  const now=tdUsbAudio(); if(now==null) return;
+  const dlg=document.createElement("dialog"); dlg.id="tdMenuDlg"; dlg.className="arcadedlg tdmenudlg tdsoundout";
+  dlg.innerHTML=`<h2>SOUND OUT</h2>${ask ? `<p class="tdmsay">THE PHONE IS SENDING ITS SOUND TO THE MINICHORD, WHICH DOESN'T PLAY IT. WHERE SHOULD IT GO?</p>` : ""}<div class="tdmlist"></div><div class="aend"><button type="button" class="aclose">BACK TO THE GAME</button></div>`;
+  const list=dlg.querySelector(".tdmlist"), shut=()=>dlg.close();
+  for(const o of TD_SOUND_OUT){
+    const b=document.createElement("button"); b.type="button"; b.className="tdmrow tdmopt"+(o.v===now ? " on" : ""); b.dataset.v=o.v;
+    b.innerHTML=`<span>${o.label}<small>${o.sub}</small></span><b>${o.v===now ? "✓" : ""}</b>`;
+    b.onclick=e=>{ e.stopPropagation(); sfx("press"); shut();
+      if(o.v===0 && ask){ saved.usbAudioLeft=true; save(); }
+      if(o.v!==now) tdUsbAudioSet(o.v); };
+    list.appendChild(b);
+  }
+  if(now===2 && navigator.mediaDevices && navigator.mediaDevices.getUserMedia){
+    const b=document.createElement("button"); b.type="button"; b.className="tdmrow";
+    b.innerHTML=`<span>THE MINICHORD ON THE PHONE TOO<small>ITS OWN SOUND THROUGH THE PHONE'S SPEAKER (THE BROWSER ASKS FOR THE MICROPHONE)</small></span><b>${saved.mcMonitor ? "ON" : "<em>OFF</em>"}</b>`;
+    b.onclick=e=>{ e.stopPropagation(); sfx("press"); shut(); tdMonitor(!saved.mcMonitor); };
+    list.appendChild(b);
+  }
+  dlg.querySelector(".aclose").onclick=shut;
+  dlg.addEventListener("click", e=>{ if(e.target===dlg) shut(); });
+  dlg.addEventListener("close", ()=>dlg.remove());
+  document.body.appendChild(dlg); dlg.showModal();
+}
+// written to the minichord, which restarts when the phone has to be told: the cabinet waits for it,
+// and the game sets it up afresh when it's back (a restart forgets what the game had set)
+function tdUsbAudioSet(v){
+  const was=mc.params[TD_USB_AUDIO];
+  if(!mc.writeParam(TD_USB_AUDIO, v)) return;
+  if((was===2)!==(v===2)){ td.restartUntil=performance.now()+12000; td.restartLost=false; tdMonitor(false, true);
+    tdToast("MINICHORD RESTARTING", "A MOMENT, FOR THE PHONE TO SEE IT", 2600); }
+}
+mc.addEventListener("ports", ()=>{
+  if(!td.restartUntil) return;
+  if(!tdReal()){ td.restartLost=true; return; }
+  if(td.restartLost){ td.restartUntil=0; td.restartLost=false; if(typeof newInstrument==="function") newInstrument(); }
+});
+// asked once, when a minichord at 0 is found on an Android phone
+function tdUsbAsk(){
+  if(td.usbAsked || !tdAndroid() || !tdPhoneWanted() || saved.usbAudioLeft || tdUsbAudio()!==0 || document.querySelector("dialog[open]")) return;
+  td.usbAsked=true; tdSoundOut(true);
+}
+mc.addEventListener("device", ()=>setTimeout(()=>{ tdUsbAsk(); if(saved.mcMonitor && !td.mon && !td.monStarting && tdUsbAudio()===2) tdMonitor(true, true); }, 0));
+// The minichord's own sound through the phone: what it sends over USB, played by the page. The
+// browser lists it as a microphone, and only names its inputs once one's been allowed, so it asks,
+// then picks the minichord's (the USB one), and plays it as it comes, untouched (no echo cancelling,
+// no noise suppression, no levelling, which are for voices). quiet: put back by itself, not asked for.
+async function tdMonitor(on, quiet=false){
+  if(!quiet){ saved.mcMonitor=on; save(); }
+  if(!on){ if(td.mon){ td.mon.stop(); td.mon=null; } return; }
+  if(td.mon || td.monStarting) return;
+  td.monStarting=true;
+  const raw={echoCancellation:false, noiseSuppression:false, autoGainControl:false};
+  let stream=null;
+  try{
+    try{ piano.start(); }catch(e){}
+    stream=await navigator.mediaDevices.getUserMedia({audio:raw});
+    const ins=(await navigator.mediaDevices.enumerateDevices()).filter(d=>d.kind==="audioinput");
+    const dev=ins.find(d=>/minichord/i.test(d.label)) || ins.find(d=>/usb/i.test(d.label));
+    if(!dev){ stream.getTracks().forEach(t=>t.stop()); if(!quiet) tdToast("NO MINICHORD SOUND FOUND", "IS IT PLUGGED IN, AND ON?", 3000); return; }
+    if(stream.getAudioTracks()[0]?.getSettings?.().deviceId!==dev.deviceId){
+      stream.getTracks().forEach(t=>t.stop());
+      stream=await navigator.mediaDevices.getUserMedia({audio:{...raw, deviceId:{exact:dev.deviceId}}});
+    }
+    const ctx=piano.ctx; if(!ctx){ stream.getTracks().forEach(t=>t.stop()); return; }
+    const src=ctx.createMediaStreamSource(stream); src.connect(ctx.destination);
+    const s=stream; td.mon={stop(){ try{ src.disconnect(); }catch(e){} s.getTracks().forEach(t=>t.stop()); }};
+    s.getAudioTracks()[0]?.addEventListener("ended", ()=>{ if(td.mon){ td.mon.stop(); td.mon=null; } });   // unplugged, or restarting
+    if(!quiet) tdToast("THE MINICHORD ON THE PHONE", "ITS SOUND THROUGH THE PHONE'S SPEAKER", 2200);
+  }catch(e){
+    if(stream) stream.getTracks().forEach(t=>t.stop());
+    if(!quiet){ saved.mcMonitor=false; save(); tdToast("MICROPHONE NOT ALLOWED", "THE PAGE NEEDS IT TO HEAR THE MINICHORD", 3000); }
+  } finally { td.monStarting=false; }
+}
 
 // a button held by a finger: down and up, however the finger leaves
 function tdHold(el, down, up){

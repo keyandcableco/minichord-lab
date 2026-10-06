@@ -75,11 +75,14 @@ function virtualMinichord(front, on=true){
     mc.probePushPop=()=>Promise.resolve(false);
     Object.assign(mc.params, vmDefaults());
     mc.zone={type:"lower", members:15, known:false};           // one voice per note, as without MPE
+    if(typeof newInstrument==="function") newInstrument();
     mc.dispatchEvent(new Event("device"));
   } else if(!vm.fronts.size && vm.on){
     vmReset();
-    vm.on=false; mc.virtual=false; mc.virtualKnobs=false; mc.out=null; mc.sysex=false; mc.params.length=0;
+    vm.on=false; mc.virtual=false; mc.virtualKnobs=false; mc.out=null; mc.sysex=false;
+    for(const a of Object.keys(mc.params)) delete mc.params[a];   // the screen's settings go with it: a real minichord's are read afresh
     for(const k of ["writeParam","requestDump","control","probePushPop"]) delete mc[k];   // the real minichord's own again
+    if(typeof newInstrument==="function") newInstrument();
     mc.dispatchEvent(new Event("device"));
   }
   vmTell();

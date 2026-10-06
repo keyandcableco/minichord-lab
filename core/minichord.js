@@ -32,6 +32,16 @@ export const temperValue=(index, firmware)=> firmware>=18 ? index : index===12 ?
 
 const isHarpPort = n => /minichord/i.test(n) && n.includes("2");
 const isChordPort = n => /minichord/i.test(n) && (n.includes("1") || n.trim().toLowerCase()==="minichord");
+// Which of the minichord's ports an input is: "chord", "harp" or neither. A computer numbers them (Port 1,
+// Port 2; MIDI 1, MIDI 2); Android's Chrome names every port after the device alone, "minichord", and
+// there they're told apart by order, the chord port first and the harp's second, as the firmware
+// declares them.
+function portRole(port, ports){
+  if(isHarpPort(port.name)) return "harp";
+  if(!isChordPort(port.name)) return null;
+  const same=ports.filter(p=>p.name===port.name);
+  return same.length>1 && same.indexOf(port)===1 ? "harp" : "chord";
+}
 
 export class Minichord extends EventTarget {
   /** ms a note-off waits in case the same note comes straight back (a flickering contact) */
@@ -101,10 +111,11 @@ export class Minichord extends EventTarget {
   selectInput(id){ this.inputChoice=id; this.allOff(); this._ports(); }
   _ports(){
     const ins=this.inputs;
-    const chord=ins.find(i=>isChordPort(i.name));
+    const role=i=>portRole(i, ins);
+    const chord=ins.find(i=>role(i)==="chord");
     ins.forEach(i=>i.onmidimessage=e=>{
-      if(e.data[0]===0xF0){ if(isChordPort(i.name)) this._dump(e.data); return; }
-      if(isHarpPort(i.name)){ this._harp(e.data); return; }   // the harp's own zone reuses channel numbers, so it never reaches the chord voices
+      if(e.data[0]===0xF0){ if(role(i)==="chord") this._dump(e.data); return; }
+      if(role(i)==="harp"){ this._harp(e.data); return; }   // the harp's own zone reuses channel numbers, so it never reaches the chord voices
       const use = this.inputChoice==="all" || this.inputChoice===i.id || (this.inputChoice==="auto" && chord && i.id===chord.id);
       if(use || (this.inputChoice==="auto" && !chord)) this.handle(e.data);
     });

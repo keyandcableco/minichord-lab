@@ -1,9 +1,12 @@
 // A minichord on a phone (Android, on a USB cable): the arcade asks for MIDI from the deck's menu,
 // inside the cabinet, and once it's found the phone's cabinet stays up with the game's screen alone,
 // no deck, a small ☰ in its corner. Unplugged, the deck comes back. And a minichord already there when
-// the page opens has the cabinet put up bare by itself.
+// the page opens has the cabinet put up bare by itself. Taking over mid-game from the one on the
+// screen, it's set up for the game as if it had been there from the start (the harp chromatic, for
+// the d-pad), nothing borrowed from the screen's given to it, and Android's ports, all named
+// "minichord", are told apart by their order: the harp's is heard.
 const harness=require("./harness");
-const [a, b]=["chord-snake","chord-burger"].map(s=>harness.load(s));
+const [a, b, c]=["chord-snake","chord-burger","chord-snake"].map(s=>harness.load(s));
 const {check, sleep}=a;
 const phone=g=>{ g.w.matchMedia=q=>({matches: /coarse/.test(q), addEventListener(){}}); };
 // MIDI as the browser gives it once allowed, with whatever's on the cable
@@ -53,5 +56,28 @@ const row=(d, n)=>rows(d).find(r=>r.firstChild.textContent===n);
     await mc.connect(); await sleep(700);
     const cab=d.querySelector(".fscab");
     check("a minichord there from the start: the bare cabinet by itself", !!cab && cab.classList.contains("bare") && cab.classList.contains("pseudo") && !d.getElementById("tdeck"), cab ? cab.className : "none"); }
-  a.done(); b.done();
+  // mid-game, on Android: a minichord that answers for its settings, both ports named alike
+  { const {w, d, mc}=c; phone(c);
+    const dev=new Array(256).fill(0); Object.assign(dev, {2:80, 3:80, 7:23, 35:0, 97:120, 106:1});   // its harp a little quieter than the screen's (150)
+    const ins=new Map(), outs=new Map(), m={inputs:ins, outputs:outs};
+    w.navigator.requestMIDIAccess=async()=>m;
+    const dump=()=>{ const x=[0xF0]; for(let i=0;i<256;i++) x.push(dev[i]&127, dev[i]>>7); x.push(0xF7); return x; };
+    w.eval("touchMinichord(true)"); await sleep(400);
+    await c.start(0); await sleep(300);
+    check("the game started on the screen's minichord", w.eval("vmOn()") && w.eval("blast.phase")==="play");
+    ins.set("i0", {id:"i0", name:"minichord"}); ins.set("i1", {id:"i1", name:"minichord"});
+    outs.set("o0", {id:"o0", name:"minichord", send(x){
+      if(x[0]!==0xF0 || x.length!==6) return;
+      if(x[1]===0 && x[2]===0){ if(x[3]===0) setTimeout(()=>ins.get("i0").onmidimessage({data:dump()}), 5); }
+      else dev[x[1]+128*x[2]]=x[3]+128*x[4]; }});
+    outs.set("o1", {id:"o1", name:"minichord", send(){}});
+    await w.eval("tdConnect()"); await sleep(800);
+    check("plugged in mid-game: the minichord's set up for the game, its harp chromatic for the d-pad", dev[98]===1, `98=${dev[98]}`);
+    check("what's given back to it after is its own, not the screen's minichord's", w.eval("borrowed[97]")===120 && dev[97]!==120, `borrowed 97=${w.eval("borrowed[97]")}, now ${dev[97]}`);
+    w.eval("window.__h=[]; mc.addEventListener('harp', e=>window.__h.push(e.detail.note))");
+    ins.get("i1").onmidimessage({data:[0x90, 64, 100]}); ins.get("i1").onmidimessage({data:[0x80, 64, 0]}); await sleep(30);
+    check("Android's second \"minichord\" port is the harp's: its strings are heard", w.eval("window.__h.join()")==="64", w.eval("window.__h.join()"));
+    ins.get("i0").onmidimessage({data:[0x90, 60, 100]}); await sleep(80);
+    check("and the first is the chord port", mc.notes.size>0); }
+  a.done(); b.done(); c.done();
 })();

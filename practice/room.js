@@ -73,6 +73,16 @@ function restoreExcept(keep){
   if(mc.out) setTimeout(()=>mc.requestDump(),200);
   return back.map(([a])=>+a);
 }
+// Another instrument: a minichord plugged in while the one on the screen plays, or the screen's taking
+// over from one unplugged. What was borrowed was the other instrument's, so it's forgotten rather than
+// given back to this one, and the game sets this one up afresh (arcadeSetup, once its settings are in).
+function newInstrument(){
+  for(const a of Object.keys(borrowed)) delete borrowed[a];
+  for(const a of Object.keys(wanted)) delete wanted[a];
+  roundBorrows.clear(); pushHeld=false; mc.pushPop=undefined; mc._pushPop=null;   // and whether it can push and pop is asked afresh
+  if(blast){ blast.setupDone=false; blast.modFor=null; }
+  $("restore").hidden=true; mine();
+}
 $("restore").onclick=()=>{ userRestored=true; restoreAll(); needs(); feedback("Your settings are back as they were.",""); };
 addEventListener("pagehide", restoreAll);
 
