@@ -61,20 +61,40 @@ const PX_SEEN=.7;
 function pxZoom(k, aw, ah, W, H){ return Math.max(k, Math.min(Math.floor(aw/W), Math.floor(ah/(H*PX_SEEN)))); }
 
 // ---------- the screen, fitted ----------
+// The room an arcade screen has in the field: beside the strip of harp sections if there is one (and
+// with nothing beside it, right to the field's sides), under the score and over the bar along the foot.
+// Gives its left edge and its width and height, in CSS pixels.
+function pxRoom(){
+  const fw=fieldW(), fh=fieldH(), strip=kmStripShown();
+  const left= strip ? 8 : 0, side= !strip ? 0 : (saved.beginner || blast.phase==="demo") ? Math.ceil(Math.min(fw*.3, 300))+20 : (kmLayout().cols===3 ? 150 : 84);
+  return {left, aw:fw-side-left, ah:fh-40-28};
+}
 // Where an arcade screen of its own (W by H pixels) goes in the field, and how big: a whole number of
 // the screen's own pixels a pixel, not only of CSS pixels, so on a phone (three of its pixels to a CSS
 // pixel) it can be four or five thirds of a CSS pixel a pixel, and an upright screen fills the phone's
 // width as an arcade cabinet's does. The whole of it in view where that's at least `least` CSS pixels
 // a pixel; where it isn't, that size, the view following the player. With nothing beside it (no strip
 // of harp sections) it may go right to the field's sides; on a wide field, zoomed further (pxZoom).
+// `fill`: on a phone's dense screen (two or more of its pixels to a CSS pixel), exactly as big as fits,
+// not a whole number of the screen's pixels, so it meets the room's sides on any phone (one at 2.625 of
+// its pixels to a CSS pixel loses a fifth of its width to a whole number), a pixel of the picture a
+// screen pixel wider here and there than the next, too little to see; where the whole of it won't fit
+// at `least`, as wide as the room, the view following the player up and down, so long as half its
+// height is in view. A whole number still where that's within a twentieth of it, and always on a
+// desktop's screen, where a pixel twice as wide as the next would show.
 // Gives k (CSS pixels a pixel), the view's w and h, and where it sits, left and top.
-function pxFit(W, H, least, zoom){
-  const fw=fieldW(), fh=fieldH(), dpr=window.devicePixelRatio||1, strip=kmStripShown();
-  const left= strip ? 8 : 0, side= !strip ? 0 : (saved.beginner || blast.phase==="demo") ? Math.ceil(Math.min(fw*.3, 300))+20 : (kmLayout().cols===3 ? 150 : 84);
-  const aw=fw-side-left, ah=fh-40-28;
-  let d=Math.max(1, Math.floor(Math.min(aw/W, ah/H)*dpr), Math.ceil(least*dpr-1e-9));       // screen pixels a pixel
-  if(zoom) d=Math.max(d, Math.min(Math.floor(aw/W*dpr), Math.floor(ah/(H*PX_SEEN)*dpr)));
-  const k=d/dpr, w=Math.min(W, Math.floor(aw/k+1e-9)), h=Math.min(H, Math.floor(ah/k+1e-9)), on=v=>Math.round(v*dpr)/dpr;   // on a screen pixel
+function pxFit(W, H, least, zoom, fill){
+  const {left, aw, ah}=pxRoom(), dpr=window.devicePixelRatio||1;
+  let k;
+  if(fill && dpr>=2){
+    k=Math.min(aw/W, ah/H); if(k<least) k=Math.max(least, Math.min(aw/W, ah/(H/2)));
+    const whole=Math.floor(k*dpr+1e-9)/dpr; if(whole>=k*.95 && whole>=least) k=whole;
+  } else {
+    let d=Math.max(1, Math.floor(Math.min(aw/W, ah/H)*dpr), Math.ceil(least*dpr-1e-9));       // screen pixels a pixel
+    if(zoom) d=Math.max(d, Math.min(Math.floor(aw/W*dpr), Math.floor(ah/(H*PX_SEEN)*dpr)));
+    k=d/dpr;
+  }
+  const w=Math.min(W, Math.floor(aw/k+1e-9)), h=Math.min(H, Math.floor(ah/k+1e-9)), on=v=>Math.round(v*dpr)/dpr;   // on a screen pixel
   return {k, w, h, left:on(left+(aw-w*k)/2), top:on(40+(ah-h*k)/2)};
 }
 // the screen's canvas put where pxFit says, at its size

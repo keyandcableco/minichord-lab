@@ -122,24 +122,44 @@ const t=require("./harness").load("chord-chomp");
   check("on firmware without the combo, the key's home chord takes it, and the minichord's set to it", a.key.name==="D" && t.mc.params[35]===w.eval("keyIndexOf(2)"));
   check("the little minichord turns up only once a game", !a.mini);
   t.mc.params[7]=17;
-  // The maze stands taller than it's wide. On a desktop's field the whole of it shows, at a whole
-  // number of screen pixels a pixel; on a phone held upright with a minichord plugged in (no strip of
-  // harp sections, no minichord on the screen) it fits too, at a whole number of the phone's own pixels
-  // a pixel; with the screen's minichord under it, or held sideways, it's shown at the smallest size big
-  // enough to play on, and the view follows the player.
-  const lay=(fw,fh,dpr)=>w.eval(`(()=>{ const fx=blast.fx; fx.ro=fx.ro||{}; fx.fw=${fw}; fx.fh=${fh}; Object.defineProperty(window,"devicePixelRatio",{value:${dpr}, configurable:true});
-    const bare=document.createElement("div"); bare.className="fscab bare"; document.body.appendChild(bare); ccLayout(); bare.remove(); const out=[];
-    for(const [x,y] of [[1,1],[13,11],[25,27],[1,27],[25,1]]){ Object.assign(blast.pac,{x, y, p:0}); ccCamera(0); const px=blast.ox+(x+.5)*blast.tile, py=blast.oy+(y+.5)*blast.tile, v=blast.view; out.push(px>=v.x && px<=v.x+v.w && py>=v.y && py<=v.y+v.h); }
-    return {scrolls:blast.scrolls, k:blast.k, dk:Math.round(blast.k*${dpr}*1000)/1000, sq:blast.tile*blast.k, w:blast.view.w, h:blast.view.h, seen:out}; })()`);
-  check("the maze is taller than it's wide", w.eval("CC_ROWS>CC_COLS"), w.eval("CC_COLS+'×'+CC_ROWS"));
+  // The maze is built as tall as the room it has. Every height it can be: the same both sides, no dead
+  // end, every dot reachable from the start, the ghosts' house, door and tunnel where they're looked for.
+  const mazes=w.eval(`(()=>{ const bad=[];
+    for(let rows=20; rows<=70; rows++) for(let seed=0; seed<6; seed++){
+      ccBuild(rows, seed); const m=CC_MAZE, R=CC_ROWS, C=CC_COLS, want=Math.max(29, Math.min(CC_MOST, rows)), why=[];
+      if(R!==want && !(want===30 && R===29)) why.push("rows "+R);
+      m.forEach((r,y)=>{ if(r.length!==C) why.push("row "+y+" width"); if([...r].reverse().join("")!==r) why.push("row "+y+" lopsided"); });
+      const open=(x,y)=> !"#-G".includes(ccCell(x,y));
+      for(let y=0;y<R;y++) for(let x=0;x<C;x++) if(open(x,y) && [[1,0],[-1,0],[0,1],[0,-1]].filter(([a,b])=>open(x+a,y+b)).length<2) why.push("dead end "+x+","+y);
+      const seen=new Set(), q=[[CC_START.x,CC_START.y]];
+      while(q.length){ const [x,y]=q.pop(), k=x+","+y; if(seen.has(k) || !open(x,y)) continue; seen.add(k); for(const [a,b] of [[1,0],[-1,0],[0,1],[0,-1]]) q.push([mod(x+a,C), y+b]); }
+      m.forEach((r,y)=>[...r].forEach((c,x)=>{ if(".o".includes(c) && !seen.has(x+","+y)) why.push("dot out of reach "+x+","+y); }));
+      if(m[CC_OUT.y+1][CC_OUT.x]!=="-" || m[CC_IN.y][CC_IN.x]!=="G" || m[CC_TUNNEL][0]!==" " || m[CC_START.y][CC_START.x]!==".") why.push("house, door, tunnel or start astray");
+      if(why.length) bad.push(rows+"/"+seed+": "+why.slice(0,3).join("; "));
+    }
+    ccBuild(29); return bad; })()`);
+  check("every height the maze can be built: the same both sides, no dead ends, every dot reachable, the house where it's looked for", !mazes.length, mazes.slice(0,4).join(" | "));
+  // How it's shown. On a desktop's field, the maze as it always was, whole, at a whole number of screen
+  // pixels a pixel. On a phone held upright, as tall as the room it has, as wide as the room, all in
+  // view: with a minichord plugged in (no strip of harp sections, no minichord on the screen) nearly
+  // twice as tall, under the screen's minichord a little taller. A maze under way when the room shrinks
+  // is kept, as wide as the room, the view following the player. Held sideways, the maze as it always
+  // was, at the smallest size big enough to play on, the view following the player.
+  const lay=(fw,fh,dpr,keep)=>w.eval(`(()=>{ const fx=blast.fx; fx.ro=fx.ro||{}; fx.fw=${fw}; fx.fh=${fh}; Object.defineProperty(window,"devicePixelRatio",{value:${dpr}, configurable:true});
+    const bare=document.createElement("div"); bare.className="fscab bare"; document.body.appendChild(bare); ${keep ? "" : "ccBuild(ccRowsFor());"} ccLayout(); const room=pxRoom(); bare.remove(); const out=[];
+    for(const [x,y] of [[1,1],[13,CC_TUNNEL],[25,CC_ROWS-2],[1,CC_ROWS-2],[25,1]]){ Object.assign(blast.pac,{x, y, p:0}); ccCamera(0); const px=blast.ox+(x+.5)*blast.tile, py=blast.oy+(y+.5)*blast.tile, v=blast.view; out.push(px>=v.x && px<=v.x+v.w && py>=v.y && py<=v.y+v.h); }
+    return {rows:CC_ROWS, scrolls:blast.scrolls, k:blast.k, sq:blast.tile*blast.k, w:blast.view.w, h:blast.view.h, across:blast.view.w*blast.k/room.aw, down:blast.view.h*blast.k/room.ah, seen:out}; })()`);
   const desk=lay(917,572,1);
-  check("on a desktop's field the whole maze is in view, unscrolled, at a whole number of screen pixels a pixel", !desk.scrolls && Number.isInteger(desk.k) && desk.sq>=w.eval("CC_SMALL"), JSON.stringify(desk));
-  const up=lay(393,659,3);
-  check("on a phone held upright, a minichord plugged in, the whole maze fits, at a whole number of the phone's pixels a pixel", !up.scrolls && Number.isInteger(up.dk) && up.sq>=w.eval("CC_SMALL") && up.seen.every(Boolean), JSON.stringify(up));
-  const deck=lay(393,362,3);
-  check("with the screen's minichord under it: as wide as the phone, scrolling up and down, the player kept in view", deck.scrolls && deck.w===216 && deck.h<232 && Number.isInteger(deck.dk) && deck.sq>=w.eval("CC_SMALL") && deck.seen.every(Boolean), JSON.stringify(deck));
+  check("on a desktop's field, the maze as it always was, whole, unscrolled, at a whole number of screen pixels a pixel", desk.rows===29 && !desk.scrolls && Number.isInteger(desk.k) && desk.sq>=w.eval("CC_SMALL"), JSON.stringify(desk));
+  const up=lay(408,913,2.625);
+  check("on a phone held upright, a minichord plugged in: nearly twice as tall, right across the screen and top to bottom, all in view", up.rows>=50 && !up.scrolls && up.across>.99 && up.down>.96 && up.seen.every(Boolean), JSON.stringify(up));
+  const deck=lay(408,616,2.625);
+  check("over the screen's minichord: taller than the old maze, right across, top to bottom, all in view", deck.rows>29 && deck.rows<up.rows && !deck.scrolls && deck.across>.99 && deck.down>.93 && deck.seen.every(Boolean), JSON.stringify(deck));
+  lay(408,913,2.625); const kept=lay(408,616,2.625,true);
+  check("the minichord pulled out mid-maze: the tall maze kept, right across, scrolling up and down, the player kept in view", kept.rows===up.rows && kept.scrolls && kept.across>.99 && kept.seen.every(Boolean), JSON.stringify(kept));
   const side=lay(734,343,3);
-  check("held sideways: big enough to play on, scrolling, the player kept in view", side.scrolls && side.sq>=w.eval("CC_SMALL") && side.sq<20 && side.seen.every(Boolean), JSON.stringify(side));
+  check("held sideways: the maze as it always was, big enough to play on, scrolling, the player kept in view", side.rows===29 && side.scrolls && side.sq>=w.eval("CC_SMALL") && side.sq<20 && side.seen.every(Boolean), JSON.stringify(side));
+  w.eval("ccBuild(29)");
   w.eval(`Object.defineProperty(window,"devicePixelRatio",{value:1, configurable:true})`);
   // leaving gives the key back
   sb.restoreAll();

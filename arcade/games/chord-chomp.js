@@ -39,9 +39,9 @@
 
 // ---------- the maze ----------
 // # wall, . dot, o power pellet, - the ghosts' door, G inside their house, a space an empty path.
-// The row through the ghosts' house runs off both sides, a tunnel to the other. Taller than it's wide,
-// as the old game's screen stood, so it fills a phone held upright as an arcade screen does.
-const CC_MAZE=[
+// The row through the ghosts' house runs off both sides, a tunnel to the other. This is the maze on a
+// desktop's field, or a phone held sideways: a little taller than it's wide.
+const CC_BASE=[
   "###########################",
   "#o...........#...........o#",
   "#.###.###.##.#.##.###.###.#",
@@ -72,18 +72,74 @@ const CC_MAZE=[
   "#.........................#",
   "###########################",
 ];
-const CC_COLS=CC_MAZE[0].length, CC_ROWS=CC_MAZE.length, CC_TUNNEL=CC_MAZE.findIndex(r=>r[0]===" ");
-const CC_START={x:13, y:23}, CC_FRUIT={x:13, y:13}, CC_OUT={x:13, y:9}, CC_IN={x:13, y:11};
+// A phone held upright is twice as tall as it's wide, so there the maze is made taller to fill it, as
+// the space falling chords have in Chord Invaders fills it: bands of rows put in above the ghosts' house
+// (under the top's corridor) and below it (under the player's start), each band ending in a corridor
+// right across, so any one goes against any other. Each is the same both sides and has no dead end.
+const CC_BANDS=[
+  ["#.####.#####.#.#####.####.#",
+   "#......#####.#.#####......#",
+   "#.####.#####.#.#####.####.#",
+   "#.........................#"],
+  ["#.#####.#.#######.#.#####.#",
+   "#.#####.#.#######.#.#####.#",
+   "#o.......................o#"],
+  ["#.####.#.#########.#.####.#",
+   "#.####.#.....#.....#.####.#",
+   "#.####.#.###.#.###.#.####.#",
+   "#.........................#"],
+  ["#.###.###.###.###.###.###.#",
+   "#.........................#"],
+  ["#.###.#.###########.#.###.#",
+   "#.###.#.###########.#.###.#",
+   "#.....#.............#.....#",
+   "###.#.####.#####.####.#.###",
+   "#.........................#"],
+  ["#.###.###.##.#.##.###.###.#",
+   "#.###.###.##.#.##.###.###.#",
+   "#.........................#"],
+];
+const CC_MOST=63;                                                         // rows, at the most
+// n rows of bands, their order turned by s: never the same band twice running, and at most one with
+// power pellets, not at the end beside the foot's, nor at the start under the top's
+function ccBands(n, s, foot){
+  const pel=b=>b.some(r=>r.includes("o"));
+  const go=(n, prev, had, first)=>{
+    if(!n) return [];
+    for(let i=0;i<CC_BANDS.length;i++){
+      const b=CC_BANDS[(s+i)%CC_BANDS.length], p=pel(b);
+      if(b===prev || b.length>n || (p && (had || (foot ? b.length===n : first)))) continue;
+      const rest=go(n-b.length, b, had||p, false);
+      if(rest) return [b, ...rest];
+    }
+    return null;
+  };
+  return (go(n, null, false, true)||[]).flat();
+}
+// The maze, `rows` tall (or as near as bands make it), the bands dealt differently each maze (seed),
+// and everything placed in it: where the player starts, the ghosts' house and door, the key's place.
+const CC_COLS=CC_BASE[0].length;
+let CC_MAZE, CC_ROWS, CC_TUNNEL, CC_START, CC_FRUIT, CC_OUT, CC_IN, CC_GHOSTS;
+function ccBuild(rows, seed=0){
+  let extra=Math.max(0, Math.min(CC_MOST, rows)-CC_BASE.length); if(extra===1) extra=0;
+  let up=Math.floor(extra/2); if(up===1) up=0; else if(extra-up===1) up--;
+  const top=ccBands(up, seed), foot=ccBands(extra-up, seed+3, true);
+  CC_MAZE=[...CC_BASE.slice(0,5), ...top, ...CC_BASE.slice(5,24), ...foot, ...CC_BASE.slice(24)];
+  CC_ROWS=CC_MAZE.length; CC_TUNNEL=CC_MAZE.findIndex(r=>r[0]===" ");
+  const t=CC_TUNNEL-11;                                                   // rows put in above the house
+  CC_START={x:13, y:23+t}; CC_FRUIT={x:13, y:13+t}; CC_OUT={x:13, y:9+t}; CC_IN={x:13, y:11+t};
+  // the ghosts: where each starts, the corner it heads for when scattering, its colour
+  CC_GHOSTS=[
+    {at:{x:13,y:9+t},  corner:[25,-3], col:"#FF3B30"},
+    {at:{x:12,y:11+t}, corner:[1,-3],  col:"#FFB8FF"},
+    {at:{x:13,y:11+t}, corner:[26,CC_ROWS+2], col:"#00E5FF"},
+    {at:{x:14,y:11+t}, corner:[0,CC_ROWS+2],  col:"#FFB852"},
+  ];
+}
+ccBuild(CC_BASE.length);
 const CC_DIRS={up:[0,-1], left:[-1,0], down:[0,1], right:[1,0]};
 const CC_OPP={up:"down", down:"up", left:"right", right:"left"};
 const CC_ORDER=["up","left","down","right"];                       // the old game's tie-break
-// the ghosts: where each starts, the corner it heads for when scattering, its colour
-const CC_GHOSTS=[
-  {at:{x:13,y:9},  corner:[25,-3], col:"#FF3B30"},
-  {at:{x:12,y:11}, corner:[1,-3],  col:"#FFB8FF"},
-  {at:{x:13,y:11}, corner:[26,CC_ROWS+2], col:"#00E5FF"},
-  {at:{x:14,y:11}, corner:[0,CC_ROWS+2],  col:"#FFB852"},
-];
 // scatter, chase, scatter, chase … in seconds of play, then chase for good
 const CC_WAVES=[7,20,7,20,5,20,5];
 const ccCell=(x,y)=> y<0 || y>=CC_ROWS ? "#" : CC_MAZE[y][mod(x,CC_COLS)];
@@ -221,8 +277,10 @@ function ccSetKey(key){
   for(const g of blast.ghosts) g.chord=ccChord(key, g.num);
   if(blast.phase==="play" && canWrite() && hasSetting(35)) borrow(35, keyIndexOf(key.f));   // borrowed even when the combo already set it, so it's what the game wants kept
 }
-// a fresh maze: every dot back, the ghosts dealt their numerals, the keys that will turn up
+// a fresh maze: as tall as the room it has, every dot back, the ghosts dealt their numerals, the keys
+// that will turn up
 function ccNewMaze(){
+  ccBuild(ccRowsFor(), blast.maze||0); blast.layoutKey=null;
   blast.dots=CC_MAZE.map(r=>[...r].map(c=> c==="." ? 1 : c==="o" ? 2 : 0));
   blast.total=blast.left=blast.dots.flat().filter(Boolean).length;
   blast.fruitAt=[Math.floor(blast.total*.7), Math.floor(blast.total*.3)];   // dots left when a key turns up
@@ -599,17 +657,25 @@ document.addEventListener("keydown", e=>{
 });
 
 // ---------- drawing ----------
-// An arcade screen of its own, at the old game's resolution: eight pixels a square, the whole maze 216
-// by 232, every sprite and letter drawn pixel by pixel with nothing smoothed, then shown at a whole
-// number of the screen's own pixels a pixel (a phone's, three to a CSS pixel, not only whole CSS
-// pixels), so each one is the same size and square. The arcade's own pixel font for the chords and
-// READY!, its sharps and flats drawn to match.
-// The whole maze in view where it fits with squares big enough to play on. Where it doesn't (a phone
-// with its minichord on the screen under the game, or held sideways), it's shown at the smallest size
-// that's big enough, and the view follows the player across it, as the old handheld versions scrolled theirs.
+// An arcade screen of its own, at the old game's resolution: eight pixels a square, the maze 216 pixels
+// wide, every sprite and letter drawn pixel by pixel with nothing smoothed, then shown exactly as big as
+// fits, right across a phone held upright (pxFit's fill: on some phones a whole number of its own
+// pixels a pixel would leave a fifth of its width empty). The arcade's own pixel font for the chords
+// and READY!, its sharps and flats drawn to match.
+// The maze is made as tall as the room it has at that size (ccRowsFor), so on a phone held upright it
+// fills the screen top to bottom, as Chord Invaders does: a little taller over the screen's minichord,
+// nearly twice as tall with a minichord plugged in and the game's screen alone. Each maze takes the
+// room's shape as it starts; one already under way when the room changes (the minichord plugged in or
+// pulled out, the phone turned) is kept, shown whole if it fits with squares big enough to play on, and
+// where it doesn't, at the room's width (or the smallest size big enough) with the view following the
+// player across it, as the old handheld versions scrolled theirs.
 const CC_T=8, CC_SMALL=12;                                             // native pixels a square; CSS pixels a square, at the least
+function ccRowsFor(){
+  const {aw, ah}=pxRoom(), sq=Math.max(CC_SMALL, aw/CC_COLS);
+  return Math.floor(ah/sq+1e-9);
+}
 function ccLayout(){
-  const NW=CC_COLS*CC_T, NH=CC_ROWS*CC_T, f=pxFit(NW, NH, CC_SMALL/CC_T);   // the whole maze, unless that's too small (pixel.js)
+  const NW=CC_COLS*CC_T, NH=CC_ROWS*CC_T, f=pxFit(NW, NH, CC_SMALL/CC_T, false, true);   // the whole maze, unless that's too small (pixel.js)
   Object.assign(blast, {tile:CC_T, k:f.k, view:{x:0, y:0, w:f.w, h:f.h}, scrolls:NW>f.w || NH>f.h, cam:null, mazeCv:null, scrLeft:f.left, scrTop:f.top});
   pxPlace(blast.screen, f);
   ccCamera(0);
@@ -713,7 +779,7 @@ function ccMazePaint(col){
 function ccDraw(_, now){
   const s=blast.screen, g=s && s.getContext("2d"); if(!g || !g.fillRect) return;
   if(!blast.dots){ g.clearRect(0,0,s.width,s.height); return; }
-  const lk=`${fieldW()}x${fieldH()}@${window.devicePixelRatio||1}|${kmStripShown()}|${!!saved.beginner}|${blast.phase==="demo"}|${saved.harpLayout||""}`;
+  const lk=`${fieldW()}x${fieldH()}@${window.devicePixelRatio||1}|${CC_ROWS}|${kmStripShown()}|${!!saved.beginner}|${blast.phase==="demo"}|${saved.harpLayout||""}`;
   if(blast.layoutKey!==lk){ blast.layoutKey=lk; ccLayout(); }
   if(blast.scrolls){ ccCamera(Math.min(.1, (now-(blast.camAt||now))/1000)); blast.camAt=now; }
   const t=CC_T, ox=blast.ox, oy=blast.oy, clock=blast.clock;
