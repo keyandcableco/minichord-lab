@@ -234,7 +234,9 @@ function beginKong(level){
   dkLevelBanner();
   sfx("start"); dkBar();
 }
-function dkLevelBanner(){ banner(`LEVEL ${blast.level+1}`, `${dkLevel().n.toUpperCase()} · ${blast.key.label}${dkKnobLift() ? " · THE RIGHT LIFT IS YOUR KNOB" : ""}`); }
+// on the screen's minichord, how to set the key while it's still the player's to set
+const dkKeyHint=()=> keyOnScreen() && dkComboOk() && !blast.keySet ? ` · SET IT: ${keyHoldHow(blast.key.f)}` : "";
+function dkLevelBanner(){ banner(`LEVEL ${blast.level+1}`, `${dkLevel().n.toUpperCase()} · ${blast.key.label}${dkKeyHint()}${dkKnobLift() ? " · THE RIGHT LIFT IS YOUR KNOB" : ""}`); }
 
 // A fresh stage: its girders, its key, the locks on the chain home or the rivets dealt, the bonus.
 function dkNewStage(){
@@ -599,7 +601,7 @@ function dkNext(){
 }
 
 // ---------- the key ----------
-const dkComboOk=()=> keyComboReady() && hasSetting(35);
+const dkComboOk=()=> keySetReady() && hasSetting(35);
 function dkKeyCheck(){
   if(!blast || blast.phase!=="play" || !blast.key || !hasSetting(35) || mc.params[35]==null || mc.presetLoaded) return;
   const f=devFifths();

@@ -224,7 +224,7 @@ function slKeyChange(f, n){
   blast.keyF=f; slDrawStaff();
   const nm=`${SL_TONIC[f]} MAJOR`;
   if(blast.phase==="demo" && n && n.demoCaption && blast.demo){ const d=blast.demo.el; d.querySelector(".demotitle").textContent=n.demoCaption[0]; d.querySelector(".democap").textContent=n.demoCaption[1]; }
-  if(blast.phase==="play" && keyComboReady()){ blast.keyWant=f; banner("KEY CHANGE", `SET THE MINICHORD TO ${nm}`); }
+  if(blast.phase==="play" && keySetReady()){ blast.keyWant=f; banner("KEY CHANGE", keyOnScreen() ? `${nm}: ${keyHoldHow(f)}` : `SET THE MINICHORD TO ${nm}`); }
   else if(blast.phase==="play" && SL_LEVELS[blast.level].chords && canWrite() && hasSetting(35)){ borrow(35, keyIndexOf(f)); banner("KEY CHANGE", `${nm}: THE MINICHORD FOLLOWS`); }   // no combo on this firmware
   else banner("KEY CHANGE", f ? `${nm}: ${Math.abs(f)} ${f>0?"SHARP":"FLAT"}${Math.abs(f)>1?"S":""}` : "C MAJOR: NO SHARPS OR FLATS");
   sfx("level");
@@ -301,7 +301,7 @@ function slDemo(){
     {...N(32), say:["SIGHT LINE","NOTES SCROLL TO THE PLAYHEAD, AS YOUR EYE MOVES ALONG A PAGE. G, THE SECOND LINE: PLUCK IT ON THE HARP."]},
     {...N(37), say:["","E, THE TOP SPACE. IN TIME FOR A HIT, DEAD ON THE LINE FOR DOUBLE."]},
     {chordOf:[0,0], say:["CHORDS","STACKED NOTES ARE A CHORD: C, E AND G. PLAY C MAJOR ON THE BUTTONS."]},
-    {change:1, say:["KEY CHANGE","A DOUBLE BAR AND A NEW SIGNATURE: G MAJOR. SET THE MINICHORD TO IT WITH THE KEY CHANGE COMBO."]},
+    {change:1, say:["KEY CHANGE",`A DOUBLE BAR AND A NEW SIGNATURE: G MAJOR. SET THE MINICHORD TO IT ${playOnScreen() ? "BY HOLDING G ON THE MIDDLE ROW" : "WITH THE KEY CHANGE COMBO"}.`]},
     {...N(31), say:["","IN G MAJOR, THE SIGNATURE'S SHARP IS ON F: THIS F IS PLAYED F♯."]},
     {chordOf:[4,1], say:["INVERSIONS","THE 3RD IN THE BASS: D/F♯, THE FIRST INVERSION. SWING THE VOICING WITH A KNOB, THEN PLAY D."]},
     {...N(35), say:["READY?","BOTH CLEFS, LEDGER LINES, KEY CHANGES AND TUNES TO READ."]},

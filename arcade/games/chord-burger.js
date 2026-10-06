@@ -253,7 +253,9 @@ function beginBurger(level){
   bkLevelBanner();
   sfx("start"); bkBar();
 }
-function bkLevelBanner(){ banner(`LEVEL ${blast.level+1}`, `${bkLevel().n.toUpperCase()} · ${blast.key.label}`); }
+// on the screen's minichord, how to set the key while it's still the player's to set
+const bkKeyHint=()=> keyOnScreen() && bkComboOk() && !blast.keySet ? ` · SET IT: ${keyHoldHow(blast.key.f)}` : "";
+function bkLevelBanner(){ banner(`LEVEL ${blast.level+1}`, `${bkLevel().n.toUpperCase()} · ${blast.key.label}${bkKeyHint()}`); }
 
 // A fresh kitchen: its layout, its key, its progression dealt to the plates, the ingredients lettered
 // with their plates' notes, the pepper and flips topped up.
@@ -624,7 +626,7 @@ function bkPowerHud(){
 // The kitchen's key, as Chord Hunt asks for its: set it with the key change combo for points, and its
 // chords are plain buttons; not set by the time the first plate fills, the game sets it. Without the
 // combo, the game sets it at once.
-const bkComboOk=()=> keyComboReady() && hasSetting(35);
+const bkComboOk=()=> keySetReady() && hasSetting(35);
 function bkKeyCheck(){
   if(!blast || blast.phase!=="play" || !blast.key || !hasSetting(35) || mc.params[35]==null || mc.presetLoaded) return;
   const f=devFifths();

@@ -251,19 +251,23 @@ function spawnBlast(now){
 }
 // Key bars are answered with the key change combo, which stock firmware (version 9) doesn't have,
 // so they only fall for firmware that does, or for the screen's minichord, whose chord button held
-// sets the key as the combo does.
+// sets the key as the combo does. (Sight Line, Chord Burger and Dominant Kong ask for theirs the same way.)
 const keyComboReady=()=>canWrite() && (mc.params[7]??0)>9;
 const keyOnScreen=()=>canWrite() && typeof playOnScreen==="function" && playOnScreen();
-const keyBarReady=()=>keyComboReady() || keyOnScreen();
+const keySetReady=()=>keyComboReady() || keyOnScreen();
+// how a key's set on the screen's minichord: its letter's button, the top row for a sharp key, the
+// bottom for a flat one (touch.js's tdKeyFifths)
+const keyHoldRow=f=> f>5 ? "top" : f<-1 ? "bottom" : "middle";
+const keyHoldHow=f=>`HOLD ${KEY_BY_FIFTHS[f][0]}, ${keyHoldRow(f).toUpperCase()} ROW`;
 function spawnKeyBar(now){
-  if(!keyBarReady() || blast.keyBar) return;
+  if(!keySetReady() || blast.keyBar) return;
   const here=devFifths(), f=rnd([-5,-4,-3,-2,-1,0,1,2,3,4,5,6].filter(x=>x!==here)), name=KEY_BY_FIFTHS[f];
   const el=document.createElement("div"); el.className="fkey";
-  const how=keyOnScreen() ? "hold a chord button: top row ♯ keys, middle natural, bottom ♭" : "set it with the key change combo";
+  const how=keyOnScreen() ? `hold ${KEY_BY_FIFTHS[f][0]}, ${keyHoldRow(f)} row` : "set it with the key change combo";
   el.innerHTML=`KEY OF ${name} MAJOR<small>${sigText(f)}${f?`: ${sigList(f).join(" ")}`:""} · ${how}</small>`;
   el.style.top="24px"; blast.field.appendChild(el);
   blast.keyBar={el, f, name, t0:now}; blast.keyTarget={f, name};
-  banner(`KEY OF ${name}`, keyOnScreen() ? "HOLD A CHORD BUTTON TO SET IT" : "SET IT WITH THE KEY CHANGE COMBO");
+  banner(`KEY OF ${name}`, keyOnScreen() ? `SET IT: ${keyHoldHow(f)}` : "SET IT WITH THE KEY CHANGE COMBO");
   blastBar();
 }
 // called whenever the minichord reports its settings: has the key been set?
