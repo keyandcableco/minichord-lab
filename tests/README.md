@@ -82,3 +82,42 @@ its own before it counts: the checks keep real time, and a busy machine can make
 
 The harness (`arcade/harness.js`) loads `practice/index.html`, where the games play, running its
 scripts one by one in the page's order as a browser does, and uses the page's test hooks (`window.__sb`).
+
+## On iPhones
+
+jsdom lays nothing out, so how the arcade looks on a phone is tested apart, in a real browser
+([Playwright](https://playwright.dev) driving the Chrome installed here, or WebKit, Safari's engine).
+Every arcade game and the lobby, on four iPhones (SE, 13 mini, 15, 16 Pro Max) held upright and
+sideways, each game walked through its cabinet with a finger: the title, the rules rolling, the
+points, the power-ups, the high scores, a tap for the options, CHOOSE A LEVEL, level 1, then a chord
+button and a harp string on the screen's minichord.
+
+    npm run iphone                        # everything: about forty minutes
+    npm run iphone -- --quick             # the iPhone 15 only: about ten
+    npm run iphone -- --quick chomp       # the iPhone 15 only, Chord Chomp only
+    npm run iphone -- --devices se,max --landscape
+    npm run iphone -- --home              # as a Home Screen app: the whole screen, under the notch
+    npm run iphone -- --engine webkit     # in WebKit, run in Playwright's Docker image
+    npm run iphone -- --site DIR          # another copy of the site, e.g. git archive HEAD | tar -x -C DIR
+    npm run iphone -- --sharp             # screenshots at the phone's density (slower)
+
+What makes the browser an iPhone: Safari's viewport for each phone, its pixel density, touch, its user
+agent; no full screen for an element, no Web MIDI, no vibrate (an iPhone has none of them); the
+safe-area insets of its notch and home indicator, put into the CSS's `env()`; and Safari's `vh`, the
+screen with the toolbars tucked away, so a `100vh` box runs under the toolbar as it does on the phone.
+
+At each screen `iphone/probe.js` looks at what's actually shown (what's behind something opaque, like
+the page under the phone's cabinet, doesn't count), twice a moment apart, keeping only what's the same
+both times, so a sprite crossing the field's edge isn't taken for something cut off:
+
+| Finding | Error (exit 1) | Warning |
+|---|---|---|
+| text size | under 6px (Press Start 2P) or 9px (other fonts), canvas text too | under 8px or 11px |
+| tap targets | under 24px either way; partly covered or off the screen | under Apple's 44px; harp strings under 32px apart |
+| text | | cut off, partly covered, or drawn over other text |
+| shapes | | an `aspect-ratio` not kept (a round button squashed) |
+| the phone | the page panning sideways | under the notch, a rounded corner or the home indicator; a field under 16px (Safari zooms in when it's tapped) |
+| the page | a script error, a picture missing, a step of the walk-through that didn't work | a button that has to be scrolled to inside the screen |
+
+The report, `iphone/report/index.html`, has a table of every page on every phone, then each page's
+screens with what was found boxed on them (hover a box for what it is), and `findings.json` beside it.

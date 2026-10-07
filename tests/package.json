@@ -3,9 +3,11 @@
   "private": true,
   "description": "Headless tests for Minichord Lab's arcade games",
   "scripts": {
-    "test": "node arcade/run.js"
+    "test": "node arcade/run.js",
+    "iphone": "node iphone/run.js"
   },
   "devDependencies": {
-    "jsdom": "^24.1.0"
+    "jsdom": "^24.1.0",
+    "playwright-core": "^1.63.0"
   }
 }
