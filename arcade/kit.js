@@ -140,13 +140,14 @@ function menuRebuild(build){
 // The arcade's preset, put on the minichord for the length of a game and given back after (in one
 // message where the firmware can push and pop). Two parts:
 //   what playing needs, always: glide off, since a gliding chord isn't read until it lands, so a fast
-//     change feels like a press that didn't register; and chords that don't retrigger on their own;
+//     change feels like a press that didn't register; chords that don't retrigger on their own; and
+//     voice leading off, so a chord is voiced the same way whatever was played before it;
 //   what only changes the sound, unless the player keeps their own (ARCADE SOUND): vibrato off on the
 //     chords and the strings, so a chord to name is a steady one, and no delay echoing the last chord
 //     over the next.
 // (The rhythm mode is a switch on the instrument, not a setting, so it can't be borrowed: a game asks
 // for it to be off when it sees chords arrive on the beat.)
-const ARCADE_PLAY ={199:0, 21:0};                    // glide chords, retrigger chords
+const ARCADE_PLAY ={199:0, 21:0, 111:0};             // glide chords, retrigger chords, voice leading
 const ARCADE_SOUND={175:0, 76:0, 183:0};             // chord vibrato, harp vibrato, chord delay mix
 const arcadeCleanSound=()=> saved.arcadeSound!=="mine";
 function arcadePreset(){
@@ -156,7 +157,7 @@ function arcadePreset(){
 // setting up for the minichord, once per game: its settings read regularly, and whatever it borrows
 function arcadeSetup(fn){ if(blast.setupDone) return; blast.setupDone=true; poll(true); arcadeVolumes();
   if(hasSetting(39)) ensure(39,0);      // the standard chord layout: every game asks for its chords
-  if(canWrite()) arcadePreset();        // glide off, and a clean sound unless the player keeps their own
+  if(canWrite()) arcadePreset();        // glide and voice leading off, and a clean sound unless the player keeps their own
   if(fn) fn(); }
 // Manual aim needs knobs that change nothing on the instrument: the chord and harp knobs always move
 // their volumes, and the mod knob's main function is a setting of the preset. On firmware with knob
