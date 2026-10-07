@@ -1,6 +1,7 @@
 // Chord Chomp: steered on the harp and the keys, the dots eaten (and sung, with a chord held), a
 // power pellet turning blue only the ghost whose chord is held, the others still deadly, cadences, the
-// key that turns up taken by the combo (and by its home chord without one), capsules, and a maze cleared.
+// key that turns up taken by the combo (and by its home chord without one), capsules, a pellet with a
+// key up turning them all blue, and a maze cleared.
 const t=require("./harness").load("chord-chomp");
 (async()=>{
   const {w, sb, sleep, key, note, chord, knob, check, d, mc}=t;
@@ -104,6 +105,16 @@ const t=require("./harness").load("chord-chomp");
   w.eval("blast.restUntil=0");
   const l0=a.lives; w.eval("ccPowerGet('dacapo')");
   check("DA CAPO: a life back", a.lives===l0+1);
+  // a key up: a power pellet turns them all blue, whatever's held, for long enough to set the key
+  w.eval("blast.fermataUntil=blast.clock+60; blast.latched=null; blast.fruit=null; ccFruitSpawn(); blast.fruit.until=blast.clock+1; ccPowerStart()");
+  a.ghosts.forEach((g,i)=>place(g,3+i,27)); sounding=[]; await until(()=>a.st==="go"); await sleep(60);
+  check("a key up, a power pellet with nothing held: every ghost out turns blue", a.ghosts.every(g=>g.scared), `${a.st}: ${a.ghosts.map(g=>g.state+(g.scared?" blue":"")).join(", ")}`);
+  check("and the key stays up till the power's done", a.fruit && a.fruit.until>=w.eval("blast.powerUntil")+1.9);
+  w.eval("blast.fruit=null; blast.powerUntil=0; blast.powerAll=false"); await sleep(60);
+  check("the power over, they're dangerous again", a.ghosts.every(g=>!g.scared));
+  const pel=w.eval("(()=>{ blast.dots.forEach(r=>r.forEach((v,x)=>{ if(v===2) r[x]=0; })); const l=blast.left; ccFruitSpawn(); return {back:blast.dots.flat().filter(v=>v===2).length, more:blast.left-l}; })()");
+  check("a key that turns up with every pellet eaten puts one back", pel.back===1 && pel.more===1, JSON.stringify(pel));
+  w.eval("blast.fruit=null; blast.fermataUntil=0");
   // the maze cleared: the next level
   const lv=a.level; w.eval("blast.dots.forEach(r=>r.fill(0)); blast.dots[23][12]=1; blast.left=1; Object.assign(blast.pac,{x:13,y:23,p:0,dir:'left'}); blast.want='left'; blast.ghosts.forEach(g=>{g.state='house'; g.releaseAt=1e9;})");
   for(let i=0;i<120 && a.level===lv;i++) await sleep(50);
