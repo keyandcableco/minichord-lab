@@ -958,6 +958,7 @@ function ccAutopilot(){
   if(blast.clock<(blast.autoAt||0)) return; blast.autoAt=blast.clock+.12;
   const P=blast.pac, [dx,dy]=P.p>0 ? CC_DIRS[P.dir] : [0,0], sx=mod(P.x+dx,CC_COLS), sy=P.y+dy;
   const goal = blast.demoTarget ? (x,y)=>{ const G=ccPos(blast.demoTarget); return x===mod(Math.round(G.x),CC_COLS) && y===Math.round(G.y); } : (x,y)=>blast.dots[y][x]>0;
+  if(P.p>0 && goal(sx,sy)) return;                                     // what it's after is the tile ahead: on, or it turns back and forth for good
   const seen=new Set([sx+","+sy]), Q=[[sx,sy,null]];
   while(Q.length){ const [x,y,first]=Q.shift();
     for(const d of CC_ORDER){ const [ex,ey]=CC_DIRS[d], nx=mod(x+ex,CC_COLS), ny=y+ey, k=nx+","+ny, c=ccCell(nx,ny);

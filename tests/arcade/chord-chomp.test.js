@@ -172,6 +172,20 @@ const t=require("./harness").load("chord-chomp");
   check("held sideways: the maze as it always was, big enough to play on, scrolling, the player kept in view", side.rows===29 && side.scrolls && side.sq>=w.eval("CC_SMALL") && side.sq<20 && side.seen.every(Boolean), JSON.stringify(side));
   w.eval("ccBuild(29)");
   w.eval(`Object.defineProperty(window,"devicePixelRatio",{value:1, configurable:true})`);
+  // the demo's autopilot, a dot on the tile ahead and another behind: it eats on, at any frame rate
+  // (it once turned back and forth between them for good, the demo stuck)
+  const stuck=w.eval(`(()=>{ const tick=ccTick; ccTick=()=>{}; cancelAnimationFrame(blast.raf); const out=[];
+    const keep={st:blast.st, auto:blast.demoAuto, dots:blast.dots.map(r=>[...r]), left:blast.left, pac:{...blast.pac}, want:blast.want, gh:blast.ghosts.map(g=>({...g}))};
+    for(const hz of [30,60,120,144]) for(const [ahead,behind] of [[1,1],[1,3],[2,2]]) for(let p0=0; p0<1; p0+=.1){
+      blast.st="go"; blast.demoAuto=true; blast.autoAt=0; blast.ghosts.forEach(g=>{ g.state="house"; g.releaseAt=1e9; });
+      blast.dots.forEach(r=>r.fill(0)); blast.dots[4][13-ahead]=1; blast.dots[4][13+behind]=1; blast.left=2;
+      Object.assign(blast.pac,{x:13, y:4, p:p0, dir:"left"}); blast.want="left";
+      for(let tt=0; tt<3 && blast.left>0; tt+=1/hz) ccStep(1/hz);
+      if(blast.left>0) out.push(hz+"Hz "+ahead+"/"+behind+" p"+p0.toFixed(1));
+    }
+    Object.assign(blast,{st:keep.st, demoAuto:keep.auto, dots:keep.dots, left:keep.left, want:keep.want}); Object.assign(blast.pac,keep.pac); blast.ghosts.forEach((g,i)=>Object.assign(g,keep.gh[i]));
+    ccTick=tick; blast.last=performance.now(); blast.raf=requestAnimationFrame(ccTick); return out; })()`);
+  check("the demo's autopilot, a dot just ahead and another behind, eats on at any frame rate", !stuck.length, stuck.slice(0,4).join(", "));
   // leaving gives the key back
   sb.restoreAll();
   check("leaving gives back the minichord's own key", t.mc.params[35]===2);
