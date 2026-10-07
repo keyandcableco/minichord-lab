@@ -24,7 +24,7 @@
 // knocks everything under it down onto its plate, floor by floor, still in its order, and comes to
 // rest on the lowest floor, the riders squashed there for a bonus that doubles with every one. It's
 // left there to be walked across, onto the plate, to finish the burger. The pepper is a chord: play one, and every
-// sour note close by whose note is in it is harmonised, sweet and harmless for a few seconds. Five
+// sour note in the kitchen whose note is in it is harmonised, sweet and harmless for a few seconds. Five
 // shakes a kitchen, spent only on a chord that harmonises something (or one wasted on sour notes it
 // doesn't catch); a chord that serves a plate peppers for free.
 //
@@ -690,16 +690,20 @@ function burgerChord(voices){
   if(P) heard(name, false, why ? `THAT'S ${name}: ${why}` : `READ IT FROM THE PLATE UP: ${P.stack.map(i=>i.name).join(" ")}`);
   else heard(name, false, "NO PLATE'S FULL YET");
 }
-// The pepper: every sour note close by whose note is in the chord, harmonised. A shake spent on one
-// that catches something, or wasted on sour notes close by that it doesn't; free with a serve.
+// The pepper: every sour note in the kitchen whose note is in the chord, harmonised, however far off
+// (a reach round the cook made a right chord miss with nothing to say why). A shake spent on one that
+// catches something, or wasted on sour notes about that it doesn't; free with a serve. True when
+// it's said what happened.
 function bkPepper(pitches, free){
-  const pcs=new Set(pitches.map(p=>mod(Math.round(p),12))), C=blast.cook;
-  const near=blast.sour.filter(e=>(e.state==="walk" || e.state==="sweet") && Math.abs(e.x-C.x)<7 && Math.abs(e.y-C.y)<1.05);
+  const pcs=new Set(pitches.map(p=>mod(Math.round(p),12)));
+  const near=blast.sour.filter(e=>e.state==="walk" || e.state==="sweet");
   if(!near.length) return false;
   if(!free && blast.pepper<=0){ heard(chordName(pitches, devFifths()), false, "NO PEPPER LEFT"); return true; }
   const hit=near.filter(e=>pcs.has(e.pc));
   if(!free) blast.pepper--;
-  if(!hit.length){ if(!free){ heard(chordName(pitches, devFifths()), false, `SOUR! ${near.map(e=>e.name).join(", ")} ISN'T IN IT`); sfx("sour"); bkBar(); } return !free; }
+  // a miss with a plate waiting says what was wrong with it, the shake gone all the same
+  if(!hit.length){ if(free) return false; sfx("sour"); bkBar(); if(bkReady().length) return false;
+    heard(chordName(pitches, devFifths()), false, `SOUR! ${near.map(e=>e.name).join(", ")} ISN'T IN IT`); return true; }
   const until=blast.clock+4*Math.sqrt(speedMul());
   hit.forEach(e=>{ e.state="sweet"; e.until=until; e.pepperAt=blast.clock; });
   const pts=mulPts(100*2**(hit.length-1)*(blast.level+1));

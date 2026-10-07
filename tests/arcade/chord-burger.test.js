@@ -130,6 +130,14 @@ const t=require("./harness").load("chord-burger");
   check("a chord with a sour note's note in it harmonises it, for a shake of pepper", e.state==="sweet" && a.pepper===pep-1, `${e.state} ${a.pepper}`);
   e.state="walk"; e.until=0; await play([48,52,55]);                    // C: hasn't
   check("a chord without it is a shake wasted", e.state==="walk" && a.pepper===pep-2 && /SOUR/.test(t.heard()), t.heard());
+  Object.assign(e, {x:a.cook.x>14 ? 1 : 27, y:a.cook.y>2 ? 0 : 4, pc:10, name:"B♭"}); a.pepper=5;
+  await play([43,46,50]);                                               // Gm: has B♭, the sour note the far side of the kitchen
+  check("the pepper reaches a sour note anywhere in the kitchen", e.state==="sweet" && a.pepper===4, `${e.state} at ${e.x},${e.y}, cook ${a.cook.x.toFixed(1)},${a.cook.y}`);
+  e.state="walk"; e.until=0;
+  const P2=a.plates[2], was2=P2.state; P2.state="ready"; P2.readyAt=a.clock;     // a plate waiting (its stack doesn't matter here)
+  await play([49,53,56]);                                               // C♯: no B♭, not the plate's chord
+  check("a miss with a plate waiting says what's wrong with the plate, the shake spent", e.state==="walk" && a.pepper===3 && !/SOUR/.test(t.heard()) && P2.state==="ready", t.heard());
+  P2.state=was2;
   e.state="wait"; e.at=1e9;
 
   // riders: two sour notes on an ingredient ride it down to the lowest floor, knocking everything under
