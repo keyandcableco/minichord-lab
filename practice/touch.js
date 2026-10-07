@@ -166,9 +166,11 @@ function tdSync(){
 }
 // Beginner mode and the demos light what to press on the game's own minichord. Played on the screen
 // that one isn't shown (touch.css): the deck lights instead, the chord buttons, the modifier, a slash's
-// bass, the string or the d-pad, as the game's lights them, the moment it does.
+// bass, the string or the d-pad, as the game's lights them, the moment it does. Chord Invaders' demo
+// keeps its own (it shows the presets and knobs too), and the deck lights its chords as well.
+const tdHintBoard=()=> blast && (blast.helpBoard || blast.demoBoard);
 function tdWatchHints(){
-  const els=[blast && blast.helpBoard && blast.helpBoard.el, blast && blast.helpHarp && blast.helpHarp.el].filter(e=>e && e.nodeType===1);
+  const els=[tdHintBoard() && tdHintBoard().el, blast && blast.helpHarp && blast.helpHarp.el].filter(e=>e && e.nodeType===1);
   if(td.hintEls && td.hintEls.length===els.length && td.hintEls.every((e,i)=>e===els[i])) return;
   td.hintObs && td.hintObs.disconnect(); td.hintEls=els;
   if(window.MutationObserver && els.length){
@@ -179,7 +181,7 @@ function tdWatchHints(){
 }
 function tdHints(){
   const deck=td.deck; if(!deck) return;
-  const hb=blast && blast.helpBoard, hh=blast && blast.helpHarp;
+  const hb=tdHintBoard(), hh=blast && blast.helpHarp;
   const cell=(c,r)=> hb && hb.cells && hb.cells[c] && hb.cells[c][r];
   deck.querySelectorAll(".tdcell").forEach(b=>{ const c=cell(+b.dataset.c, +b.dataset.r);
     b.classList.toggle("hint", !!c && c.classList.contains("lit")); b.classList.toggle("slashhint", !!c && c.classList.contains("slashlit")); });
@@ -317,7 +319,33 @@ function tdBareSync(){
   if(!cab && !td.bareLeft && tdReal() && blast && blast.field && typeof toggleFull==="function") toggleFull(blast.field, {auto:true});
 }
 mc.addEventListener("ports", ()=>setTimeout(tdBareSync, 0));   // after the deck's stepped aside (virtual.js)
-setInterval(tdBareSync, 500);                                    // and for a game that builds its field later
+setInterval(()=>{ tdBareSync(); tdBandSync(); }, 500);          // and for a game that builds its field later
+
+// The picture of the minichord a demo (or beginner mode) lights what it presses on, in the bare cabinet:
+// a band of its own, under the game's screen held upright and beside it held sideways, the picture as
+// big as the band allows (no bigger than on a desktop), the game making room for it as it does for the
+// deck. Drawn over the game in a corner, a phone's width made it too small to read.
+function tdBandWhich(){
+  const f=blast && blast.field; if(!f) return null;
+  const shown=e=>e && getComputedStyle(e).display!=="none";
+  return [f.querySelector(".demo .board"), f.querySelector(".helper.hboard")].find(shown) || null;
+}
+function tdBandSync(){
+  const cab=document.querySelector(".fscab.phone.bare"), on=!!(cab && tdBandWhich());
+  const was=document.querySelector(".fscab.mcband");
+  if(was && was!==cab) was.classList.remove("mcband");
+  if(!cab) return;
+  if(on){
+    const side=tdSide(), w=innerWidth, h=innerHeight, r=1508/803;
+    const bw=Math.floor(side ? Math.min(520, w*.4, (h-24)*r) : Math.min(520, w-16)), bh=Math.round(bw/r);
+    const root=document.documentElement.style, key=`${bw}|${bh}`;
+    if(root.getPropertyValue("--mcb-w")!==bw+"px"){ root.setProperty("--mcb-w", bw+"px"); root.setProperty("--mcb-h", bh+"px"); }
+    if(cab.dataset.mcb===key && cab.classList.contains("mcband")) return;
+    cab.dataset.mcb=key;
+  } else if(!cab.classList.contains("mcband")) return;
+  cab.classList.toggle("mcband", on);
+  if(typeof arcadeRelayout==="function") setTimeout(arcadeRelayout, 60);
+}
 
 // ---------- where the sound goes, a minichord on a phone ----------
 // From firmware 24 the minichord has a USB audio setting (address 244), the instrument's, not a

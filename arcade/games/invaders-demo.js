@@ -10,6 +10,8 @@
 // buttons that play it, and the pressed buttons shoot it down. Then the slash chord, and last
 // the key change combo: both preset buttons held, the rows turning into sharp, natural and flat
 // keys, one pressed. It runs from HOW TO PLAY, and on its own after a while on the title screen.
+// On a narrow screen the minichord is close up on its chord buttons, and a scene marked wide (the
+// presets, the light, a knob) pulls back to the whole case.
 const DEMO_COLS=["F","C","G","D","A","E","B"];
 const DEMO_SHIP=.28;                      // where the ship sits in the demo, as a share of the field's width: under the chords
 // where the parts sit on the minichord, as percentages of its outline (from its layout drawing):
@@ -17,7 +19,7 @@ const DEMO_SHIP=.28;                      // where the ship sits in the demo, as
 const MC_PARTS={"buttons": [[12.59, 17.03, 5.31, 9.74], [19.62, 17.03, 5.3, 9.74], [26.66, 17.03, 5.34, 9.74], [33.74, 17.03, 5.27, 9.74], [40.77, 17.03, 5.31, 9.74], [47.79, 17.03, 5.31, 9.74], [54.82, 17.03, 5.3, 9.74], [15.17, 30.28, 5.31, 9.89], [22.22, 30.28, 5.26, 9.89], [29.24, 30.28, 5.26, 9.89], [36.27, 30.28, 5.26, 9.89], [43.29, 30.28, 5.31, 9.89], [50.31, 30.28, 5.29, 9.89], [57.42, 30.28, 5.29, 9.89], [17.69, 43.6, 5.31, 9.88], [24.72, 43.6, 5.31, 9.88], [31.79, 43.6, 5.29, 9.88], [38.84, 43.6, 5.31, 9.88], [45.87, 43.6, 5.31, 9.88], [52.9, 43.6, 5.31, 9.88], [59.93, 43.6, 5.31, 9.88]], "mod": [8.34, 16.99, 2.58, 4.96], "presets": [[89.36, 64.89, 3.45, 5.98], [89.36, 72.98, 3.45, 5.97]], "led": [63.44, 63.27, 2.77, 5.27]};
 const DEMO_ROWS=[["MAJ",""],["MIN","m"],["7","7"]];
 const DEMO_SCENES=[
-  {title:"THE MINICHORD", text:"SEVEN COLUMNS, ONE FOR EACH NOTE. THREE ROWS: MAJOR, MINOR AND 7.", hold:3600},
+  {title:"THE MINICHORD", text:"SEVEN COLUMNS, ONE FOR EACH NOTE. THREE ROWS: MAJOR, MINOR AND 7.", hold:3600, wide:true},
   {chord:"C",     col:1, rows:[0], text:"A MAJOR CHORD: ITS COLUMN'S TOP BUTTON"},
   {chord:"Am",    col:4, rows:[1], text:"A MINOR CHORD: THE MIDDLE ROW"},
   {chord:"G7",    col:2, rows:[2], text:"A 7 CHORD: THE BOTTOM ROW"},
@@ -28,18 +30,35 @@ const DEMO_SCENES=[
   {chord:"F♯m",   col:0, rows:[1], mod:true, text:"SHARPS AND FLATS: HOLD THE MODIFIER TOO"},
   {flip:true, title:"SHARP OR FLAT?", text:"DOUBLE-TAP THE MODIFIER: SHARP BECOMES FLAT.", hold:4200},
   {chord:"C/E",   col:1, rows:[0], slash:5, text:"SLASH CHORDS: THE CHORD, THEN THE BASS NOTE'S COLUMN"},
-  {key:true, title:"SETTING THE KEY", text:"HOLD BOTH PRESET BUTTONS. THE LIGHT BLINKS.", hold:3200},
-  {key:true, keyPress:[3,1], text:"THE ROWS ARE SHARP, NATURAL AND FLAT KEYS. PRESS ONE.", hold:3400},
-  {key:false, keyDone:"D", text:"LET GO: D MAJOR.", hold:3000},
-  {act:"aim", title:"MANUAL AIM ×2", text:"STEER UNDER IT WITH A KNOB, THEN PLAY IT."},
-  {act:"beam", title:"THE BEAM", text:"SHOOT ONE DOWN AND KEEP HOLDING: A SHORT BEAM BURNS EVERY CHORD OF ITS TYPE."},
-  {act:"omni", title:"POWER-UPS", text:"SHOOT ONE TO TAKE IT."},
+  {key:true, title:"SETTING THE KEY", text:"HOLD BOTH PRESET BUTTONS. THE LIGHT BLINKS.", hold:3200, wide:true},
+  {key:true, keyPress:[3,1], text:"THE ROWS ARE SHARP, NATURAL AND FLAT KEYS. PRESS ONE.", hold:3400, wide:true},
+  {key:false, keyDone:"D", text:"LET GO: D MAJOR.", hold:3000, wide:true},
+  {act:"aim", title:"MANUAL AIM ×2", text:"STEER UNDER IT WITH A KNOB, THEN PLAY IT.", wide:true},
+  {act:"beam", title:"THE BEAM", text:"SHOOT ONE DOWN AND KEEP HOLDING: A SHORT BEAM BURNS EVERY CHORD OF ITS TYPE.", wide:true},
+  {act:"omni", title:"POWER-UPS", text:"SHOOT ONE TO TAKE IT.", wide:true},
   {title:"BONUS ROUNDS", text:"EVERY TWO LEVELS: FOUR CHORDS STOP IN THE SKY, THREE FROM ONE KEY. SHOOT THE ONE THAT DOESN'T BELONG.", hold:4200},
   {title:"READY?", text:"CHOOSE A LEVEL. PLAY EACH CHORD BEFORE IT LANDS.", hold:2800},
 ];
 function stopDemo(){ const was=!!(blast && blast.demo);
   if(blast && blast.demo){ blast.demo.run=false; blast.demo.el.remove(); blast.demo=null; } if(blast && blast.field) blast.field.classList.remove("demoing");
   if(was && blast){ blast.demoBoard=null; blast.demoShip=null; helperSync(true); } }   // the demo's minichord goes, unless beginner mode keeps one
+// Narrow (a phone, or the screen beside the deck held sideways), the minichord goes the field's width;
+// and where it's still small, close up on the buttons when that's all a scene presses.
+function demoFit(el, close){
+  const b=el.querySelector(".board");
+  el.classList.toggle("narrow", blast.field.clientWidth<640);
+  el.classList.toggle("close", !!close && b.clientWidth<480);
+  if(typeof tdBandSync==="function") tdBandSync();
+}
+// how far a chord falls (its top, in the field): to y, or as far as clears the minichord
+// (the board's own box, not as it's zoomed: close up, what's shown starts at its top)
+function demoFloor(el, y){
+  const b=el.querySelector(".board"); if(!b) return y;
+  const cs=getComputedStyle(b);
+  if(cs.position==="fixed") return y;                                      // in a band of its own (touch.js), clear of the field
+  const top=blast.field.clientHeight-parseFloat(cs.bottom)-b.offsetHeight+(el.classList.contains("close") ? b.offsetHeight*.02 : 0);
+  return Math.max(96, Math.min(y, Math.round(top-40)));
+}
 function runDemo(attract){
   if(!blast) return;
   newRun(); stopDemo(); clearTimeout(blast.attract);
@@ -64,7 +83,7 @@ function runDemo(attract){
   place(el.querySelector(".mod"), MOD_UP);
   el.querySelectorAll(".pre").forEach((p,i)=>place(p, MC_PARTS.presets[i]));
   place(el.querySelector(".led"), MC_PARTS.led);
-  blast.demoBoard={knobs:mcKnobs(el.querySelector(".board"), place)};
+  blast.demoBoard={el, knobs:mcKnobs(el.querySelector(".board"), place), cells, mod:el.querySelector(".mod")};   // the deck lights what it lights (touch.js tdHints)
   DEMO_ROWS.forEach(([tag],r)=>{ const t=document.createElement("span"); t.className="rowtag"; t.textContent=tag;
     const first=MC_PARTS.buttons[r*7];
     if(r===0){ t.classList.add("undermod"); t.style.left=(MOD_UP[0]+MOD_UP[2]/2)+"%"; t.style.top=(MOD_UP[1]+MOD_UP[3]+1.4)+"%"; }   // the top row's tag sits under the modifier
@@ -72,7 +91,7 @@ function runDemo(attract){
     grid.appendChild(t);
     DEMO_COLS.forEach((c,ci)=>{ const b=document.createElement("div"); b.className="cell"; place(b, MC_PARTS.buttons[r*7+ci]); (cells[ci]||=[])[r]=b; grid.appendChild(b); }); });
   const label=keyMode=>{ DEMO_ROWS.forEach(([tag,suf],r)=>{ grid.children[r*8].innerHTML = keyMode ? ["♯<br>KEYS","♮ KEYS","♭ KEYS"][r] : tag;   // under the modifier, KEYS beneath its ♯
-    DEMO_COLS.forEach((c,ci)=>cells[ci][r].textContent = keyMode ? c+["♯","","♭"][r] : c+suf); }); };
+    DEMO_COLS.forEach((c,ci)=>mcLabel(cells[ci][r], keyMode ? c+["♯","","♭"][r] : c+suf)); }); };
   label(false);
   const $d=s=>el.querySelector(s), sleep=ms=>new Promise(r=>setTimeout(r,ms));
   const clear=()=>{ el.querySelectorAll(".lit").forEach(x=>x.classList.remove("lit")); el.querySelectorAll(".slashlit").forEach(x=>x.classList.remove("slashlit")); };
@@ -87,7 +106,7 @@ function runDemo(attract){
     for(const sc of DEMO_SCENES){
       if(!token.run) return;
       clear(); $d(".demotitle").textContent=sc.title||""; $d(".democap").textContent=sc.text;
-      el.classList.toggle("keymode", !!sc.key);
+      el.classList.toggle("keymode", !!sc.key); demoFit(el, !sc.wide);
       $d(".led").classList.toggle("blinking", !!sc.key);
       el.querySelectorAll(".pre").forEach(p=>p.classList.toggle("lit", !!sc.key));
       label(!!sc.key || !!sc.keyPress);
@@ -109,7 +128,7 @@ function runDemo(attract){
         // the chord falls, the buttons light one after another, and they shoot it down
         const ch=document.createElement("span"); ch.className="fchord democh"; ch.textContent=sc.chord; ch.style.left=`calc(${DEMO_SHIP*100}% - 2.2em)`; ch.style.top="92px";
         blast.field.appendChild(ch);
-        requestAnimationFrame(()=>{ ch.style.transition="top 2.2s linear"; ch.style.top="210px"; });
+        requestAnimationFrame(()=>{ ch.style.transition="top 2.2s linear"; ch.style.top=demoFloor(el, 210)+"px"; });
         await sleep(700); if(!token.run){ ch.remove(); return; }
         if(sc.mod){ $d(".mod").classList.add("lit"); sfx("press"); await sleep(350); }
         for(const r of sc.rows){ cells[sc.col][r].classList.add("lit"); sfx("press"); await sleep(330); if(!token.run){ ch.remove(); return; } }
@@ -304,7 +323,7 @@ document.addEventListener("keydown", e=>{
 async function demoAct(act, {token, el, cells, clear, sleep, playChord, $d}){
   const fld=blast.field, W=()=>fld.clientWidth||900, live=()=>token.run, dropped=[];
   const drop=(sym, frac, extra="", html="")=>{ const ch=document.createElement("span"); ch.className="fchord democh "+extra; ch.innerHTML=html; ch.append(sym);
-    ch.style.left=`${frac*100}%`; ch.style.top="88px"; fld.appendChild(ch); void ch.offsetWidth; ch.style.transition="top 5s linear"; ch.style.top="250px"; dropped.push(ch); return ch; };
+    ch.style.left=`${frac*100}%`; ch.style.top="88px"; fld.appendChild(ch); void ch.offsetWidth; ch.style.transition="top 5s linear"; ch.style.top=demoFloor(el, 250)+"px"; dropped.push(ch); return ch; };
   const boom=ch=>{ if(!ch.isConnected) return; const x=ch.offsetLeft, y=ch.offsetTop+ch.offsetHeight/2; sfx("boom"); explode(x,y); ch.remove(); };
   const tidy=()=>{ dropped.forEach(c=>c.remove()); blast.beamOn=false; blast.powers={}; blast.demoShip=null; clear(); };
   // the ship to a place, the knob turning to match

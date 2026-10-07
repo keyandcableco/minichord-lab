@@ -185,6 +185,22 @@ body.tdplay .field .kmstrip{display:none}                      /* the deck is th
   width:40px;height:40px;opacity:.5;background:rgba(22,19,42,.75)}
 .fscab.phone.bare>.tdmenu:active{opacity:1}
 .fscab.bare .field .kmstrip{display:none}   /* the harp's the minichord's own (controller.js kmStripShown) */
+/* a demo's (or beginner mode's) picture of the minichord, plugged into the phone: in a band of its own
+   under the screen, beside it held sideways (touch.js tdBandSync), the screen made smaller for it; the ☰
+   in the band's empty corner, under the case's chord end */
+.fscab.phone.bare.mcband{padding-bottom:calc(var(--mcb-h) + 16px + env(safe-area-inset-bottom,0px))}
+.fscab.phone.bare.mcband .field :is(.helper.hboard,.demo .board){position:fixed;z-index:3;top:auto;right:auto;
+  bottom:calc(8px + env(safe-area-inset-bottom,0px));left:calc(50% - var(--mcb-w)/2);width:var(--mcb-w);opacity:1}
+.fscab.phone.bare.mcband>.tdmenu{right:auto;left:calc(env(safe-area-inset-left,0px) + 6px)}
+/* nothing behind it there: the case solid, as in Chord Invaders' demo */
+.fscab.phone.bare.mcband .field .helper .board::before{opacity:1}
+.fscab.phone.bare.mcband .field .helper :is(.cell,.mod){opacity:1}
+@media (orientation:landscape) and (max-height:520px){
+  .fscab.phone.bare.mcband{padding-bottom:env(safe-area-inset-bottom,0px);padding-right:calc(var(--mcb-w) + 16px + env(safe-area-inset-right,0px))}
+  .fscab.phone.bare.mcband .field :is(.helper.hboard,.demo .board){left:auto;right:calc(8px + env(safe-area-inset-right,0px));bottom:auto;top:calc(50% - var(--mcb-h)/2)}
+  .fscab.phone.bare.mcband>.tdmenu{left:auto;right:calc(env(safe-area-inset-right,0px) + 6px)}
+  .fscab.phone.bare.mcband .field .demo.close .board{transform:translate(14.25%,14.5%) scale(1.6)}   /* Chord Invaders' close up, in the band's middle */
+}
 /* the menu itself, the arcade's dialog with a line for each thing */
 dialog.tdmenudlg{width:min(22rem,88vw);box-sizing:border-box;padding:18px 16px}
 .tdmlist{display:flex;flex-direction:column;gap:2px;margin-bottom:14px}

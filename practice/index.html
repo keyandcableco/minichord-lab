@@ -435,7 +435,7 @@ body.kbplay #connect{opacity:.5}
 /* the knobs on the on-screen minichord: a pointer turned to the value, lit with the knob's name as it moves */
 .board .knob{position:absolute;z-index:1;border-radius:50%;box-sizing:border-box}   /* over the keymaster plate, so its name reads clear of the notes */
 .board .knob i{position:absolute;left:50%;bottom:50%;width:16%;height:44%;margin-left:-8%;background:#F1E8D2;border-radius:2px;transform-origin:50% 100%;transform:rotate(var(--turn,0deg));transition:transform .08s linear}
-.board .knob b{position:absolute;right:125%;top:50%;transform:translateY(-50%);font:400 .42rem "Press Start 2P",monospace;color:#FFD35A;text-shadow:1px 1px 0 #000;white-space:nowrap;opacity:0;transition:opacity .2s;background:rgba(7,6,12,.85);padding:2px 3px;border-radius:2px}
+.board .knob b{position:absolute;right:125%;top:50%;transform:translateY(-50%);font:400 min(.42rem,1.29cqw) "Press Start 2P",monospace;color:#FFD35A;text-shadow:1px 1px 0 #000;white-space:nowrap;opacity:0;transition:opacity .2s;background:rgba(7,6,12,.85);padding:2px 3px;border-radius:2px}
 .board .knob.lit{box-shadow:0 0 0 2px #FFD35A,0 0 10px rgba(255,211,90,.8)}
 .board .knob.lit i{background:#FFD35A}
 .board .knob.lit b{opacity:1}
@@ -465,11 +465,11 @@ body.kbplay #connect{opacity:.5}
 
 /* Chord Asteroids' minichord carries its harp: the strip in its slot, or the keymaster plate over it */
 .helper .board .hbstrip{display:flex;flex-direction:column;gap:1px;background:#050407}
-.helper .board .hbstrip span{flex:1;display:flex;align-items:center;justify-content:center;font:400 .3rem "Press Start 2P","Minichord Lab Accidentals",monospace;color:#6E6890;border-bottom:1px solid #1C1A24}
+.helper .board .hbstrip span{flex:1;display:flex;align-items:center;justify-content:center;font:400 min(.3rem,.92cqw) "Press Start 2P","Minichord Lab Accidentals",monospace;color:#6E6890;border-bottom:1px solid #1C1A24}
 .helper .board .hbstrip span.lit,.helper .board .kmplate .kdot.lit{background:#FFD35A;color:#16132A;box-shadow:0 0 10px rgba(255,211,90,.95)}
 .helper .board .kmplate.onboard{aspect-ratio:auto}
 .helper .board .hbcover{background:#2B2620}
-.helper .board .kmplate.onboard .kdot{font-size:.28rem;border-width:2px}
+.helper .board .kmplate.onboard .kdot{font-size:min(.28rem,.86cqw);border-width:clamp(1px,.385cqw,2px)}
 
 /* Chord Breakout: the wall, the paddle and the ball */
 .bobrick{position:absolute;z-index:2;display:flex;align-items:center;justify-content:center;box-sizing:border-box;font:400 calc(var(--chord-size,1.25rem)*.6)/1 "Press Start 2P","Minichord Lab Accidentals",monospace;white-space:nowrap;overflow:hidden;color:#16132A;border:2px solid #07060C;box-shadow:inset -3px -3px 0 rgba(0,0,0,.25),inset 3px 3px 0 rgba(255,255,255,.35);transition:opacity .3s,transform .3s}
@@ -556,7 +556,7 @@ body.kbplay #connect{opacity:.5}
 .overlay p.hsresult{color:#7FE9FF!important;font-size:.6rem!important}
 
 /* the controller on the minichord's own harp: glyphs on the strip or the plate, flashing when touched */
-.helper .board .hbpad span{font-size:.36rem;color:#CFC3A6}
+.helper .board .hbpad span{font-size:min(.36rem,1.1cqw);color:#CFC3A6}
 .helper .board .hbpad span.km-A,.helper .board .hbpad span.km-B,.helper .board .kmplate .kdot.km-A,.helper .board .kmplate .kdot.km-B{color:#FFD35A}
 .helper .board .hbpad span.hit,.helper .board .kmplate .kdot.hit{animation:kmhit .25s ease-out}
 .helper .board .hbpad span.demo-on,.helper .board .kmplate .kdot.demo-on{background:#FFD35A;color:#16132A;box-shadow:0 0 10px rgba(255,211,90,.95)}
@@ -1096,18 +1096,32 @@ html:has(.fscab),html:has(.fscab) body{overflow:hidden;overscroll-behavior:none}
 .demo .board>*,.demo .grid>*{position:absolute}
 .demo .grid{position:absolute;inset:0}
 .demo .mod,.demo .pre,.demo .cell{font:400 .5rem "Press Start 2P","Minichord Lab Accidentals",monospace;color:#F1E8D2;background:#2A2520;border:2px solid #8C8270;display:flex;align-items:center;justify-content:center;box-sizing:border-box}
-.demo .mod{font-size:.6rem}
-.demo .pre{font-size:.45rem;border-radius:0}
+.demo .mod{font-size:min(.6rem,1.85cqw)}
+.demo .pre{font-size:min(.45rem,1.38cqw);border-radius:0}
 .demo .led{border-radius:50%;background:#FF4B3E;box-shadow:0 0 6px #FF4B3E}
 .demo .led.blinking{animation:blink .3s steps(2) infinite}
 .demo .rowtag.undermod{transform:translate(-50%,0);text-align:center;line-height:1.5}   /* under the modifier */
-.demo .rowtag{font-size:.42rem!important}
+.demo .rowtag{font-size:min(.42rem,1.29cqw)!important}
 .demo .rowtag{font:400 .38rem "Press Start 2P","Minichord Lab Accidentals",monospace;color:#CFC3A6;white-space:nowrap;text-align:right;transform:translate(-100%,-50%)}
+/* both on-screen minichords, the demo's and beginner mode's: lettering and edges drawn to the size the
+   case is drawn at, as big as on the full-size case and never more, a button's label no wider than the
+   button (--n, its letters, set where it's labelled); after the rules that set their font and border */
+.helper .board,.demo .board{container-type:inline-size}
+.helper :is(.mod,.pre,.cell),.demo :is(.mod,.pre,.cell){border-width:clamp(1px,.385cqw,2px)}
+.helper .cell{font-size:min(.42rem,calc((5.3cqw - 2*clamp(1px,.385cqw,2px) - 1px)/var(--n,2)))}
+.demo .cell{font-size:min(.5rem,calc((5.3cqw - 2*clamp(1px,.385cqw,2px) - 1px)/var(--n,2)))}
+.helper :is(.mod,.pre){font-size:min(.42rem,1.29cqw)}
 .demo .lit{background:#FFD35A!important;color:#16132A!important;border-color:#FFF4C2!important;box-shadow:0 0 10px rgba(255,211,90,.8)}
 .demo .slashlit{background:#7FE9FF!important;color:#16132A!important;border-color:#E0FBFF!important;box-shadow:0 0 10px rgba(127,233,255,.8)}
 .demo.keymode .cell{border-color:#5FA8FF;color:#B9E0FF}
 .field.arcade .fchord.democh{z-index:6}
-@media (max-width:560px){.demo .cell{font-size:.36rem}.demo .board{bottom:8px;right:6px;width:92%}}
+/* narrow (a phone, or beside the deck held sideways: invaders-demo.js demoFit), the field's width; and
+   still small, close up on the chord buttons (the modifier to the last column, the three rows), pulled
+   back for the scenes that press the rest; close up, what's shown at the top of the case's box, clear of
+   the bare cabinet's ☰ under its corner */
+.demo.narrow .board{bottom:8px;right:6px;width:calc(100% - 12px)}
+.demo .board{transform-origin:35.75% 35.5%;clip-path:inset(-40%);transition:transform .6s ease,clip-path .6s ease}
+.demo.close .board{transform:translate(14.25%,2.5%) scale(1.6);clip-path:inset(13% 33.5% 42% 5% round 2.5%)}
 
 
 /* ---------- an arcade game on its own page: the cabinet, not the Practice Room ----------

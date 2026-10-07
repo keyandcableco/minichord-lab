@@ -61,6 +61,7 @@ its own before it counts: the checks keep real time, and a busy machine can make
 | `chord-matrix-games` | level names follow the chosen matrix in all five games; Barry Harris and slash levels step aside; Asteroids plays the alternate chords |
 | `chopper-helper` | beginner mode's minichord carries the harp, strip or keymaster plate, lighting each string of the signal in turn |
 | `demo-lights` | demos light what they press on the on-screen minichord: Fifths Defender's knob, Chord Stack's chord, Chord Sweeper's d-pad, Between the Frets' modifier; Snake's demo glows its chord on any matrix |
+| `demo-band` | a minichord plugged into a phone: a demo's minichord in a band of its own under the screen, gone with the demo; each button's letters counted to fit its label; Chord Invaders' demo close up on the chord buttons for a chord, the whole case for the first scene; on the screen's minichord, the deck lights Chord Invaders' demo's chords too |
 | `title-cycle` | every game's title screen moves on by itself after its demo |
 | `invaders-demo-acts` | Chord Invaders' demo shows the beam burning every minor chord and leaving the major, and the omni power-up |
 | `push-pop` | with firmware push and pop, one message gives everything back, even what the Lab never touched; without it, every borrowed setting is written back |

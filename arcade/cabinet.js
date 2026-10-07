@@ -351,6 +351,7 @@ function helpMod(on){ const m=blast && blast.helpBoard && blast.helpBoard.mod; i
 function helpZone(z){ const i=kmLayout().byString.indexOf(z); if(i>=0) kmFlash(blast.strip, i); }
 function helperSync(rebuild){
   if(!blast || !blast.field) return;
+  if(typeof tdBandSync==="function") setTimeout(tdBandSync, 0);          // on a phone with a minichord plugged in, a band of its own
   const k=cabKind(), demo=helpDemoing(), want=!!saved.beginner || demo;
   if(rebuild || !want){
     if(blast.stripOrig){ blast.stripOrig.style.display=""; blast.strip=blast.stripOrig; blast.stripOrig=null; }   // the controller beside the field comes back
@@ -365,6 +366,8 @@ function helperSync(rebuild){
     if(!blast.helpHarp) blast.helpHarp={el:{remove(){}}, cells:blast.helpBoard.strings, names:blast.helpBoard.names};
   } else if(helpUsesHarp(k) && !blast.helpHarp){ blast.helpHarp=helperHarp(k); blast.field.appendChild(blast.helpHarp.el); }
 }
+// a button's label, and its letters counted, so the CSS keeps it inside the button
+function mcLabel(b, t){ b.textContent=t; b.style.setProperty("--n", [...t].length); }
 function helperBoard(k){
   const el=document.createElement("div"); el.className="helper hboard helper-"+k;
   el.innerHTML=`<div class="board"><div class="mod">♯</div><div class="pre">▲</div><div class="pre">▼</div><span class="led"></span><div class="grid"></div></div>`;
@@ -373,7 +376,7 @@ function helperBoard(k){
   const knobs=mcKnobs(el.querySelector(".board"), place);
   const grid=el.querySelector(".grid"), cells=[];
   DEMO_ROWS.forEach((_,r)=>DEMO_COLS.forEach((c,ci)=>{ const b=document.createElement("div"); b.className="cell"; place(b, MC_PARTS.buttons[r*7+ci]); (cells[ci]||=[])[r]=b; grid.appendChild(b); }));
-  const labels=()=>{ const f=devFifths(); DEMO_ROWS.forEach(([,suf],r)=>DEMO_COLS.forEach((c,ci)=>{ const li=LETTERS.indexOf(c); cells[ci][r].textContent=c+ACC[keyAcc(li,f)]+suf; })); };
+  const labels=()=>{ const f=devFifths(); DEMO_ROWS.forEach(([,suf],r)=>DEMO_COLS.forEach((c,ci)=>{ const li=LETTERS.indexOf(c); mcLabel(cells[ci][r], c+ACC[keyAcc(li,f)]+suf); })); };
   labels();
   // Chord Asteroids plays both halves of the instrument, so its minichord carries its own harp,
   // lit on the case itself: the strip in the harp's slot, or the keymaster plate where it mounts
@@ -431,10 +434,12 @@ function demoHarp(k){
   if(k==="asteroids"){ blast.helpBoard=helperBoard(k); blast.field.appendChild(blast.helpBoard.el); blast.helpHarp={el:{remove(){}}, cells:blast.helpBoard.strings, names:blast.helpBoard.names}; }
   else { blast.helpHarp=helperHarp(k); blast.field.appendChild(blast.helpHarp.el); }
   blast.demoHarp=true;
+  if(typeof tdBandSync==="function") setTimeout(tdBandSync, 0);
 }
 function demoHarpDone(){
   if(blast && blast.demoHarp){ blast.helpHarp?.el.remove(); if(cabKind()==="asteroids"){ blast.helpBoard?.el.remove(); blast.helpBoard=null; blast.helpKey=null; } blast.helpHarp=null; blast.demoHarp=false; blast.helpString=null; }
   else if(blast && blast.helpHarp) helpString(-1);
+  if(typeof tdBandSync==="function") setTimeout(tdBandSync, 0);
 }
 // the harp, drawn as the player's harp is laid out, its strings named, the one to pluck lit
 function helperHarp(k){
