@@ -17,6 +17,17 @@
 // Left flipped too long, a pest rights itself, faster; one that walks off the bottom unresolved goes
 // down the pipe and comes back out at the top, faster again. Unresolved tension keeps coming round.
 //
+// A sus chord has no third, so it can't say whether it means major or minor: either third resolves a
+// creeper or a fly, and the one played decides where the music goes. The pests are always the home key's
+// chords. A resolution the key the music's in has keeps it there; the other moves it to the nearest key
+// that has it. From C every degree's other third is a different way round the circle of fifths: Cm to
+// B♭, D to G, E to A, Fm to E♭, Gm to F, A to D. Away, the same Dsus4 means something else (in G it's
+// D that stays, and Dm that takes the music home). Everything scored away goes into a pot, times one
+// more than the fifths from home, and it banks when the music gets home: by a third that lands there, or
+// a crab's dominant seventh resolving to the home key's I, the cadence home from anywhere. A life lost
+// away loses the pot, and the music's home again; a phase ended away waits a moment for its home chord,
+// the pot banked if it comes and lost if it doesn't.
+//
 // A pest flipped sounds its suspension, the tension hanging, and the player's chord completes it: the
 // resolution's all a flipped pest needs, on the minichord's own buttons. SUSPENSIONS on the title
 // screen, for half as much again, where the minichord can load its alternate layout's slots (firmware
@@ -96,7 +107,7 @@ function sbChord(key, deg, q){
 // A pest's chords: what it is now (its suspension) and what resolves it. A crab is a 7sus4 on V until
 // it's bumped; then it's V7, resolving to I.
 function sbPestChords(e){
-  const key=blast.key;
+  const key=blast.home;
   if(e.kind==="ice") return {sus:e.dim, res:null};
   if(e.kind==="crab") return e.angry ? {sus:sbChord(key,"V","7"), res:sbChord(key,"I","")} : {sus:sbChord(key,"V","7sus4"), res:sbChord(key,"V","7")};
   const third=SB_DEGREES[e.deg][2];
@@ -108,11 +119,73 @@ function sbDim(){
   return {pc:root, q:"°7", sym:names[root]+"°7", to:new Set(pcs.map(p=>mod(p+1,12)))};
 }
 
+// ---------- the key the music's in ----------
+// A chord's place on the circle of fifths; the keys that have it (a major triad is I, IV or V; a minor
+// one ii, iii or vi); how far apart two keys are, round the circle
+const sbFifth=pc=> mod(pc*7, 12);
+const sbArc=(a,b)=>{ const d=mod(a-b,12); return Math.min(d, 12-d); };
+function sbHas(kf, ch){ const d=mod(sbFifth(ch.pc)-kf, 12); return ch.q==="m" ? d>=2 && d<=4 : d===11 || d<=1; }
+// where a resolution to ch takes the music from key f: nowhere if the key has it, or else the nearest key
+// that does (towards home, if two are as near), spelled from G♭ to F♯
+function sbMove(ch, from=blast.key.f){
+  if(sbHas(from, ch)) return from;
+  const p=sbFifth(ch.pc), ks=(ch.q==="m" ? [p-2,p-3,p-4] : [p-1,p,p+1]).map(k=>{ let d=mod(k-from,12); if(d>6) d-=12; return from+d; });
+  const to=ks.sort((a,b)=>Math.abs(a-from)-Math.abs(b-from) || sbArc(a,blast.home.f)-sbArc(b,blast.home.f))[0];
+  return to>6 ? to-12 : to<-6 ? to+12 : to;
+}
+const sbAway=()=> blast.key && blast.home ? sbArc(blast.key.f, blast.home.f) : 0;
+// the ways a flipped pest can resolve, each with where it takes the music: a creeper's or a fly's two
+// thirds; an angry crab's home I, the cadence that takes it home from anywhere
+function sbThirds(e){
+  if(e.kind==="ice") return [];
+  if(e.kind==="crab") return [{ch:sbPestChords(e).res, to:blast.home.f}];
+  return ["","m"].map(q=>sbChord(blast.home, e.deg, q)).filter(Boolean).map(ch=>({ch, to:sbMove(ch)}));
+}
+// the one the helper lights: away, a way home if there's one; the one that stays, else; the nearest home
+function sbPick(e){
+  const o=sbThirds(e), k=blast.key.f, h=blast.home.f;
+  return (k!==h && o.find(x=>x.to===h)) || o.find(x=>x.to===k) || o.sort((a,b)=>sbArc(a.to,h)-sbArc(b.to,h))[0];
+}
+// a pest's two thirds, said: "Dm STAYS IN C; D GOES TO G"
+function sbWhere(e){
+  return sbThirds(e).map(o=> o.to===blast.key.f ? `${o.ch.sym} STAYS IN ${blast.key.name}` : o.to===blast.home.f ? `${o.ch.sym} GOES HOME TO ${blast.home.name}` : `${o.ch.sym} GOES TO ${KEY_BY_FIFTHS[o.to]}`).join("; ");
+}
+// points scored: banked at home, or into the pot away, times one more than the fifths from home
+function sbEarn(pts, at, colour="#7FE08A"){
+  if(blast.phase!=="play") return;
+  const p=mulPts(pts*(blast.level+1)), d=sbAway();
+  if(d){ blast.pot=(blast.pot||0)+p*(1+d); sbPop(at, `+${p*(1+d)}`, "#FF9A3C"); }
+  else { blast.score+=p; sbPop(at, `+${p}`, colour); }
+  sbBar();
+}
+// the music moved to key f: its signature on the minichord; home, the pot banked
+function sbGoTo(f){
+  if(f===blast.key.f) return;
+  const was=sbAway(); blast.key=sbKey(f); blast.movedAt=blast.clock;
+  if(blast.phase==="play" && canWrite() && hasSetting(35)) borrow(35, keyIndexOf(f));
+  if(!sbAway() && was) sbBank();
+  else sfx("away");
+  sbBar();
+}
+function sbBank(){
+  const pot=blast.pot||0; blast.pot=0; blast.banked={at:blast.clock, pot};
+  if(blast.phase==="play"){ blast.score+=pot; banner("HOME!", pot ? `THE POT: +${pot}` : ""); }
+  sfx("home"); sbBar();
+}
+// the pot lost, the music home again: a life lost away, or a phase ended away with no cadence
+function sbLost(){
+  const where=blast.key.name, pot=blast.pot||0;
+  blast.pot=0; blast.key=blast.home;
+  if(blast.phase==="play" && canWrite() && hasSetting(35)) borrow(35, keyIndexOf(blast.key.f));
+  if(pot) sfx("lost");
+  return `LOST IN ${where}${pot ? `: THE POT'S GONE` : ""}`;
+}
+
 // ---------- the game ----------
 function genBros(){
-  return {kind:"bros", prompt:"Sus Bros.", sub:"Bump the floor under a suspended chord to flip it, then play its resolution: Dsus4, then Dm.",
-    answer:{type:"bros", get name(){ const e=blast && blast.kind==="bros" && sbFlipped()[0]; return e ? sbPestChords(e).res.sym : "a flipped pest's resolution"; }},
-    get hint(){ const e=blast && blast.kind==="bros" && sbFlipped()[0]; return e ? `${sbPestChords(e).sus.sym} resolves to ${sbPestChords(e).res.sym}.` : "Bump a pest from underneath first."; },
+  return {kind:"bros", prompt:"Sus Bros.", sub:"Bump the floor under a suspended chord to flip it, then resolve it: Dsus4 to Dm stays in C; to D, the music moves to G.",
+    answer:{type:"bros", get name(){ const e=blast && blast.kind==="bros" && sbFlipped()[0]; return e && e.kind!=="ice" ? sbPick(e).ch.sym : "a flipped pest's resolution"; }},
+    get hint(){ const e=blast && blast.kind==="bros" && sbFlipped()[0]; return e && e.kind!=="ice" ? `${sbPestChords(e).sus.sym}: ${sbWhere(e).toLowerCase()}.` : "Bump a pest from underneath first."; },
     context:0};
 }
 function startBros(){
@@ -155,13 +228,13 @@ function buildBrosField(box){
 }
 function sbBar(){
   if(!blast || blast.kind!=="bros" || !blast.hud) return;
-  const k=blast.key ? ` · ${blast.key.label}` : "", left=blast.hero ? ` · ${blast.pests.length+(blast.queue||[]).length} LEFT · POW ${blast.pow??0}` : "";
+  const d=sbAway(), k=!blast.key ? "" : d ? ` · ${blast.key.label} ×${1+d} · POT ${blast.pot||0}` : ` · ${blast.key.label}`, left=blast.hero ? ` · ${blast.pests.length+(blast.queue||[]).length} LEFT · POW ${blast.pow??0}` : "";
   blast.hud.innerHTML=`<span>SCORE ${blast.score}${multTag()}</span><span class="lvl">PHASE ${blast.level+1}${k}${left}</span><span class="lives">${livesHtml()}</span>`;
 }
 
 // ---------- the title screen ----------
 const SBMENU_G={key:"bros", title:"SUS BROS.",
-  rules:()=>`<p>EVERY PEST IS A SUSPENDED CHORD. JUMP UP UNDER THE FLOOR IT'S WALKING ON TO FLIP IT, THEN ${sbBoth() ? "PLAY ITS SUSPENSION AND THEN ITS RESOLUTION: Dsus4, THEN Dm. THE SUS CHORDS ARE ON TWO BUTTONS: MAJOR AND 7 FOR sus4, MINOR AND 7 FOR sus2, MAJOR AND MINOR FOR 7sus4" : "IT SOUNDS ITS SUSPENSION: PLAY WHERE IT RESOLVES. Dsus4 RESOLVES TO Dm, THE 4TH FALLING TO THE 3RD"}.</p><p>THE CRABS ARE 7sus4: BUMP ONE AND IT'S A DOMINANT SEVENTH, ANGRY; BUMP IT AGAIN, AND RESOLVE IT HOME. THE ICE IS A DIMINISHED SEVENTH: MELT IT WITH A CHORD A SEMITONE ABOVE ANY OF ITS NOTES.</p><p>LEAVE ONE FLIPPED TOO LONG, OR LET IT DOWN THE PIPE, AND IT COMES BACK FASTER. THE POW BLOCK FLIPS EVERYTHING.</p><p>${playOnScreen() ? "WALK WITH THE ARROWS UNDER THE GAME, A TO JUMP" : pfKnob("bros") ? "THE KNOB IS WHERE YOU STAND: TURN IT AND YOU WALK THERE. TOUCH THE HARP ANYWHERE TO JUMP" : "WALK ON THE HARP OR THE ARROW KEYS, HOLDING THE WAY; A OR SPACE TO JUMP"}.</p>`,
+  rules:()=>`<p>EVERY PEST IS A SUSPENDED CHORD. JUMP UP UNDER THE FLOOR IT'S WALKING ON TO FLIP IT, THEN ${sbBoth() ? "PLAY ITS SUSPENSION AND THEN ITS RESOLUTION: Dsus4, THEN Dm. THE SUS CHORDS ARE ON TWO BUTTONS: MAJOR AND 7 FOR sus4, MINOR AND 7 FOR sus2, MAJOR AND MINOR FOR 7sus4" : "IT SOUNDS ITS SUSPENSION: PLAY WHERE IT RESOLVES, THE 4TH FALLING TO A 3RD"}.</p><p>A SUS CHORD HAS NO 3RD, SO EITHER ONE RESOLVES IT. THE ONE THE KEY HAS KEEPS THE MUSIC THERE: IN C, Dsus4 TO Dm. THE OTHER TAKES IT TO A NEW KEY: D TAKES IT TO G. AWAY FROM HOME EVERYTHING SCORES MORE, THE FURTHER THE MORE, IN A POT THAT ONLY BANKS WHEN THE MUSIC GETS HOME. LOSE A LIFE AWAY AND IT'S GONE.</p><p>THE CRABS ARE 7sus4: BUMP ONE AND IT'S A DOMINANT SEVENTH, ANGRY; BUMP IT AGAIN, AND RESOLVE IT HOME. THE ICE IS A DIMINISHED SEVENTH: MELT IT WITH A CHORD A SEMITONE ABOVE ANY OF ITS NOTES.</p><p>LEAVE ONE FLIPPED TOO LONG, OR LET IT DOWN THE PIPE, AND IT COMES BACK FASTER. THE POW BLOCK FLIPS EVERYTHING.</p><p>${playOnScreen() ? "WALK WITH THE ARROWS UNDER THE GAME, A TO JUMP" : pfKnob("bros") ? "THE KNOB IS WHERE YOU STAND: TURN IT AND YOU WALK THERE. TOUCH THE HARP ANYWHERE TO JUMP" : "WALK ON THE HARP OR THE ARROW KEYS, HOLDING THE WAY; A OR SPACE TO JUMP"}.</p>`,
   levels:SB_LEVELS, begin:i=>beginBros(i), demo:()=>sbDemo(), modNote:"title"};
 function sbMenu(over){ arcadeMenu(SBMENU_G, over); }
 function beginBros(level){
@@ -184,7 +257,7 @@ function sbLevelBanner(){ banner(`PHASE ${blast.level+1}`, `${sbLevel().n.toUppe
 function sbNewPhase(){
   sbBuild(sbFloorsFor()); blast.layoutKey=null;
   const L=sbLevel(), f = L.keys ? rnd([...Array(2*L.keys+1).keys()].map(i=>i-L.keys)) : 0;
-  blast.key=sbKey(f);
+  blast.key=blast.home=sbKey(f); blast.pot=0;
   if(blast.phase==="play" && canWrite() && hasSetting(35)) borrow(35, keyIndexOf(f));
   const kinds=shuffle(Object.entries(L.pests).flatMap(([k,n])=>Array(n).fill(k)));
   blast.queue=kinds.map(kind=>{
@@ -217,6 +290,11 @@ function sbStep(dt){
   if(blast.st==="ready"){ if(blast.clock>=blast.stUntil) blast.st="go"; return; }
   if(blast.st==="dying"){ if(blast.clock>=blast.stUntil) sbAfterDeath(); return; }
   if(blast.st==="clear"){ if(blast.clock>=blast.stUntil) sbNextPhase(); return; }
+  if(blast.st==="cadence"){                                          // the phase over, away: walking and coins, waiting for the home chord
+    sbHero(dt); sbCoins(dt); sbCollide(); sbHelp();
+    if(blast.clock>=blast.stUntil) sbClear(sbLost());
+    return;
+  }
   if(blast.st!=="go") return;
   sbHero(dt);
   sbOut();
@@ -382,7 +460,7 @@ function sbCoins(dt){
 }
 function sbCoin(c){
   c.gone=true; blast.coins=blast.coins.filter(x=>x!==c);
-  if(blast.phase==="play"){ const p=mulPts(800*(blast.level+1)); blast.score+=p; sbPop(c, `+${p}`, "#FFD35A"); sbBar(); }
+  sbEarn(800, c, "#FFD35A");
   sfx("coin", c.midi);
 }
 // touching: a walking pest is a life; a flipped one is harmless; a coin is taken
@@ -399,12 +477,13 @@ function sbDie(e){
   blast.st="dying"; blast.stUntil=blast.clock+1.8; blast.diedAt=blast.clock;
   sfx("die"); buzz(blast.field, true);
   const c=sbPestChords(e);
-  heard(c.sus.sym, false, e.kind==="ice" ? `CAUGHT: MELT IT WITH A CHORD A SEMITONE ABOVE ONE OF ITS NOTES` : `CAUGHT: BUMP IT FROM UNDER, THEN RESOLVE IT TO ${c.res ? c.res.sym : ""}`);
+  heard(c.sus.sym, false, e.kind==="ice" ? `CAUGHT: MELT IT WITH A CHORD A SEMITONE ABOVE ONE OF ITS NOTES` : `CAUGHT: BUMP IT FROM UNDER, THEN RESOLVE IT: ${sbWhere(e)}`);
 }
 function sbAfterDeath(){
-  blast.lives--; sbBar();
+  blast.lives--;
+  const lost=sbAway() ? sbLost() : ""; sbBar();
   if(blast.lives<=0) return sbOver();
-  banner(`${blast.lives} ${blast.lives===1?"LIFE":"LIVES"} LEFT`, "");
+  banner(`${blast.lives} ${blast.lives===1?"LIFE":"LIVES"} LEFT`, lost);
   for(const e of blast.pests) if(e.state==="flipped") sbRight(e);
   blast.hero={x:SB_START.x, y:SB_FLOORS[0].y, f:0, state:"walk", dir:"right", vx:0, vy:0, moving:false};
   blast.st="ready"; blast.stUntil=blast.clock+1.4; blast.safeUntil=blast.stUntil+2; sbHeldReset();   // two seconds' grace, blinking, after coming back
@@ -414,11 +493,18 @@ function sbOver(){
   const best=Math.max(saved.best.bros||0, blast.score); saved.best.bros=best; save();
   helpChord(null); sbBar(); sbMenu(true);
 }
-// every pest cleared: the phase's bonus, then the next
-function sbClear(){
+// every pest cleared: home, the phase's bonus, then the next; away, a moment for the cadence home first
+function sbEnd(){
+  if(!sbAway()) return sbClear();
+  blast.st="cadence"; blast.stUntil=blast.clock+6*Math.sqrt(speedMul());
+  const I=sbChord(blast.home,"I","");
+  if(blast.phase==="play") banner("COME HOME!", `PLAY ${I.sym} FOR THE POT: ${blast.pot||0}`);
+  sfx("sus"); sbBar();
+}
+function sbClear(lost){
   blast.st="clear"; blast.stUntil=blast.clock+2.4;
-  const pts=mulPts(1000*(blast.level+1));
-  if(blast.phase==="play"){ blast.score+=pts; banner("PHASE CLEAR!", `+${pts}`); }
+  const pts=mulPts(1000*(blast.level+1)), b=blast.banked, home=b && b.at===blast.clock && b.pot ? `HOME: THE POT +${b.pot} · ` : "";
+  if(blast.phase==="play"){ blast.score+=pts; banner("PHASE CLEAR!", lost ? `${lost} · +${pts}` : `${home}+${pts}`); }
   sfx("clear"); sbBar();
 }
 function sbNextPhase(){
@@ -430,10 +516,11 @@ function sbNextPhase(){
 const sbFlipped=()=> blast.pests.filter(e=>e.state==="flipped" || e.kind==="ice" && e.state==="walk")
   .sort((a,b)=>Math.hypot(sbDx(a.x,blast.hero.x),a.y-blast.hero.y)-Math.hypot(sbDx(b.x,blast.hero.x),b.y-blast.hero.y));
 function sbHelp(){
+  if(blast.st==="cadence"){ const I=sbChord(blast.home,"I",""); arcadeMod(I.root); helpChord(I.root, ""); return; }
   const e=sbFlipped()[0];
   if(!e){ helpChord(null); return; }
   if(e.kind==="ice"){ const pc=[...e.dim.to][0], names=blast.key.f<0 ? FLAT_NAMES : SHARP_NAMES; helpChord(names[pc], ""); return; }
-  const c=sbPestChords(e), next = sbBoth() && !e.suspended ? c.sus : c.res;
+  const c=sbPestChords(e), next = sbBoth() && !e.suspended ? c.sus : sbPick(e).ch;
   arcadeMod(next.root); helpChord(next.root, next.q);
 }
 
@@ -444,34 +531,47 @@ function sbHelp(){
 function brosChord(voices){
   if(!blast || blast.kind!=="bros") return;
   if(blast.phase==="demo" && blast.demo){ endSbDemo(blast.demo); return; }
-  if(blast.phase!=="play" || blast.st!=="go") return;
+  if(blast.phase!=="play" || (blast.st!=="go" && blast.st!=="cadence")) return;
   const pitches=voices.map(v=>v.pitch); if(!chordId(pitches)) return;
   sbPlay(pitches);
 }
 function sbPlay(pitches){
   const id=chordId(pitches), name=chordName(pitches, devFifths()), root=mod(id.root,12), both=sbBoth();
   const is=c=> !!c && isChord(pitches, c.pc, c.q);
-  let cleared=0, suspended=0, waiting=null;
+  if(blast.st==="cadence"){                                          // the phase over, away: only the home chord now
+    const I=sbChord(blast.home,"I","");
+    if(is(I)){ heard(`${name} · HOME`, true); sbGoTo(blast.home.f); sbClear(); }
+    else heard(name, false, `PLAY ${I.sym}: THE MUSIC HOME, THE POT BANKED`);
+    return;
+  }
+  const done=[]; let suspended=0, waiting=null, to=null;
   for(const e of blast.pests){
-    if(e.kind==="ice"){ if(e.state==="walk" && e.dim.to.has(root) && /^(m?|7|maj7|m7)$/.test(id.quality||"")){ sbClearPest(e, 800); cleared++; } continue; }
+    if(e.kind==="ice"){ if(e.state==="walk" && e.dim.to.has(root) && /^(m?|7|maj7|m7)$/.test(id.quality||"")) done.push([e, 800, null]); continue; }
     if(e.state!=="flipped") continue;
-    const c=sbPestChords(e);
-    if(is(c.res)){
+    const c=sbPestChords(e), way=sbThirds(e).find(o=>is(o.ch));
+    if(way){
       if(both && !e.suspended){ waiting=e; continue; }
-      sbClearPest(e, both ? 1600 : 800); cleared++;
+      done.push([e, both ? 1600 : 800, way.ch]); if(to==null || e.kind==="crab") to=way.to;   // a crab's cadence takes the music home
     } else if(is(c.sus)){ e.suspended=true; e.susAt=blast.clock; suspended++; }
   }
-  blast.pests=blast.pests.filter(e=>e.state!=="gone");
-  if(cleared){ heard(`${name} · RESOLVED`, true); if(!blast.pests.length && !blast.queue.length) sbClear(); return; }
+  if(done.length){
+    const was=blast.key.name;
+    if(to!=null) sbGoTo(to);
+    for(const [e, pts, ch] of done) sbClearPest(e, pts, ch);
+    blast.pests=blast.pests.filter(e=>e.state!=="gone");
+    heard(`${name} · RESOLVED${blast.key.name!==was ? (sbAway() ? ` · NOW IN ${blast.key.name} ×${1+sbAway()}` : " · HOME") : ""}`, true);
+    if(!blast.pests.length && !blast.queue.length) sbEnd();
+    return;
+  }
   if(suspended){ heard(`${name} · SUSPENDED`, true); sfx("sus"); return; }
   if(waiting){ heard(name, false, `PLAY THE SUSPENSION FIRST: ${sbPestChords(waiting).sus.sym}, THEN ${name}`); return; }
   const e=sbFlipped()[0];
-  heard(name, false, e ? (e.kind==="ice" ? `${e.dim.sym}: A SEMITONE ABOVE ONE OF ITS NOTES` : `${sbPestChords(e).sus.sym} RESOLVES TO ${sbPestChords(e).res.sym}`) : "NOTHING'S FLIPPED: BUMP ONE FROM UNDER FIRST");
+  heard(name, false, e ? (e.kind==="ice" ? `${e.dim.sym}: A SEMITONE ABOVE ONE OF ITS NOTES` : `${sbPestChords(e).sus.sym}: ${sbWhere(e)}`) : "NOTHING'S FLIPPED: BUMP ONE FROM UNDER FIRST");
 }
-function sbClearPest(e, pts){
+function sbClearPest(e, pts, ch){
   e.state="gone"; blast.poofs=(blast.poofs||[]).concat([{x:e.x, y:e.y, at:blast.clock}]);
-  if(blast.phase==="play"){ const p=mulPts(pts*(blast.level+1)); blast.score+=p; sbPop(e, `+${p}`, "#7FE08A"); sbBar(); }
-  const c=sbPestChords(e); sfx("resolve", c.res ? c.res.pc : e.dim.pc);
+  sbEarn(pts, e);
+  sfx("resolve", {pc:ch ? ch.pc : e.dim.pc, minor:!!ch && ch.q==="m"});
   sbCoinOut();
 }
 // the harp: A (or B) jumps (steered on the knob, any touch); walking is read held (sbWays)
@@ -591,6 +691,11 @@ function brosDraw(_, now){
   if(blast.scrolls) pxOffscreen(g, blast.view, ox, oy, blast.pests.filter(e=>e.state!=="piped" && e.state!=="gone")
     .map(e=>({x:e.x, y:e.y, col:"#2EB872", label:e.kind==="ice" ? e.dim.sym : sbPestChords(e).sus.sym, ink:"#F1E8D2"})));
   if(blast.st==="ready") pxText(g, `PHASE ${blast.level+1}`, ox+SB_W/2, oy+SB_FLOORS[sbTop()-1].y+24, "#FFE600");
+  // away, the key the music's in, between the top pipes, and the pot; blinking for a moment when it moves,
+  // and at the end of a phase, the home chord it wants and the seconds left
+  const d=sbAway(), y=Math.max(2, oy+SB_FLOORS[sbTop()].y-44);
+  if(blast.st==="cadence"){ const I=sbChord(blast.home,"I",""); pxText(g, `PLAY ${I.sym} ${Math.max(0, Math.ceil(blast.stUntil-clock))}`, ox+SB_W/2, y, "#FFE600"); pxText(g, `POT ${blast.pot||0}`, ox+SB_W/2, y+10, "#FF9A3C"); }
+  else if(d && !(clock-(blast.movedAt||-9)<1 && Math.floor(clock*8)%2)){ pxText(g, `IN ${blast.key.name} ×${1+d}`, ox+SB_W/2, y, "#FF9A3C"); if(blast.phase==="play") pxText(g, `POT ${blast.pot||0}`, ox+SB_W/2, y+10, "#FF9A3C"); }
 }
 // a sprite facing the other way, kept
 const SB_FLIPPED=new Map();
@@ -602,7 +707,8 @@ function sbPop(e, text, colour){
 
 // ---------- the demo ----------
 // It plays itself: a creeper out of the pipe and along the ground, bumped from under, flipped, and its
-// suspension played and resolved; a coin of the scale; a crab bumped twice, its dominant resolved home.
+// suspension played and resolved to the third C doesn't have, the music moving to G; a coin of the
+// scale; a crab bumped twice, its dominant resolved home, to C.
 function sbDemo(){
   if(!blast || blast.kind!=="bros") return;
   stopDemo(); clearTimeout(blast.attract); piano.start();
@@ -618,19 +724,20 @@ function sbDemo(){
     try{
       say("SUS BROS.","EVERY PEST IS A SUSPENDED CHORD: TENSION, WAITING TO RESOLVE. THIS PHASE IS IN C MAJOR."); await step(3800);
       // a creeper on the first floor, over the player's head
-      const e=sbSpawn({kind:"creeper", deg:"IV"}, true); Object.assign(e, {x:70, y:F1.y, f:1, dir:1}); blast.pests.push(e); blast.demoStill=true;
+      const e=sbSpawn({kind:"creeper", deg:"ii"}, true); Object.assign(e, {x:70, y:F1.y, f:1, dir:1}); blast.pests.push(e); blast.demoStill=true;
       H.x=70; say("BUMP IT FROM UNDER", "JUMP UP UNDER THE FLOOR IT'S WALKING ON, AND IT FLIPS OVER."); await step(2400);
       zones("A"); sbJump(); await step(900); zones(); await step(900);
-      const c=sbPestChords(e);
-      say("RESOLVE IT", sbBoth() ? `IT'S ${c.sus.sym}: PLAY IT, THEN LET THE 4TH FALL TO THE 3RD. ${c.sus.sym}, THEN ${c.res.sym}.` : `IT'S ${c.sus.sym}, HANGING: PLAY WHERE IT RESOLVES, THE 4TH FALLING TO THE 3RD. ${c.res.sym}.`); await step(2600);
+      const c=sbPestChords(e), D=sbChord(blast.home,"ii","");
+      say("RESOLVE IT", `IT'S ${c.sus.sym}${sbBoth() ? ": PLAY IT, THEN" : ", HANGING:"} LET THE 4TH FALL TO A 3RD. IT HAS NO 3RD, SO EITHER WILL DO: ${c.res.sym} STAYS IN C.`); await step(3200);
+      say("OR MOVE", `${D.sym} ISN'T IN C, SO IT TAKES THE MUSIC TO G, WHERE IT IS. AWAY FROM HOME, EVERYTHING SCORES MORE.`); await step(2400);
       if(sbBoth()) play(c.sus); else e.suspended=true;
-      await step(1400); play(c.res); await step(1800);
+      await step(1400); play(D); await step(2600);
       say("THE COINS","EACH ONE RESOLVED SENDS A COIN OUT OF A PIPE: THE KEY'S SCALE, A NOTE A COIN."); await step(3600);
       blast.coins=[];
       const k=sbSpawn({kind:"crab", deg:"V"}, false); Object.assign(k, {x:70, y:F1.y, f:1, dir:-1}); blast.pests.push(k);
       say("THE CRABS","7sus4: BUMP ONE AND IT RESOLVES HALFWAY, TO G7, ANGRY. BUMP IT AGAIN TO FLIP IT."); await step(2200);
       sbJump(); await step(1400); sbJump(); await step(1600);
-      say("HOME",`THEN THE DOMINANT RESOLVES HOME: G7, THEN C.`); await step(1600);
+      say("HOME",`THEN THE DOMINANT RESOLVES HOME: G7, THEN C. THE MUSIC'S HOME, AND WHAT IT SCORED AWAY IS BANKED.`); await step(2600);
       if(sbBoth()) play(sbPestChords(k).sus); else k.suspended=true; await step(1200); play(sbPestChords(k).res); await step(2000);
       blast.demoStill=false;
       say("READY?",`CHOOSE A PHASE. ${playOnScreen() ? "WALK WITH THE ARROWS UNDER THE GAME, A TO JUMP" : pfKnob("bros") ? "TURN THE KNOB TO WHERE YOU WANT TO STAND; TOUCH THE HARP TO JUMP" : "WALK ON THE HARP OR THE ARROW KEYS, A TO JUMP"}.`); sfx("level"); await step(2800);
@@ -641,7 +748,7 @@ function sbDemo(){
 function endSbDemo(token){
   if(!blast || blast.demo!==token) return;
   stopDemo(); blast.phase="menu"; blast.demoWays=null; blast.demoStill=false;
-  blast.hero=null; blast.pests=[]; blast.coins=[]; blast.queue=[]; blast.key=null; blast.layoutKey=null; blast.st="idle";
+  blast.hero=null; blast.pests=[]; blast.coins=[]; blast.queue=[]; blast.key=blast.home=null; blast.pot=0; blast.layoutKey=null; blast.st="idle";
   if(blast.strip) [...blast.strip.children].forEach(c=>c.classList.remove("demo-on"));
   helpChord(null); sbBar();
   if(blast.overlay) blast.overlay.hidden=false;

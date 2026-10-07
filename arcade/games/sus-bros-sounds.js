@@ -1,6 +1,7 @@
 // Sus Bros.' sounds: the jump, the bump under a floor, a pest flipped and righting itself, angry, out
-// of a pipe and down one; a suspension sounded; a resolution, on the chord it resolves to; a coin, on
-// its note of the scale; the POW; the old game's death.
+// of a pipe and down one; a suspension sounded; a resolution, on the chord it resolves to; the music
+// moved to another key, home again with the pot, and the pot lost; a coin, on its note of the scale;
+// the POW; the old game's death.
 // Part of Minichord Lab's Practice Room page (practice/index.html), loaded there in order with the
 // others as plain scripts sharing one scope, after arcade/sounds.js; see practice/boot.js.
 "use strict";
@@ -16,7 +17,10 @@ GAME_SFX.bros={
   pipe:    ({tone})=>tone("square",110,330,0,.25,.35),
   pipein:  ({tone})=>tone("square",330,110,0,.25,.3),
   sus:     ({tone})=>{ tone("triangle",523,0,0,.4,.4); tone("triangle",698,0,0,.4,.3); },            // a 4th held over, waiting
-  resolve: ({tone}, pc=0)=>{ [0,4,7,12].forEach((s,i)=>tone("triangle",pcHz(pc+s),0,i*.05,.3,.5)); },
+  resolve: ({tone}, {pc=0, minor=false}={})=>{ [0,minor ? 3 : 4,7,12].forEach((s,i)=>tone("triangle",pcHz(pc+s),0,i*.05,.3,.5)); },   // on the third it resolved to
+  away:    ({tone})=>{ [392,494,587,740].forEach((f,i)=>tone("square",f,0,i*.07,.09,.3)); },             // the music moved: up and off somewhere new
+  home:    ({tone})=>{ [784,587,659,523].forEach((f,i)=>tone("square",f,0,i*.1,.14,.4)); tone("triangle",131,0,.3,.5,.6); },   // a cadence, and the pot banked
+  lost:    ({tone})=>{ [466,440,415,392].forEach((f,i)=>tone("square",f,0,i*.12,.12,.35)); },
   coin:    ({tone}, m=72)=>{ tone("square",sbHz(m),0,0,.08,.35); tone("square",sbHz(m+12),0,.07,.25,.35); },
   pow:     ({tone,noise})=>{ noise(0,.5,2000,80,.9); tone("square",90,40,0,.4,.6); },
   die:     ({tone})=>{ [659,587,523,494,440,392,349].forEach((f,i)=>tone("square",f,0,i*.1,.09,.4)); tone("triangle",98,0,.75,.6,.6); },

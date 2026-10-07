@@ -18,12 +18,13 @@ function pxSprite(key, rows, pal){
 
 // ---------- the arcade's lettering ----------
 // Press Start 2P, the arcade's font, is an eight-pixel font: each letter drawn once at eight pixels and
-// made all or nothing, pixel by pixel, so none comes out soft. Sharps, flats and the diminished ring,
-// which it hasn't got, drawn to match.
+// made all or nothing, pixel by pixel, so none comes out soft. Sharps, flats, the diminished ring and
+// the times sign, which it hasn't got, drawn to match.
 const PX_HAND={
   "♭":[".#......",".#......",".#......",".####...",".#..#...",".#.#....",".##.....","........"],
   "♯":["..#.#...",".#####..","..#.#...","..#.#...",".#####..","..#.#...","........","........"],
   "°":[".##.....","#..#....",".##.....","........","........","........","........","........"],
+  "×":["........",".##..##.","..####..","...##...","..####..",".##..##.","........","........"],
 };
 const PX_GLYPH=new Map();
 let pxFontAsked=false;

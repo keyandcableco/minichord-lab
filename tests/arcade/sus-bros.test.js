@@ -7,7 +7,11 @@
 // semitone above one of its notes; a pest left flipped rights itself faster; one down the bottom pipe
 // comes back out at the top, faster; a cleared pest sends a coin of the scale; the POW flips them all;
 // a walking pest catches the player; every pest cleared clears the phase; and the screen's minichord
-// plays the sus layout.
+// plays the sus layout. Either third resolves a creeper: the one the key has keeps the music there, the
+// other moves it to the nearest key that has it, from C each degree a different way round the circle;
+// away, points go into a pot, times one more than the fifths from home, banked when the music gets home
+// (a crab's cadence takes it there from anywhere), lost with a life; a phase ended away waits for its
+// home chord, and loses the pot without it.
 const t=require("./harness").load("sus-bros");
 (async()=>{
   const {sb, sleep, check, mc, w}=t;
@@ -19,11 +23,21 @@ const t=require("./harness").load("sus-bros");
   const RIGHT=3, A=6;
 
   const spelled=E(`(()=>{ const out=[], was=blast.key;
-    for(let lv=0; lv<SB_LEVELS.length; lv++) for(const f of [-3,-2,-1,0,1,2,3]){ const L=SB_LEVELS[lv]; if(Math.abs(f)>(L.keys||0)) continue; blast.key=sbKey(f);
+    for(let lv=0; lv<SB_LEVELS.length; lv++) for(const f of [-3,-2,-1,0,1,2,3]){ const L=SB_LEVELS[lv]; if(Math.abs(f)>(L.keys||0)) continue; blast.key=blast.home=sbKey(f);
       for(const kind of Object.keys(L.pests)){ const degs = kind==="crab" || kind==="ice" ? ["V"] : kind==="fly" ? L.degrees.filter(d=>SB_SUS2_OK.includes(d)) : L.degrees;
-        for(const deg of degs) for(const angry of [false,true]){ const c=sbPestChords({kind, deg, angry, dim:sbDim()}); if(!c.sus || (kind!=="ice" && !c.res)) out.push(lv+" "+blast.key.name+" "+kind+" "+deg); } } }
-    blast.key=was; return out; })()`);
-  check("every phase's pests, and what resolves them, spell in every key it deals", !spelled.length, spelled.slice(0,4).join("; "));
+        for(const deg of degs) for(const angry of [false,true]){ const c=sbPestChords({kind, deg, angry, dim:sbDim()}), ways=sbThirds({kind, deg, angry}); if(!c.sus || (kind!=="ice" && !c.res) || ((kind==="creeper" || kind==="fly") && ways.length!==2)) out.push(lv+" "+blast.key.name+" "+kind+" "+deg); } } }
+    blast.key=blast.home=was; return out; })()`);
+  check("every phase's pests, and both thirds that resolve them, spell in every key it deals", !spelled.length, spelled.slice(0,4).join("; "));
+  // where the other third takes the music: from C, each degree a different way round the circle
+  const moves=E(`(()=>{ const was=[blast.key, blast.home]; blast.key=blast.home=sbKey(0);
+    const out=["I","ii","iii","IV","V","vi"].map(d=>sbThirds({kind:"creeper", deg:d}).map(o=>o.ch.sym+">"+KEY_BY_FIFTHS[o.to]).join(" ")).join(", ");
+    blast.key=sbKey(1); const inG=sbThirds({kind:"creeper", deg:"ii"}).map(o=>o.ch.sym+">"+KEY_BY_FIFTHS[o.to]).join(" ");
+    let far=[]; for(let h=-3; h<=3; h++) for(let k=-6; k<=6; k++) for(let pc=0; pc<12; pc++) for(const q of ["","m"]){ blast.home=sbKey(h); const to=sbMove({pc, q}, k); if(!(to>=-6 && to<=6) || !sbHas(to,{pc,q}) || [-1,0,1,2,3,4].some(x=>sbArc(sbFifth(pc)-x,k)<sbArc(to,k) && sbHas(sbFifth(pc)-x,{pc,q}))) far.push([h,k,pc,q,to].join()); }
+    [blast.key, blast.home]=was; return {out, inG, far}; })()`);
+  check("from C: C stays and Cm goes to B♭; Dm stays and D to G; E to A; Fm to E♭; Gm to F; A to D",
+    moves.out==="C>C Cm>B♭, D>G Dm>C, E>A Em>C, F>C Fm>E♭, G>C Gm>F, A>D Am>C", moves.out);
+  check("in G it's the other way round for Dsus4: D stays, and Dm takes the music home to C", moves.inG==="D>G Dm>C", moves.inG);
+  check("any chord, from any key: to the nearest key that has it, spelled G♭ to F♯", !moves.far.length, moves.far.slice(0,3).join("; "));
   check("a sus2 pest's 2nd is in the key: never on iii", E(`(()=>{ const k=sbKey(0); return SB_SUS2_OK.every(d=>{ const c=sbChord(k,d,"sus2"); const s=spellChord(c.root,"sus2"); return s.every(n=>MAJOR.includes(mod(pcOfName(n),12))); }); })()`));
 
   E(`saved.sbSuspend=true`);                                           // SUSPEND, for the bonus: the sus layout
@@ -75,17 +89,21 @@ const t=require("./harness").load("sus-bros");
   E(`saved.sbSuspend=false`);
   const e2=mk("creeper","ii",1,60); a.sounded=null; E(`sbHit(blast.pests[0])`);
   check("RESOLVE: flipped, a pest sounds its suspension (Dsus4)", a.sounded==="Dsus4", a.sounded);
-  await play(ch(E(`sbChord(blast.key,"ii","")`)));
-  check("RESOLVE: a wrong chord (D for Dsus4 in C, not Dm) leaves it", e2.state==="flipped");
-  await play(ch(E(`sbChord(blast.key,"ii","m")`)));
-  check("its resolution, Dm, clears it", !a.pests.includes(e2));
+  await play(ch(E(`sbChord(blast.key,"vi","m")`)));
+  check("RESOLVE: a chord that isn't either third (Am for Dsus4) leaves it", e2.state==="flipped");
+  const s1=a.score; await play(ch(E(`sbChord(blast.home,"ii","")`)));
+  check("D, the third C hasn't got, clears Dsus4 too, and takes the music to G", !a.pests.includes(e2) && a.key.name==="G", a.key.name);
+  check("away, one fifth: its points go into the pot, doubled, not the score", a.score===s1 && a.pot===2*E("mulPts(800)"), `${a.score-s1} ${a.pot}`);
+  const e2b=mk("creeper","ii",1,60); E(`sbHit(blast.pests[0])`); await play(ch(E(`sbChord(blast.home,"ii","")`)));
+  check("in G, Dsus4 to D stays there", !a.pests.includes(e2b) && a.key.name==="G" && a.pot===4*E("mulPts(800)"), `${a.key.name} ${a.pot}`);
   E(`saved.sbSuspend=true`);
   // the crab: angry at the first bump (a dominant seventh), flipped at the second, resolved home
   const k=mk("crab","V",1,60); E(`sbHit(blast.pests[0])`);
   check("the crab's first bump angers it: G7sus4 is G7 now", k.angry && k.state==="walk" && E(`sbPestChords(blast.pests[0]).sus.sym`)==="G7");
   E(`sbHit(blast.pests[0])`);
-  await play(ch(E(`sbChord(blast.key,"V","7")`))); await play(ch(E(`sbChord(blast.key,"I","")`)));
+  const s2=a.score; await play(ch(E(`sbChord(blast.home,"V","7")`))); await play(ch(E(`sbChord(blast.home,"I","")`)));
   check("the second flips it, and G7 then C resolves it home", !a.pests.includes(k));
+  check("the cadence takes the music home from G, and banks the pot", a.key.name==="C" && a.pot===0 && a.score-s2>=3200+1600, `${a.key.name} ${a.pot} ${a.score-s2}`);
   // the ice
   const ice=mk("ice","V",2,100); const up=[...ice.dim.to][2];
   await play([48+up, 52+up, 55+up]);
@@ -103,16 +121,26 @@ const t=require("./harness").load("sus-bros");
   E(`sbBump(1, 120)`);
   check("bumped from under, the POW flips every pest on a floor", p1.state==="flipped" && p2.state==="flipped" && a.pow===pow-1);
   // caught
-  a.pests.length=0; const lives=a.lives; const p3=mk("creeper","I",0,H.x+3); p3.stunUntil=0; await sleep(80);
+  a.pests.length=0; E(`sbGoTo(-1)`); a.pot=900;                    // away, in F, with a pot
+  const lives=a.lives; const p3=mk("creeper","I",0,H.x+3); p3.stunUntil=0; await sleep(80);
   check("a walking pest that reaches the player is a life", a.st==="dying");
   await sleep(1900); await sleep(1500);
   check("lost; the player back on the ground", a.lives===lives-1 && a.st==="go" && a.hero.f===0);
+  check("a life lost away loses the pot, and the music's home again", a.pot===0 && a.key.name==="C", `${a.pot} ${a.key.name}`);
   // the phase cleared
-  a.pests.length=0; a.queue.length=0; const last=mk("creeper","I",1,60); E(`sbHit(blast.pests[0])`);
-  await play(ch(E(`sbChord(blast.key,"I","sus4")`))); await play(ch(E(`sbChord(blast.key,"I","")`)));
-  check("every pest cleared, the phase is", a.st==="clear");
+  a.pests.length=0; a.queue.length=0; const last=mk("creeper","vi",1,60); E(`sbHit(blast.pests[0])`);
+  await play(ch(E(`sbChord(blast.home,"vi","sus4")`))); await play(ch(E(`sbChord(blast.home,"vi","")`)));
+  check("the last pest resolved away (Asus4 to A, to D): the phase waits for its cadence home", a.st==="cadence" && a.key.name==="D" && a.pot>0, `${a.st} ${a.key.name}`);
+  await play(ch(E(`sbChord(blast.home,"IV","")`)));
+  check("a chord that isn't home's doesn't end it", a.st==="cadence");
+  const pot=a.pot, s3=a.score; await play(ch(E(`sbChord(blast.home,"I","")`)));
+  check("C, the home chord: the music home, the pot banked, the phase clear", a.st==="clear" && a.key.name==="C" && a.pot===0 && a.score-s3>=pot, `${a.st} ${a.score-s3} ${pot}`);
   await sleep(2700);
   check("and the next phase begins", a.level===1 && a.queue.length===5);
+  // a phase ended away with no cadence: the pot lost
+  a.pests.length=0; a.queue.length=0; E(`sbGoTo(1)`); a.pot=700; E(`sbEnd()`); a.stUntil=a.clock; await sleep(120);
+  check("a phase ended away with no home chord in time: clear, but the pot's lost and the music home", a.st==="clear" && a.pot===0 && a.key.name==="C", `${a.st} ${a.pot} ${a.key.name}`);
+  await sleep(2700);
   sb.restoreAll(); await sleep(50);
   check("leaving gives the layout and its slots back", mc.params[39]===0 && mc.params[202]===0);
   // RESOLVE, the default: the minichord's own layout left alone
