@@ -4,7 +4,8 @@
 // chord and bass (a slash chord as good as the knob), and from the open kitchens by its whole stack;
 // the knobs voice it (inversion 37, spacing 38), or SET FOR ME does; the pepper harmonises sour notes
 // whose note is in the chord and spends a shake, wastes one on those it misses, and comes free with a
-// serve; riders squashed for a doubling bonus; a sour note catches the cook; FLIP; the combo meal; a
+// serve; riders take an ingredient down to the lowest floor, knocking all under it onto the plate,
+// floor by floor, in its order, and are squashed there for a doubling bonus; a sour note catches the cook; FLIP; the combo meal; a
 // kitchen cleared is the next level; every level deals chords that spell; the settings given back.
 const t=require("./harness").load("chord-burger");
 (async()=>{
@@ -131,13 +132,21 @@ const t=require("./harness").load("chord-burger");
   check("a chord without it is a shake wasted", e.state==="walk" && a.pepper===pep-2 && /SOUR/.test(t.heard()), t.heard());
   e.state="wait"; e.at=1e9;
 
-  // riders: two sour notes on an ingredient ride it down, a floor further each, squashed for a bonus
-  const rIng=a.ings.find(i=>i.state==="rest" && i.f<=1);
+  // riders: two sour notes on an ingredient ride it down to the lowest floor, knocking everything under
+  // it, floor by floor, onto the plate in its order; squashed there for a bonus
+  const rIng=a.ings.filter(i=>i.state==="rest").sort((x,y)=>x.f-y.f)[0], rP=a.plates[rIng.p];
+  const rCol=a.ings.filter(i=>i.p===rIng.p && i.state==="rest").sort((x,y)=>y.f-x.f), rOrder=[...rP.stack, ...rCol].map(i=>i.name).join(" ");
   const [r1,r2]=[a.sour[1], a.sour[2]];
   Object.assign(r1,{state:"walk", x:rIng.x0+1, y:rIng.f}); Object.assign(r2,{state:"walk", x:rIng.x0+2, y:rIng.f});
   const sr=a.score; E(`bkDrop(blast.ings.find(i=>i.p===${rIng.p} && i.f===${rIng.f}))`);
   check("sour notes standing on it ride it down", r1.state==="ride" && r2.state==="ride");
-  await sleep(2500);
+  for(let k=0; k<40 && !(rIng.state==="rest" && !rIng.ridden && rP.stack.length===3); k++) await sleep(200);
+  const lowF=E(`(()=>{ let f=-1, t; while((t=bkNextFloor({f, x0:${rIng.x0}}))!=null) f=t; return f; })()`);
+  check("it knocks all under it down onto the plate, in its order, and stops on the lowest floor", rCol.length>1 && rP.stack.length===3 && rIng.state==="rest" && rIng.f===lowF
+    && [...rP.stack, rIng].map(i=>i.name).join(" ")===rOrder, `${rP.stack.map(i=>i.name).join(" ")} + ${rIng.name}@${rIng.f}/${lowF} / ${rOrder}`);
+  await tread(rIng); for(let k=0; k<20 && rP.stack.length<4; k++) await sleep(100);
+  check("walked across from there, it finishes the burger", rP.stack.length===4 && rP.stack[3]===rIng);
+  await sleep(100);
   check("and are squashed at the bottom, for a bonus", r1.state==="squashed" && r2.state==="squashed" && a.score-sr>=2000*1.5, `${a.score-sr}`);
   r1.at=r2.at=1e9;
 

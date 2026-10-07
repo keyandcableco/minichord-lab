@@ -20,8 +20,10 @@
 //
 // The sour notes (a hot dog, an egg, a pickle) chase the cook along the floors and up the ladders,
 // each wearing a note; one that touches the cook costs a life. An ingredient dropped on one squashes
-// it, and any standing on an ingredient as it drops ride it down, a floor further for each, squashed
-// at the bottom for a bonus that doubles with every rider. The pepper is a chord: play one, and every
+// it, and any standing on an ingredient as it drops ride it all the way down, as in the old game: it
+// knocks everything under it down onto its plate, floor by floor, still in its order, and comes to
+// rest on the lowest floor, the riders squashed there for a bonus that doubles with every one. It's
+// left there to be walked across, onto the plate, to finish the burger. The pepper is a chord: play one, and every
 // sour note close by whose note is in it is harmonised, sweet and harmless for a few seconds. Five
 // shakes a kitchen, spent only on a chord that harmonises something (or one wasted on sour notes it
 // doesn't catch); a chord that serves a plate peppers for free.
@@ -237,7 +239,7 @@ function bkBar(){
 // ---------- the title screen ----------
 const bkAuto=()=> !!saved.bkAuto;
 const BKMENU_G={key:"burger", title:"CHORD BURGER",
-  rules:()=>`<p>WALK ACROSS AN INGREDIENT TO DROP IT A FLOOR. WALK THEM ALL DOWN ONTO THE PLATES.</p><p>A FULL PLATE IS A CHORD, READ FROM THE PLATE UP: THE BOTTOM BUN IS THE BASS. SERVE IT BY PLAYING IT, ${bkAuto() ? "THE KNOBS TURNED FOR YOU" : "VOICED AS STACKED: ONE KNOB PUTS THE RIGHT NOTE ON THE BOTTOM, THE OTHER OPENS IT OUT"}.</p><p>THE SOUR NOTES WEAR NOTES. PEPPER THEM WITH A CHORD THAT HAS THEIR NOTE IN IT, OR DROP AN INGREDIENT ON THEM.</p><p>SERVE THE PLATES LEFT TO RIGHT FOR A COMBO MEAL.</p><p>${playOnScreen() ? "WALK WITH THE ARROWS UNDER THE GAME" : pfKnob("burger") ? pfSteerSay("FLIP") : "WALK ON THE HARP OR THE ARROW KEYS: HOLD THE WAY"}.</p>`,
+  rules:()=>`<p>WALK ACROSS AN INGREDIENT TO DROP IT A FLOOR. WALK THEM ALL DOWN ONTO THE PLATES.</p><p>A FULL PLATE IS A CHORD, READ FROM THE PLATE UP: THE BOTTOM BUN IS THE BASS. SERVE IT BY PLAYING IT, ${bkAuto() ? "THE KNOBS TURNED FOR YOU" : "VOICED AS STACKED: ONE KNOB PUTS THE RIGHT NOTE ON THE BOTTOM, THE OTHER OPENS IT OUT"}.</p><p>THE SOUR NOTES WEAR NOTES. PEPPER THEM WITH A CHORD THAT HAS THEIR NOTE IN IT, OR DROP AN INGREDIENT ON THEM. DROP ONE WITH THEM ON IT AND IT KNOCKS ALL UNDER IT DOWN ONTO THE PLATE.</p><p>SERVE THE PLATES LEFT TO RIGHT FOR A COMBO MEAL.</p><p>${playOnScreen() ? "WALK WITH THE ARROWS UNDER THE GAME" : pfKnob("burger") ? pfSteerSay("FLIP") : "WALK ON THE HARP OR THE ARROW KEYS: HOLD THE WAY"}.</p>`,
   levels:BK_LEVELS, ok:i=>bkLevelOk(i), needs:"NEEDS A MINICHORD THE GAME CAN VOICE", begin:i=>beginBurger(i), demo:()=>bkDemo(), modNote:"title"};
 function bkMenu(over){ arcadeMenu(BKMENU_G, over); }
 function beginBurger(level){
@@ -392,20 +394,19 @@ function bkTread(a){
   ing.pressed[s]=1; sfx("step", s);
   if(ing.pressed.every(Boolean)){ bkDrop(ing); if(blast.phase==="play"){ blast.score+=mulPts(50*(blast.level+1)); bkBar(); } }
 }
-// Dropped: it falls to the next floor with a girder under it, or onto its plate. Sour notes standing
-// on it ride it down, a floor further for each; one already there is knocked down in turn.
-function bkDrop(ing){
+// Dropped: it falls to the next floor with a girder under it, or onto its plate; one already there is
+// knocked down in turn. With sour notes standing on it, it goes on down to the lowest floor
+// (ing.ridden), and every one it knocks goes on down onto its plate (ing.through): each, landed,
+// falls again once the floor under it is clear (bkThrough), so the column goes down a floor apart,
+// in its order.
+function bkDrop(ing, through){
   const riders=blast.sour.filter(e=>(e.state==="walk" || e.state==="sweet") && bkOnFloor(e) && Math.round(e.y)===ing.f && e.x>=ing.x0-.5 && e.x<=ing.x0+3.5);
   riders.forEach(e=>{ e.state="ride"; e.ride=ing; });
-  let extra=riders.length, t=ing.f+1, target=null;
-  for(; t<BK_NF; t++){
-    if(!bkHolds(t, ing.x0)) continue;
-    const there=blast.ings.some(o=>o!==ing && o.p===ing.p && o.state==="rest" && o.f===t);
-    if(extra>0 && !there){ extra--; continue; }
-    target=t; break;
-  }
+  if(riders.length) ing.ridden=true;
+  if(through) ing.through=true;
+  const target=bkNextFloor(ing);
   const ahead=bkFallingTo(ing.p);
-  ing.state="fall"; ing.pressed=[0,0,0,0]; ing.riders=riders;
+  ing.state="fall"; ing.pressed=[0,0,0,0]; ing.riders=[...(ing.riders||[]), ...riders];
   ing.to = target!=null ? {f:target} : {plate:true};
   ing.toY = target!=null ? target : bkPlateY(blast.plates[ing.p].stack.length + ahead);
   blast.drops=(blast.drops||0)+1;
@@ -413,8 +414,22 @@ function bkDrop(ing){
 }
 // how many of a plate's ingredients are already on their way down onto it
 const bkFallingTo=p=> blast.ings.filter(i=>i.p===p && i.state==="fall" && i.to && i.to.plate).length;
+// the next floor down with a girder under an ingredient, or null: its plate
+function bkNextFloor(ing){
+  for(let t=ing.f+1; t<BK_NF; t++) if(bkHolds(t, ing.x0)) return t;
+  return null;
+}
+// one going on down, landed, falls again once nothing in its column is falling to the floor under
+// it, or still within a floor of it (so they land on the plate in turn), or waiting there to go on
+// down itself
+function bkThrough(ing){
+  const t=bkNextFloor(ing);
+  if(blast.ings.some(o=>o!==ing && o.p===ing.p && (o.state==="fall" ? (t!=null && o.to.f===t) || o.y<ing.y+1 : o.state==="rest" && o.f===t && (o.through || o.ridden)))) return;
+  bkDrop(ing, ing.through);
+}
 function bkFalls(dt){
   for(const ing of blast.ings){
+    if(ing.state==="rest" && (ing.through || ing.ridden)){ bkThrough(ing); continue; }
     if(ing.state!=="fall") continue;
     const y0=ing.y; ing.y=Math.min(ing.toY, ing.y+bkFallSpeed*dt);
     for(const e of ing.riders||[]) if(e.state==="ride"){ e.y=ing.y; }
@@ -434,14 +449,16 @@ function bkLand(ing){
   const riders=(ing.riders||[]).filter(e=>e.state==="ride");
   if(ing.to.plate){
     const P=blast.plates[ing.p];
-    ing.state="plate"; ing.k=P.stack.length; ing.y=bkPlateY(ing.k); P.stack.push(ing);
+    ing.state="plate"; ing.through=ing.ridden=false; ing.k=P.stack.length; ing.y=bkPlateY(ing.k); P.stack.push(ing);
     sfx("note", ing.pitch);
     if(P.stack.length===4) bkPlateFull(P);
   } else {
     const below=blast.ings.find(o=>o!==ing && o.p===ing.p && o.state==="rest" && o.f===ing.to.f);
     ing.state="rest"; ing.f=ing.to.f; ing.y=ing.f;
     sfx("land");
-    if(below) bkDrop(below);
+    if(below) bkDrop(below, ing.through || ing.ridden);
+    if(ing.ridden && bkNextFloor(ing)==null) ing.ridden=false;          // down on the lowest floor: the ride's over
+    if(ing.through || ing.ridden) return;                               // its riders ride on
   }
   if(riders.length){
     riders.forEach(e=>bkSquash(e));
