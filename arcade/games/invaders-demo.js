@@ -75,6 +75,7 @@ function runDemo(attract){
       <div class="grid"></div>
     </div>`;
   el.querySelector(".demoskip").onclick=()=>endDemo(token);
+  demoText(el);
   const grid=el.querySelector(".grid");
   const cells=[];
   // each part placed where it sits on the case, from the minichord's outline, as percentages of it

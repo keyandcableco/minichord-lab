@@ -88,7 +88,26 @@ function demoShell(end){
   el.querySelector(".demoskip").onclick=()=>end(token);
   const say=(t,c)=>{ el.querySelector(".demotitle").textContent=t||""; el.querySelector(".democap").textContent=c; };
   const sleep=ms=>new Promise(r=>setTimeout(r,ms)), step=async ms=>{ await sleep(ms); if(!token.run) throw 0; };
+  demoText(el);
   return {el, token, say, sleep, step};
+}
+// The demo's lettering by the size of the game's screen, not the window's: narrow, the caption smaller;
+// short as well (a phone's screen over the deck, or held sideways), the title, the caption and their
+// margins smaller still, so they cover less of the game. Again whenever the screen changes size.
+function demoText(el){
+  if(!el || !blast || !blast.field) return;
+  el.classList.toggle("slim", fieldW()<560);
+  el.classList.toggle("short", fieldH()<460);
+}
+// How far down the demo's title and three lines of its caption reach on a phone's screen, where they'd
+// cover the game: a game that would start under them starts there instead (pixel.js pxRoom, Chord
+// Breakout's wall). 0 elsewhere, or with nothing laid out.
+function demoClear(){
+  const d=blast && blast.phase==="demo" && blast.demo && blast.demo.el;
+  if(!d || !(d.classList.contains("slim") || d.classList.contains("short"))) return 0;
+  const h=d.querySelector(".demohead"), c=d.querySelector(".democap"); if(!h || !c || !h.offsetHeight) return 0;
+  const cs=getComputedStyle(c), px=v=>parseFloat(v)||0, lh=px(cs.lineHeight); if(!lh) return 0;
+  return Math.ceil(h.offsetTop+h.offsetHeight+px(cs.marginTop)+px(cs.paddingTop)+px(cs.paddingBottom)+3*lh+4);
 }
 // a demo's chord, heard on the page's piano
 // what a demo plays, lit on the on-screen minichord: one note its harp string, a chord its buttons

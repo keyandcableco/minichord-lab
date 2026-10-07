@@ -62,12 +62,13 @@ function pxZoom(k, aw, ah, W, H){ return Math.max(k, Math.min(Math.floor(aw/W), 
 
 // ---------- the screen, fitted ----------
 // The room an arcade screen has in the field: beside the strip of harp sections if there is one (and
-// with nothing beside it, right to the field's sides), under the score and over the bar along the foot.
-// Gives its left edge and its width and height, in CSS pixels.
+// with nothing beside it, right to the field's sides), under the score (in a demo on a phone, under its
+// title and caption: kit.js demoClear) and over the bar along the foot.
+// Gives its left edge and top, and its width and height, in CSS pixels.
 function pxRoom(){
-  const fw=fieldW(), fh=fieldH(), strip=kmStripShown();
+  const fw=fieldW(), fh=fieldH(), strip=kmStripShown(), top=Math.max(40, demoClear());
   const left= strip ? 8 : 0, side= !strip ? 0 : (saved.beginner || blast.phase==="demo") ? Math.ceil(Math.min(fw*.3, 300))+20 : (kmLayout().cols===3 ? 150 : 84);
-  return {left, aw:fw-side-left, ah:fh-40-28};
+  return {left, top, aw:fw-side-left, ah:fh-top-28};
 }
 // Where an arcade screen of its own (W by H pixels) goes in the field, and how big: a whole number of
 // the screen's own pixels a pixel, not only of CSS pixels, so on a phone (three of its pixels to a CSS
@@ -87,7 +88,7 @@ function pxRoom(){
 // across it.
 // Gives k (CSS pixels a pixel), the view's w and h, and where it sits, left and top.
 function pxFit(W, H, least, zoom, fill, across){
-  const {left, aw, ah}=pxRoom(), dpr=window.devicePixelRatio||1;
+  const {left, top, aw, ah}=pxRoom(), dpr=window.devicePixelRatio||1;
   let k;
   if(fill && dpr>=2){
     k=Math.min(aw/W, ah/H);
@@ -102,7 +103,7 @@ function pxFit(W, H, least, zoom, fill, across){
     k=d/dpr;
   }
   const w=Math.min(W, Math.floor(aw/k+1e-9)), h=Math.min(H, Math.floor(ah/k+1e-9)), on=v=>Math.round(v*dpr)/dpr;   // on a screen pixel
-  return {k, w, h, left:on(left+(aw-w*k)/2), top:on(40+(ah-h*k)/2)};
+  return {k, w, h, left:on(left+(aw-w*k)/2), top:on(top+(ah-h*k)/2)};
 }
 // the screen's canvas put where pxFit says, at its size
 function pxPlace(s, f){ if(s){ s.width=f.w; s.height=f.h; s.style.cssText=`left:${f.left}px;top:${f.top}px;width:${f.w*f.k}px;height:${f.h*f.k}px`; } }

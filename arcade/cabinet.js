@@ -159,6 +159,7 @@ for(const ev of ["fullscreenchange","webkitfullscreenchange"]) document.addEvent
 function arcadeRelayout(){
   if(!blast || !blast.field) return;
   if(blast.field._fullLabel) blast.field._fullLabel();
+  if(blast.demo && typeof demoText==="function") demoText(blast.demo.el);
   const k=blast.kind;
   if(k==="snake"){ snLayout(); snDraw(); }
   else if(k==="stack"){ stLayout(); stDraw(); }

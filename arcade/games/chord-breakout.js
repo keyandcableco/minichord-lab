@@ -108,14 +108,15 @@ function boLayout(){
   p.x=Math.max(0, Math.min(W-p.w, p.x));
   const cols=blast.cols||8, bw=(W-40)/cols, rows=blast.bricks.reduce((n,b)=>Math.max(n, b.r+1), 0);
   let bh=30, gap=0;
+  const y0=Math.max(56, demoClear());                                       // a demo's caption on a phone: the wall under it
   if(H>W*1.2 && rows){
-    const room=blast.padY-Math.max(200, blast.padY*BO_RUN)-56, wall=(h,g)=>g+rows*(h+6)-6;
+    const room=blast.padY-Math.max(200, blast.padY*BO_RUN)-y0, wall=(h,g)=>g+rows*(h+6)-6;
     bh=Math.max(30, Math.min(44, Math.round(bw/2))); gap=Math.round(H*.08);
     while(wall(bh,gap)>room && gap>0) gap=Math.max(0, gap-8);
     while(wall(bh,gap)>room && bh>30) bh--;
   }
-  blast.wallEnd=56+gap+rows*(bh+6)-6;
-  blast.bricks.forEach(b=>{ b.x=20+b.c*bw+2; b.y=56+gap+b.r*(bh+6); b.w=bw-4; b.h=bh;
+  blast.wallEnd=y0+gap+rows*(bh+6)-6;
+  blast.bricks.forEach(b=>{ b.x=20+b.c*bw+2; b.y=y0+gap+b.r*(bh+6); b.w=bw-4; b.h=bh;
     b.el.style.cssText=`left:${b.x}px;top:${b.y}px;width:${b.w}px;height:${b.h}px`; boFit(b.el); });
 }
 // The ball's pace on a field taller than it's wide: the run from the wall to the paddle crossed in about
@@ -450,6 +451,7 @@ function boDemo(){
   if(blast.overlay) blast.overlay.hidden=true;
   blast.phase="demo"; blast.level=0; blast.demoAuto=true; boLayout(); boWall(); boServe(); blast.serveAt=performance.now()+900;
   const {el, token, say, sleep, step}=demoShell(endBoDemo);
+  boLayout();                                                                 // the wall under the caption, now there's one
   sfx("attract");
   (async()=>{
     try{
