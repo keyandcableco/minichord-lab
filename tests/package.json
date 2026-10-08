@@ -5,7 +5,8 @@
   "scripts": {
     "test": "node arcade/run.js",
     "iphone": "node iphone/run.js",
-    "looper": "node looper/run.js"
+    "looper": "node looper/run.js",
+    "vocoder": "node vocoder/run.js"
   },
   "devDependencies": {
     "jsdom": "^24.1.0",

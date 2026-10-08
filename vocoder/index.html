@@ -1,0 +1,392 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Vocoder · Minichord Lab</title>
+<meta name="description" content="Loops of speech played into the minichord over USB, and its vocoder set up to make the chords talk with them.">
+<!-- the card a link to this page unfurls into -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Minichord Lab">
+<meta property="og:title" content="Vocoder">
+<meta property="og:description" content="Loops of speech played into the minichord over USB, and its vocoder set up to make the chords talk with them.">
+<meta property="og:url" content="https://chordlab.keyandcable.com/vocoder/">
+<meta property="og:image" content="https://chordlab.keyandcable.com/vocoder/card.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://chordlab.keyandcable.com/vocoder/card.png">
+<link rel="icon" href="../core/logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../core/lab.css">
+<script src="../core/theme.js"></script>
+<style>
+.grid2{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:28px;margin-top:18px}
+@media (max-width:900px){.grid2{grid-template-columns:1fr}}
+.loops{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+@media (max-width:520px){.loops{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.loops button{text-align:left;font-weight:600;padding:.45rem .6rem .4rem;line-height:1.25}
+.loops button small{display:block;font-weight:400;font-size:.85rem;opacity:.8}
+/* the sentence being spoken, read along with the chord */
+.words{font-family:var(--hand);font-size:1.6rem;line-height:1.25;min-height:2.6em;margin:12px 0 0}
+.words.idle{color:var(--muted)}
+.transport{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:12px 0 4px}
+#play{min-width:7.5rem}
+/* the loop's bars, a cell each, its beats ticked off inside */
+.bars{display:flex;gap:4px;margin:10px 0 0;height:26px}
+.bars div{flex:1;display:flex;gap:2px;padding:3px;border:1px solid var(--rule);border-radius:var(--radius)}
+.bars i{flex:1;background:var(--rule);opacity:.5;border-radius:1px}
+.bars div.now{border-color:var(--ink)}
+.bars div.now i.on{background:var(--accent);opacity:1}
+/* the voice in the vocoder's sixteen bands, on a dark screen in either theme */
+.meter{background:#171412;border-radius:var(--radius);padding:10px 10px 4px;margin-top:12px;border:1px solid var(--rule)}
+#bands{display:block;width:100%;height:auto;aspect-ratio:16/6}
+.meter p{color:#CFC3A6;font-size:.88rem;margin:.3rem 0 .2rem}
+label.slide{display:grid;grid-template-columns:9.5rem minmax(0,1fr) 3.2rem;align-items:center;gap:10px;margin:.55rem 0}
+label.slide input{width:100%;accent-color:var(--felt)}
+label.slide output{text-align:right;font-variant-numeric:tabular-nums}
+@media (max-width:520px){label.slide{grid-template-columns:7.5rem minmax(0,1fr) 2.8rem}}
+.seg{display:flex;flex-wrap:wrap;gap:6px;margin:.2rem 0 .6rem}
+.seg button{font-weight:400}
+.seg button[aria-pressed="true"]{font-weight:700}
+label.check{display:flex;gap:10px;align-items:flex-start;margin:.6rem 0}
+label.check input{margin-top:.35rem;accent-color:var(--felt)}
+label.check span small{display:block;color:var(--muted);font-size:.9rem}
+.needs{border-left:4px solid var(--felt);padding:.5rem .9rem;margin:14px 0 0;background:var(--panel)}
+.needs p{margin:.2rem 0}
+.needs button{margin-top:.4rem}
+.tips{margin:.4rem 0 0;padding-left:1.2rem}
+.tips li{margin:.25rem 0}
+.how p{max-width:72ch}
+</style>
+</head>
+<body>
+<main>
+  <div class="labbar">
+    <a class="crumb" href="../">Minichord Lab</a>
+    <div class="connect">
+      <button id="connect" class="primary">Connect minichord</button>
+      <select id="input" aria-label="MIDI input" disabled><option>No MIDI yet</option></select>
+    </div>
+  </div>
+
+  <h1>Vocoder</h1>
+  <p class="lede">The minichord has no microphone, but it takes in sound over USB, and its vocoder lets that sound shape the chords. Play one of these loops of speech into it, hold a chord, and the chord says the words.</p>
+  <p class="status" id="status">Connect the minichord. The loops play without it too.</p>
+  <p class="device-line" id="device"></p>
+  <div class="needs" id="needs" hidden></div>
+
+  <div class="grid2">
+    <section class="panel">
+      <h2>The voice</h2>
+      <div class="seg" id="voices" role="group" aria-label="Who reads">
+        <button data-v="woman" aria-pressed="true">A woman reads</button>
+        <button data-v="man" aria-pressed="false">A man reads</button>
+      </div>
+      <div class="loops" id="loops" role="group" aria-label="Loops"></div>
+      <div class="transport">
+        <button id="play" class="primary" aria-pressed="false">▶ Play</button>
+        <span class="fine" id="where">80 BPM, a sentence a bar.</span>
+      </div>
+      <div class="bars" id="bars" aria-hidden="true"></div>
+      <p class="words idle" id="words" aria-live="off"></p>
+      <div class="meter">
+        <canvas id="bands" width="800" height="300" role="img" aria-label="The voice's level in each of the vocoder's sixteen bands"></canvas>
+        <p>The voice in the vocoder's sixteen bands, 100 Hz to 8 kHz: each band of the chord is let through as loud as the voice is in it.</p>
+      </div>
+      <label class="slide">Voice level <input type="range" id="level" min="0" max="150" value="100"><output id="levelOut">100%</output></label>
+      <div class="row">
+        <label for="out">Send it to</label>
+        <select id="out"><option value="default">The computer's default</option></select>
+        <button id="find" hidden>Find the minichord</button>
+      </div>
+      <p class="fine" id="outNote"></p>
+    </section>
+
+    <section class="panel">
+      <h2>The minichord</h2>
+      <label class="slide">Vocoder <input type="range" id="amount" min="0" max="100" value="100"><output id="amountOut">100</output></label>
+      <div>What the voice shapes:</div>
+      <div class="seg" id="carrier" role="group" aria-label="What the voice shapes">
+        <button data-v="0" aria-pressed="true">The chords</button>
+        <button data-v="1" aria-pressed="false">The harp</button>
+        <button data-v="2" aria-pressed="false">Both</button>
+      </div>
+      <label class="slide">Consonants <input type="range" id="consonants" min="0" max="100" value="30"><output id="consonantsOut">30</output></label>
+      <label class="check"><input type="checkbox" id="voice" checked><span>A chord sound made for it<small>Bright, held for as long as the button is, with the filter open and the effects that smear words (formants, crunch, delay, tremolo) off. Unticked, the preset's own sound.</small></span></label>
+      <label class="check"><input type="checkbox" id="hear"><span>Hear the voice too<small>The minichord plays the speech beside the chords, the way it plays along with a phone. Unticked, only the talking chords are heard.</small></span></label>
+      <button id="giveback" hidden>Give everything back</button>
+      <ul class="tips">
+        <li>Hold a chord down: the vocoder needs a sound to shape, and words only come through while the chord is sounding.</li>
+        <li>Change chord on the bar, with the next sentence. The bars above count them.</li>
+        <li>The harp's plucks die away too fast to carry words, but strummed through a sentence they make textures.</li>
+      </ul>
+    </section>
+  </div>
+
+  <section class="panel how" style="margin-top:28px">
+    <h2>How it works</h2>
+    <p>The computer plays the loop to the minichord as if it were a speaker. Inside, the voice is split into sixteen bands from 100 Hz to 8 kHz, and its level in each one sets how much of the same band of the chord comes through. A vowel is a pattern of loud and quiet bands, so the chord takes on the vowel; the pattern changes from syllable to syllable, so the chord talks, at the chord's pitch rather than the speaker's. The hiss of s, t and sh sits above 5 kHz, and the consonants setting lets some of it through, so words can be made out.</p>
+    <p>The recordings were made in an anechoic room and keep everything up to 9 kHz, so the hiss is there for the consonants setting to use. Turn it to 0 to hear the vowels alone, and up to make the words plainer. The sentence being spoken is written under the bars: knowing the words makes them far easier to hear in the chord.</p>
+    <p>The settings are borrowed: leave the page, or press Give everything back, and the minichord is as it was. The vocoder needs the unofficial test-allFeatures firmware, version 34 or later, with USB audio on (any setting but 2).</p>
+  </section>
+
+  <footer>
+    <p>Part of <a href="../">Minichord Lab</a>. The minichord is <a href="https://github.com/BenjaminPoilve/minichord">Benjamin Poilve's open-source instrument</a>; the vocoder comes from the unofficial <a href="https://github.com/keyandcableco/minichord/tree/test-allFeatures">test-allFeatures firmware</a>.</p>
+    <p>The speech is the first eight Harvard sentences (IEEE, 1969) from the <a href="https://doi.org/10.17638/datacat.liverpool.ac.uk/681">ARU speech corpus</a>: Hopkins, Graetzer and Seiffert, Acoustics Research Unit, University of Liverpool, under <a href="https://creativecommons.org/licenses/by/3.0/">CC BY 3.0</a>, cut a sentence to a bar.</p>
+    <p>Made by <a href="https://keyandcable.com">The Key &amp; Cable Company</a>. Source on <a href="https://github.com/keyandcableco/minichord-lab">GitHub</a>.</p>
+  </footer>
+</main>
+
+<script type="module">
+import {Minichord} from "../core/minichord.js";
+const $=id=>document.getElementById(id);
+const mc=new Minichord();
+
+// ---------- the loops ----------
+// Built by tools/make-speech-loops.sh: a sentence laid at the start of each bar of 4/4 at 80 BPM,
+// each loop read by a woman and by a man (samples/speech/<voice>-<loop>.flac)
+const BPM=80, BAR=60/BPM*4;
+const LOOPS=[
+  {id:"one-line",    name:"One line",    bars:1},
+  {id:"two-lines",   name:"Two lines",   bars:2},
+  {id:"four-lines",  name:"Four lines",  bars:4},
+  {id:"eight-lines", name:"Eight lines", bars:8}];
+// the firmware's bands: log-spaced from 100 Hz to 8 kHz, each a bandpass of Q 3.4
+// what they say: the start of IEEE list 1, a sentence a bar
+const WORDS=["The birch canoe slid on the smooth planks.","Glue the sheet to the dark blue background.",
+  "It's easy to tell the depth of a well.","These days a chicken leg is a rare dish.","Rice is often served in round bowls.",
+  "The juice of lemons makes fine punch.","The box was thrown beside the parked truck.","The hogs were fed chopped corn and garbage."];
+const BANDS=[...Array(16)].map((_,k)=>100*Math.pow(80,k/15)), BAND_Q=3.4;
+
+const PREFS="minichord-lab-vocoder";
+let prefs={}; try{ prefs=JSON.parse(localStorage.getItem(PREFS))||{}; }catch(e){}
+const savePrefs=()=>{ try{ localStorage.setItem(PREFS, JSON.stringify(prefs)); }catch(e){} };
+let chosen=LOOPS.find(l=>l.id===prefs.loop)||LOOPS[1];
+let voice=prefs.reader==="man" ? "man" : "woman";
+// what plays: a loop in a voice
+const reading=()=>({...chosen, voice, file:`${voice}-${chosen.id}`});
+
+// ---------- playing them ----------
+let ctx=null, level=null, meters=[], src=null, playing=null, startAt=0, before=null;
+const buffers={};
+function audio(){
+  if(ctx) return ctx;
+  ctx=new AudioContext();
+  level=ctx.createGain(); level.gain.value=($("level").value|0)/100; level.connect(ctx.destination);
+  // the same sixteen bands, two filter stages each as the firmware has them, measured here as the minichord measures them
+  meters=BANDS.map(f=>{
+    const stage=()=>{ const bp=ctx.createBiquadFilter(); bp.type="bandpass"; bp.frequency.value=f; bp.Q.value=BAND_Q; return bp; };
+    const an=ctx.createAnalyser(); an.fftSize=1024; level.connect(stage()).connect(stage()).connect(an); return {an, buf:new Float32Array(an.fftSize), v:0}; });
+  setOutput(outChoice());
+  return ctx;
+}
+const load=loop=> buffers[loop.file] ||= fetch(`../samples/speech/${loop.file}.flac`).then(r=>{ if(!r.ok) throw new Error(r.status); return r.arrayBuffer(); }).then(b=>audio().decodeAudioData(b));
+async function play(loop){
+  const c=audio(); await c.resume();
+  let buf; try{ buf=await load(loop); }catch(e){ $("where").textContent="That loop couldn't be loaded."; return; }
+  const now=c.currentTime;
+  let at=now+0.05;
+  // a loop chosen while another plays comes in on the next bar, so the chords keep time
+  if(src){ at=Math.max(at, startAt+Math.ceil((now-startAt)/BAR)*BAR); src.stop(at); before={startAt, loop:playing}; }
+  const s=c.createBufferSource(); s.buffer=buf; s.loop=true; s.connect(level); s.start(at);
+  src=s; startAt=at; playing=loop;
+  $("play").textContent="■ Stop"; $("play").setAttribute("aria-pressed","true");
+  drawBars(loop);
+}
+function stop(){
+  if(src){ src.stop(); src=null; } playing=null; before=null;
+  $("play").textContent="▶ Play"; $("play").setAttribute("aria-pressed","false");
+  drawBars(chosen); $("where").textContent="80 BPM, a sentence a bar."; drawWords(null);
+}
+$("play").onclick=()=> playing ? stop() : play(reading());
+
+function drawLoops(){
+  $("loops").innerHTML="";
+  for(const l of LOOPS){
+    const b=document.createElement("button");
+    b.innerHTML=`${l.name}<small>${l.bars} bar${l.bars>1?"s":""}, ${Math.round(l.bars*BAR)} s</small>`;
+    b.setAttribute("aria-pressed", String(l===chosen));
+    b.onclick=()=>{ chosen=l; prefs.loop=l.id; savePrefs(); drawLoops(); if(playing) play(reading()); else drawBars(l); };
+    $("loops").append(b);
+  }
+  [...$("voices").children].forEach(b=>b.setAttribute("aria-pressed", String(b.dataset.v===voice)));
+}
+$("voices").onclick=e=>{ const b=e.target.closest("button"); if(!b) return;
+  voice=b.dataset.v; prefs.reader=voice; savePrefs(); drawLoops(); if(playing) play(reading()); };
+let shownWords=null;
+function drawWords(bar){
+  if(bar===shownWords) return; shownWords=bar;
+  const w=$("words"); w.classList.toggle("idle", bar==null);
+  w.textContent = bar==null ? `“${WORDS[0]}” and on, a sentence a bar.` : WORDS[bar];
+}
+function drawBars(loop){
+  $("bars").innerHTML=Array.from({length:loop.bars},()=>`<div>${"<i></i>".repeat(4)}</div>`).join("");
+}
+$("level").oninput=e=>{ const v=e.target.value|0; $("levelOut").textContent=v+"%"; if(level) level.gain.value=v/100; prefs.level=v; savePrefs(); };
+if(prefs.level!=null){ $("level").value=prefs.level; $("levelOut").textContent=prefs.level+"%"; }
+
+// ---------- where the sound goes ----------
+// A browser names its speakers only to a page that may use a microphone. The minichord is a
+// microphone too (its own sound, recorded over USB), so asking once lets it be found by name;
+// nothing is recorded, the stream is closed straight away.
+const outChoice=()=> prefs.out || "auto";
+async function outputs(){
+  if(!navigator.mediaDevices?.enumerateDevices) return [];
+  return (await navigator.mediaDevices.enumerateDevices()).filter(d=>d.kind==="audiooutput");
+}
+async function setOutput(choice){
+  if(!ctx || !ctx.setSinkId) return;
+  let id = choice==="auto" ? ((await outputs()).find(d=>/minichord/i.test(d.label))?.deviceId ?? "") : choice==="default" ? "" : choice;
+  try{ if(ctx.sinkId!==id) await ctx.setSinkId(id); }catch(e){ $("outNote").textContent="That output couldn't be used: "+e.message; }
+}
+async function drawOutputs(){
+  const outs=await outputs(), sel=$("out"), named=outs.some(d=>d.label);
+  const mini=outs.find(d=>/minichord/i.test(d.label));
+  sel.innerHTML="";
+  sel.add(new Option(mini ? "The minichord (found by itself)" : "The minichord, once it's found", "auto"));
+  sel.add(new Option("The computer's default", "default"));
+  for(const d of outs) if(d.deviceId && d.deviceId!=="default" && d.deviceId!=="communications") sel.add(new Option(d.label||"Output", d.deviceId));
+  sel.value=[...sel.options].some(o=>o.value===outChoice()) ? outChoice() : "auto";
+  const canChoose=!!(window.AudioContext && AudioContext.prototype.setSinkId);
+  sel.disabled=!canChoose;
+  $("find").hidden=!canChoose || named;
+  $("outNote").textContent = !canChoose ? "This browser can't choose where a page's sound goes: choose the minichord as the computer's sound output instead."
+    : !named ? "Find the minichord to send the voice straight to it. The browser asks for the microphone, since that's the only way it names its speakers; nothing is recorded."
+    : sel.value==="auto" && !mini ? "No minichord among the speakers: plug it in, and check its USB audio isn't set to 2."
+    : sel.value==="default" ? "The voice goes wherever the computer's sound goes: the minichord only if it's chosen as the sound output."
+    : "";
+  setOutput(sel.value);
+}
+$("out").onchange=e=>{ prefs.out=e.target.value; savePrefs(); drawOutputs(); };
+$("find").onclick=async()=>{
+  try{ const s=await navigator.mediaDevices.getUserMedia({audio:true}); s.getTracks().forEach(t=>t.stop()); }
+  catch(e){ $("outNote").textContent="Without the microphone allowed the browser keeps its speakers' names to itself: choose the minichord as the computer's sound output instead."; return; }
+  drawOutputs();
+};
+navigator.mediaDevices?.addEventListener?.("devicechange", drawOutputs);
+
+// ---------- the meter and the bars, every frame ----------
+const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+function frame(){
+  requestAnimationFrame(frame);
+  const cv=$("bands"), g=cv.getContext("2d"), W=cv.width, H=cv.height, n=BANDS.length, gap=8, w=(W-gap*(n+1))/n, base=H-34;
+  g.clearRect(0,0,W,H);
+  g.font="28px 'EB Garamond', Georgia, serif"; g.textAlign="center";
+  BANDS.forEach((f,k)=>{
+    const m=meters[k], x=gap+k*(w+gap);
+    let v=0;
+    if(m && playing){ m.an.getFloatTimeDomainData(m.buf); let s=0; for(const y of m.buf) s+=y*y; v=Math.sqrt(s/m.buf.length); }
+    // up quickly, down slowly, as the firmware follows each band
+    if(m) v = m.v += (v-m.v)*(v>m.v ? 0.6 : 0.15);
+    const db=v>0 ? 20*Math.log10(v) : -90, h=Math.max(0, Math.min(1, (db+60)/60))*(base-6);
+    g.fillStyle="#2B2622"; g.fillRect(x,6,w,base-6);
+    g.fillStyle="#D4A017"; g.fillRect(x,base-h,w,h);
+    if(k%3===0 || k===n-1){ g.fillStyle="#CFC3A6"; g.fillText(f<1000 ? Math.round(f/10)*10 : (f/1000).toFixed(f<2000?1:0)+"k", x+w/2, H-8); }
+  });
+  // the bar and beat playing
+  if(playing && ctx){
+    let t=ctx.currentTime, s=startAt, loop=playing;
+    if(t<startAt && before){ s=before.startAt; loop=before.loop; }
+    const len=loop.bars*BAR, pos=(((t-s)%len)+len)%len, bar=Math.floor(pos/BAR), beat=Math.floor((pos%BAR)/(BAR/4));
+    const cells=$("bars").children;
+    if(cells.length!==loop.bars) drawBars(loop);
+    [...cells].forEach((c,i)=>{ c.classList.toggle("now", i===bar); [...c.children].forEach((d,j)=>d.classList.toggle("on", i===bar && j<=beat)); });
+    $("where").textContent=`${loop.name}: bar ${bar+1} of ${loop.bars}, beat ${beat+1}`;
+    drawWords(bar);
+  }
+}
+
+// ---------- the minichord's settings, borrowed ----------
+// Push (firmware command 5) before anything changes, and pop (6) puts it all back. USB audio (244)
+// is the instrument's, which pop leaves alone, so it's given back by hand.
+const VOCODER=260, CARRIER=261, CONSONANTS=262, USB_AUDIO=244;
+const FIRMWARE=34;   // the test firmware's version with the vocoder
+// a chord sound that carries words: bandlimited sawtooths an octave apart (all the harmonics for
+// the bands to choose from), held at full level, the voice filter open and still, and the formants,
+// crunch, delay, tremolo and vibrato off; the output filter a plain low pass at 5 kHz
+const CHORD_VOICE={265:0, 121:20,122:9, 124:10,125:9,126:200, 127:0, 130:0, 135:0,136:0,
+  137:5,138:0,139:100,140:100,141:250, 143:5000,144:0,145:70,154:0,155:0,
+  159:0,163:0,175:0, 119:0,185:0,182:100,183:0, 192:5000,193:70,194:100,195:0,196:0};
+const st={amount:prefs.amount??100, carrier:prefs.carrier??0, consonants:prefs.consonants??30, voice:prefs.voice??true, hear:prefs.hear??false};
+let pushHeld=false, sent={}, own244=null, given=false, restarting=false;
+
+const canWrite=()=> !!(mc.out && mc.sysex && mc.params[35]!==undefined);
+const hasVocoder=()=> (mc.params[7]??0)>=FIRMWARE;
+function wanted(){
+  const w={[VOCODER]:st.amount, [CARRIER]:st.carrier, [CONSONANTS]:st.consonants};
+  return st.voice ? {...CHORD_VOICE, ...w} : w;
+}
+let borrowing=false;   // each write reports a change, which mustn't start another borrow
+function borrow(){
+  if(borrowing || given || restarting || !canWrite() || !hasVocoder() || mc.params[USB_AUDIO]===2) return;
+  borrowing=true;
+  if(!pushHeld){ mc.control(5); pushHeld=true; }   // every firmware with the vocoder has push and pop
+  if(own244===null) own244=mc.params[USB_AUDIO];
+  const hear=st.hear ? 1 : 0;
+  if(mc.params[USB_AUDIO]!==hear) mc.writeParam(USB_AUDIO, hear);
+  for(const [a,v] of Object.entries(wanted())) if(sent[a]!==v){ sent[a]=v; mc.writeParam(+a, v); }
+  borrowing=false;
+  $("giveback").hidden=false;
+}
+// something no longer wanted (the page's chord sound unticked): everything back, then only what's still wanted
+function reborrow(){
+  if(pushHeld && mc.out){ mc._asked=(mc._asked||0)+1; mc.control(6); mc.control(5); }
+  sent={}; borrow();
+}
+function giveBack(){
+  if(pushHeld && mc.out){ mc._asked=(mc._asked||0)+1; mc.control(6); }
+  if(own244!==null && mc.out && mc.params[USB_AUDIO]!==own244 && own244!==2) mc.writeParam(USB_AUDIO, own244);
+  pushHeld=false; sent={}; own244=null;
+}
+$("giveback").onclick=()=>{ given=true; giveBack(); $("giveback").hidden=true;
+  $("status").textContent="The minichord is as it was. Change anything here to borrow its settings again."; };
+addEventListener("pagehide", ()=>{ stop(); given=true; giveBack(); });
+function take(){ given=false; borrow(); }
+
+function drawControls(){
+  $("amount").value=st.amount; $("amountOut").textContent=st.amount;
+  $("consonants").value=st.consonants; $("consonantsOut").textContent=st.consonants;
+  [...$("carrier").children].forEach(b=>b.setAttribute("aria-pressed", String(+b.dataset.v===st.carrier)));
+  $("voice").checked=st.voice; $("hear").checked=st.hear;
+}
+const keep=()=>{ Object.assign(prefs, st); savePrefs(); };
+$("amount").oninput=e=>{ st.amount=e.target.value|0; $("amountOut").textContent=st.amount; keep(); take(); };
+$("consonants").oninput=e=>{ st.consonants=e.target.value|0; $("consonantsOut").textContent=st.consonants; keep(); take(); };
+$("carrier").onclick=e=>{ const b=e.target.closest("button"); if(!b) return; st.carrier=+b.dataset.v; drawControls(); keep(); take(); };
+$("voice").onchange=e=>{ st.voice=e.target.checked; keep(); given=false; if(st.voice) borrow(); else reborrow(); };
+$("hear").onchange=e=>{ st.hear=e.target.checked; keep(); take(); };
+
+// what stands in the way, if anything
+function drawNeeds(){
+  const box=$("needs"); let html="";
+  if(mc.out && !mc.sysex) html="<p>The browser didn't allow system-exclusive messages, so the vocoder can't be switched on from here: allow \"MIDI device control &amp; reprogram\" in the site settings and reload.</p>";
+  else if(canWrite() && !hasVocoder()) html=`<p>This minichord's firmware (version ${mc.params[7]??"?"}) has no vocoder. It needs the unofficial test-allFeatures build, version ${FIRMWARE} or later.</p>`;
+  else if(canWrite() && mc.params[USB_AUDIO]===2) html=`<p>The minichord's USB audio is set to 2, so it isn't offered as a speaker and no sound can reach it.</p><button id="speaker">Offer it as a speaker</button><p class="fine">It restarts a moment later, so the computer sees the change, and comes back by itself.</p>`;
+  box.innerHTML=html; box.hidden=!html;
+  $("speaker")?.addEventListener("click", ()=>{ restarting=true; mc.writeParam(USB_AUDIO, 0); $("status").textContent="The minichord is restarting as a speaker. It comes back by itself in a few seconds."; drawNeeds(); });
+}
+
+// ---------- connecting ----------
+mc.addEventListener("status", e=>$("status").textContent=e.detail);
+mc.addEventListener("device", ()=>{
+  const v=mc.params[7];
+  $("device").innerHTML = v==null ? "" : `Firmware <b>${v}</b>` + (hasVocoder() ? `, vocoder <b>${st.amount ? "on" : "off"}</b>, USB audio <b>${mc.params[USB_AUDIO]??"?"}</b>.` : ".");
+  if(mc.presetLoaded) sent={};   // a preset loaded on the instrument sets the vocoder back: set it again
+  drawNeeds(); borrow();
+});
+mc.addEventListener("ports", ()=>{
+  const sel=$("input"), ins=mc.inputs; sel.innerHTML=""; sel.disabled=false;
+  sel.add(new Option("Minichord chord port (auto)","auto")); sel.add(new Option("All MIDI inputs","all"));
+  for(const i of ins) sel.add(new Option(i.name,i.id));
+  sel.value=[...sel.options].some(o=>o.value===mc.inputChoice)?mc.inputChoice:"auto";
+  // gone (unplugged, or restarting): what it held went with it
+  if(!mc.out){ pushHeld=false; sent={}; own244=null; restarting=false; }
+  drawOutputs();
+});
+$("input").onchange=e=>mc.selectInput(e.target.value);
+$("connect").onclick=async e=>{ e.target.disabled=true; if(await mc.connect()) e.target.textContent="Connected"; else e.target.disabled=false; };
+
+drawLoops(); drawBars(chosen); drawWords(null); drawControls(); drawOutputs(); frame();
+</script>
+</body>
+</html>

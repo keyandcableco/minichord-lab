@@ -137,3 +137,16 @@ None of them gives Chrome the real Web MIDI: with the minichord plugged in, Chro
 sequencer can wedge kernel 6.1, so the page gets a stand-in, and the live test reaches the minichord
 through its raw MIDI device instead. `SHOTS=<folder>` with the live test saves pictures of the page,
 light, dark and at a phone's width.
+
+## The vocoder
+
+    npm run vocoder
+
+| Test | What it checks |
+|---|---|
+| `vocoder/ui.test.js` | the page in headless Chrome with a stand-in Web MIDI: the settings pushed before anything changes, then the vocoder and its chord sound set; the controls reach the minichord; unticking the chord sound pops, pushes again and sets only the vocoder; given back, popped, with USB audio (which a pop leaves) written back by hand; USB audio 2 and firmware before 34 left alone, saying why; the loops played a bar at a time, the sentence spoken written under them, a loop or a voice chosen mid-bar coming in on the next; the bands meter moving |
+| `vocoder/live.test.js` | against a real minichord, when one is plugged in and its MIDI port is free: the page finds its speaker and plays a loop into it, read by the woman and then the man, while a chord is held over raw MIDI, and its sound, recorded back over USB audio, follows the voice's loudness, loud in the sentences and near silent between them and with no voice; given back, the chord sounds dry and the settings are as they were |
+
+As with the looper, Chrome never gets the real Web MIDI. `SHOTS=<folder>` with the page test saves
+pictures of it, light, dark and at a phone's width; `TAKES=<folder>` with the live test keeps what
+the minichord played, as WAVs.
