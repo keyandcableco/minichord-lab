@@ -36,7 +36,7 @@ const isChordPort = n => /minichord/i.test(n) && (n.includes("1") || n.trim().to
 // Port 2; MIDI 1, MIDI 2); Android's Chrome names every port after the device alone, "minichord", and
 // there they're told apart by order, the chord port first and the harp's second, as the firmware
 // declares them.
-function portRole(port, ports){
+export function portRole(port, ports){
   if(isHarpPort(port.name)) return "harp";
   if(!isChordPort(port.name)) return null;
   const same=ports.filter(p=>p.name===port.name);

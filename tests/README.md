@@ -122,3 +122,18 @@ both times, so a sprite crossing the field's edge isn't taken for something cut 
 
 The report, `iphone/report/index.html`, has a table of every page on every phone, then each page's
 screens with what was found boxed on them (hover a box for what it is), and `findings.json` beside it.
+
+## The looper
+
+    npm run looper
+
+| Test | What it checks |
+|---|---|
+| `looper/model.test.mjs` | the loop folded onto the song (begun in it, before it, after it, off); overdubs on rows; a take's MIDI as notes with their MPE bends; a clip's notes cut to it; quantize, undo and redo; the MIDI file |
+| `looper/ui.test.js` | the page in headless Chrome, its sound from Chrome's fake input and its MIDI from a stand-in: R records and closes a loop of whole bars; clips dragged (snapped), copied and trimmed; the loop set on the ruler; Delete, Space and undo; a MIDI track played by the piano and by the minichord (MIDI in plays switched on and back off); recording on into the next track, a sliver after the last pass let go; the mix, MIDI and project files saved, and the project opened again |
+| `looper/live.test.js` | against a real minichord, when one is plugged in: its sound over USB audio, a stand-in player playing it on the beat over raw MIDI (the preset pushed, made sharp for timing, and popped back after). Calibration finds the input's latency; a take's MIDI and sound land on the beats played; an overdub stacks; the mix renders them on the beat; the song comes back after a reload |
+
+None of them gives Chrome the real Web MIDI: with the minichord plugged in, Chrome closing the ALSA
+sequencer can wedge kernel 6.1, so the page gets a stand-in, and the live test reaches the minichord
+through its raw MIDI device instead. `SHOTS=<folder>` with the live test saves pictures of the page,
+light, dark and at a phone's width.

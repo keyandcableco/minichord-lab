@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Looper · Minichord Lab</title>
+<meta name="description" content="A multitrack looper for the minichord: records its sound over USB audio and its MIDI together, with a metronome, count-in, overdubs, tracks, clips to move and trim, and exports to WAV, stems and MIDI.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Minichord Lab">
+<meta property="og:title" content="Looper">
+<meta property="og:description" content="A multitrack looper for the minichord: its sound and its MIDI recorded together, with a metronome, count-in, overdubs and tracks.">
+<meta property="og:url" content="https://chordlab.keyandcable.com/looper/">
+<meta property="og:image" content="https://chordlab.keyandcable.com/looper/card.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://chordlab.keyandcable.com/looper/card.png">
+<link rel="icon" href="../core/logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../core/lab.css">
+<script src="../core/theme.js"></script>
+<style>
+:root{
+  --t0:#24466B; --t1:#3F6B35; --t2:#B3261E; --t3:#6A3F7A; --t4:#9C7410; --t5:#1F6E6E; --t6:#8A4B2A; --t7:#4B5563;
+  --rec:#C62828; --lane:#EFE6D0; --lane2:#E9DFC6; --grid:rgba(43,43,43,.10); --gridbar:rgba(43,43,43,.28);
+}
+@media (prefers-color-scheme:dark){ :root:not([data-theme="light"]){
+  --t0:#9DB8D9; --t1:#A9C98F; --t2:#EF8A80; --t3:#CDB3DE; --t4:#E2C26A; --t5:#7FCFCB; --t6:#E0A27E; --t7:#B6BCC6;
+  --rec:#FF6B6B; --lane:#1C1A17; --lane2:#24211D; --grid:rgba(241,232,210,.07); --gridbar:rgba(241,232,210,.22);
+}}
+:root[data-theme="dark"]{
+  --t0:#9DB8D9; --t1:#A9C98F; --t2:#EF8A80; --t3:#CDB3DE; --t4:#E2C26A; --t5:#7FCFCB; --t6:#E0A27E; --t7:#B6BCC6;
+  --rec:#FF6B6B; --lane:#1C1A17; --lane2:#24211D; --grid:rgba(241,232,210,.07); --gridbar:rgba(241,232,210,.22);
+}
+main{max-width:1500px}
+.hidden{display:none!important}
+.small{font-size:.9rem}
+label.inl{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+input[type=number]{width:4.2em;border:1px solid var(--ink);background:var(--panel);border-radius:var(--radius);padding:.25rem .35rem}
+input[type=text]{border:1px solid var(--ink);background:var(--panel);border-radius:var(--radius);padding:.25rem .45rem}
+input[type=range]{accent-color:var(--felt)}
+
+/* starting: browsers need a click before sound, and the microphone permission */
+.start{margin:18px 0;padding:18px 0;border-top:2px solid var(--ink)}
+.start p{max-width:70ch}
+
+/* the transport: sticky, so the beat is always in view */
+.transport{position:sticky;top:0;z-index:5;background:var(--board);border-top:2px solid var(--ink);border-bottom:1px solid var(--rule);padding:10px 0;margin-top:14px;
+  display:grid;grid-template-columns:auto minmax(220px,auto) 1fr;gap:10px 18px;align-items:center}
+.transport .keys{display:flex;gap:8px;align-items:center}
+.transport .keys button{min-width:3.2rem;font-size:1.15rem;padding:.4rem .7rem .35rem}
+#recBtn{color:var(--rec);font-weight:800}
+#recBtn.on{background:var(--rec);color:#fff;border-color:#000}
+#recBtn.wait{animation:blink .5s steps(2) infinite}
+@keyframes blink{50%{background:var(--rec);color:#fff}}
+.opts{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;font-size:.95rem}
+.opts select{padding:.2rem .35rem}
+/* the beat: bar and beat in big figures, a dot per beat, what's happening */
+.beat{display:grid;grid-template-columns:auto 1fr;gap:2px 14px;align-items:center;padding:6px 12px;border:2px solid var(--ink);border-radius:var(--radius);background:var(--panel);min-width:220px}
+.beat .pos{grid-row:span 2;font:700 2.6rem/1 var(--ui);font-variant-numeric:tabular-nums;min-width:3.6ch;text-align:center}
+.beat .state{font-weight:700;letter-spacing:.06em;font-size:.85rem;text-transform:uppercase;color:var(--muted)}
+.beat.rec{border-color:var(--rec)} .beat.rec .state{color:var(--rec)}
+.beat.count .pos{color:var(--rec)}
+.dots{display:flex;gap:6px;flex-wrap:wrap}
+.dots i{width:14px;height:14px;border:2px solid var(--ink);border-radius:50%;display:block}
+.dots i.on{background:var(--ink)} .dots i.on.one{background:var(--felt);border-color:var(--felt)}
+.beat.rec .dots i.on{background:var(--rec);border-color:var(--rec)}
+.beat.flash{box-shadow:0 0 0 4px var(--brass)}
+.loopbar{grid-column:1/-1;height:4px;background:var(--rule);position:relative}
+.loopbar b{position:absolute;left:0;top:0;bottom:0;background:var(--felt);width:0}
+
+/* the timeline: names on the left, lanes on a canvas to the right */
+.timeline{display:grid;grid-template-columns:200px minmax(0,1fr);margin-top:12px;border:1px solid var(--rule);user-select:none;-webkit-user-select:none}
+.heads{border-right:1px solid var(--rule);background:var(--panel)}
+.heads .rulerpad{height:30px;border-bottom:1px solid var(--rule);display:flex;align-items:center;gap:6px;padding:0 6px;font-size:.85rem;color:var(--muted)}
+.head{border-bottom:1px solid var(--rule);padding:5px 6px;display:flex;flex-direction:column;gap:4px;overflow:hidden;position:relative}
+.head::before{content:"";position:absolute;left:0;top:0;bottom:0;width:5px;background:var(--tc)}
+.head .r1{display:flex;gap:4px;align-items:center;padding-left:4px}
+.head .r1 input{flex:1;min-width:0;font-weight:700;border-color:transparent;background:transparent;padding:.1rem .2rem}
+.head .r1 input:focus{border-color:var(--ink);background:var(--panel)}
+.head button{padding:.05rem .4rem;font-size:.85rem;border-bottom-width:2px;min-width:1.9rem}
+.head button.arm[aria-pressed="true"]{background:var(--rec);border-color:#000;color:#fff}
+.head .r2,.head .r3{display:flex;gap:6px;align-items:center;padding-left:4px;font-size:.82rem}
+.head .r2 input[type=range]{width:100%;min-width:0}
+.head select{font-size:.8rem;padding:.1rem .2rem;max-width:100%;min-width:0;flex:1}
+.lanes{overflow-x:auto;overflow-y:hidden;position:relative;background:var(--lane)}
+#tl{display:block;touch-action:pan-y}
+.addrow{display:flex;gap:10px;align-items:center;margin-top:8px;flex-wrap:wrap}
+
+/* the clip's own panel, and its notes */
+.inspector{margin-top:16px}
+.inspector .grid button,.inspector .grid select,.inspector .grid input{font-size:.95rem}
+.inspector .grid{font-size:.95rem;display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center}
+#roll{display:block;width:100%;height:220px;background:var(--lane);border:1px solid var(--rule);margin-top:10px;touch-action:none}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:8px 28px;margin-top:22px}
+.meter{display:inline-block;width:120px;height:10px;border:1px solid var(--ink);vertical-align:middle;position:relative;background:var(--panel)}
+.meter b{position:absolute;left:0;top:0;bottom:0;background:var(--v1);width:0}
+.meter b.hot{background:var(--rec)}
+.songs{list-style:none;padding:0;margin:.4rem 0;max-height:220px;overflow:auto}
+.songs li{font-size:.95rem;display:flex;gap:8px;align-items:center;justify-content:space-between;border-bottom:1px solid var(--rule);padding:4px 0}
+.songs li.cur{font-weight:700}
+.toast{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--panel);padding:.5rem 1rem;border-radius:var(--radius);z-index:20;max-width:min(90vw,640px);font-size:.95rem}
+kbd{border:1px solid var(--rule);border-bottom-width:2px;padding:0 .3em;border-radius:2px;font:inherit;font-size:.85em}
+.warn{color:var(--felt)}
+@media (max-width:760px){
+  .transport{grid-template-columns:1fr;position:sticky}
+  .timeline{grid-template-columns:132px minmax(0,1fr)}
+  .head .r3{display:none}
+  .beat .pos{font-size:2.1rem}
+}
+</style>
+</head>
+<body>
+<main>
+  <div class="labbar">
+    <a class="crumb" href="../">Minichord Lab</a>
+    <div class="connect">
+      <button id="connect" class="primary">Connect minichord</button>
+      <select id="input" aria-label="MIDI input" disabled><option>No MIDI yet</option></select>
+    </div>
+  </div>
+
+  <h1>Looper</h1>
+  <p class="lede">Record the minichord in layers, to a click: its sound over USB audio and its MIDI at the same time. Loop it, overdub it, stack takes on tracks, move them around, and take it all away as WAV, stems or MIDI.</p>
+  <p class="status" id="status">Connect the minichord, then start the looper.</p>
+
+  <section class="start" id="startBox">
+    <button id="startBtn" class="primary">Start the looper</button>
+    <p class="fine">The browser asks to use an audio input: choose the minichord (it's a USB sound card as well as a MIDI device). Nothing leaves this computer; takes are kept in this browser until you delete them.</p>
+  </section>
+
+  <div class="transport hidden" id="transport">
+    <div class="keys">
+      <button id="homeBtn" title="Back to the start (Home)" aria-label="Back to the start">⏮</button>
+      <button id="playBtn" title="Play or stop (Space)" aria-label="Play">▶</button>
+      <button id="recBtn" title="Record (R): from a stop, counts in; while playing, punches in; while recording, punches out" aria-label="Record">●</button>
+    </div>
+    <div class="beat" id="beat">
+      <div class="pos" id="pos">1.1</div>
+      <div class="state" id="state">Stopped</div>
+      <div class="dots" id="dots"></div>
+      <div class="loopbar"><b id="loopProg"></b></div>
+    </div>
+    <div class="opts">
+      <label class="inl">Tempo <input type="number" id="bpm" min="30" max="300" step="1" value="100"></label>
+      <button id="tapBtn" title="Tap the tempo (T)">Tap</button>
+      <label class="inl">Beats a bar <input type="number" id="bpb" min="1" max="15" value="4"></label>
+      <label class="inl"><input type="checkbox" id="metOn" checked> Click</label>
+      <select id="metWhen" aria-label="When the click sounds"><option value="always">always</option><option value="record">recording only</option></select>
+      <select id="metSound" aria-label="Click sound"><option value="click">click</option><option value="wood">wood</option><option value="beep">beep</option></select>
+      <select id="metSub" aria-label="Click subdivision"><option value="1">beats</option><option value="2">eighths</option><option value="3">triplets</option><option value="4">sixteenths</option></select>
+      <input type="range" id="metLevel" min="0" max="1" step="0.05" value="0.6" aria-label="Click level" title="Click level">
+      <label class="inl">Count-in <select id="countIn"><option value="0">none</option><option value="1">1 bar</option><option value="2">2 bars</option></select></label>
+      <label class="inl">Punch in <select id="punch"><option value="now">at once</option><option value="beat">on the beat</option><option value="bar">on the bar</option><option value="loop">at the loop</option></select></label>
+      <label class="inl">At the loop's end <select id="passEnd"><option value="play">play it</option><option value="overdub">keep overdubbing</option><option value="next">record the next track</option></select></label>
+      <label class="inl"><input type="checkbox" id="loopOn" checked> Loop</label>
+      <label class="inl">Snap <select id="snap"><option value="bar">bar</option><option value="beat">beat</option><option value="half">½ beat</option><option value="quarter">¼ beat</option><option value="off">off</option></select></label>
+      <button id="undoBtn" title="Undo (Ctrl+Z)">Undo</button>
+      <button id="redoBtn" title="Redo (Ctrl+Shift+Z)">Redo</button>
+    </div>
+  </div>
+
+  <div class="timeline hidden" id="timeline">
+    <div class="heads" id="heads"><div class="rulerpad"><span id="loopLabel">No loop yet</span></div></div>
+    <div class="lanes" id="lanes"><canvas id="tl"></canvas></div>
+  </div>
+  <div class="addrow hidden" id="addrow">
+    <button id="addTrack">+ Track</button>
+    <label class="inl small">Zoom <input type="range" id="zoom" min="8" max="120" value="28"></label>
+    <span class="fine" id="hint">Drag a clip to move it, its edges to trim it; Alt-drag copies it. Drag along the ruler to set the loop; click it to move the playhead.</span>
+  </div>
+
+  <section class="panel inspector hidden" id="inspector">
+    <h2 id="clipTitle">Clip</h2>
+    <div class="grid">
+      <label class="inl">Starts at bar <input type="number" id="cStart" step="0.25"></label>
+      <label class="inl">Length (beats) <input type="number" id="cLen" step="0.25" min="0.25"></label>
+      <label class="inl">Level <input type="range" id="cGain" min="0" max="2" step="0.05"></label>
+      <label class="inl"><input type="checkbox" id="cMute"> Muted</label>
+      <button id="cDup" title="Ctrl+D">Duplicate</button>
+      <button id="cFill" title="Repeat the clip to the loop's end">Fill the loop</button>
+      <button id="cSplit" title="S">Split at the playhead</button>
+      <button id="cDel" title="Delete">Delete</button>
+    </div>
+    <div id="noteTools" class="grid" style="margin-top:10px">
+      <span class="fine" id="noteNote"></span>
+      <label class="inl">Quantize to <select id="qGrid"><option value="1">beats</option><option value="0.5" selected>eighths</option><option value="0.3333333333">triplets</option><option value="0.25">sixteenths</option></select></label>
+      <select id="qStrength" aria-label="Quantize strength"><option value="1">fully</option><option value="0.5">halfway</option></select>
+      <button id="qBtn">Quantize</button>
+      <button id="tDown">Transpose −1</button><button id="tUp">+1</button>
+      <button id="oDown">−12</button><button id="oUp">+12</button>
+      <button id="nRevert">As played</button>
+    </div>
+    <canvas id="roll"></canvas>
+  </section>
+
+  <div class="cols hidden" id="lower">
+    <section class="panel">
+      <h2>Sound in and out</h2>
+      <p class="row small"><label class="inl">Audio in <select id="audioIn"><option value="">Choose…</option></select></label> <span class="meter"><b id="meter"></b></span></p>
+      <p class="row small"><label class="inl">Heard through <select id="audioOut"><option value="default">the computer's default</option></select></label></p>
+      <p class="row small"><button id="usbAudio1">Hear the looper in the minichord's headphones</button></p>
+      <p class="fine" id="usbNote">With the minichord's USB audio set to play the computer's sound (setting 244 to 1), the tracks and the click come out of the minichord, beside what you play, and none of it is recorded twice: the minichord sends only its own sound back.</p>
+      <p class="row small"><label class="inl"><input type="checkbox" id="monitor"> Hear the input through the computer too</label></p>
+      <p class="row small"><label class="inl"><input type="checkbox" id="clockOut"> Send MIDI clock to the minichord</label></p>
+      <p class="fine">So its rhythm mode follows the looper's tempo, starting with it.</p>
+    </section>
+    <section class="panel">
+      <h2>Timing</h2>
+      <p class="small">Input latency: <b id="latShow">–</b>, output <b id="outShow">–</b>.</p>
+      <p class="row small"><button id="calBtn">Calibrate</button> <span class="fine" id="calNote">Plays eight clicks: pluck a harp string on each (or play a short chord), letting each die away. Compares when each note's MIDI arrived with when its sound did. A sound with a quick attack measures best; the latency can shift a few milliseconds each time the input opens, so calibrate again if takes start to sit off the beat.</span></p>
+      <p class="row small"><label class="inl">Nudge recordings <input type="range" id="nudge" min="-60" max="60" step="1" value="0"> <span id="nudgeShow">0 ms</span></label></p>
+      <p class="fine">If the takes sit late against the click, move them earlier here.</p>
+      <h2 style="margin-top:14px">Foot control</h2>
+      <p class="fine">Any MIDI controller other than the minichord: control change 85 records, 86 plays, 87 stops, 88 undoes, 89 switches overdubbing, 90 takes the next step (record, play, stop), as the minichord's own looper takes them.</p>
+    </section>
+    <section class="panel">
+      <h2>Songs</h2>
+      <p class="row small"><label class="inl">Name <input type="text" id="songName"></label> <button id="newSong">New</button></p>
+      <ul class="songs" id="songs"></ul>
+      <p class="fine" id="storeNote"></p>
+    </section>
+    <section class="panel">
+      <h2>Take it away</h2>
+      <p class="row small"><label class="inl">What <select id="exWhat"><option value="song">the song</option><option value="loop">the loop</option></select></label>
+        <label class="inl">times <input type="number" id="exTimes" min="1" max="64" value="4"></label></p>
+      <p class="row small"><button id="exMix">Mix (WAV)</button><button id="exStems">Stems (WAV each)</button><button id="exMidi">MIDI file</button></p>
+      <p class="row small"><button id="exProj">Save the project file</button><label class="inl"><button id="imProjBtn">Open a project file</button><input type="file" id="imProj" accept=".mcloop" hidden></label></p>
+      <p class="fine">The project file holds the song and every take, to open on another computer.</p>
+    </section>
+  </div>
+
+  <footer>
+    <p><b>Keys:</b> <kbd>Space</kbd> play or stop, <kbd>R</kbd> record, <kbd>Home</kbd> to the start, <kbd>T</kbd> tap tempo, <kbd>C</kbd> click on or off, <kbd>L</kbd> loop on or off, <kbd>1</kbd>–<kbd>9</kbd> arm a track, <kbd>N</kbd> new track, <kbd>Ctrl</kbd>+<kbd>Z</kbd> undo, <kbd>Delete</kbd> the clip, <kbd>Ctrl</kbd>+<kbd>D</kbd> duplicate it, <kbd>S</kbd> split it at the playhead, <kbd>←</kbd> <kbd>→</kbd> nudge it.</p>
+    <p>A track plays its takes' own sound, or their MIDI: through the browser's piano, through the minichord (it then needs no USB audio, but has its sixteen voices, and what you play live takes them back), or through any MIDI device. A track played through the minichord is heard in what it records, so mute it while recording over it.</p>
+    <p>Needs Chrome, Edge or Opera on a computer or Android, and the minichord's USB audio (firmware 24 on). Without USB audio, takes keep the MIDI only.</p>
+  </footer>
+</main>
+<script type="module" src="ui.js"></script>
+</body>
+</html>
