@@ -40,7 +40,12 @@ mc.addEventListener("ports", () => {
 $("input").onchange = e => mc.selectInput(e.target.value);
 $("connect").onclick = async e => { e.target.disabled = true; if (await mc.connect()) e.target.textContent = "Connected"; else e.target.disabled = false; };
 eng.attachMidi(mc, portRole);
-mc.addEventListener("device", () => { if ($("usbAudio1")) $("usbAudio1").disabled = !(mc.sysex && mc.out); });
+mc.addEventListener("device", () => {
+  $("usbAudio1").disabled = !(mc.sysex && mc.out);
+  $("doubleTap").disabled = !(mc.sysex && mc.out) || (mc.params[7] ?? 0) < 37;
+  const tapped = mc.params[200] === 256 && mc.params[201] === 7;
+  $("doubleTap").textContent = tapped ? "The double tap works this looper" : "Work the looper from the minichord's double tap";
+});
 
 // ---------- starting ----------
 $("startBtn").onclick = async () => {
@@ -94,6 +99,12 @@ $("audioOut").onchange = async e => {
 $("monitor").onchange = e => eng.setMonitor(e.target.checked);
 $("clockOut").checked = !!prefs.clockOut;
 $("clockOut").onchange = e => { eng.clockOut = prefs.clockOut = e.target.checked; savePrefs(); };
+$("doubleTap").onclick = () => {
+  if (!(mc.sysex && mc.out)) { toast("Connect the minichord first (with MIDI device control allowed)."); return; }
+  if ((mc.params[7] ?? 0) < 37) { toast("The minichord's firmware needs to be version 37 or later for this."); return; }
+  mc.writeParam(200, 256); mc.writeParam(201, 7);
+  toast("Each double tap of the modifier now records, plays and stops here. Save the preset on the minichord to keep it.", 6000);
+};
 $("usbAudio1").onclick = () => {
   if (!mc.writeParam(244, 1)) { toast("Connect the minichord first (with MIDI device control allowed)."); return; }
   toast("The minichord now plays the computer's sound. Choose it as where the looper is heard.", 6000);
@@ -137,9 +148,9 @@ eng.addEventListener("audio", async e => {
 });
 eng.addEventListener("state", () => { drawTransport(); drawStatic(); });
 eng.addEventListener("remote", e => {
-  const a = e.detail.action;
-  if (a === 1 || a === 6) { if (a === 6 && eng.state === "playing" && !eng.rec && !eng.armWait) eng.stop(); else doRecord(); }
-  else if (a === 2) { if (eng.state !== "playing") eng.play(); else if (eng.rec) doRecord(); }
+  const a = e.detail.action, at = e.detail.at;
+  if (a === 1 || a === 6) { if (a === 6 && eng.state === "playing" && !eng.rec && !eng.armWait) eng.stop(); else doRecord(at); }
+  else if (a === 2) { if (eng.state !== "playing") eng.play(); else if (eng.rec) doRecord(at); }
   else if (a === 3) eng.stop();
   else if (a === 4) undo();
   else if (a === 5) { song.passEnd = song.passEnd === "overdub" ? "play" : "overdub"; $("passEnd").value = song.passEnd; changed(false, false); toast(song.passEnd === "overdub" ? "Overdubbing on" : "Overdubbing off"); }
@@ -233,12 +244,12 @@ $("tapBtn").onclick = tap;
 $("playBtn").onclick = () => { if (eng.state === "playing") eng.stop(); else eng.play(); };
 $("homeBtn").onclick = () => eng.seek(hasLoop(song) && song.loop.on ? song.loop.start : 0);
 $("recBtn").onclick = () => doRecord();
-function doRecord() {
+function doRecord(at) {
   if (!eng.ctx) return;
   if (!eng.stream && !mc.midi) toast("Nothing to record from yet: choose an audio input, or connect the minichord.");
   const armed = song.tracks.find(x => x.armed);
   if (!armed) { const tr = song.tracks[0]; if (tr) tr.armed = true; drawHeads(); }
-  eng.record();
+  eng.record(at);
   drawTransport();
 }
 function undo() {

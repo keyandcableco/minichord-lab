@@ -176,6 +176,28 @@ const MOCK = fs.readFileSync(path.join(__dirname, "live.test.js"), "utf8").match
     check("with the loop off, a take runs straight on", off.added === 1 && off.start === 40 && Math.abs(off.length - 10) < 0.2 && off.same, JSON.stringify(off));
     await page.evaluate(() => { document.getElementById("loopOn").click(); window.looper.stop(); });
 
+    // the minichord's double tap: control change 90 on its own port, its value the tap's delay; the
+    // first loop closes where the tap landed, 200 ms before the message (value 127 - 50)
+    const tap = await page.evaluate(async () => {
+      const eng = window.looper, s = window.looperSong();
+      document.getElementById("newSong").click();
+      await new Promise(r => setTimeout(r, 300));
+      const song = window.looperSong();
+      song.countIn = 0; song.bpm = 120;
+      window.__mini.i1.fire([0xB0, 90, 127]);                      // a tap: record
+      await new Promise(r => setTimeout(r, 200));
+      const t0 = eng.tAt(0);
+      // the second tap lands at 5.9 beats, under a bar and a half, and the minichord says so 200 ms
+      // (0.4 beats) later: read as when it arrived, at 6.3 beats, it would round to two bars
+      await new Promise(r => setTimeout(r, eng.perfAt(t0 + 5.9 * 0.5) - performance.now() + 200));
+      window.__mini.i1.fire([0xB0, 90, 127 - 50]);
+      await new Promise(r => setTimeout(r, 600));
+      const sg = window.looperSong();
+      return { loop: [sg.loop.start, sg.loop.end], clips: sg.clips.length, state: eng.state, rec: !!eng.rec, recorded: sg.clips[0] && sg.sources[sg.clips[0].sourceId].midi.some(e => (e.d[0] & 0xF0) === 0xB0) };
+    });
+    check("the minichord's double tap records and closes the loop where the tap landed", tap.loop[0] === 0 && tap.loop[1] === 4 && tap.clips === 1 && tap.state === "playing" && !tap.rec && !tap.recorded, JSON.stringify(tap));
+    await page.evaluate(() => window.looper.stop());
+
     // space plays and stops
     await page.keyboard.press("Space"); await sleep(300);
     const playing = await page.evaluate(() => window.looper.state);

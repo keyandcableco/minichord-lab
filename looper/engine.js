@@ -44,6 +44,7 @@ export class Engine extends EventTarget {
     this.offsetMs = 0;                 // the player's own nudge
     this.level = 0; this.midiSeen = 0;
     this.ring = [];                    // recent input chunks
+    this.midiRing = [];                // recent MIDI from the minichord
     this.rec = null;                   // the take being recorded
     this.armWait = null;               // a punch in waiting for its beat
     this.live = [];                    // placed sources: {node, gain, start, stop, kind}
@@ -189,8 +190,14 @@ export class Engine extends EventTarget {
 
   // ---------- recording ----------
   get armedTrack() { return this.song.tracks.find(t => t.armed) || null; }
-  /** the record button: start, punch in, punch out, or close the first loop */
-  record() {
+  /** where the song was, as heard, at a performance time (ms) */
+  whereAt(perf) {
+    if (this.state !== "playing") return this.where();
+    const u = this.uAt(this.heardAt(perf));
+    return { u, beat: u < 0 ? this.from : songBeat(this.song, this.from, u), countIn: u < 0 ? -u : 0 };
+  }
+  /** the record button (pressed at performance time `at`, or now): start, punch in, punch out, or close the first loop */
+  record(at) {
     const song = this.song;
     if (!this.armedTrack) { const t = song.tracks[0] || newTrack(0); if (!song.tracks.length) song.tracks.push(t); t.armed = true; }
     if (this.state !== "playing") {
@@ -200,7 +207,7 @@ export class Engine extends EventTarget {
       return "count";
     }
     if (this.armWait) { this.armWait = null; this._emit("state"); return "cancel"; }
-    const w = this.where();
+    const w = at != null ? this.whereAt(at) : this.where();
     if (this.rec) {
       if (this.rec.uEnd != null) return "closing";
       if (this.rec.first && !this.rec.looped) {
@@ -215,9 +222,9 @@ export class Engine extends EventTarget {
       this._emit("state");
       return "out";
     }
-    const at = w.u < 0 ? 0 : this._punchAt(w.u, false);
-    if (at - w.u < 0.05 && song.punch === "now") { this._beginTake(w.u); return "in"; }
-    this.armWait = { u: at };
+    const punch = w.u < 0 ? 0 : this._punchAt(w.u, false);
+    if (punch - w.u < 0.05 && song.punch === "now") { this._beginTake(w.u); return "in"; }
+    this.armWait = { u: punch };
     this._emit("state");
     return "wait";
   }
@@ -241,9 +248,10 @@ export class Engine extends EventTarget {
       tape: null, midi: [], cut: u, tracks: [track.id],
       first: !hasLoop(this.song),             // no loop yet: this take sets it
     };
-    // the tape starts a little before the take, from the input heard so far
+    // the tape starts a little before the take, from the input heard so far, and the MIDI with it
     rec.tStart = this.tAt(u);
     this._tapeFrom(rec, rec.tStart - PREROLL);
+    rec.midi = this.midiRing.filter(e => e.t >= rec.tStart - PREROLL);
     this.armWait = null;
     this._emit("state");
   }
@@ -437,15 +445,24 @@ export class Engine extends EventTarget {
     const st = d[0];
     if (st >= 0xF0) return;
     const type = st & 0xF0;
-    // a foot controller (or anything that isn't the minichord): control changes 85 to 90, as the firmware's looper takes them
-    if (!role) {
-      if (type === 0xB0 && d[1] >= 85 && d[1] <= 90 && d[2] >= 64) this._emit("remote", { action: d[1] - 84 });
+    // control changes 85 to 90 work the looper, as they work the firmware's own: from a foot
+    // controller, or from the minichord's double tap (double tap value 7, firmware 37 on), whose
+    // value says how long ago the second tap landed, 4 ms a step down from 127
+    if (type === 0xB0 && d[1] >= 85 && d[1] <= 90) {
+      if (d[2] < 64) return;
+      const at = (stamp || performance.now()) - (role ? (127 - d[2]) * 4 : 0);
+      this._emit("remote", { action: d[1] - 84, at });
       return;
     }
+    if (!role) return;
     if (type === 0x90 && d[2] > 0) this.midiSeen = performance.now();
     const t = this.heardAt(stamp || performance.now());
     if (this.calib) this.calib.notes.push({ t, d: [...d] });
-    if (this.rec && this.rec.mode !== "audio") this.rec.midi.push({ t, p: role, d: [...d] });
+    const e = { t, p: role, d: [...d] };
+    // the last few seconds, for a take that begins a moment ago (a punch in placed at the tap that made it)
+    this.midiRing.push(e);
+    while (this.midiRing.length && this.midiRing[0].t < t - 3) this.midiRing.shift();
+    if (this.rec && this.rec.mode !== "audio") this.rec.midi.push(e);
   }
 
   // ---------- calibrating the input ----------

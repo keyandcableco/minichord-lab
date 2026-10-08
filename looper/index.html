@@ -210,8 +210,9 @@ kbd{border:1px solid var(--rule);border-bottom-width:2px;padding:0 .3em;border-r
       <p class="row small"><button id="calBtn">Calibrate</button> <span class="fine" id="calNote">Plays eight clicks: pluck a harp string on each (or play a short chord), letting each die away. Compares when each note's MIDI arrived with when its sound did. A sound with a quick attack measures best; the latency can shift a few milliseconds each time the input opens, so calibrate again if takes start to sit off the beat.</span></p>
       <p class="row small"><label class="inl">Nudge recordings <input type="range" id="nudge" min="-60" max="60" step="1" value="0"> <span id="nudgeShow">0 ms</span></label></p>
       <p class="fine">If the takes sit late against the click, move them earlier here.</p>
-      <h2 style="margin-top:14px">Foot control</h2>
-      <p class="fine">Any MIDI controller other than the minichord: control change 85 records, 86 plays, 87 stops, 88 undoes, 89 switches overdubbing, 90 takes the next step (record, play, stop), as the minichord's own looper takes them.</p>
+      <h2 style="margin-top:14px">From the minichord, or a foot</h2>
+      <p class="row small"><button id="doubleTap" disabled>Work the looper from the minichord's double tap</button></p>
+      <p class="fine">Two quick taps of the modifier then take the next step, record, play, stop, placed where the second tap landed (double tap control 256, value 7; firmware 37 on). Any MIDI controller works it too: control change 85 records, 86 plays, 87 stops, 88 undoes, 89 switches overdubbing, 90 takes the next step, as the minichord's own looper takes them.</p>
     </section>
     <section class="panel">
       <h2>Songs</h2>
