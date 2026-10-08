@@ -13,7 +13,11 @@ set -e
 cd "$(dirname "$0")/.."
 src=${1:-$(mktemp -d)}
 out=samples/speech
-voices="woman:08 man:05"    # ARU talker IDs: 08 a woman of 32, 05 a man of 35
+# ARU talker IDs, 08 a woman of 32 and 05 a man of 35, and how far each one's peaks are limited, in
+# dB: the man talked more quietly through the chords, so his loops' few sharpest peaks are shaved by
+# 8 dB, which lets the rest of him come up 3 dB (the vocoder hears only each band's loudness, so a
+# limited peak changes nothing it does with it)
+voices="woman:08:0 man:05:8"
 mkdir -p "$out" "$src"
 python3 - "$src" <<'EOF'
 import io, os, sys, zipfile, urllib.request
@@ -54,7 +58,7 @@ make() {
   sox $parts "$tmp/$voice-$name.wav"
 }
 for v in $voices; do
-  voice=${v%:*}; id=${v#*:}
+  voice=${v%%:*}; id=$(echo "$v" | cut -d: -f2)
   make "$voice" "$id" one-line 1; make "$voice" "$id" two-lines 2
   make "$voice" "$id" four-lines 4; make "$voice" "$id" eight-lines 8
 done
@@ -63,7 +67,9 @@ done
 # within a few dB of the dry one (the consonants come up a little too)
 rm -f "$out"/*.flac
 for f in "$tmp"/*-line.wav "$tmp"/*-lines.wav; do
-  sox "$f" "$out/$(basename "$f" .wav).flac" highpass 70 gain -6 compand 0.001,0.1 6:-60,-45,-10 -4 -90 0.01 gain -n -1
+  name=$(basename "$f" .wav); limit=""
+  for v in $voices; do case "$v" in "${name%%-*}":0) ;; "${name%%-*}":*) l=${v##*:}; limit="gain -n 0 compand 0.0002,0.03 -$l,-$l,0,-$l 0 -90 0.005";; esac; done
+  sox "$f" "$out/$name.flac" highpass 70 gain -6 compand 0.001,0.1 6:-60,-45,-10 -4 -90 0.01 $limit gain -n -1
 done
 rm -r "$tmp"
 for f in "$out"/*.flac; do echo "$f $(soxi -D "$f")s $(du -h "$f" | cut -f1)"; done
