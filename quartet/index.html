@@ -135,7 +135,7 @@
   </div>
 
   <footer>
-    <p>Part of <a href="../">Minichord Lab</a>. Violin, viola, cello, pizzicato and tremolo recordings from the Musyng Kite soundfont (CC BY-SA 3.0), as rendered by <a href="https://github.com/gleitz/midi-js-soundfonts">midi-js-soundfonts</a>; see <a href="https://github.com/keyandcableco/minichord-lab/blob/main/samples/README.md">samples/README.md</a>. The minichord is <a href="https://github.com/BenjaminPoilve/minichord">Benjamin Poilve's open-source instrument</a>; each voice keeps its own glide with MPE on the unofficial <a href="https://github.com/keyandcableco/minichord/tree/test-allFeatures">test-allFeatures firmware</a>.</p>
+    <p>Part of <a href="../">Minichord Lab</a>. Violin, viola, cello, pizzicato and tremolo recordings from the Musyng Kite soundfont (CC BY-SA 3.0), the middle of the pizzicato from FluidR3_GM (CC BY 3.0), as rendered by <a href="https://github.com/gleitz/midi-js-soundfonts">midi-js-soundfonts</a>; see <a href="https://github.com/keyandcableco/minichord-lab/blob/main/samples/README.md">samples/README.md</a>. The minichord is <a href="https://github.com/BenjaminPoilve/minichord">Benjamin Poilve's open-source instrument</a>; each voice keeps its own glide with MPE on the unofficial <a href="https://github.com/keyandcableco/minichord/tree/test-allFeatures">test-allFeatures firmware</a>.</p>
     <p>Made by <a href="https://keyandcable.com">The Key &amp; Cable Company</a>. Source on <a href="https://github.com/keyandcableco/minichord-lab">GitHub</a>.</p>
   </footer>
 </main>
@@ -177,6 +177,9 @@ const muted=new Set();
 // ---------- sound ----------
 let ctx=null, master, wet, dry, bus={}, ready=false;
 const SAMPLE_SETS={violin:[54,100],viola:[46,88],cello:[34,80],pizz:[34,100],trem:[34,100]};
+// Musyng Kite's pizzicato is two sections a semitone apart from 48 to 62 (a layer on the wrong key),
+// so those notes come from FluidR3's, as the minichord's firmware takes them
+const folderFor=(dir,m)=> dir==="pizz" && m>=48 && m<=62 ? "pizz-fluid" : dir;
 const banks={};   // folder -> Map(midi -> {buf, loopStart, loopEnd, norm})
 function loopify(buf, oneShot){
   const sr=buf.sampleRate, L=buf.length;
@@ -197,7 +200,7 @@ async function loadAll(){
   for(const [dir,[lo,hi]] of Object.entries(SAMPLE_SETS)){
     banks[dir]=new Map();
     for(let m=lo;m<=hi;m+=2){ total++;
-      jobs.push(fetch(`../samples/quartet/${dir}/${m}.mp3`).then(r=>{ if(!r.ok) throw new Error(r.status); return r.arrayBuffer(); })
+      jobs.push(fetch(`../samples/quartet/${folderFor(dir,m)}/${m}.mp3`).then(r=>{ if(!r.ok) throw new Error(r.status); return r.arrayBuffer(); })
         .then(a=>ctx.decodeAudioData(a)).then(b=>{ banks[dir].set(m, loopify(b, dir==="pizz")); done++; $("loadNote").textContent=`Tuning up: ${done} of ${total}`; })); }
   }
   await Promise.all(jobs);
