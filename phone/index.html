@@ -1,0 +1,364 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Phone · Minichord Lab</title>
+<meta name="description" content="Play a song on your phone into the minichord and play along: it pumps, wahs and strums with the music, locks its rhythm to the beat, DJs the song, and plays it back on the harp.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Minichord Lab">
+<meta property="og:title" content="Phone">
+<meta property="og:description" content="Play a song on your phone into the minichord and play along: it pumps, wahs and strums with the music, locks its rhythm to the beat, DJs the song, and plays it back on the harp.">
+<meta property="og:url" content="https://chordlab.keyandcable.com/phone/">
+<meta property="og:image" content="https://chordlab.keyandcable.com/phone/card.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://chordlab.keyandcable.com/phone/card.png">
+<link rel="icon" href="../core/logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../core/lab.css">
+<script src="../core/theme.js"></script>
+<style>
+.needs{border-left:4px solid var(--felt);padding:.5rem .9rem;margin:14px 0 0;background:var(--panel)}
+.needs p{margin:.2rem 0}
+.needs button{margin-top:.4rem}
+/* what the minichord hears, live: a lamp for the kicks, the tempo, the followers */
+.live{display:grid;grid-template-columns:auto minmax(0,1fr) minmax(0,1.4fr);gap:18px 28px;align-items:center;margin-top:18px;
+  background:#171412;color:#E8DCC0;border:1px solid var(--rule);border-radius:var(--radius);padding:16px 18px}
+@media (max-width:760px){.live{grid-template-columns:auto minmax(0,1fr)}.live .meters{grid-column:1/-1}}
+.lamp{width:74px;height:74px;border-radius:50%;background:#3A2A22;box-shadow:inset 0 0 0 3px #5A4636;transition:background .18s ease-out, box-shadow .18s ease-out}
+.lamp.hit{background:#E0605A;box-shadow:0 0 28px #E0605A, inset 0 0 0 3px #F4B0A8;transition:none}
+.lamplabel{font-size:.85rem;color:#B3A78F;text-align:center;margin-top:6px}
+.tempo b{display:block;font:700 2.6rem/1 var(--hand);color:#FFF8E7}
+.tempo span{font-size:.9rem;color:#B3A78F}
+.beats{display:flex;gap:6px;margin-top:8px}
+.beats i{width:14px;height:14px;border-radius:50%;background:#3A2A22}
+.beats i.on{background:#D4A017}
+.meters{display:grid;gap:10px}
+.meter{display:grid;grid-template-columns:7.5rem minmax(0,1fr);gap:10px;align-items:center;font-size:.9rem;color:#CFC3A6}
+.bar{height:14px;background:#2A2420;border-radius:2px;overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#9C7410,#E0605A);transition:width .06s linear}
+.strings{display:flex;gap:4px;margin-top:4px}
+.strings i{flex:1;height:22px;background:#2A2420;border-radius:1px;transition:background .5s ease-out}
+.strings i.on{background:#D4A017;transition:none}
+/* the recipes: a card each, switched on and off */
+.recipes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:10px}
+@media (max-width:900px){.recipes{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:560px){.recipes{grid-template-columns:1fr}}
+.recipe{border:1px solid var(--rule);border-top:3px solid var(--ink);background:var(--panel);padding:10px 12px 12px;border-radius:var(--radius);display:flex;flex-direction:column;gap:6px}
+.recipe.on{border-top-color:var(--felt)}
+.recipe h3{margin:0;font-size:1.1rem}
+.recipe p{margin:0;font-size:.95rem;color:var(--muted);flex:1}
+.recipe .row{margin-top:4px}
+.grid2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:28px;margin-top:28px}
+@media (max-width:900px){.grid2{grid-template-columns:1fr}}
+label.slide{display:grid;grid-template-columns:8.5rem minmax(0,1fr) 3.4rem;align-items:center;gap:10px;margin:.55rem 0}
+label.slide input{width:100%;accent-color:var(--felt)}
+label.slide output{text-align:right;font-variant-numeric:tabular-nums}
+@media (max-width:520px){label.slide{grid-template-columns:6.5rem minmax(0,1fr) 3rem}}
+.seg{display:flex;flex-wrap:wrap;gap:6px;margin:.2rem 0 .6rem}
+.seg button{font-weight:400}
+.seg button[aria-pressed="true"]{font-weight:700}
+label.check{display:flex;gap:10px;align-items:flex-start;margin:.5rem 0}
+label.check input{margin-top:.35rem;accent-color:var(--felt)}
+label.check span small{display:block;color:var(--muted);font-size:.9rem}
+.bigrow{display:flex;flex-wrap:wrap;gap:10px;margin:.6rem 0}
+.bigrow button{padding:.6rem 1.1rem .55rem;font-size:1.05rem;touch-action:none;user-select:none;-webkit-user-select:none}
+#throw.held{background:var(--felt);color:#FFF8E7}
+fieldset{border:none;padding:0;margin:0;min-width:0}
+fieldset:disabled{opacity:.5}
+.how p{max-width:72ch}
+.steps{margin:.4rem 0 0;padding-left:1.3rem}
+.steps li{margin:.2rem 0}
+</style>
+</head>
+<body>
+<main>
+  <div class="labbar">
+    <a class="crumb" href="../">Minichord Lab</a>
+    <div class="connect">
+      <button id="connect" class="primary">Connect minichord</button>
+    </div>
+  </div>
+
+  <h1>Phone</h1>
+  <p class="lede">Play a song on your phone into the minichord and play along with it. The minichord listens: it pumps your chords with the kick, opens a filter on the hi-hats, locks its rhythm to the beat and strums the harp with it, puts the song through a DJ's filter and echo, and plays a second of it back on the harp strings.</p>
+  <ol class="steps fine">
+    <li>Plug the minichord into the phone (or a computer) with a USB cable. It shows up as a speaker and a MIDI device.</li>
+    <li>Play a song in any app: Spotify, YouTube, anything. To hear it through the minichord (which the DJ box needs), switch below to <i>play along</i>.</li>
+    <li>Connect here, then switch on whatever you like. Everything is borrowed and given back when you leave.</li>
+  </ol>
+  <p class="status" id="status">Connect the minichord.</p>
+  <p class="device-line" id="device"></p>
+  <div class="needs" id="needs" hidden></div>
+
+  <div class="live" aria-live="off">
+    <div>
+      <div class="lamp" id="lamp" role="img" aria-label="Lights on every kick the minichord hears"></div>
+      <div class="lamplabel">the kick</div>
+    </div>
+    <div class="tempo">
+      <b id="bpm">–</b>
+      <span id="tempoNote">beats per minute, once the rhythm follows the song</span>
+      <div class="beats" id="beats"><i></i><i></i><i></i><i></i></div>
+    </div>
+    <div class="meters">
+      <div class="meter"><span>Follower 1</span><div class="bar"><i id="m1"></i></div></div>
+      <div class="meter"><span>Follower 2</span><div class="bar"><i id="m2"></i></div></div>
+      <div class="meter"><span>Harp</span><div class="strings" id="strings"></div></div>
+    </div>
+  </div>
+
+  <section class="panel" style="margin-top:28px">
+    <h2>Recipes</h2>
+    <p class="fine">Each one is a few of the minichord's settings, set for you. They work whether the song plays through the minichord or the phone's own speaker.</p>
+    <fieldset id="recipesSet"><div class="recipes" id="recipes"></div></fieldset>
+  </section>
+
+  <div class="grid2">
+    <section class="panel">
+      <h2>DJ box</h2>
+      <fieldset id="djSet">
+        <p class="fine">The song itself, through a filter and an echo on its way through the minichord. Needs <i>play along</i>.</p>
+        <label class="slide">Filter <input type="range" id="filter" min="0" max="200" value="100" list="mid"><output id="filterOut">open</output></label>
+        <datalist id="mid"><option value="100"></option></datalist>
+        <label class="slide">Resonance <input type="range" id="res" min="0" max="100" value="30"><output id="resOut">30</output></label>
+        <div class="bigrow">
+          <button id="throw" aria-label="Echo throw: hold to send the song into the echo">Hold: echo throw</button>
+          <button id="tape" aria-pressed="false">Tape stop</button>
+          <button id="center">Filter to the middle</button>
+        </div>
+        <div>Echo time:</div>
+        <div class="seg" id="echoTime" role="group" aria-label="Echo time">
+          <button data-v="3">1/16</button><button data-v="0">1/8</button><button data-v="1" aria-pressed="true">dotted 1/8</button><button data-v="4">triplet</button><button data-v="2">1/4</button>
+        </div>
+        <label class="slide">Echo feedback <input type="range" id="fb" min="0" max="90" value="45"><output id="fbOut">45</output></label>
+        <label class="check"><input type="checkbox" id="knobFilter"><span>The mod knob sweeps the filter<small>Left of the middle muffles the song, right of it thins it out.</small></span></label>
+        <label class="check"><input type="checkbox" id="hoverFilter"><span>A hand over the harp muffles the song<small>Hover: the lower the hand, the more the low pass closes.</small></span></label>
+        <label class="check"><input type="checkbox" id="tapThrow"><span>Tap, then hold the modifier: echo throw<small>The double tap, held: the song goes into the echo for as long as the finger stays down.</small></span></label>
+      </fieldset>
+    </section>
+
+    <section class="panel">
+      <h2>The harp plays the song</h2>
+      <fieldset id="harpSet">
+        <p class="fine">Grab the last second of the song and the harp plays it, each string at its own pitch: a string at middle C plays it as it was, higher ones faster and brighter, lower ones slow and dark.</p>
+        <div class="bigrow"><button id="grab" class="primary">Grab the last second</button></div>
+        <p class="fine" id="grabNote">Nothing grabbed yet.</p>
+        <div>The harp strums the chord you hold, with the song's beat:</div>
+        <div class="seg" id="strum" role="group" aria-label="Strum on the beat">
+          <button data-v="0" aria-pressed="true">Off</button><button data-v="1">On every beat</button><button data-v="2">Down and up, in eighths</button>
+        </div>
+        <p class="fine">It finds the beat in a few seconds of steady music. Hold a chord (or keep one with hold) for it to strum.</p>
+      </fieldset>
+      <div class="row" style="margin-top:14px">
+        <button id="giveback" hidden>Give everything back</button>
+      </div>
+    </section>
+  </div>
+
+  <section class="panel how" style="margin-top:28px">
+    <h2>How it works</h2>
+    <p>The phone plays to the minichord as if it were a speaker, and the minichord listens to what arrives. Every few milliseconds it measures the song three ways: all of it, the bass below 150 Hz where the kick drum is, and the treble above 6 kHz where the hi-hats are. Each is judged against the song's own loudest moments of the last few seconds, so the phone's volume doesn't matter and a quiet song swings as far as a loud one.</p>
+    <p>A follower turns one of those levels into a setting: the chords' volume dipping on every kick is the pumping of sidechain compression, and the filter opening on every hi-hat is an auto-wah. The kick is a sudden jump in the bass, and it can strike your chord again or go out as a MIDI note. For the beat, the minichord looks back over six seconds for the spacing at which the music best repeats itself, then lines its rhythm, its MIDI clock and the harp's strum up with it.</p>
+    <p>The DJ box sits on the song's own path to the speaker: a filter that muffles it one way and thins it the other, an echo timed to the beat it found, and a tape stop that slows the song to a halt as a turntable does when its power goes. The minichord keeps the last second of the song in memory as it plays, which is what the tape stop slows down and what the harp plays when you grab it, at a third of the usual sample rate, gritty in the way early samplers were.</p>
+    <p>The settings are borrowed: leave the page, or press <i>Give everything back</i>, and the minichord is as it was. The recipes need the unofficial test-allFeatures firmware, version 52 or later; the DJ box and the harp, version 59.</p>
+  </section>
+
+  <footer>
+    <p>Part of <a href="../">Minichord Lab</a>. The minichord is <a href="https://github.com/BenjaminPoilve/minichord">Benjamin Poilve's open-source instrument</a>; the phone's features come from the unofficial <a href="https://github.com/keyandcableco/minichord/tree/test-allFeatures">test-allFeatures firmware</a>.</p>
+    <p>Made by <a href="https://keyandcable.com">The Key &amp; Cable Company</a>. Source on <a href="https://github.com/keyandcableco/minichord-lab">GitHub</a>.</p>
+  </footer>
+</main>
+
+<script type="module">
+import {Minichord} from "../core/minichord.js";
+const $=id=>document.getElementById(id);
+const mc=new Minichord();
+
+// ---------- the settings this page reaches (test-allFeatures firmware) ----------
+const A={ usbAudio:244, version:7, vocoder:260, carrier:261, consonants:262, knobMidi:238, clockOut:266,
+  f1:[303,304,305,306], f2:[307,308,309,310], beat:311, stab:312, kickNote:313,
+  filter:327, res:328, echo:329, echoTime:330, feedback:331, deck:332, strum:333,
+  modKnob:14, modRange:15, hover:249, hoverValue:250, tapCtrl:200, tapValue:201, tapHold:321 };
+const CHORD_VOLUME=197, CHORD_CUTOFF=143;
+const FOLLOW_FIRMWARE=52, DJ_FIRMWARE=59;
+const KICK=36;
+
+// The recipes: what each sets on, and what it puts back off (the firmware's own defaults). The two
+// followers are shared out: the pump has the first, the auto-wah the second.
+const RECIPES=[
+  {id:"pump", name:"Pump", text:"The kick ducks your chords and lets them swell back between hits: sidechain compression, the sound of a thousand dance tracks. Hold a long chord to hear it.",
+   on:{303:CHORD_VOLUME, 304:0, 305:1, 306:250}, off:{303:0, 304:0, 305:0, 306:200}, meters:1},
+  {id:"wah", name:"Auto-wah", text:"The hi-hats open the chords' filter, so every hat makes the chord bloom and close again. Best on a dark, filtered chord sound.",
+   on:{307:CHORD_CUTOFF, 308:4000, 309:2, 310:40}, off:{307:0, 308:0, 309:0, 310:200}, meters:1},
+  {id:"lock", name:"Lock the groove", text:"Rhythm mode follows the song: its tempo, and its beat. Start the rhythm and play chords; the clock goes out too, so a drum machine follows along.",
+   on:{311:1, 266:1}, off:{311:0, 266:0}, rhythm:true},
+  {id:"stab", name:"Kick stab", text:"The chord you hold (or keep with hold) is struck again on every kick, so your chords land with the drummer.",
+   on:{312:1}, off:{312:0}},
+  {id:"talk", name:"Talkbox", text:"The vocoder: the song's voice shapes your chords. Hold a chord through a sung line and the chord sings the words.",
+   on:{260:100, 261:0, 262:30}, off:{260:0}},
+  {id:"midi", name:"Kick to MIDI", text:"Every kick goes out as MIDI note 36, the General MIDI bass drum, louder for a harder kick: a drum machine or a computer plays along with the phone.",
+   on:{313:KICK}, off:{313:0}},
+];
+
+const PREFS="minichord-lab-phone";
+let prefs={}; try{ prefs=JSON.parse(localStorage.getItem(PREFS))||{}; }catch(e){}
+const savePrefs=()=>{ try{ localStorage.setItem(PREFS, JSON.stringify(prefs)); }catch(e){} };
+const st={ recipes:prefs.recipes||{}, filter:100, res:prefs.res??30, echoTime:prefs.echoTime??1, fb:prefs.fb??45,
+  knobFilter:false, hoverFilter:false, tapThrow:false, strum:0 };
+
+// ---------- borrowing ----------
+// Push (command 5) before anything changes, pop (6) gives it all back. USB audio (244) is the
+// instrument's, which pop leaves alone, so it's given back by hand; rhythm mode too, if started here.
+let pushHeld=false, own244=null, rhythmStarted=false, given=false, restarting=false;
+const version=()=>mc.params[A.version]??0;
+const canWrite=()=> !!(mc.out && mc.sysex && mc.params[35]!==undefined);
+function write(a, v){
+  if(!canWrite() || restarting) return false;
+  given=false;
+  if(!pushHeld){ mc.control(5); pushHeld=true; $("giveback").hidden=false; }
+  mc.writeParam(a, v);
+  return true;
+}
+function writeAll(obj){ for(const [a,v] of Object.entries(obj)) write(+a, v); }
+function giveBack(){
+  if(pushHeld && mc.out){ mc.control(6); }
+  if(rhythmStarted && mc.out){ mc.control(8, 0); }
+  if(own244!==null && mc.out && mc.params[A.usbAudio]!==own244 && own244!==2) mc.writeParam(A.usbAudio, own244);
+  pushHeld=false; own244=null; rhythmStarted=false;
+}
+$("giveback").onclick=()=>{ given=true; giveBack(); $("giveback").hidden=true;
+  st.recipes={}; st.filter=100; st.knobFilter=st.hoverFilter=st.tapThrow=false; st.strum=0; draw();
+  $("status").textContent="The minichord is as it was. Switch anything on to borrow its settings again."; };
+addEventListener("pagehide", ()=>{ given=true; giveBack(); });
+
+// what the recipes and the DJ box need besides their own settings: the followers' CCs (knobs send MIDI)
+// for the meters, the kicks as notes for the lamp
+function supporting(){
+  const any=Object.values(st.recipes).some(Boolean);
+  if(!any) return;
+  if(RECIPES.some(r=>st.recipes[r.id] && r.meters)) write(A.knobMidi, 1);
+  if(!st.recipes.midi) write(A.kickNote, KICK);   // the lamp: the kicks come back as notes
+}
+
+// ---------- the recipes ----------
+function drawRecipes(){
+  const box=$("recipes"); box.innerHTML="";
+  for(const r of RECIPES){
+    const on=!!st.recipes[r.id];
+    const card=document.createElement("div"); card.className="recipe"+(on?" on":"");
+    card.innerHTML=`<h3>${r.name}</h3><p>${r.text}</p><div class="row"><button aria-pressed="${on}">${on?"On":"Off"}</button>`+
+      (r.rhythm ? `<button data-rhythm>${rhythmStarted?"Stop the rhythm":"Start the rhythm"}</button>` : "")+`</div>`;
+    card.querySelector("button[aria-pressed]").onclick=()=>{
+      st.recipes[r.id]=!on;
+      writeAll(st.recipes[r.id] ? r.on : r.off);
+      supporting();
+      prefs.recipes=st.recipes; savePrefs(); drawRecipes();
+    };
+    const rb=card.querySelector("[data-rhythm]");
+    if(rb) rb.onclick=()=>{ if(!canWrite()) return; if(!pushHeld){ mc.control(5); pushHeld=true; $("giveback").hidden=false; }
+      rhythmStarted=!rhythmStarted; mc.control(8, rhythmStarted?1:0); drawRecipes(); };
+    box.appendChild(card);
+  }
+}
+
+// ---------- the DJ box ----------
+const filterText=v=> v<98 ? `low ${Math.round((100-v))}` : v>102 ? `high ${Math.round(v-100)}` : "open";
+function sendFilter(){ write(A.filter, st.filter); }
+$("filter").oninput=e=>{ let v=e.target.value|0; if(Math.abs(v-100)<=3) v=100; st.filter=v; $("filterOut").textContent=filterText(v); sendFilter(); };
+$("center").onclick=()=>{ st.filter=100; $("filter").value=100; $("filterOut").textContent="open"; sendFilter(); };
+$("res").oninput=e=>{ st.res=e.target.value|0; $("resOut").textContent=st.res; prefs.res=st.res; savePrefs(); write(A.res, st.res); };
+$("fb").oninput=e=>{ st.fb=e.target.value|0; $("fbOut").textContent=st.fb; prefs.fb=st.fb; savePrefs(); write(A.feedback, st.fb); };
+$("echoTime").onclick=e=>{ const b=e.target.closest("button"); if(!b) return; st.echoTime=+b.dataset.v; prefs.echoTime=st.echoTime; savePrefs(); write(A.echoTime, st.echoTime); draw(); };
+// the throw: the song into the echo while held, the echoes carrying on after
+const throwOn=e=>{ e.preventDefault(); $("throw").classList.add("held"); write(A.echoTime, st.echoTime); write(A.feedback, st.fb); write(A.echo, 100); };
+const throwOff=()=>{ if(!$("throw").classList.contains("held")) return; $("throw").classList.remove("held"); write(A.echo, 0); };
+$("throw").addEventListener("pointerdown", throwOn);
+for(const ev of ["pointerup","pointerleave","pointercancel"]) $("throw").addEventListener(ev, throwOff);
+$("throw").addEventListener("keydown", e=>{ if((e.key===" "||e.key==="Enter") && !e.repeat) throwOn(e); });
+$("throw").addEventListener("keyup", e=>{ if(e.key===" "||e.key==="Enter") throwOff(); });
+let taped=false;
+$("tape").onclick=()=>{ if(write(A.deck, 1)){ taped=!taped; $("tape").setAttribute("aria-pressed", String(taped)); $("tape").textContent=taped?"Song back in":"Tape stop"; } };
+$("knobFilter").onchange=e=>{ st.knobFilter=e.target.checked; if(st.knobFilter){ write(A.modKnob, A.filter); write(A.modRange, 100); } else write(A.modKnob, 0); };
+$("hoverFilter").onchange=e=>{ st.hoverFilter=e.target.checked; if(st.hoverFilter){ write(A.hover, A.filter); write(A.hoverValue, 0); } else write(A.hover, 0); };
+$("tapThrow").onchange=e=>{ st.tapThrow=e.target.checked;
+  if(st.tapThrow){ write(A.echoTime, st.echoTime); write(A.feedback, st.fb); write(A.tapCtrl, A.echo); write(A.tapValue, 100); write(A.tapHold, 1); }
+  else { write(A.tapCtrl, 0); write(A.tapHold, 0); } };
+
+// ---------- the harp ----------
+$("grab").onclick=()=>{ if(write(A.deck, 2)){ $("grabNote").textContent=`Grabbed at ${new Date().toLocaleTimeString()}: the harp plays it now. Grab again for another second.`; } };
+$("strum").onclick=e=>{ const b=e.target.closest("button"); if(!b) return; st.strum=+b.dataset.v; write(A.strum, st.strum); draw(); };
+
+// ---------- what the minichord sends back ----------
+// The followers as control changes 26 and 27 (knobs send MIDI on), each kick as note 36, the clock
+// (in rhythm mode) for the tempo, and the harp's strings as they sound.
+let ticks=[], tickCount=0, lastTick=0;
+function onMessage(e){
+  const d=e.data, s=d[0];
+  if(s===0xF8){ const t=performance.now(); ticks.push(t); if(ticks.length>49) ticks.shift(); tickCount++; lastTick=t;
+    if(tickCount%24===1) beat(); return; }
+  if(s===0xFA){ tickCount=0; return; }
+  const type=s&0xF0;
+  if(type===0xB0 && (d[1]===26 || d[1]===27)){ $(d[1]===26?"m1":"m2").style.width=(d[2]/127*100)+"%"; return; }
+  if(type===0x90 && d[1]===KICK && d[2]>0) kick();
+}
+const watched=new WeakSet();
+function watch(){ for(const i of mc.inputs){ if(watched.has(i)) continue; watched.add(i); i.addEventListener("midimessage", onMessage); } }
+let beatIndex=0;
+function beat(){ const dots=$("beats").children; beatIndex=(beatIndex+1)%dots.length;
+  [...dots].forEach((d,i)=>d.classList.toggle("on", i===beatIndex)); }
+function kick(){ const l=$("lamp"); l.classList.remove("hit"); void l.offsetWidth; l.classList.add("hit"); setTimeout(()=>l.classList.remove("hit"), 90); }
+setInterval(()=>{
+  const now=performance.now();
+  if(ticks.length>=25 && now-lastTick<600){
+    const span=(ticks[ticks.length-1]-ticks[0])/(ticks.length-1);
+    $("bpm").textContent=(60000/(24*span)).toFixed(1); $("tempoNote").textContent="beats per minute, the rhythm's clock";
+  } else if(now-lastTick>1500){ $("bpm").textContent="–"; ticks=[]; }
+}, 250);
+// the harp's twelve strings, lit as they sound
+const strs=$("strings"); for(let i=0;i<12;i++) strs.appendChild(document.createElement("i"));
+mc.addEventListener("harp", e=>{
+  const s=strs.children[(e.detail.note%12+12)%12]; s.classList.add("on"); setTimeout(()=>s.classList.remove("on"), 60);
+});
+
+// ---------- drawing ----------
+function draw(){
+  drawRecipes();
+  $("filter").value=st.filter; $("filterOut").textContent=filterText(st.filter);
+  $("res").value=st.res; $("resOut").textContent=st.res;
+  $("fb").value=st.fb; $("fbOut").textContent=st.fb;
+  [...$("echoTime").children].forEach(b=>b.setAttribute("aria-pressed", String(+b.dataset.v===st.echoTime)));
+  [...$("strum").children].forEach(b=>b.setAttribute("aria-pressed", String(+b.dataset.v===st.strum)));
+  $("knobFilter").checked=st.knobFilter; $("hoverFilter").checked=st.hoverFilter; $("tapThrow").checked=st.tapThrow;
+}
+function drawNeeds(){
+  const box=$("needs"); let html="";
+  const v=version();
+  if(mc.out && !mc.sysex) html="<p>The browser didn't allow system-exclusive messages, so the page can't change the minichord's settings: allow \"MIDI device control &amp; reprogram\" in the site settings and reload.</p>";
+  else if(canWrite() && v<FOLLOW_FIRMWARE) html=`<p>This minichord's firmware (version ${v}) doesn't listen to the phone. It needs the unofficial test-allFeatures build, version ${FOLLOW_FIRMWARE} or later, and ${DJ_FIRMWARE} for the DJ box and the harp.</p>`;
+  else if(canWrite() && mc.params[A.usbAudio]===2) html=`<p>The minichord's USB audio is set to 2, so the phone doesn't see it as a speaker and nothing can reach it.</p><button id="speaker">Offer it as a speaker</button><p class="fine">It restarts a moment later, so the phone sees the change, and comes back by itself.</p>`;
+  else if(canWrite() && mc.params[A.usbAudio]===0) html=`<p>The song reaches the minichord, but it plays on the phone's side: the recipes work, the DJ box can't be heard.</p><button id="playalong">Play the song through the minichord</button>`;
+  box.innerHTML=html; box.hidden=!html;
+  $("speaker")?.addEventListener("click", ()=>{ restarting=true; mc.writeParam(A.usbAudio, 1); $("status").textContent="The minichord is restarting as a speaker. It comes back by itself in a few seconds."; drawNeeds(); });
+  $("playalong")?.addEventListener("click", ()=>{ if(own244===null) own244=mc.params[A.usbAudio]; write(A.usbAudio, 1); drawNeeds(); });
+  $("recipesSet").disabled = canWrite() && v<FOLLOW_FIRMWARE;
+  $("djSet").disabled = $("harpSet").disabled = canWrite() && v<DJ_FIRMWARE;
+}
+
+// ---------- connecting ----------
+mc.addEventListener("status", e=>$("status").textContent=e.detail);
+mc.addEventListener("device", ()=>{
+  const v=mc.params[A.version];
+  const audio=["stock: the phone keeps the sound","play along: through the minichord","no speaker"][mc.params[A.usbAudio]] ?? "?";
+  $("device").innerHTML = v==null ? "" : `Firmware <b>${v}</b>, USB audio <b>${audio}</b>.`;
+  drawNeeds();
+});
+mc.addEventListener("ports", ()=>{ watch(); if(!mc.out){ pushHeld=false; own244=null; rhythmStarted=false; restarting=false; } drawNeeds(); });
+$("connect").onclick=async e=>{ e.target.disabled=true; if(await mc.connect()) e.target.textContent="Connected"; else e.target.disabled=false; };
+
+st.recipes={};   // nothing is on until it's switched on here, whatever was on last time
+draw();
+</script>
+</body>
+</html>
