@@ -10,6 +10,8 @@ License: [Creative Commons Attribution 3.0](https://creativecommons.org/licenses
 
 License: [Creative Commons Attribution Share-Alike 3.0](https://creativecommons.org/licenses/by-sa/3.0/), as stated by the midi-js-soundfonts project. The share-alike terms apply to these samples and anything made from them, not to the lab's code.
 
+`quartet/pizz-fluid/` is the same pizzicato strings from the FluidR3_GM soundfont, fetched by the same script and laid out the same way. Musyng Kite's pizzicato is two sections a semitone apart from MIDI 48 to 62, a layer mapped to the wrong key, so the minichord's firmware takes the middle of its pizzicato from these. License: [Creative Commons Attribution 3.0](https://creativecommons.org/licenses/by/3.0/us/), as stated by the midi-js-soundfonts project.
+
 ## choir
 
 `choir/` holds the General MIDI "Choir Aahs" (`aah`) and "Voice Oohs" (`ooh`) instruments from three free soundfonts, as pre-rendered one note per file by the same project. Every second semitone from C2 to E6 is included, named by MIDI note number, unmodified. The choir view builds its sustain loops at load time.
