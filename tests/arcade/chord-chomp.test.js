@@ -38,25 +38,44 @@ const t=require("./harness").load("chord-chomp");
   chord("F"); await sleep(60);
   check("HOLD: a chord played and let go counts for nothing", !a.held && !a.latched);
   w.eval("saved.ccHold=0");
-  // the knob, as a wheel: a turn right is right of the way the player's going, a turn left left, and
-  // where it stops is straight ahead again
+  // the knob, as a wheel: a little right is a turn right of the way the player's going, at the next
+  // turning; a little left, left; hard either way, straight round; and where it stops is straight
+  // ahead again. Steered on it, the bends take themselves.
   const until=async(f, ms=3000)=>{ for(let t0=Date.now(); !f() && Date.now()-t0<ms;) await sleep(15); return f(); };
-  w.eval("window.__turns=[]; const ccTurn0=ccTurn; ccTurn=d=>{ __turns.push(d); ccTurn0(d); }");
-  const turns=()=>w.eval("__turns.join()");
-  Object.assign(a, {st:"pause", stUntil:1e9, want:"left"}); a.pac.dir="left";   // held still, going left
+  Object.assign(a, {st:"pause", stUntil:1e9, want:"left"}); Object.assign(a.pac, {dir:"left", p:.5});   // held still, going left
   knob(64); await sleep(300);
-  check("the knob's first reading is only where it rests: no turn", turns()==="" && a.want==="left", turns());
-  for(let v=66; v<=96; v+=2){ knob(v); await sleep(10); }
-  check("a sweep right is one turn right of left: up", turns()==="up" && a.want==="up", turns());
-  await sleep(300); knob(98); knob(100);
-  check("a nudge from where it rested isn't a turn", turns()==="up", turns());
-  await sleep(300); knob(88);
-  check("then a turn left, before the turning's come, is straight on again: left", turns()==="up,left" && a.want==="left", turns());
-  await sleep(300); knob(100); await sleep(300); knob(108);
-  check("right twice is straight back: right", turns()==="up,left,up,right" && a.want==="right", turns());
-  Object.assign(a, {want:"left", knobWant:null}); a.pac.dir="left"; await sleep(300);
-  for(let v=112; v<=124; v+=4){ knob(v); await sleep(10); } knob(116);
-  check("turned back mid-sweep: a turn the other way", turns()==="up,left,up,right,up,left" && a.want==="left", turns());
+  check("the knob's first reading is only where it rests: no turn", !a.knobRel && !a.knobSteer);
+  for(let v=66; v<=76; v+=2){ knob(v); await sleep(10); }
+  check("a little right: a turn right waits for the next turning, the player still going left", a.knobRel===1 && a.knobSteer && a.pac.dir==="left");
+  await sleep(300); knob(78); knob(80);
+  check("a nudge from where it rested isn't a turn", a.knobRel===1);
+  await sleep(300); knob(68);
+  check("a little left, with the right still waiting: straight on after all", a.knobRel===0 && a.pac.dir==="left");
+  await sleep(300); knob(60);
+  check("a little left again: a turn left waits", a.knobRel===-1);
+  await sleep(300); for(let v=64; v<=96; v+=4){ knob(v); await sleep(10); }
+  check("hard right: straight round, there and then, nothing waiting", a.pac.dir==="right" && a.knobRel===0, `${a.pac.dir} ${a.knobRel}`);
+  await sleep(300); for(let v=92; v>=64; v-=4){ knob(v); await sleep(10); }
+  check("and hard left: round again", a.pac.dir==="left" && a.knobRel===0, `${a.pac.dir} ${a.knobRel}`);
+  // in the maze: a bend, a T where straight on is a wall, and a crossing
+  const spots=w.eval(`(()=>{ const out={}; for(let y=1;y<CC_ROWS-1;y++) for(let x=1;x<CC_COLS-1;x++){ if(ccCell(x,y)==="#") continue;
+    for(const d of ["up","down","left","right"]){ const e={x,y,p:0,dir:d}, ahead=ccOpen(e,d), l=ccOpen(e,CC_CCW[d]), r=ccOpen(e,CC_CW[d]), back=ccOpen(e,CC_OPP[d]);
+      if(!back) continue;
+      if(!ahead && r && !l && !out.bend) out.bend={x,y,d};
+      if(!ahead && r && l && !out.tee) out.tee={x,y,d};
+      if(ahead && r && !l && !out.cross) out.cross={x,y,d}; } } return out; })()`);
+  const at=(s0, rel)=>w.eval(`(()=>{ const s=${JSON.stringify(s0)}; Object.assign(blast.pac,{x:s.x, y:s.y, p:0, dir:s.d, stopped:false}); blast.knobSteer=true; blast.knobRel=${rel};
+    return ccPacChoose(blast.pac); })()`);
+  check("found a bend, a T and a turning in the maze", spots.bend && spots.tee && spots.cross, JSON.stringify(spots));
+  check("a bend takes itself, steered on the knob", at(spots.bend, 0)===w.eval(`CC_CW["${spots.bend.d}"]`));
+  check("at a T, nothing waiting: the player waits", at(spots.tee, 0)===null);
+  check("at a T, a turn left waiting: left, and it's used", at(spots.tee, -1)===w.eval(`CC_CCW["${spots.tee.d}"]`) && a.knobRel===0);
+  check("where a way turns off right, nothing waiting: straight on", at(spots.cross, 0)===spots.cross.d);
+  check("a turn right waiting: taken there", at(spots.cross, 1)===w.eval(`CC_CW["${spots.cross.d}"]`));
+  check("a turn left waiting, and no way left: straight on, the turn kept for the next", at(spots.cross, -1)===spots.cross.d && a.knobRel===-1);
+  key("ArrowLeft"); await sleep(20);
+  check("the arrow keys (or the harp) and it's steered as ever", !a.knobSteer && a.want==="left");
+  w.eval("Object.assign(blast.pac,{x:CC_START.x, y:CC_START.y, p:0, dir:'left'})");
   Object.assign(a, {st:"go", want:"left"});
   // power: only the ghost whose chord is held turns blue; the others still chase
   const place=(g,x,y)=>Object.assign(g,{state:"out", x, y, p:0, dir:"left", scared:false});
