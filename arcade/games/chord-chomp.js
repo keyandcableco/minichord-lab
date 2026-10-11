@@ -256,7 +256,7 @@ function ccBar(){
 // ---------- the title screen ----------
 const ccMenuSig=()=> `${ccComboOk()}|${knobsReady()}|${steerKnob()}`;
 const CCMENU_G={key:"chomp", title:"CHORD CHOMP",
-  rules:()=>`<p>EAT THE DOTS. PLAY A CHORD ON THE BUTTONS AND THEY SING IT, A NOTE A DOT. ${ccLatch() ? "IT STAYS ON TILL YOU PLAY ANOTHER, OR THE SAME AGAIN TO LET IT GO. OR CHOOSE HOLD, FOR A QUARTER MORE: THEN A CHORD ONLY COUNTS WHILE IT'S HELD." : "A CHORD ONLY COUNTS WHILE IT'S HELD (A QUARTER MORE POINTS); CHOOSE LATCH TO HAVE IT STAY ON."}</p><p>THE GHOSTS WEAR CHORDS OF THE KEY. EAT A POWER PELLET, THEN PLAY A GHOST'S CHORD: THAT GHOST TURNS BLUE AND YOU CAN CATCH IT. THE OTHERS STILL CHASE YOU.</p><p>CATCH THEM IN A CADENCE'S ORDER FOR A BONUS: V THEN I, OR IV, V THEN I FOR THE BIGGEST.</p><p>WHEN A KEY TURNS UP, ${ccComboOk() ? "SET IT WITH THE KEY CHANGE COMBO" : "PLAY ITS HOME CHORD"} BEFORE IT GOES, AND THE MAZE CHANGES KEY. FARTHER KEYS SCORE MORE. WHILE A KEY IS UP, A POWER PELLET TURNS THE GHOSTS ALL BLUE: THE TIME TO SET IT.</p><p>${playOnScreen() ? "STEER WITH THE ARROWS UNDER THE GAME." : knobsReady() ? `STEER ON THE HARP, THE ARROW KEYS, OR THE ${KNOB_NAMES[steerKnob()]} KNOB: IT POINTS THE WAY, UP IN THE MIDDLE, DOWN AT EITHER END. HOLD IT AT AN END AND IT KEEPS GOING ROUND.` : "STEER ON THE HARP OR THE ARROW KEYS."}</p>`,
+  rules:()=>`<p>EAT THE DOTS. PLAY A CHORD ON THE BUTTONS AND THEY SING IT, A NOTE A DOT. ${ccLatch() ? "IT STAYS ON TILL YOU PLAY ANOTHER, OR THE SAME AGAIN TO LET IT GO. OR CHOOSE HOLD, FOR A QUARTER MORE: THEN A CHORD ONLY COUNTS WHILE IT'S HELD." : "A CHORD ONLY COUNTS WHILE IT'S HELD (A QUARTER MORE POINTS); CHOOSE LATCH TO HAVE IT STAY ON."}</p><p>THE GHOSTS WEAR CHORDS OF THE KEY. EAT A POWER PELLET, THEN PLAY A GHOST'S CHORD: THAT GHOST TURNS BLUE AND YOU CAN CATCH IT. THE OTHERS STILL CHASE YOU.</p><p>CATCH THEM IN A CADENCE'S ORDER FOR A BONUS: V THEN I, OR IV, V THEN I FOR THE BIGGEST.</p><p>WHEN A KEY TURNS UP, ${ccComboOk() ? "SET IT WITH THE KEY CHANGE COMBO" : "PLAY ITS HOME CHORD"} BEFORE IT GOES, AND THE MAZE CHANGES KEY. FARTHER KEYS SCORE MORE. WHILE A KEY IS UP, A POWER PELLET TURNS THE GHOSTS ALL BLUE: THE TIME TO SET IT.</p><p>${playOnScreen() ? "STEER WITH THE ARROWS UNDER THE GAME." : knobsReady() ? `STEER ON THE HARP, THE ARROW KEYS, OR THE ${KNOB_NAMES[steerKnob()]} KNOB: TURN IT RIGHT TO TURN RIGHT, LEFT TO TURN LEFT. WHEREVER IT STOPS IS STRAIGHT AHEAD AGAIN.` : "STEER ON THE HARP OR THE ARROW KEYS."}</p>`,
   levels:CC_LEVELS, begin:i=>beginChomp(i), demo:()=>ccDemo(), modNote:"title"};
 function ccMenu(over){ blast.ccSig=ccMenuSig(); arcadeMenu(CCMENU_G, over); }
 function beginChomp(level){
@@ -264,7 +264,7 @@ function beginChomp(level){
   piano.start(); stopDemo(); clearTimeout(blast.attract);
   if(blast.overlay){ blast.overlay.remove(); blast.overlay=null; }
   Object.assign(blast,{score:0, lives:3, level, startLevel:level, maze:0, phase:"play", over:false, clock:0, demoAuto:false, demoHeld:null, powerTold:false, modFor:null, jamUsed:false, jam:null, latched:null,
-    knobV:null, knobQ:null, knobOffset:0, knobDue:0, edgeAt:null});
+    knobS:null, knobWant:null});
   if(canWrite() && hasSetting(33)) ensure(33,0);                // no Barry Harris: the plain chords
   ccSetKey(ccKey(0));
   saved.chompStart=level; save();
@@ -306,7 +306,6 @@ function ccTick(now){
   if(!blast || blast.kind!=="chomp") return;
   const dt=Math.min(DT_MAX,(now-blast.last)/1000); blast.last=now;
   if((blast.phase==="play" || blast.phase==="demo") && blast.pac) ccStep(dt);
-  if(blast.phase==="play") ccKnobTick(now);
   if(blast.fx) fxDraw(now, dt);
   blast.raf=requestAnimationFrame(ccTick);
 }
@@ -646,28 +645,27 @@ function ccTurn(d){
   blast.want=d;
   const P=blast.pac; if(P && P.p>0 && P.dir===CC_OPP[d]) ccReverse(P);
 }
-// The knob steers too, as a dial: its whole turn is one lap, up in the middle, right a quarter of the
-// way clockwise, left a quarter anticlockwise and down at either end, so it points roughly the way to
-// go. A way is taken once the knob has rested on it a moment, so one swept past on the way to another
-// (round through right, from up to down) isn't taken at a turning on the way; and the knob has to go
-// a little past the line between two ways to change, so one resting on the line holds still. And it
-// turns endlessly, as Fifths Defender's does: held against either end stop, the dial keeps stepping
-// round that way, the whole mapping turning with it, so the knob never has to jump back.
-const CC_KNOB=["up","right","down","left"];
-const CC_EDGE=.025, CC_EDGE_WAIT=380, CC_EDGE_STEP=380, CC_SETTLE=70, CC_STICK=.12;   // how close to a stop counts, how long before it steps and how often; how long a way's rested on; how far past the line (in quarter turns)
+// The knob steers too, as a car's wheel: turned right, the player turns right of the way it's going;
+// turned left, left. Wherever the knob comes to rest is straight ahead again, so the next turn is
+// counted from there, either way. A turn is counted once, as soon as the knob has gone CC_TURN from
+// where it rested, and the rest of that sweep the same way is the same turn: the knob has to rest a
+// moment (CC_REST, no reading) before it counts again. Turned back the other way mid-sweep, it's a
+// turn that way. Two turns before a turning comes compound from the first, still waiting: right twice
+// is straight back, right then left straight on as before.
+const CC_CW={up:"right", right:"down", down:"left", left:"up"}, CC_CCW={up:"left", left:"down", down:"right", right:"up"};
+const CC_TURN=.06, CC_REST=250;   // how far the knob goes (of its whole turn) to count; how long without a reading to be at rest
 function ccKnob(v){
   if(!blast || blast.kind!=="chomp" || blast.phase!=="play") return;
-  blast.knobV=v;
-  const a=(v-.5)*4+(blast.knobOffset||0);                                // in quarter turns from up
-  if(blast.knobQ!=null && Math.abs(a-blast.knobQ)<.5+CC_STICK) return;
-  blast.knobQ=Math.round(a); blast.knobDue=performance.now()+CC_SETTLE;
-}
-function ccKnobTick(now){
-  const v=blast.knobV, end = v==null ? 0 : v<=CC_EDGE ? -1 : v>=1-CC_EDGE ? 1 : 0;
-  if(!end) blast.edgeAt=null;
-  else if(blast.edgeAt==null) blast.edgeAt=now+CC_EDGE_WAIT;
-  else if(now>=blast.edgeAt){ blast.edgeAt=now+CC_EDGE_STEP; blast.knobOffset=(blast.knobOffset||0)+end; ccKnob(v); }
-  if(blast.knobDue && now>=blast.knobDue){ blast.knobDue=0; ccTurn(CC_KNOB[mod(blast.knobQ,4)]); }
+  const now=performance.now(), k=blast.knobS || (blast.knobS={base:v, dir:0, at:now});
+  if(now-k.at>CC_REST) k.dir=0;                                           // it rested: where it is is straight
+  k.at=now;
+  const d=v-k.base;
+  if(k.dir && Math.sign(d)===k.dir){ k.base=v; return; }                  // more of the same turn
+  if(Math.abs(d)<CC_TURN) return;
+  k.dir=Math.sign(d); k.base=v;
+  const P=blast.pac, from = blast.knobWant && blast.want===blast.knobWant && P && P.dir!==blast.want ? blast.want : (P && P.dir) || blast.want || "up";
+  const to=(k.dir>0 ? CC_CW : CC_CCW)[from];
+  ccTurn(to); blast.knobWant=to;
 }
 document.addEventListener("keydown", e=>{
   if(!q || q.kind!=="chomp" || /INPUT|SELECT|TEXTAREA/.test(document.activeElement?.tagName||"")) return;
@@ -985,8 +983,8 @@ function ccDemo(){
       say("STEER ON THE HARP", pad ? "THE KEYMASTER AS A D-PAD: 5 UP, 4 LEFT, 3 RIGHT, 2 DOWN." : grid ? "ITS FOUR ROWS OF THREE ARE A D-PAD: TOP UP, SIDES LEFT AND RIGHT, BOTTOM DOWN." : "THE TOP THREE GO UP, THE NEXT TWO LEFT, TWO RIGHT BELOW A AND B, THE BOTTOM THREE DOWN.");
       for(const z of ["up","left","right","down"]){ zones(z); sfx("press"); await step(900); } zones();
       if(knobsReady() && typeof helpKnob==="function"){
-        say("OR TURN THE KNOB", `THE ${KNOB_NAMES[steerKnob()]} KNOB POINTS THE WAY: UP IN THE MIDDLE, RIGHT, DOWN AT EITHER END, LEFT. HOLD IT AT AN END AND IT KEEPS GOING ROUND.`);
-        for(const v of [.5,.75,1,.25,.5]){ helpKnob(steerKnob(), v); await step(900); } }
+        say("OR TURN THE KNOB", `THE ${KNOB_NAMES[steerKnob()]} KNOB STEERS LIKE A WHEEL: A LITTLE RIGHT TURNS YOU RIGHT, A LITTLE LEFT TURNS YOU LEFT. WHEREVER IT STOPS IS STRAIGHT AHEAD AGAIN.`);
+        for(const v of [.5,.62,.62,.5,.5]){ helpKnob(steerKnob(), v); await step(900); } }
       say("THE DOTS SING",`PLAY A CHORD AND EACH DOT YOU EAT PLAYS ITS NEXT NOTE. HERE, C.${ccLatch() ? " IT STAYS ON TILL YOU PLAY ANOTHER." : ""}`); hold(ccChord(blast.key,"I")); await step(4200);
       say("CHANGE THE CHORD",`F NOW, AND THE DOTS SING F. ${ccLatch() ? "PLAY F AGAIN TO LET IT GO" : "LET GO"}, AND THEY GO WAKA-WAKA.`); hold(ccChord(blast.key,"IV")); await step(4200);
       blast.demoHeld=null; helpChord(null);

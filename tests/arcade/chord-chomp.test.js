@@ -38,17 +38,26 @@ const t=require("./harness").load("chord-chomp");
   chord("F"); await sleep(60);
   check("HOLD: a chord played and let go counts for nothing", !a.held && !a.latched);
   w.eval("saved.ccHold=0");
-  // the knob, as a dial: up in the middle, right a quarter round, down at either end, left a quarter back
+  // the knob, as a wheel: a turn right is right of the way the player's going, a turn left left, and
+  // where it stops is straight ahead again
   const until=async(f, ms=3000)=>{ for(let t0=Date.now(); !f() && Date.now()-t0<ms;) await sleep(15); return f(); };
-  const ways=[]; for(const [v,want] of [[64,"up"],[96,"right"],[127,"down"],[32,"left"],[64,"up"]]){ knob(v); await until(()=>a.want===want, 1500); ways.push(a.want); }
-  check("the knob steers as a dial: up in the middle, right, down at the end, left, up", ways.join()==="up,right,down,left,up", ways.join());
   w.eval("window.__turns=[]; const ccTurn0=ccTurn; ccTurn=d=>{ __turns.push(d); ccTurn0(d); }");
-  for(const v of [80,96,112,124]) knob(v); await until(()=>w.eval("__turns.length>0"));
-  check("swept from up round to down, the way it passes on the way isn't taken", w.eval("__turns.join()")==="down" && a.want==="down", w.eval("__turns.join()"));
-  w.eval("__turns.length=0"); await until(()=>a.want==="up", 4000);
-  knob(96); await until(()=>a.want!=="up", 1500);
-  check("held at its end, it keeps going round: left, then up", /^left,up/.test(w.eval("__turns.join()")), w.eval("__turns.join()"));
-  check("turned back off the end, the dial goes on from where it got to: a quarter back is left", a.want==="left", a.want);
+  const turns=()=>w.eval("__turns.join()");
+  Object.assign(a, {st:"pause", stUntil:1e9, want:"left"}); a.pac.dir="left";   // held still, going left
+  knob(64); await sleep(300);
+  check("the knob's first reading is only where it rests: no turn", turns()==="" && a.want==="left", turns());
+  for(let v=66; v<=96; v+=2){ knob(v); await sleep(10); }
+  check("a sweep right is one turn right of left: up", turns()==="up" && a.want==="up", turns());
+  await sleep(300); knob(98); knob(100);
+  check("a nudge from where it rested isn't a turn", turns()==="up", turns());
+  await sleep(300); knob(88);
+  check("then a turn left, before the turning's come, is straight on again: left", turns()==="up,left" && a.want==="left", turns());
+  await sleep(300); knob(100); await sleep(300); knob(108);
+  check("right twice is straight back: right", turns()==="up,left,up,right" && a.want==="right", turns());
+  Object.assign(a, {want:"left", knobWant:null}); a.pac.dir="left"; await sleep(300);
+  for(let v=112; v<=124; v+=4){ knob(v); await sleep(10); } knob(116);
+  check("turned back mid-sweep: a turn the other way", turns()==="up,left,up,right,up,left" && a.want==="left", turns());
+  Object.assign(a, {st:"go", want:"left"});
   // power: only the ghost whose chord is held turns blue; the others still chase
   const place=(g,x,y)=>Object.assign(g,{state:"out", x, y, p:0, dir:"left", scared:false});
   w.eval("blast.fermataUntil=blast.clock+60; ccPowerStart()");          // the ghosts held still, to set the scene
