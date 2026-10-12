@@ -45,3 +45,14 @@ License: [Creative Commons Attribution 3.0](https://creativecommons.org/licenses
 | `dhec` | a dry slap, named only so in the pack |
 
 License: [CC0 1.0 Universal](https://creativecommons.org/publicdomain/zero/1.0/) (public domain), as stated in Sonic Pi's `LICENSE.md` and `etc/samples/README.md`.
+
+## vibraphone, bass, sitar, epiano
+
+`vibraphone/`, `bass/` (General MIDI "Electric Bass (finger)"), `sitar/` and `epiano/` ("Electric Piano 1") each hold the instrument from two soundfonts, `fluid/` (FluidR3_GM) and `musyng/` (Musyng Kite), as pre-rendered one note per file by the same project: every second semitone across each one's range, named by MIDI note number, unmodified. `tools/fetch-instrument-samples.sh` fetches them. The minichord's firmware builds its vibraphone, bass and electric piano from the FluidR3 ones and its sitar from Musyng Kite's (generator/samples.py).
+
+| Folder | Soundfont | License |
+|---|---|---|
+| `*/fluid/` | FluidR3_GM | [Creative Commons Attribution 3.0](https://creativecommons.org/licenses/by/3.0/us/) |
+| `*/musyng/` | Musyng Kite | [Creative Commons Attribution Share-Alike 3.0](https://creativecommons.org/licenses/by-sa/3.0/) |
+
+The licenses are as stated by the midi-js-soundfonts project. The share-alike terms apply to these samples and anything made from them, not to the lab's code.
