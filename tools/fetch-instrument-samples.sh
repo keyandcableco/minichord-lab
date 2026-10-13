@@ -40,3 +40,7 @@ fetch contrabass solo/bass   28 64
 du -sh samples/solo
 # the kalimba (General MIDI's), against VCSL's two mbiras (tools/fetch-vcsl-kalimba.sh)
 fetch kalimba kalimba 48 96
+# firmware 80: an upright bass (General MIDI's acoustic bass, against VSCO 2's plucked double bass) and accordions
+fetch acoustic_bass   upright        28 72
+fetch accordion       accordion      48 90
+fetch tango_accordion accordion-tango 48 90

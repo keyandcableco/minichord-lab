@@ -20,3 +20,5 @@ get(){   # folder-in-repo pattern dest
 get "Strings/Solo Violin/Arco Vib" "_f\.wav$" vsco-violin
 get "Strings/Solo Contrabass/SusNV" "_v3_rr1\.wav$" vsco-bass
 du -sh samples/solo/vsco-*
+# firmware 80: the upright bass, the same double bass plucked
+get "Strings/Solo Contrabass/Pizz" "_v1_rr1\.wav$" vsco-bass-pizz   # the softer layer: the louder has only E1-E2
