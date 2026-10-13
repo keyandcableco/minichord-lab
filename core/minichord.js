@@ -26,6 +26,12 @@ export const TEMPERAMENTS = ["Equal","Meantone","Just","Pythagorean","Werckmeist
 // Firmware 18 put 24-EDO in between 19 and 31, moving 31-EDO from 11 to 12. The Lab numbers
 // temperaments firmware 18's way; these translate for the minichord at hand.
 /** a stored temperament number, read as a position in the Lab's list */
+// The locks (the fork's firmware 76 on): settings the minichord keeps as its own, whatever preset
+// is loaded (the harp plate, the touch thresholds and the master tuning to begin with, and any the
+// player locks). Control command 9 reports them (7D 6C, a count, then two bytes an address); writing
+// lock (385) with an address locks it again at its present value. A page borrows a locked setting
+// like any other and gives it back the same way; the lock takes the handed-back value for its own.
+export const LOCK_ADDRESS=385, LOCKS_VERSION=76;
 export const temperIndex=(value, firmware)=> value===11 && firmware<18 ? 12 : value;
 /** the number to store for a position in the Lab's list, or null if that firmware hasn't it */
 export const temperValue=(index, firmware)=> firmware>=18 ? index : index===12 ? 11 : index===11 ? null : index;
@@ -53,6 +59,7 @@ export class Minichord extends EventTarget {
     this.chans=Array.from({length:16},(_,i)=>({bend:0, range:i===0?2:48, rpn:[127,127]}));
     this.zone={type:"lower", members:15, known:false};
     this.params={};               // raw values from the dump, by address
+    this.locks=null;              // the locked addresses, once the minichord has said (firmware 76 on)
     this.notes=new Map();         // "ch:note" -> {ch, note, vel, t}
     this._frame=0; this._settle=0; this._lastChordKey="";
     this.knobs=[null,null,null];   // the three knobs, 0 to 1, once the minichord sends them
@@ -126,7 +133,7 @@ export class Minichord extends EventTarget {
     else if(chord) this._status(`Listening to ${chord.name}, the chord port.` + (this.sysex ? "" :
       " System-exclusive access wasn't allowed, so the lab can't read or change the minichord's settings: allow \"MIDI device control & reprogram\" in the browser's site settings, then reload."));
     else this._status("Listening to every MIDI input. No minichord found yet.");
-    if(fresh) this.requestDump();
+    if(fresh){ this.locks=null; this._locksAsked=false; this.requestDump(); }
     this.dispatchEvent(new Event("ports"));
   }
   /** ask for every setting; asks again if no reply comes, and says so if none ever does */
@@ -170,12 +177,24 @@ export class Minichord extends EventTarget {
       }, 700);
     });
   }
+  /** whether the minichord keeps this setting as its own, whatever preset is loaded (null locks: it hasn't said) */
+  locked(a){ return !!this.locks && this.locks.has(a); }
+  /** ask which settings are locked; the answer comes as a "locks" event, with this.locks set */
+  requestLocks(){ return this.control(9); }
+  /** lock a setting again at its present value, so a value just given back is the lock's at once */
+  relock(a){ return this.writeParam(LOCK_ADDRESS, a); }
   writeParam(a,v){
     if(!this.out || !this.sysex) return false;
     this.out.send([0xF0,a&127,a>>7,v&127,(v>>7)&127,0xF7]); this.params[a]=v;
     this.dispatchEvent(new Event("device")); return true;
   }
   _dump(d){
+    // the locks: 7D 6C, a count, then two bytes an address (see LOCK_ADDRESS)
+    if(d[1]===0x7D && d[2]===0x6C){
+      const n=d[3], locks=new Set();
+      for(let i=0;i<n && 5+2*i<d.length;i++) locks.add(d[4+2*i]+128*d[5+2*i]);
+      this.locks=locks; this.dispatchEvent(new Event("locks")); return;
+    }
     this._dumpTries=0; clearTimeout(this._dumpT);
     if(d.length!==514) return;   // 256 parameters as two 7-bit bytes, plus F0 and F7
     // a dump nobody asked for: the minichord reporting a change made on the instrument itself,
@@ -188,6 +207,8 @@ export class Minichord extends EventTarget {
     this.changed = new Set(had ? [...Array(256).keys()].filter(i=>i!==7 && had[i]!==this.params[i]) : []);
     if(this.params[110]===1 && !this.zone.known){ this.zone={type:"lower", members:this.params[108]===1?15:4, known:true}; }
     this.dispatchEvent(new Event("device"));
+    // a firmware with locks is asked for them once, after its first dump
+    if((this.params[7]??0)>=LOCKS_VERSION && !this.locks && !this._locksAsked){ this._locksAsked=true; this.requestLocks(); }
   }
   _status(t){ this.statusText=t; this.dispatchEvent(new CustomEvent("status",{detail:t})); }
 

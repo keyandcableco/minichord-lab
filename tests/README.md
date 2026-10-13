@@ -75,6 +75,7 @@ its own before it counts: the checks keep real time, and a busy machine can make
 | `high-scores` | GAME OVER before the initials; input ignored at first; the board kept; beginner mode stays off it |
 | `lobby` | the arcade lobby's cabinets, best scores and ticker |
 | `bonus` | every two levels a bonus round starts; each of the five mini-games can be won; the game carries on after |
+| `locks` | the fork's firmware 76 locks: a locked setting borrowed by a game is written down, locked again as it's given back, and put back on the next visit if a page died before giving it back; older firmware notes nothing |
 | `game-clock` | every game's clock keeps true time down to ten frames a second: all fifteen ticks take up to a tenth of a second, and Breakout's ball covers the same ground at ten frames a second as at sixty |
 | `cabinet-plain` | the light mode judged by time, long frames counted, never a fast machine or a tab coming back; slow in full screen on AUTO, the plain cabinet first, remembered for that screen, then the field light; CABINET, PLAIN and AUTO in the settings; the player's CRT choice can't bring scanlines into a plain cabinet |
 | `fullscreen` | full screen builds the cabinet round the game, in CRT, its SOUND, RESET and connection status working; leaving puts it back |
@@ -150,3 +151,11 @@ light, dark and at a phone's width.
 As with the looper, Chrome never gets the real Web MIDI. `SHOTS=<folder>` with the page test saves
 pictures of it, light, dark and at a phone's width; `TAKES=<folder>` with the live test keeps what
 the minichord played, as WAVs.
+
+## The Practice Room, live
+
+    node practice/locks-live.test.js
+
+| test | checks |
+|---|---|
+| `practice/locks-live.test.js` | against a real minichord with the fork's firmware 76 or later, when one is plugged in: the room reads its locks; a game borrowing the locked key signature puts the game's key on the minichord and writes the player's down; given back, the player's key is the lock's again (a bank load keeps it); a page killed mid-game leaves the game's key locked in, and the next visit puts the player's back and says so; everything left as found. Web MIDI is stood in for as the looper's live test does it, but through the ALSA sequencer (`practice/midi-bridge.py`, python-rtmidi, `MINICHORD_PYTHON` to pick the python), since the raw MIDI device can't be opened while any sequencer client holds the minichord's port |

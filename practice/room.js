@@ -36,7 +36,7 @@ function borrow(addr,value){
   if(!canWrite()) return;
   maybePush();                                          // the instrument remembers, before anything changes
   roundBorrows.add(addr); wanted[addr]=value;
-  if(!(addr in borrowed)) borrowed[addr]=mc.params[addr] ?? 0;
+  if(!(addr in borrowed)){ borrowed[addr]=mc.params[addr] ?? 0; if(mc.locked(addr)) noteLockedBorrow(addr, borrowed[addr]); }
   mc.writeParam(addr,value);
   $("restore").hidden=false; mine();
   if(addr===31) modTap();
@@ -60,7 +60,10 @@ function restoreAll(){
   for(const [a] of back) delete borrowed[a];            // clear first, so the panel redraws without them
   for(const a of Object.keys(wanted)) delete wanted[a];
   if(pushHeld){ mc._asked=(mc._asked||0)+1; mc.control(6); pushHeld=false; }   // one message: everything as it was, and a dump
-  else for(const [a,v] of back) mc.writeParam(+a, v);
+  // and what was borrowed, written back as well: a borrow made while the probe was still asking
+  // whether the minichord can push and pop (its 700 ms) is in the push the probe leaves behind
+  for(const [a,v] of back) mc.writeParam(+a, v);
+  relockGiven(back.map(([a])=>+a));
   $("restore").hidden=true; stopTones(); mine();
   if(mc.out && !mc.pushPop) setTimeout(()=>mc.requestDump(),200);
 }
@@ -69,10 +72,47 @@ function restoreExcept(keep){
   if(!back.length) return [];
   for(const [a] of back) delete borrowed[a];
   for(const [a,v] of back) mc.writeParam(+a, v);
+  relockGiven(back.map(([a])=>+a));
   $("restore").hidden=!Object.keys(borrowed).length; stopTones(); mine();
   if(mc.out) setTimeout(()=>mc.requestDump(),200);
   return back.map(([a])=>+a);
 }
+// A locked setting (the fork's firmware 76 on: the minichord's own, whatever preset is loaded) is
+// borrowed and given back like any other, and the lock takes the handed-back value for its own
+// after a moment: locked again as it's handed back, it takes it at once. But a page that dies
+// before handing back leaves the game's value locked in, and no preset load heals it, as one
+// did before locks. So a locked setting borrowed is written down here as well, with the value it
+// had, and the next time the room opens with that minichord's locks known, anything still written
+// down is given back, if the lock still holds something else, and the note cleared.
+const LOCK_NOTE="lab-locked-borrows";
+function lockedNotes(){ try{ return JSON.parse(localStorage.getItem(LOCK_NOTE)||"{}"); }catch(e){ return {}; } }
+function noteLockedBorrow(addr, was){
+  const n=lockedNotes(); if(addr in n) return;
+  n[addr]=was; try{ localStorage.setItem(LOCK_NOTE, JSON.stringify(n)); }catch(e){}
+}
+function forgetLockedBorrows(addrs){
+  const n=lockedNotes(); for(const a of addrs) delete n[a];
+  try{ if(Object.keys(n).length) localStorage.setItem(LOCK_NOTE, JSON.stringify(n)); else localStorage.removeItem(LOCK_NOTE); }catch(e){}
+}
+function relockGiven(addrs){
+  const locked=addrs.filter(a=>mc.locked(a));
+  for(const a of locked) mc.relock(a);
+  forgetLockedBorrows(locked);
+}
+function healLockedBorrows(){
+  if(!canWrite() || !mc.locks) return;
+  const n=lockedNotes(), back=[];
+  for(const [a,was] of Object.entries(n)){
+    if(mc.locked(+a) && mc.params[a]!==was){ mc.writeParam(+a, was); mc.relock(+a); back.push(a); }
+  }
+  forgetLockedBorrows(Object.keys(n));
+  // said on the status line, which a round's own feedback doesn't overwrite
+  if(back.length){ const said=`Put back what an earlier game had borrowed and never gave back: ${back.map(a=>ADDR_NAMES[a]||`address ${a}`).join(", ")}.`; feedback(said, ""); const st=$("status"); if(st) st.textContent=said; }
+  // what a game borrowed before the locks were known is written down now
+  for(const [a,was] of Object.entries(borrowed)) if(mc.locked(+a)) noteLockedBorrow(+a, was);
+}
+mc.addEventListener("locks", healLockedBorrows);
+
 // Another instrument: a minichord plugged in while the one on the screen plays, or the screen's taking
 // over from one unplugged. What was borrowed was the other instrument's, so it's forgotten rather than
 // given back to this one, and the game sets this one up afresh (arcadeSetup, once its settings are in).
@@ -860,7 +900,7 @@ function mine(){
   const parts=[sigText(f), `modifier ${modWord()==="sharp"?"sharpens":"flattens"}`];
   // the alt layout's seven chords read as one item
   const altN=Object.keys(borrowed).filter(a=>a>=202 && a<=208).length;
-  const b=[...new Set(Object.keys(borrowed).filter(a=>!(a>=202 && a<=208)).map(a=> TONE_ADDRS.has(+a) ? "a plain tone" : ADDR_NAMES[a]||`address ${a}`))];
+  const b=[...new Set(Object.keys(borrowed).filter(a=>!(a>=202 && a<=208)).map(a=> (TONE_ADDRS.has(+a) ? "a plain tone" : ADDR_NAMES[a]||`address ${a}`) + (mc.locked(+a) ? " (locked: yours again after)" : "")))];
   if(altN) b.push(altN===7 ? "alt chords 1–7" : `${altN} alt chords`);
   if(b.length) parts.push(`borrowed for this game: ${b.join(", ")}`);
   $("myInfo").textContent=parts.join(" · ");
