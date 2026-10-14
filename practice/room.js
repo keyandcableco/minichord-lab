@@ -12,19 +12,30 @@ const wanted={};
 // everything the current round has set, so switching games never gives back what the new
 // game just borrowed (the key signature, Barry Harris mode, slash voice…)
 const roundBorrows=new Set();
+// everything given back (restoreAll): the double tap is the player's again, so it isn't set up afresh
+// as the settings come back in, only once the game borrows again
+let gaveBack=false;
 // Push and pop (firmware command 5 and 6, where the minichord has them): before anything is borrowed
 // the instrument is asked to remember its settings, and giving them back is one message that puts
 // back everything, including what a game couldn't know it changed. The borrowing below carries on
 // either way, since it's what the panel shows and what a partial give-back between games needs; on a
 // minichord without push and pop it's also what gives them back, one address at a time.
-let pushHeld=false;
+// A push holds whatever was already borrowed when it went out at the game's value, and the pop would
+// put that back: after a preset loaded mid-game the game sets its settings again at once, and only
+// its next borrow pushes. So what was borrowed at the push (pushedBorrowed) is written back after
+// the pop, as it was before the game, and nothing else is.
+let pushHeld=false, pushedBorrowed={};
 function maybePush(){
   if(pushHeld || !mc.pushPop || !canWrite()) return;
-  mc.control(5); pushHeld=true;
+  mc.control(5); pushHeld=true; pushedBorrowed={...borrowed};
 }
-// the probe pushes as it finishes, so what the instrument remembers is itself before this page
-// touched it, however early a game borrowed
-function pushAfterProbe(ok){ if(ok) pushHeld=true; }
+// the probe pushes straight after its own pop, before a game borrows anything (what was borrowed
+// before it began, nothing as a rule, is in its push like any other), so the instrument remembers
+// itself from then on, if the answer says it can
+function probe(){
+  const was={...borrowed};
+  mc.probePushPop().then(ok=>{ if(ok){ pushHeld=true; pushedBorrowed=was; } });
+}
 /** set addr to value for this round: borrowed if it differs, and kept if an earlier round already set it */
 function ensure(addr,value){
   if(!canWrite()) return;
@@ -35,6 +46,7 @@ function ensure(addr,value){
 function borrow(addr,value){
   if(!canWrite()) return;
   maybePush();                                          // the instrument remembers, before anything changes
+  gaveBack=false;
   roundBorrows.add(addr); wanted[addr]=value;
   if(!(addr in borrowed)){ borrowed[addr]=mc.params[addr] ?? 0; if(mc.locked(addr)) noteLockedBorrow(addr, borrowed[addr]); }
   mc.writeParam(addr,value);
@@ -56,16 +68,20 @@ function modTap(){
   for(const a of [209,211]) if(hasSetting(a) && mc.params[a]) borrow(a,0);
 }
 function restoreAll(){
-  const back=Object.entries(borrowed);
+  const back=Object.entries(borrowed); gaveBack=true;
   for(const [a] of back) delete borrowed[a];            // clear first, so the panel redraws without them
   for(const a of Object.keys(wanted)) delete wanted[a];
-  if(pushHeld){ mc._asked=(mc._asked||0)+1; mc.control(6); pushHeld=false; }   // one message: everything as it was, and a dump
-  // and what was borrowed, written back as well: a borrow made while the probe was still asking
-  // whether the minichord can push and pop (its 700 ms) is in the push the probe leaves behind
-  for(const [a,v] of back) mc.writeParam(+a, v);
-  relockGiven(back.map(([a])=>+a));
+  // with a push held, one message: everything as it was, and a dump. Then what the push holds at a
+  // game's value (pushedBorrowed, even one given back between games since) is written back after it;
+  // without one, everything borrowed is.
+  const popped=pushHeld, write=popped ? Object.entries(pushedBorrowed) : back;
+  if(popped){ mc._asked=(mc._asked||0)+1; mc.control(6); pushHeld=false; }
+  pushedBorrowed={};
+  for(const [a,v] of write) mc.writeParam(+a, v);
+  relockGiven([...new Set([...back, ...write].map(([a])=>+a))]);
   $("restore").hidden=true; stopTones(); mine();
-  if(mc.out && !mc.pushPop) setTimeout(()=>mc.requestDump(),200);
+  // the pop's dump went out before those writes, so it doesn't show them: asked for again
+  if(mc.out && (!popped || write.length)) setTimeout(()=>mc.requestDump(),200);
 }
 function restoreExcept(keep){
   const back=Object.entries(borrowed).filter(([a])=>!keep.has(+a));
@@ -119,7 +135,7 @@ mc.addEventListener("locks", healLockedBorrows);
 function newInstrument(){
   for(const a of Object.keys(borrowed)) delete borrowed[a];
   for(const a of Object.keys(wanted)) delete wanted[a];
-  roundBorrows.clear(); pushHeld=false; mc.pushPop=undefined; mc._pushPop=null;   // and whether it can push and pop is asked afresh
+  roundBorrows.clear(); pushHeld=false; gaveBack=false; mc.pushPop=undefined; mc._pushPop=null;   // and whether it can push and pop is asked afresh
   if(blast){ blast.setupDone=false; blast.modFor=null; }
   $("restore").hidden=true; mine();
 }
@@ -913,7 +929,7 @@ mc.addEventListener("device", ()=>{
   // a preset loaded on the instrument makes the firmware forget what was pushed (it belonged to the
   // last preset), so the next thing borrowed pushes the new one
   if(mc.presetLoaded) pushHeld=false;
-  if(mc.pushPop===undefined && canWrite() && mc.params[35]!==undefined) mc.probePushPop().then(pushAfterProbe);
+  if(mc.pushPop===undefined && !mc._pushPop && canWrite() && mc.params[35]!==undefined) probe();
   // A preset loaded on the instrument mid-game (its preset buttons) sets everything anew: what the
   // game had set goes back on, and the new preset's own values become what's given back after
   // So can a double tap: anything unasked (but the key change combo, whose key a game reads) that
@@ -926,7 +942,7 @@ mc.addEventListener("device", ()=>{
     if(!preset && (31 in wanted) && mc.params[31]!==wanted[31]){ wanted[31]=mc.params[31]; if(blast) blast.modFor=null; modTap(); modPill(); }
     for(const [a,v] of Object.entries(wanted)){ if(mc.params[a]!==v){
       if(preset){ borrowed[a]=mc.params[a]; roundBorrows.add(+a); } mc.writeParam(+a, v); } } }
-  if(q && settings.modTap!=="off" && canWrite() && mc.params[200]!==31) modTap();   // set it up once connected
+  if(q && !gaveBack && settings.modTap!=="off" && canWrite() && mc.params[200]!==31) modTap();   // set it up once connected
   if(blast && blast.kind==="command") commandDevice();
   else if(blast && blast.kind==="snake") snDevice();
   else if(blast && blast.kind==="asteroids") asDevice();

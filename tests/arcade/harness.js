@@ -60,24 +60,28 @@ function load(slug, {storage, every}={}){
   const writes=[];
   // a minichord on the other end: remembers what's written, answers a request for its settings
   // pushPop: a minichord whose firmware has the push and pop commands (5 and 6), which the real one
-  // answers by remembering every parameter and putting them all back, a dump with them
+  // answers by remembering every parameter and putting them all back, a dump with them; what it
+  // remembers is mc.out.held (firmware 39 on drops it when a preset is loaded: a test sets it null)
   // locks: the addresses a firmware-76 minichord keeps as its own; it answers command 9 with them,
   // and a write of 385 (lock again) counts as a write like any other
-  function connect({firmware=17, key=0, extra={}, pushPop=false, locks=null}={}){
+  // writesFire: each write fires "device" at once, as core/minichord.js's own writeParam does
+  // A dump it sends is counted as _dump counts one, and a request as requestDump counts it, which is
+  // how the push-and-pop probe tells its answer from the rest.
+  function connect({firmware=17, key=0, extra={}, pushPop=false, locks=null, writesFire=false}={}){
     mc.sysex=true;
-    let held=null;
-    mc.out={id:"test", send(m){
+    mc.out={id:"test", held:null, send(m){
       if(m[1]!==0 || m[2]!==0) return;                                   // a control command: F0 0 0 cmd param F7
       if(m[3]===9 && locks){ setTimeout(()=>{ mc.locks=new Set(locks); mc.dispatchEvent(new w.Event("locks")); },5); return; }
       if(!pushPop) return;
-      if(m[3]===5){ if(!held) held={...mc.params}; return; }
-      if(m[3]===6 && held){ Object.assign(mc.params, held); held=null; setTimeout(()=>mc.dispatchEvent(new w.Event("device")),5); }
+      if(m[3]===5){ if(!this.held) this.held={...mc.params}; return; }
+      if(m[3]===6 && this.held){ Object.assign(mc.params, this.held); this.held=null; setTimeout(()=>{ mc._dumps=(mc._dumps||0)+1; mc.dispatchEvent(new w.Event("device")); },5); }
     }};
-    mc.writeParam=(a,v)=>{ writes.push([a,v]); if(a!==385) mc.params[a]=v; };
-    mc.requestDump=()=>{ mc._asked=(mc._asked||0)+1; setTimeout(()=>{ mc._asked--; mc.dispatchEvent(new w.Event("device")); },5); };
+    mc.writeParam=(a,v)=>{ writes.push([a,v]); if(a!==385) mc.params[a]=v; if(writesFire) mc.dispatchEvent(new w.Event("device")); };
+    mc.requestDump=()=>{ mc._asked=(mc._asked||0)+1; mc._requested=(mc._requested||0)+1; mc._requestedAt=Date.now();
+      setTimeout(()=>{ mc._asked--; mc._dumps=(mc._dumps||0)+1; mc.dispatchEvent(new w.Event("device")); },5); };
     for(let a=0;a<256;a++) mc.params[a]=0;
     Object.assign(mc.params, {2:80, 3:80, 7:firmware, 35:key, 97:150, 238:0}, extra);   // harp and chord volume up, as they usually are
-    mc.dispatchEvent(new w.Event("device"));
+    mc._dumps=(mc._dumps||0)+1; mc.dispatchEvent(new w.Event("device"));
   }
   const IV={"":[0,4,7], m:[0,3,7], "7":[0,4,7,10], maj7:[0,4,7,11], m7:[0,3,7,10], "°":[0,3,6], "+":[0,4,8]};
   const PC={C:0,"C♯":1,"D♭":1,D:2,"D♯":3,"E♭":3,E:4,"F♭":4,"E♯":5,F:5,"F♯":6,"G♭":6,G:7,"G♯":8,"A♭":8,A:9,"A♯":10,"B♭":10,B:11,"C♭":11,"B♯":0};
