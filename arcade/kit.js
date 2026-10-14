@@ -279,7 +279,9 @@ const ARCADE_OPTS=[
   {id:"strings", group:"game", label:"STRINGS", on:k=>harpOnScreen(k), ...flag("tdHarpBare"),
     set:i=>{ saved.tdHarpBare=!!i; save(); if(typeof tdDraw==="function") tdDraw(); },
     vals:k=>[["LABELLED",1,"EACH HARP STRING ON THE SCREEN SHOWS ITS NOTE"],["BARE",HARP_BY_NAME.has(k)?1.25:1,"THE SCREEN'S HARP STRINGS BLANK, AS ON THE INSTRUMENT"]]},
-  {id:"beginner", group:"game", label:"BEGINNER", on:()=>true, get:()=>saved.beginner?1:0, set:i=>{ saved.beginner=!!i; save(); helperSync(true); },
+  // switched on in a game (from the settings, which open during play), the help is there at once, and
+  // the game is helped: off the board, as one begun in beginner mode is
+  {id:"beginner", group:"game", label:"BEGINNER", on:()=>true, get:()=>saved.beginner?1:0, set:i=>{ saved.beginner=!!i; save(); if(i && blast && !blast.over) blast.helped=true; helperSync(true); },
     vals:()=>[["OFF",1,"PLAY IT STRAIGHT"],["ON",1,"THE MINICHORD ON SCREEN, LIT WITH WHAT TO PRESS. NO HIGH SCORES","UNRANKED"]]},
   // ----- the setup: how it looks, sounds and is steered
   {id:"harp", group:"setup", label:"HARP", on:k=>KM_GAMES.includes(k) || (saved.beginner && helpUsesHarp(k) && k!=="breakout"), get:harpLayoutIndex,

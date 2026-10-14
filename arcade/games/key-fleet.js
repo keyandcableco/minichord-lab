@@ -329,7 +329,7 @@ function beginFleet(level){
   newRun();
   piano.start(); stopDemo(); clearTimeout(blast.attract); clearTimeout(blast.cabT);
   if(blast.overlay){ blast.overlay.remove(); blast.overlay=null; }
-  Object.assign(blast,{score:0, lives:3, level, startLevel:level, waves:0, phase:"play", over:false, modFor:null});
+  Object.assign(blast,{score:0, lives:3, level, startLevel:level, waves:0, phase:"play", over:false, modFor:null, torpsOpt:saved.kfTorps??0});
   saved.fleetStart=level; save();
   stats.streak=0; scoreboard(); kfLayout();
   cancelAnimationFrame(blast.raf); blast.last=performance.now(); blast.raf=requestAnimationFrame(kfTick);
@@ -342,7 +342,7 @@ function kfWave(){
   const L=KF_LEVELS[blast.level]; kfSetSea(L); kfLayout();
   blast.ships=kfFleet(L); blast.shots=new Map();
   if(L.flags){ const f=[...KF_FLAGS].sort(()=>Math.random()-.5); blast.ships.forEach((s,i)=>s.flag=f[i]); } blast.lastHit=null; blast.busy=false; blast.phase="play"; kfCallEnd();
-  blast.torps=Math.max(5, Math.round(L.torps*(KF_TORPS[saved.kfTorps??0]??1)));   // fewer torpedoes, chosen on the title, score more
+  blast.torps=Math.max(5, Math.round(L.torps*(KF_TORPS[blast.torpsOpt]??1)));   // fewer torpedoes, chosen on the title, score more (for the whole game, as its score multiplier is)
   kfBar(); kfDraw();
 }
 function kfTick(now){
