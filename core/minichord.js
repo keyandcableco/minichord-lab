@@ -177,6 +177,7 @@ export class Minichord extends EventTarget {
   requestDump(){
     if(!this.out || !this.sysex) return;
     this.out.send([0xF0,0,0,0,0,0xF7]); this._asked=(this._asked||0)+1;
+    this._requested=(this._requested||0)+1; this._requestedAt=Date.now();   // so the push-and-pop probe can tell its answer from these
     clearTimeout(this._dumpT);
     this._dumpT=setTimeout(()=>{
       if(this.params[35]!==undefined) return;
@@ -202,26 +203,31 @@ export class Minichord extends EventTarget {
    * then change what it likes and have everything put back exactly, rather than writing back every
    * address it remembers touching. Asked once, by trying it: a push and an immediate pop change
    * nothing at all (the settings are put back as they were), and a minichord that has them answers
-   * the pop with a dump, while one that hasn't ignores both and says nothing. The version number
-   * can't be used: the test firmware and the released one number themselves separately.
+   * the pop with a dump, while one that hasn't ignores both and says nothing. The answer is a dump
+   * beyond those asked for meanwhile, not any "device" event: a page writing a setting fires one,
+   * and a game sets the minichord up as soon as it connects. The version number can't be used: the
+   * test firmware and the released one number themselves separately.
    * A push goes out again straight afterwards, so the instrument remembers itself as it is now,
-   * before any page has changed anything: waiting for the answer would be too late.
+   * before any page has changed anything: waiting for the answer would be too late. One that hasn't
+   * push and pop ignores it as it ignored the first.
    */
   probePushPop(){
     if(this._pushPop) return this._pushPop;
     if(!this.out || !this.sysex) return Promise.resolve(false);
     return this._pushPop=new Promise(done=>{
-      let got=false; const saw=()=>{ got=true; };
-      this.addEventListener("device", saw);
+      const dumps=this._dumps||0, asked=this._requested||0, t0=Date.now();
       this._asked=(this._asked||0)+1;           // the dump a pop sends is one we asked for
       this.control(5); this.control(6);
-      setTimeout(()=>{
-        this.removeEventListener("device", saw);
+      this.control(5);                          // it remembers itself, untouched, from here
+      const answer=()=>{
+        // a dump asked for a moment ago may still be on its way: till it comes, the pop's would pass for its
+        if(Date.now()-(this._requestedAt||0)<150 && Date.now()-t0<2000) return setTimeout(answer,50);
+        const got=(this._dumps||0)-dumps > (this._requested||0)-asked;
         if(!got && this._asked>0) this._asked--;
         this.pushPop=got;
-        if(got) this.control(5);                  // it remembers itself, untouched, from here
         done(got);
-      }, 700);
+      };
+      setTimeout(answer,700);
     });
   }
   /** whether the minichord keeps this setting as its own, whatever preset is loaded (null locks: it hasn't said) */
@@ -252,6 +258,7 @@ export class Minichord extends EventTarget {
     }
     this._dumpTries=0; clearTimeout(this._dumpT);
     if(d.length!==514) return;   // 256 parameters as two 7-bit bytes, plus F0 and F7
+    this._dumps=(this._dumps||0)+1;
     // a dump nobody asked for: the minichord reporting a change made on the instrument itself,
     // such as the key change combo (the test firmware reports every key picked that way)
     this.unasked = !(this._asked>0); if(this._asked>0) this._asked--;
