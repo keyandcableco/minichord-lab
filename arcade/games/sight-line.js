@@ -141,7 +141,7 @@ function beginSight(level){
   newRun();
   piano.start(); stopDemo(); clearTimeout(blast.attract); clearTimeout(blast.cabT);
   if(blast.overlay){ blast.overlay.remove(); blast.overlay=null; }
-  Object.assign(blast,{score:0, lives:3, level, startLevel:level, hits:0, streak:0, phase:"play", over:false, notes:[], tune:null, modFor:null, harpOct:null});
+  Object.assign(blast,{score:0, lives:3, level, startLevel:level, hits:0, streak:0, phase:"play", over:false, notes:[], tune:null, modFor:null, harpOct:null, slNext:null});
   saved.sightStart=level; save(); stats.streak=0; scoreboard();
   slLevelStart();
   cancelAnimationFrame(blast.raf); blast.last=performance.now(); blast.raf=requestAnimationFrame(slTick);
@@ -202,8 +202,10 @@ function slTick(now){
       if(blast.phase==="play" && !n.done && !n.change && n.x < blast.ph-slWin()) slMiss(n);
       if(n.x < -40){ n.gone=true; n.el && n.el.remove(); } }
     blast.notes=blast.notes.filter(n=>!n.gone);
+    // the next note, lit on the on-screen minichord as it comes up (kept as slNext: blast.helped is
+    // beginner mode's, the flag that keeps a game off the high score board)
     const next=blast.notes.find(n=>!n.done && !n.change);
-    if(next && next!==blast.helped){ blast.helped=next; if(next.chord) helpChord(SHARP_NAMES[next.rootPc], next.q); else helpString(next.pc);
+    if(next && next!==blast.slNext){ blast.slNext=next; if(next.chord) helpChord(SHARP_NAMES[next.rootPc], next.q); else helpString(next.pc);
       if(blast.phase==="play") slHarpFor(next); }
   }
   blast.raf=requestAnimationFrame(slTick);
