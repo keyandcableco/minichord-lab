@@ -35,10 +35,13 @@ if(process.argv[2]){
     // something the Lab never touched changes on the instrument, as a knob or a combo would
     mc.params[41]=77;
     writes.length=0;
-    w.eval("restoreAll()"); await sleep(200);
+    // the give-back as it's sent: each pop, and how many writes went before it
+    const pops=[], send=mc.out.send;
+    mc.out.send=function(m){ if(m[1]===0 && m[2]===0 && m[3]===6) pops.push(writes.length); return send.call(this,m); };
+    w.eval("restoreAll()"); mc.out.send=send; await sleep(200);
     const wrong=Object.entries(had).filter(([a,v])=>mc.params[a]!==v).map(([a,v])=>`${a}: ${mc.params[a]} not ${v}`);
     console.log(JSON.stringify({early, probed, pushPop:!!mc.pushPop, borrowed, before, wrote:writes.length,
-      wroteNew:writes.some(([a])=>a===45), stray:mc.params[41], wrong}));
+      wroteNew:writes.some(([a])=>a===45), pops:pops.length, popFirst:pops[0]===0, stray:mc.params[41], wrong}));
     process.exit(0);
   })();
 } else {
@@ -50,17 +53,17 @@ if(process.argv[2]){
   say(a.probed && a.pushPop, "a minichord with push and pop is found by asking it", a.err||`pushPop ${a.pushPop}`);
   say(a.early>0, "though the game borrows as it connects, before the answer comes", `${a.early} settings`);
   say(a.borrowed>0, "a game still borrows what it needs", `${a.borrowed} settings`);
-  say(a.wrote===0, "giving them back is one message, not a write per setting", `${a.wrote} writes`);
+  say(a.pops===1 && a.wrote===0, "giving them back is one message, the pop, not a write per setting", `${a.pops} pops, ${a.wrote} writes`);
   say(a.wrong && !a.wrong.length, "and every one is back as it was", (a.wrong||[]).join(", "));
   say(a.stray===0, "and it puts back even what the Lab never touched", `address 41 came back to ${a.stray}`);
   const c=run("preset");
   say(c.probed && c.before>0, "a preset loaded mid-game: the game sets its settings again", c.err||`${c.before} settings`);
   say(c.wrong && !c.wrong.length, "given back, each is as the new preset had it, not as the game did", (c.wrong||[]).join(", "));
-  say(c.wrote===c.before && !c.wroteNew, "written back after the pop: what the game set before the push, not what it borrowed after", `${c.wrote} writes for ${c.before}`);
+  say(c.pops===1 && c.popFirst && c.wrote===c.before && !c.wroteNew, "the pop first, then written back only what the game set before the push, not what it borrowed after", `${c.pops} pops, ${c.wrote} writes for ${c.before}`);
   say(c.stray===0, "and the pop still puts back what the Lab never touched", `address 41 came back to ${c.stray}`);
   const b=run("plain");
   say(b.probed && !b.pushPop, "an older minichord says nothing, and isn't used that way, though the game wrote meanwhile", b.err||`pushPop ${b.pushPop}`);
-  say(b.wrote>0, "there, every borrowed setting is written back as before", `${b.wrote} writes`);
+  say(b.pops===0 && b.wrote===b.borrowed && b.wrote>0, "there, no pop: every borrowed setting is written back as before", `${b.pops} pops, ${b.wrote} writes for ${b.borrowed} borrowed`);
   say(b.wrong && !b.wrong.length, "and each is back as it was", (b.wrong||[]).join(", "));
   say(b.stray===77, "and what the Lab never touched is left as it is", `address 41 still ${b.stray}`);
   console.log(bad?`FAILED ${bad} of ${n}`:`ok ${n}`); process.exit(bad?1:0);
