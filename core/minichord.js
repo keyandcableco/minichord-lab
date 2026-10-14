@@ -15,6 +15,9 @@
  *   "harp"    a harp string was plucked: detail {note, ch}, from the harp port
  *             (Port 2), or from the harp channels of the chord port in single port mode
  *   "harpoff" a harp string was let go: detail {note, ch}, from the same places
+ *   "drum"    a harp pad struck while harp drums (address 343) is on: detail {note, vel, pad, t,
+ *             source}, from the channel-10 note the minichord sends for it (see DRUM_GM)
+ *   "page1"   settings 256 to 511 arrived (firmware 31 on); this.page1 is then true
  * ========================================================================== */
 
 export const KEY_NAMES = ["C","G","D","A","E","B","F","B♭","E♭","A♭","D♭","G♭",
@@ -32,6 +35,13 @@ export const TEMPERAMENTS = ["Equal","Meantone","Just","Pythagorean","Werckmeist
 // lock (385) with an address locks it again at its present value. A page borrows a locked setting
 // like any other and gives it back the same way; the lock takes the handed-back value for its own.
 export const LOCK_ADDRESS=385, LOCKS_VERSION=76;
+// Harp drums (address 343, the fork's firmware 60 on): the twelve harp strings are drum pads, and a
+// pad struck goes out as a note on channel 10 (drum MIDI out, 340, says which port), the General
+// MIDI drum for the pad, low string first: kick, snare, rim, clap, closed and open hi-hat, crash, low
+// and high tom, low and high conga, cowbell; and the shaker, the drum machine's thirteenth voice,
+// which no pad plays. While 343 is on those notes are drums, not chords or harp strings: they arrive
+// as "drum" events, timed by the MIDI message itself, and nothing else hears them.
+export const DRUM_GM=[36,38,37,39,42,46,49,45,50,64,63,56,70];
 export const temperIndex=(value, firmware)=> value===11 && firmware<18 ? 12 : value;
 /** the number to store for a position in the Lab's list, or null if that firmware hasn't it */
 export const temperValue=(index, firmware)=> firmware>=18 ? index : index===12 ? 11 : index===11 ? null : index;
@@ -60,6 +70,7 @@ export class Minichord extends EventTarget {
     this.zone={type:"lower", members:15, known:false};
     this.params={};               // raw values from the dump, by address
     this.locks=null;              // the locked addresses, once the minichord has said (firmware 76 on)
+    this.page1=false;             // settings 256 to 511 read from this minichord (firmware 31 on)
     this.notes=new Map();         // "ch:note" -> {ch, note, vel, t}
     this._frame=0; this._settle=0; this._lastChordKey="";
     this.knobs=[null,null,null];   // the three knobs, 0 to 1, once the minichord sends them
@@ -121,6 +132,7 @@ export class Minichord extends EventTarget {
     const role=i=>portRole(i, ins);
     const chord=ins.find(i=>role(i)==="chord");
     ins.forEach(i=>i.onmidimessage=e=>{
+      if(this._drum(e.data, e.timeStamp)) return;           // harp drums, from either port: before anything reads them as notes
       if(e.data[0]===0xF0){ if(role(i)==="chord") this._dump(e.data); return; }
       if(role(i)==="harp"){ this._harp(e.data); return; }   // the harp's own zone reuses channel numbers, so it never reaches the chord voices
       const use = this.inputChoice==="all" || this.inputChoice===i.id || (this.inputChoice==="auto" && chord && i.id===chord.id);
@@ -133,7 +145,8 @@ export class Minichord extends EventTarget {
     else if(chord) this._status(`Listening to ${chord.name}, the chord port.` + (this.sysex ? "" :
       " System-exclusive access wasn't allowed, so the lab can't read or change the minichord's settings: allow \"MIDI device control & reprogram\" in the browser's site settings, then reload."));
     else this._status("Listening to every MIDI input. No minichord found yet.");
-    if(fresh){ this.locks=null; this._locksAsked=false; this.requestDump(); }
+    // another minichord: its locks and its settings 256 to 511 are its own, read afresh after its first dump
+    if(fresh){ this.locks=null; this._locksAsked=false; this._page1Forget(); this.requestDump(); }
     this.dispatchEvent(new Event("ports"));
   }
   /** ask for every setting; asks again if no reply comes, and says so if none ever does */
@@ -149,7 +162,17 @@ export class Minichord extends EventTarget {
     },1500);
   }
   /** a control command (address 0): 0 asks for the settings, 2 saves a bank, 4 loads one, 5 pushes, 6 pops */
-  control(cmd, param=0){ if(!this.out || !this.sysex) return false; this.out.send([0xF0,0,0,cmd&127,param&127,0xF7]); return true; }
+  control(cmd, param=0){ if(!this.out || !this.sysex) return false; this.out.send([0xF0,0,0,cmd&127,param&127,0xF7]);
+    if(cmd===6) this._page1Due=true;   // a pop puts back all 512 settings, but reports only page 0: page 1 is asked for after it
+    return true; }
+  /**
+   * Ask for settings 256 to 511 (firmware 31 on: control command 7, page 1). The answer is a page of its
+   * own, F0 7D 6D 01 and two bytes a setting, which fills this.params[256…511] and fires "page1". Asked
+   * by itself after a minichord's first dump, and after any dump it sends unasked (a preset loaded) or
+   * that answers a pop, which can change them.
+   */
+  requestPage1(){ this._page1Due=false; return this.control(7,1); }
+  _page1Forget(){ this.page1=false; this._page1Due=true; for(let a=256;a<512;a++) delete this.params[a]; }
   /**
    * Whether this minichord can push and pop its live settings (firmware command 5 and 6): a page can
    * then change what it likes and have everything put back exactly, rather than writing back every
@@ -195,6 +218,14 @@ export class Minichord extends EventTarget {
       for(let i=0;i<n && 5+2*i<d.length;i++) locks.add(d[4+2*i]+128*d[5+2*i]);
       this.locks=locks; this.dispatchEvent(new Event("locks")); return;
     }
+    // a page past the first (control command 7): 7D 6D, the page, then two bytes a setting. Not the
+    // dump that's waited for and retried, nor one that says anything about presets or the key combo.
+    if(d[1]===0x7D && d[2]===0x6D){
+      const p=d[3]; if(!(p>=1) || d.length!==517) return;   // 256 settings, plus F0, the header and F7
+      for(let i=0;i<256;i++) this.params[256*p+i]=d[4+2*i]+128*d[5+2*i];
+      if(p===1){ this.page1=true; this.dispatchEvent(new Event("page1")); }
+      return;
+    }
     this._dumpTries=0; clearTimeout(this._dumpT);
     if(d.length!==514) return;   // 256 parameters as two 7-bit bytes, plus F0 and F7
     // a dump nobody asked for: the minichord reporting a change made on the instrument itself,
@@ -209,11 +240,14 @@ export class Minichord extends EventTarget {
     this.dispatchEvent(new Event("device"));
     // a firmware with locks is asked for them once, after its first dump
     if((this.params[7]??0)>=LOCKS_VERSION && !this.locks && !this._locksAsked){ this._locksAsked=true; this.requestLocks(); }
+    // and page 1 (firmware 31 on), after its first dump and whenever it may have changed
+    if((this.params[7]??0)>=31 && (this._page1Due || this.unasked || !this.page1)) this.requestPage1();
   }
   _status(t){ this.statusText=t; this.dispatchEvent(new CustomEvent("status",{detail:t})); }
 
   // ---------- MIDI in (also used to inject test messages) ----------
-  handle(data){
+  handle(data, stamp){
+    if(this._drum(data, stamp)) return;
     const st=data[0]; if(st>=0xF0) return;
     const type=st&0xF0, ch=st&0x0F;
     if(type===0x90 && data[2]>0) this._on(ch,data[1],data[2]);
@@ -225,6 +259,16 @@ export class Minichord extends EventTarget {
       if(b!==this.chans[ch].bend) this._lastBend=performance.now();
       this.chans[ch].bend=b; this._changed(false); }
     else if(type===0xB0) this._cc(ch,data[1],data[2]);
+  }
+  // A note on channel 10 while harp drums is on (as the Lab knows it: read from the minichord, or
+  // written by a game) is a pad: its note-on a "drum" event, timed by the message's own timestamp
+  // (performance.now()'s timebase) where it has one, and its note-off (sent 40 ms later, whatever the
+  // finger does) nothing. Swallowed either way, so it's never a chord voice or a harp string. With harp
+  // drums off, channel 10 is whatever it always was (in single port mode with MPE, harp strings).
+  _drum(d, stamp){
+    if(this.params[343]!==1 || (d[0]!==0x99 && d[0]!==0x89)) return false;
+    if(d[0]===0x99 && d[2]>0) this.dispatchEvent(new CustomEvent("drum",{detail:{note:d[1], vel:d[2], pad:DRUM_GM.indexOf(d[1]), t:stamp||performance.now(), source:"minichord"}}));
+    return true;
   }
   _chordChannel(ch){
     if(this.mpe){

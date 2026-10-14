@@ -93,6 +93,14 @@
 .tdeck[data-chords=""] .tdtop{height:96px}
 .tdeck[data-chords=""] .tdharp span{font-size:.55rem}
 .tdeck[data-harp="dpad"] .tdtop{height:120px}
+/* the harp as drum pads (the drum games): three by four, the kick bottom left (touch.js tdPads), every
+   pad a thumb's size at least; the deck grows for them and the game makes room (--td-h) */
+.tdpads{flex:1 1 auto;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:repeat(4,minmax(44px,1fr));gap:4px;min-width:0;min-height:0;max-width:560px;margin:0 auto;touch-action:none}
+.tdpads span{display:flex;align-items:center;justify-content:center;min-width:0;overflow:hidden;box-sizing:border-box;border:2px solid #3D3656;border-radius:6px;
+  background:#16132A;color:#9A93B5;font-size:.55rem;white-space:nowrap;box-shadow:inset 0 -3px 0 rgba(0,0,0,.45)}
+.tdpads span[data-i="0"],.tdpads span[data-i="1"],.tdpads span[data-i="2"]{background:#1E1838}   /* the low row: kick and snare */
+.tdpads span.on{background:#FFD35A;color:#16132A;border-color:#FFD35A;box-shadow:none}
+.tdeck[data-harp="pads"] .tdtop{height:clamp(196px,32vh,240px);height:clamp(196px,32svh,240px)}
 /* the piano's keys want more height than strings, for the black keys over the white */
 @media not all and (orientation:landscape) and (max-height:520px){
   .tdeck[data-piano="1"][data-chords="1"][data-knob=""] .tdtop{height:60px}
@@ -125,6 +133,10 @@
   .tdknob,.tdeck[data-knob="1"] .tdknob{order:1;flex:0 0 40px}
   .tddpad{flex:1 1 auto;min-height:0;grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:repeat(3,minmax(0,1fr)) minmax(0,1.3fr);grid-template-areas:". up ." "left . right" ". down ." "b . a"}
   .tdz-A,.tdz-B{width:100%;height:auto;max-height:100%}
+  /* the drum pads stand in the right-hand column, made wide enough for three pads a thumb wide */
+  :root:has(.tdeck[data-harp="pads"]){--tdr:clamp(156px,24vw,210px)}
+  .tdpads{flex:1 1 auto;grid-template-rows:repeat(4,minmax(0,1fr));max-width:none;margin:0}
+  .tdpads span{font-size:.45rem}
   /* no chord buttons (Harp Command): nothing on the left */
   .tdeck[data-chords=""]{--tdl:0px}
   /* the piano stands too: low at the bottom, the black keys on the left */
@@ -222,7 +234,8 @@ body.tdplay .field .helper{display:none}
 @keyframes tdhint{50%{box-shadow:inset 0 0 0 3px #FFD35A,0 0 0 2px #FFD35A}}
 .tdcell.hint,.tdmod.hint,.tdz.hint{box-shadow:inset 0 0 0 3px #FFD35A;animation:tdhint .7s steps(2) infinite}
 .tdcell.slashhint{box-shadow:inset 0 0 0 3px #7FE9FF}
-.tdharp span.hint{background:#3A3150;color:#FFD35A;box-shadow:inset 0 0 0 2px #FFD35A}
+.tdharp span.hint,.tdpads span.hint{background:#3A3150;color:#FFD35A;box-shadow:inset 0 0 0 2px #FFD35A}
+.tdpads span.on.hint{background:#FFD35A;color:#16132A}
 .tdcell.on.hint{animation:none}
 @media (prefers-reduced-motion:reduce){.tdcell.hint,.tdmod.hint,.tdz.hint{animation:none}}
 /* the first time on this device: a word on what isn't plain to see */

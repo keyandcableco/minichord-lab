@@ -382,6 +382,8 @@ function nextQuestion(){
   if(q.kind==="burger") startBurger();
   if(q.kind==="kong") startKong();
   if(q.kind==="bros") startBros();
+  if(q.kind==="pilot") startPilot();
+  if(q.kind==="fours") startFours();
   if(q.kind==="simon") setTimeout(simonPlay,700);
 }
 function feedback(text,kind="",small=""){ const f=$("feedback"); f.className="feedback "+kind; f.textContent=text; if(small){ const s=document.createElement("small"); s.textContent=small; f.appendChild(s); } }
@@ -482,7 +484,7 @@ function answerChord(voices){
   if(blast && blast.hsEntry){ blast.hsEntry.set(); return; }                     // initials: a chord sets the letter
   if(blast && blast.bonus && !bonusInField()){ bonusChord(voices); return; }   // a bonus round (an in-field one is played with the game)
   if(blast && blast.bonus && bonusPlaying() && blast.bonus.g.chord){ blast.bonus.g.chord(blast.bonus, voices.map(v=>v.pitch)); return; }   // one that listens to chords itself
-  if(blast && blast.phase==="play") blast.midiIn=(blast.midiIn||0)+1;
+  if(blast && blast.phase==="play" && !DRUM_GAMES.has(blast.kind)) blast.midiIn=(blast.midiIn||0)+1;   // the drum games count their pads themselves
   if(arcadeMenuChord(voices)) return;            // an arcade title screen, played from the buttons
   if(q.answer.type==="blaster") return blasterChord(voices);
   if(q.answer.type==="command") return;                  // the harp answers Harp Command, not the chords
@@ -502,6 +504,7 @@ function answerChord(voices){
   if(q.answer.type==="burger") return burgerChord(voices);
   if(q.answer.type==="kong") return kongChord(voices);
   if(q.answer.type==="bros") return brosChord(voices);
+  if(q.answer.type==="pilot" || q.answer.type==="fours") return;     // the drum games are played on the pads, not the chords
   if(q.answer.type==="diatonic") return answerDiatonic(voices);
   if(q.answer.type==="reshape") return answerReshape(voices);
   if(q.answer.type==="alt") return answerAltChord(voices);
@@ -537,7 +540,7 @@ function answerNote(pc, pickedName){
     if(!c) return;                                                               // a dead corner of the keymaster
     if(c==="up") h.step(1); else if(c==="down") h.step(-1); else if(c==="left"||c==="B") h.move(-1); else if(c==="right") h.move(1); else h.set(); return; }
   if(cabWaiting()){ cabWake(); return; }
-  if(blast && blast.phase==="play") blast.midiIn=(blast.midiIn||0)+1;
+  if(blast && blast.phase==="play" && !DRUM_GAMES.has(blast.kind)) blast.midiIn=(blast.midiIn||0)+1;
   if(q && q.kind==="command") return commandNote(pc);
   if(q && q.kind==="snake") return snakeHarp(pc);
   if(q && q.kind==="asteroids") return asteroidsNote(pc);
@@ -555,6 +558,7 @@ function answerNote(pc, pickedName){
   if(q && q.kind==="burger") return burgerHarp(pc);
   if(q && q.kind==="kong") return kongHarp(pc);
   if(q && q.kind==="bros") return brosHarp(pc);
+  if(q && (q.kind==="pilot" || q.kind==="fours")) return;           // their pads are heard by the games themselves (the "drum" event)
   if(!q || solved) return;
   if(q.answer.type==="note" && pc===q.answer.pc && pickedName && q.answer.name && pickedName!==q.answer.name)
     return correct(`Right note: ${q.answer.name}. Here it's spelled ${q.answer.name}, not ${pickedName}.`);
@@ -633,6 +637,21 @@ mc.addEventListener("harp", e=>{
   lastHarp={pc,t:now};
   if(now<harpQuietUntil) return;
   answerNote(pc);
+});
+// A pad struck in harp drums (the minichord's, or the screen's): while a drum game plays, or plays its
+// demo, the game hears it itself, to the millisecond. Anywhere else it's a harp string as far as the room
+// goes, its pad the string (the chromatic harp's pitch class): it wakes a title screen, spells initials
+// and plays a bonus round. Nothing deduped here: two kicks a sixteenth apart are two kicks.
+mc.addEventListener("drum", e=>{
+  if(blast && DRUM_GAMES.has(blast.kind) && (blast.phase==="play" || blast.phase==="demo")) return;
+  const pad=e.detail && e.detail.pad;
+  if(Number.isInteger(pad) && pad>=0 && pad<=11) answerNote(pad);
+});
+// The minichord's second page of settings (256-511: the drums among them) arrives after the first:
+// a drum game sets up again once it can see them
+mc.addEventListener("page1", ()=>{
+  if(blast && blast.kind==="pilot" && typeof tpDevice==="function") tpDevice();
+  else if(blast && blast.kind==="fours" && typeof tfDevice==="function") tfDevice();
 });
 let pollT=null;
 function poll(on){ clearInterval(pollT); pollT=null; if(on && mc.sysex && mc.out) pollT=setInterval(()=>mc.requestDump(),900); }
@@ -721,7 +740,7 @@ async function startTones(){
   if(!canWrite()){ tones.sim=make((tuneState.secret+tuneState.nudge)/10,.1,settings.tuneWave); tones.push(tones.sim); }   // no minichord: simulate it
 }
 function buildSpecial(){
-  const box=$("special"); box.innerHTML=""; box.hidden = !(q && ["tune","melody","smooth","simon","directions","pluckchord","buildscale","blaster","command","snake","asteroids","stack","breakout","fifths","chopper","fleet","sweeper","frets","sight","hunt","racer","chomp","burger","kong","bros","diatonic","reshape","hidden","oddone","shades"].includes(q.kind)); if(box.hidden) return;
+  const box=$("special"); box.innerHTML=""; box.hidden = !(q && ["tune","melody","smooth","simon","directions","pluckchord","buildscale","blaster","command","snake","asteroids","stack","breakout","fifths","chopper","fleet","sweeper","frets","sight","hunt","racer","chomp","burger","kong","bros","pilot","fours","diatonic","reshape","hidden","oddone","shades"].includes(q.kind)); if(box.hidden) return;
   if(q.kind==="command"){ buildCommandField(box); return; }
   if(q.kind==="snake"){ buildSnakeField(box); return; }
   if(q.kind==="asteroids"){ buildAsteroidsField(box); return; }
@@ -739,6 +758,8 @@ function buildSpecial(){
   if(q.kind==="burger"){ buildBurgerField(box); return; }
   if(q.kind==="kong"){ buildKongField(box); return; }
   if(q.kind==="bros"){ buildBrosField(box); return; }
+  if(q.kind==="pilot"){ buildPilotField(box); return; }
+  if(q.kind==="fours"){ buildFoursField(box); return; }
   if(q.kind==="blaster"){
     const field=document.createElement("div"); field.className="field arcade"; field.setAttribute("aria-label","Falling chords");
     const ground=document.createElement("div"); ground.className="ground"; field.appendChild(ground);
@@ -850,7 +871,7 @@ function setMode(m){
   $("nowPlaying").textContent = `Playing: ${LABELS[m]||m}`;
   settings.mode=m; save();
   document.querySelectorAll(".modes button[data-mode]").forEach(x=>x.setAttribute("aria-pressed",x.dataset.mode===m));
-  $("sprint").disabled = MYSTERY.has(m) || m==="blaster" || m==="command" || m==="snake" || m==="asteroids" || m==="stack" || m==="breakout" || m==="fifths" || m==="chopper" || m==="fleet" || m==="sweeper" || m==="frets" || m==="sight" || m==="hunt" || m==="racer" || m==="chomp" || m==="burger" || m==="kong" || m==="bros";
+  $("sprint").disabled = MYSTERY.has(m) || m==="blaster" || m==="command" || m==="snake" || m==="asteroids" || m==="stack" || m==="breakout" || m==="fifths" || m==="chopper" || m==="fleet" || m==="sweeper" || m==="frets" || m==="sight" || m==="hunt" || m==="racer" || m==="chomp" || m==="burger" || m==="kong" || m==="bros" || m==="pilot" || m==="fours";
   stats.streak=0; scoreboard(); nextQuestion();
   if(switching){
     const back=restoreExcept(new Set([...(q.needs||[]).map(n=>n.addr), ...(q.borrows||[]), ...roundBorrows, 31]));   // keep what the new game uses
@@ -860,7 +881,7 @@ function setMode(m){
   }
 }
 document.querySelectorAll(".modes button[data-mode]").forEach(b=>{ b.setAttribute("aria-pressed", b.dataset.mode===settings.mode); b.onclick=()=>setMode(b.dataset.mode); });
-$("sprint").disabled = MYSTERY.has(settings.mode) || settings.mode==="blaster" || settings.mode==="command" || settings.mode==="snake" || settings.mode==="asteroids" || settings.mode==="stack" || settings.mode==="breakout" || settings.mode==="fifths" || settings.mode==="chopper" || settings.mode==="fleet" || settings.mode==="sweeper" || settings.mode==="frets" || settings.mode==="sight" || settings.mode==="hunt" || settings.mode==="racer" || settings.mode==="chomp" || settings.mode==="burger" || settings.mode==="kong" || settings.mode==="bros";
+$("sprint").disabled = MYSTERY.has(settings.mode) || settings.mode==="blaster" || settings.mode==="command" || settings.mode==="snake" || settings.mode==="asteroids" || settings.mode==="stack" || settings.mode==="breakout" || settings.mode==="fifths" || settings.mode==="chopper" || settings.mode==="fleet" || settings.mode==="sweeper" || settings.mode==="frets" || settings.mode==="sight" || settings.mode==="hunt" || settings.mode==="racer" || settings.mode==="chomp" || settings.mode==="burger" || settings.mode==="kong" || settings.mode==="bros" || settings.mode==="pilot" || settings.mode==="fours";
 $("nowPlaying").textContent = `Playing: ${LABELS[settings.mode]||settings.mode}`;
 for(const [id,key] of [["gameMenu","menuOpen"]]){
   const d=$(id); if(saved[key]===false) d.open=false;
@@ -890,7 +911,8 @@ function endSprint(){
 
 // ---------- your minichord ----------
 const ADDR_NAMES={35:"key signature",23:"slash replaces",33:"Barry Harris mode",30:"transpose",31:"modifier",36:"harp scale mode",98:"chromatic harp",109:"tuning",110:"MPE",111:"voice leading",113:"slash voice",114:"slash re-voice",115:"cantus",116:"harp rank",39:"chord layout",
-  202:"alt chord 1",203:"alt chord 2",204:"alt chord 3",205:"alt chord 4",206:"alt chord 5",207:"alt chord 6",208:"alt chord 7",236:"custom scale",237:"temperament"};
+  202:"alt chord 1",203:"alt chord 2",204:"alt chord 3",205:"alt chord 4",206:"alt chord 5",207:"alt chord 6",208:"alt chord 7",236:"custom scale",237:"temperament",
+  334:"drums",335:"drum groove",336:"drum groove B",337:"drum kit",338:"drum level",339:"drum humanize",340:"drum MIDI out",341:"count-in",342:"drums only",343:"harp drums"};
 function mine(){
   const strip=$("mystrip");
   if(mc.params[35]===undefined){ strip.hidden=true; return; }
@@ -944,6 +966,8 @@ mc.addEventListener("device", ()=>{
   else if(blast && blast.kind==="burger") bkDevice();
   else if(blast && blast.kind==="kong") dkDevice();
   else if(blast && blast.kind==="bros") sbDevice();
+  else if(blast && blast.kind==="pilot") tpDevice();
+  else if(blast && blast.kind==="fours") tfDevice();
   else if(blast){ blastSetup(); if(blast.phase!=="play") blastHomeKey(); blastKey(); if(blast.kind==="blaster") blastDevice(); }   // Chord Invaders (and its key bars), the catch-all
   arcadeVolumeWatch();
   if(q && !solved && !rebuilding) applyNeeds();

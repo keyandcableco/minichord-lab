@@ -9,7 +9,9 @@
 // buttons' columns, F C G D A E B from the left, count 1 to 7: a column's major row starts that
 // level, its minor row sets that speed, and its 7 row switches to that arcade game. The key
 // signature's sharps and flats don't matter; the column is read from the chord's letter.
-const ARCADE_GAMES=["blaster","command","snake","asteroids","stack","breakout","fifths","chopper","fleet","sweeper","frets","sight","hunt","racer","chomp","burger","kong","bros"];
+const ARCADE_GAMES=["blaster","command","snake","asteroids","stack","breakout","fifths","chopper","fleet","sweeper","frets","sight","hunt","racer","chomp","burger","kong","bros","pilot","fours"];
+// the games played on the harp as drum pads (harp drums, firmware 60): no chords, no bonus rounds
+const DRUM_GAMES=new Set(["pilot","fours"]);
 const COLUMN_LETTERS="FCGDAEB";
 function arcadeMenuChord(voices){
   if(cabWaiting()){ cabWake(); return true; }
@@ -173,7 +175,7 @@ function arcadeRelayout(){
   else if(k==="command"){ hcLayout(); hcLabels(); }
   else if(k==="hunt"){ hdLayout(); hdPanel(); }
   else if(k==="racer"){ if(blast.mtn) blast.mtn=null; }
-  else if(k==="chomp" || k==="burger" || k==="kong" || k==="bros") blast.layoutKey=null;
+  else if(k==="chomp" || k==="burger" || k==="kong" || k==="bros" || k==="pilot" || k==="fours") blast.layoutKey=null;
 }
 for(const ev of ["fullscreenchange","webkitfullscreenchange"]) document.addEventListener(ev, ()=>setTimeout(arcadeRelayout,60));
 window.addEventListener("resize", ()=>setTimeout(arcadeRelayout,60));
@@ -214,8 +216,8 @@ function arcadeModNote(ov){
 // roll up the screen like credits; then the demo; then round again, until someone plays a chord,
 // plucks the harp, presses a key or clicks. That brings up the options (speed, levels and the rest),
 // which go back to the title if they're left alone. Game over goes straight to its options.
-const DEMO_FOR={blaster:()=>runDemo(true), command:()=>commandDemo(), snake:()=>snDemo(), asteroids:()=>asDemo(), stack:()=>stDemo(), breakout:()=>boDemo(), fifths:()=>fdDemo(), chopper:()=>chDemo(), fleet:()=>kfDemo(), sweeper:()=>swDemo(), frets:()=>frDemo(), sight:()=>slDemo(), hunt:()=>hdDemo(), racer:()=>krDemo(), chomp:()=>ccDemo(), burger:()=>bkDemo(), kong:()=>dkDemo(), bros:()=>sbDemo()};
-const TITLE_FOR={blaster:"CHORD INVADERS", command:"HARP COMMAND", snake:"CHORD SNAKE", asteroids:"CHORD ASTEROIDS", stack:"CHORD STACK", breakout:"CHORD BREAKOUT", fifths:"FIFTHS DEFENDER", chopper:"CHOPPER RESCUE", fleet:"KEY FLEET", sweeper:"CHORD SWEEPER", frets:"BETWEEN THE FRETS", sight:"SIGHT LINE", hunt:"CHORD HUNT", racer:"KEY RACER", chomp:"CHORD CHOMP", burger:"CHORD BURGER", kong:"DOMINANT KONG", bros:"SUS BROS."};
+const DEMO_FOR={blaster:()=>runDemo(true), command:()=>commandDemo(), snake:()=>snDemo(), asteroids:()=>asDemo(), stack:()=>stDemo(), breakout:()=>boDemo(), fifths:()=>fdDemo(), chopper:()=>chDemo(), fleet:()=>kfDemo(), sweeper:()=>swDemo(), frets:()=>frDemo(), sight:()=>slDemo(), hunt:()=>hdDemo(), racer:()=>krDemo(), chomp:()=>ccDemo(), burger:()=>bkDemo(), kong:()=>dkDemo(), bros:()=>sbDemo(), pilot:()=>tpDemo(), fours:()=>tfDemo()};
+const TITLE_FOR={blaster:"CHORD INVADERS", command:"HARP COMMAND", snake:"CHORD SNAKE", asteroids:"CHORD ASTEROIDS", stack:"CHORD STACK", breakout:"CHORD BREAKOUT", fifths:"FIFTHS DEFENDER", chopper:"CHOPPER RESCUE", fleet:"KEY FLEET", sweeper:"CHORD SWEEPER", frets:"BETWEEN THE FRETS", sight:"SIGHT LINE", hunt:"CHORD HUNT", racer:"KEY RACER", chomp:"CHORD CHOMP", burger:"CHORD BURGER", kong:"DOMINANT KONG", bros:"SUS BROS.", pilot:"TIME PILOT", fours:"TRADING FOURS"};
 const cabKind=()=> blast && (blast.kind||"blaster");
 function cabinet(ov){
   const kids=[...ov.children];
@@ -255,7 +257,9 @@ function cabinet(ov){
   cabStage(ov, "title");
 }
 // what wakes a title screen, as the player can do it
-const cabPress=()=> playOnScreen() ? "PLAY A CHORD · TAP THE SCREEN" : "PLAY A CHORD · PLUCK THE HARP · PRESS ANY KEY";
+// (the drum games: a pad struck, there being no chords to play)
+const cabPress=()=> blast && DRUM_GAMES.has(blast.kind) ? (playOnScreen() ? "STRIKE A PAD · TAP THE SCREEN" : "STRIKE A PAD · PRESS ANY KEY")
+  : playOnScreen() ? "PLAY A CHORD · TAP THE SCREEN" : "PLAY A CHORD · PLUCK THE HARP · PRESS ANY KEY";
 function cabStage(ov, stage){
   if(!blast) return;
   clearTimeout(blast.cabT); clearTimeout(blast.attract);
@@ -359,13 +363,13 @@ function helperSync(rebuild){
     blast.helpBoard?.el.remove(); blast.helpHarp?.el.remove(); blast.helpBoard=null; blast.helpHarp=null; blast.helpKey=null;
   }
   if(!want) return;
-  if((helpUsesChords(k) || demo) && k!=="command" && !blast.helpBoard){ blast.helpBoard=helperBoard(k); blast.field.appendChild(blast.helpBoard.el); }
+  if((helpUsesChords(k) || demo) && k!=="command" && !DRUM_GAMES.has(k) && !blast.helpBoard){ blast.helpBoard=helperBoard(k); blast.field.appendChild(blast.helpBoard.el); }
   if(blast.helpBoard && blast.helpBoard.pad && blast.strip && blast.strip!==blast.helpBoard.pad){   // the minichord's harp is the controller now
     blast.stripOrig=blast.strip; blast.stripOrig.style.display="none"; blast.strip=blast.helpBoard.pad;
   }
   if(blast.helpBoard && blast.helpBoard.strings){                         // a harp on the minichord itself: no separate one
     if(!blast.helpHarp) blast.helpHarp={el:{remove(){}}, cells:blast.helpBoard.strings, names:blast.helpBoard.names};
-  } else if(helpUsesHarp(k) && !blast.helpHarp){ blast.helpHarp=helperHarp(k); blast.field.appendChild(blast.helpHarp.el); }
+  } else if((helpUsesHarp(k) || DRUM_GAMES.has(k)) && !blast.helpHarp){ blast.helpHarp=helperHarp(k); blast.field.appendChild(blast.helpHarp.el); }   // the drum games: their pads alone
 }
 // a button's label, and its letters counted, so the CSS keeps it inside the button
 function mcLabel(b, t){ b.textContent=t; b.style.setProperty("--n", [...t].length); }
@@ -449,9 +453,10 @@ function helperHarp(k){
   let cells=[];
   if(grid) cells=kmPlate(el, ()=>"");                                           // the keymaster's own plate
   else [11,10,9,8,7,6,5,4,3,2,1,0].forEach(sI=>{ const c=document.createElement("span"); c.className="hstring"; cells[sI]=c; el.appendChild(c); });   // the strip, high strings at the top
-  const names=()=>{ const st = k==="command" ? hcStrings() : [...Array(12)].map((_,i)=>({name:SHARP_NAMES[i]})); st.forEach((x,i)=>{ if(cells[i]) cells[i].textContent=x.name; }); };
+  const pads=DRUM_GAMES.has(k), padName=i=>((blast && blast.padNames) || (typeof RH_PAD_NAMES_DEFAULT!=="undefined" && RH_PAD_NAMES_DEFAULT) || SHARP_NAMES)[i];   // the drum games' strings are pads, named for the kit's drums
+  const names=()=>{ const st = k==="command" ? hcStrings() : [...Array(12)].map((_,i)=>({name:pads ? padName(i) : SHARP_NAMES[i]})); st.forEach((x,i)=>{ if(cells[i]) cells[i].textContent=x.name; }); };
   names();
-  const cap=document.createElement("small"); cap.textContent="HARP"; el.appendChild(cap);
+  const cap=document.createElement("small"); cap.textContent=pads ? "PADS" : "HARP"; el.appendChild(cap);
   return {el, cells, names};
 }
 function helpString(sI){

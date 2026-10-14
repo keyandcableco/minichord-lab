@@ -30,7 +30,7 @@ document.addEventListener("keydown", e=>{
   if(/INPUT|SELECT|TEXTAREA/.test(document.activeElement?.tagName||"")) return;
   if(e.code==="ShiftLeft" || e.code==="ShiftRight"){ vmModifier(e.code, true); return; }
   const h=KB_HARP.indexOf(e.code);
-  if(h>=0){ e.preventDefault(); vmPluck(e.code, h); return; }
+  if(h>=0){ e.preventDefault(); vmPluck(e.code, h, false, e.timeStamp); return; }   // when the key came down, for a game that judges timing (the drum games)
   const r=KB_ROWS.findIndex(row=>row.includes(e.code));
   if(r>=0){ e.preventDefault(); vmPress(e.code, r, KB_ROWS[r].indexOf(e.code)); }
 }, true);

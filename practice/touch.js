@@ -11,7 +11,8 @@
 //   chords   the chord buttons
 //   harp     "notes": the twelve strings (or, for a player who knows a piano better, an octave of its
 //            keys, C to B, each playing its string: saved.tdPiano); "dpad": the harp as a game controller (arcade/controller.js),
-//            drawn as a d-pad and A and B, each plucking the string the harp layout gives it
+//            drawn as a d-pad and A and B, each plucking the string the harp layout gives it; "pads": the
+//            harp as drum pads (harp drums, the drum games), twelve in a grid, each struck by a finger
 //   knob     a knob, turned by dragging along it; Chord Asteroids in manual aim has two, one to orbit
 //            the ship and one to aim it
 const TD_PROFILES={
@@ -33,6 +34,8 @@ const TD_PROFILES={
   burger:   {chords:1, harp:"dpad", knob:2},            // its two knobs voice the chord: inversion and spacing
   kong:     {chords:1, harp:"dpad"},
   bros:     {chords:1, harp:"dpad"},
+  pilot:    {chords:0, harp:"pads"},
+  fours:    {chords:0, harp:"pads"},
 };
 const TD_EVERYTHING={chords:1, harp:"notes"};                // the Practice Room's own games
 function tdProfile(){
@@ -54,7 +57,7 @@ const tdShape=()=>{ const p=tdProfile(); return (blast && blast.field ? blast.ki
 // buttons in a column and lie next to each other: major and minor (diminished), minor and seventh
 // (minor seventh). The edge is this much of a button's height, on each side of the line.
 const TD_EDGE=.22;
-const td={on:false, deck:null, shape:null, touches:new Map(), knobV:{}, sharpLabels:"", latched:false, chordSinceMod:false, keyHold:null};
+const td={on:false, deck:null, shape:null, touches:new Map(), padsHeld:new Map(), padNames:"", knobV:{}, sharpLabels:"", latched:false, chordSinceMod:false, keyHold:null};
 // One hand. A long press on the modifier latches it, held for the player till another long press (a
 // double tap still flips it, latched or not); a long press on a chord button sets the key signature
 // from it, as the key change combo does with both preset buttons held: the top row's the sharp keys
@@ -109,6 +112,7 @@ function tdBuild(){
   vmKnobs(!!p.knob);
   tdKeyHold(null);
   if(td.touches.size){ td.touches.clear(); vmReset(); }          // fingers on the old deck let go
+  td.padsHeld.forEach((i,id)=>vmLetGo("p"+id)); td.padsHeld.clear();
   td.sharpLabels="";                                           // the new buttons are labelled afresh
   if(!td.deck){
     td.deck=document.createElement("div"); td.deck.id="tdeck"; td.deck.className="tdeck";
@@ -138,6 +142,7 @@ function tdBuild(){
   const top=document.createElement("div"); top.className="tdtop"; deck.appendChild(top);
   if(p.harp==="notes") top.appendChild(tdHarp());
   if(p.harp==="dpad") top.appendChild(tdDpad());
+  if(p.harp==="pads") top.appendChild(tdPads());
   if(p.knob===2 && blast && blast.kind==="burger"){ top.appendChild(tdKnob("INVERSION", ()=>steerKnob())); top.appendChild(tdKnob("SPACING", ()=>bkSpaceKnob())); }
   else if(p.knob===2){ top.appendChild(tdKnob("ORBIT", ()=>steerKnob())); top.appendChild(tdKnob("AIM", ()=>asAimKnob())); }
   else if(p.knob) top.appendChild(tdKnob("KNOB", ()=> blast && blast.kind==="chopper" ? 0 : steerKnob()));
@@ -162,7 +167,7 @@ function tdHeight(){ if(td.deck) document.documentElement.style.setProperty("--t
 function tdSync(){
   if(!td.on) return;
   if(tdShape()!==td.shape) tdBuild(); else tdPlace();
-  tdPhone(); tdHeight(); tdWatchHints();
+  tdPadLabels(); tdPhone(); tdHeight(); tdWatchHints();
 }
 // Beginner mode and the demos light what to press on the game's own minichord. Played on the screen
 // that one isn't shown (touch.css): the deck lights instead, the chord buttons, the modifier, a slash's
@@ -187,13 +192,14 @@ function tdHints(){
     b.classList.toggle("hint", !!c && c.classList.contains("lit")); b.classList.toggle("slashhint", !!c && c.classList.contains("slashlit")); });
   const m=deck.querySelector(".tdmod"); if(m) m.classList.toggle("hint", !!(hb && hb.mod && hb.mod.classList.contains("lit")));
   const lit=new Set(); if(hh && hh.cells) hh.cells.forEach((c,i)=>{ if(c && c.classList.contains("lit")) lit.add(i); });
-  deck.querySelectorAll(".tdharp span").forEach(s=>s.classList.toggle("hint", lit.has(+s.dataset.i)));
+  deck.querySelectorAll(".tdharp span,.tdpads span").forEach(s=>s.classList.toggle("hint", lit.has(+s.dataset.i)));
   const zones=new Set(); if(hb && hb.pad) hb.pad.querySelectorAll(".lit,.demo-on").forEach(e=>{ if(e.dataset.zone) zones.add(e.dataset.zone); });
   deck.querySelectorAll(".tdz").forEach(b=>b.classList.toggle("hint", zones.has(b.dataset.zone)));
 }
 // the first time on this device, a word on what isn't plain to see
 function tdTip(){
-  if(saved.tdTip2) return; saved.tdTip2=true; save();
+  if(saved.tdTip2 || tdProfile().harp==="pads") return;     // it's about the chord buttons, which the drum games' pads deck hasn't
+  saved.tdTip2=true; save();
   const tip=document.createElement("div"); tip.className="tdtip";
   tip.innerHTML="TAP THE CHORDS. A THUMB ON THE LINE BETWEEN TWO ROWS PLAYS BOTH: DIM, OR m7. DOUBLE-TAP ♯ TO FLIP SHARP AND FLAT; HOLD IT TO LOCK IT ON. HOLD A CHORD TO CHANGE KEY: TOP ROW ♯ KEYS, MIDDLE ♮, BOTTOM ♭.";
   (document.querySelector(".fscab") || document.body).appendChild(tip);
@@ -565,6 +571,43 @@ function tdHarp(){
   h.addEventListener("pointerup", end); h.addEventListener("pointercancel", end); h.addEventListener("lostpointercapture", end);
   return h;
 }
+// The harp as drum pads (harp drums, address 343: the drum games). Twelve pads in three columns and
+// four rows, as the keymaster plate has its strings (arcade/controller.js): the low strings along the
+// bottom, so the kick (string 1) is bottom left, and the cymbals and congas at the top. A finger
+// strikes the pad it lands on, once: sliding doesn't strike again, so a drummer's finger rocking on a
+// pad isn't a roll. Every finger is its own, so two pads struck together are two hits, each timed by
+// its own touch. Silent: the virtual minichord makes each a "drum" event (virtual.js) and the game
+// plays the drum. Each pad is named by the game, its kit's drums (blast.padNames).
+const TD_PAD_ROWS=[[9,10,11],[6,7,8],[3,4,5],[0,1,2]];
+const TD_PAD_NAMES=["KICK","SNARE","RIM","CLAP","HAT","OPEN","CRASH","TOM L","TOM H","CGA L","CGA H","BELL"];   // General MIDI's, for a game that names none
+const tdPadNames=()=> (typeof blast!=="undefined" && blast && blast.padNames)
+  || (typeof RH_PAD_NAMES_DEFAULT!=="undefined" && RH_PAD_NAMES_DEFAULT) || (typeof RH_PAD_NAMES!=="undefined" && RH_PAD_NAMES.studio) || TD_PAD_NAMES;
+function tdPads(){
+  const g=document.createElement("div"); g.className="tdpads"; g.setAttribute("aria-label","The harp as drum pads");
+  for(const row of TD_PAD_ROWS) for(const i of row){ const s=document.createElement("span"); s.dataset.i=i; g.appendChild(s); }
+  td.padNames="";                                       // named afresh (tdPadLabels, from tdDraw)
+  // the pad under the finger: the one it landed on, or, between two, the nearest by where it is
+  const at=e=>{ const s=e.target && e.target.closest && e.target.closest(".tdpads span"); if(s) return +s.dataset.i;
+    const r=g.getBoundingClientRect(); if(!r.width || !r.height) return -1;
+    const fx=(e.clientX-r.left)/r.width, fy=(e.clientY-r.top)/r.height;
+    return fx<0||fx>=1||fy<0||fy>=1 ? -1 : TD_PAD_ROWS[Math.floor(fy*4)][Math.floor(fx*3)]; };
+  g.addEventListener("pointerdown", e=>{
+    e.preventDefault(); const i=at(e); if(i<0) return;
+    tdCapture(g, e);
+    if(td.padsHeld.has(e.pointerId)) vmLetGo("p"+e.pointerId);
+    td.padsHeld.set(e.pointerId, i); tdBuzz(); vmPluck("p"+e.pointerId, i, true, e.timeStamp);
+  });
+  const end=e=>{ if(td.padsHeld.delete(e.pointerId)) vmLetGo("p"+e.pointerId); };
+  g.addEventListener("pointerup", end); g.addEventListener("pointercancel", end); g.addEventListener("lostpointercapture", end);
+  return g;
+}
+// the pads' names, put up again only when the game's change (another rival, another kit)
+function tdPadLabels(){
+  const deck=td.deck; if(!deck) return;
+  const names=tdPadNames(), key=names.join("|"); if(key===td.padNames) return;
+  deck.querySelectorAll(".tdpads span").forEach(s=>{ s.textContent=names[+s.dataset.i]||""; });
+  td.padNames=key;
+}
 // The harp as a game controller: a d-pad and A and B, each plucking its string, silently: it steers,
 // it isn't music. The d-pad is read as a thumb stick, as the emulators have it: the whole square of
 // it, the gaps and corners too, is one pad, and the way is where the thumb is from its middle, there as
@@ -655,6 +698,8 @@ function tdDraw(){
   td.sharpLabels=labels;
   const lit=new Set(vm.strings.values()), hb=tdHarpBare();
   deck.querySelectorAll(".tdharp span").forEach(s=>{ s.classList.toggle("on", lit.has(+s.dataset.i)); s.textContent = hb ? "" : SHARP_NAMES[+s.dataset.i]; });
+  deck.querySelectorAll(".tdpads span").forEach(s=>s.classList.toggle("on", lit.has(+s.dataset.i)));   // named by the game, not the harp (tdPadLabels)
+  tdPadLabels();
   deck.querySelectorAll(".tdknob").forEach(k=>{ k.querySelector("i").style.width=((td.knobV[k.dataset.name] ?? .5)*100)+"%"; });
   const now=deck.querySelector(".tdnow"); if(now) now.textContent=vmChordName();
 }

@@ -25,6 +25,10 @@ function load(slug, {storage, every}={}){
   w.SCORES_HOST="";                                   // no shared board: the local one
   w.matchMedia=()=>({matches:false, addEventListener(){}});
   w.fetch=()=>Promise.reject(new Error("offline"));
+  // an event's timeStamp in performance.now()'s timebase, as a browser has it (jsdom's counts from 1970),
+  // so a game that times a key or a touch by its event (the drum games) is timed here as there
+  { const ts=Object.getOwnPropertyDescriptor(w.Event.prototype,"timeStamp");
+    if(ts && ts.get) Object.defineProperty(w.Event.prototype,"timeStamp",{get(){ return ts.get.call(this)-w.performance.timeOrigin; }, configurable:true, enumerable:true}); }
   w.HTMLDialogElement.prototype.showModal=function(){ this.setAttribute("open",""); };
   w.HTMLDialogElement.prototype.close=function(){ this.removeAttribute("open"); };
   const param=()=>({value:0, setValueAtTime(){}, linearRampToValueAtTime(){}, exponentialRampToValueAtTime(){}, setTargetAtTime(){}});
@@ -63,12 +67,18 @@ function load(slug, {storage, every}={}){
   // answers by remembering every parameter and putting them all back, a dump with them
   // locks: the addresses a firmware-76 minichord keeps as its own; it answers command 9 with them,
   // and a write of 385 (lock again) counts as a write like any other
+  // From firmware 31 it answers command 7 (page 1) with settings 256 to 511 as the instrument sends
+  // them, a 517-byte page (F0 7D 6D 01, two bytes a setting, F7): what's been written there, what
+  // extra set (any address), 0 for the rest. It isn't sent until a page asks (mc.requestPage1()).
   function connect({firmware=17, key=0, extra={}, pushPop=false, locks=null}={}){
     mc.sysex=true;
     let held=null;
     mc.out={id:"test", send(m){
       if(m[1]!==0 || m[2]!==0) return;                                   // a control command: F0 0 0 cmd param F7
       if(m[3]===9 && locks){ setTimeout(()=>{ mc.locks=new Set(locks); mc.dispatchEvent(new w.Event("locks")); },5); return; }
+      if(m[3]===7 && m[4]===1 && firmware>=31){ const page=[0xF0,0x7D,0x6D,1];
+        for(let a=256;a<512;a++){ const v=Math.max(0, Math.min(16383, mc.params[a]|0)); page.push(v&127, v>>7); }
+        page.push(0xF7); setTimeout(()=>mc._dump(page),5); return; }
       if(!pushPop) return;
       if(m[3]===5){ if(!held) held={...mc.params}; return; }
       if(m[3]===6 && held){ Object.assign(mc.params, held); held=null; setTimeout(()=>mc.dispatchEvent(new w.Event("device")),5); }
@@ -76,6 +86,8 @@ function load(slug, {storage, every}={}){
     mc.writeParam=(a,v)=>{ writes.push([a,v]); if(a!==385) mc.params[a]=v; };
     mc.requestDump=()=>{ mc._asked=(mc._asked||0)+1; setTimeout(()=>{ mc._asked--; mc.dispatchEvent(new w.Event("device")); },5); };
     for(let a=0;a<256;a++) mc.params[a]=0;
+    for(let a=256;a<512;a++) delete mc.params[a];                       // page 1 isn't known till it's asked for, unless extra says
+    mc.page1=false;
     Object.assign(mc.params, {2:80, 3:80, 7:firmware, 35:key, 97:150, 238:0}, extra);   // harp and chord volume up, as they usually are
     mc.dispatchEvent(new w.Event("device"));
   }

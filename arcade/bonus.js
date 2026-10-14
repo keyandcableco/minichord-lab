@@ -30,7 +30,8 @@ function bonusShift(o, d, depth=0){
   }
   if(depth===0 && o.fx && o.fx.missiles) o.fx.missiles.forEach(m=>{ if(m.t0) m.t0+=d; });
 }
-const bonusDue=()=> !!(blast && blast.phase==="play" && bonusOn() && !blast.bonus && blast.bonusAt!=null && blast.level>=blast.bonusAt);
+// (never in the drum games: a round would stop the band mid-bar, and their pads play no notes)
+const bonusDue=()=> !!(blast && blast.phase==="play" && !DRUM_GAMES.has(blast.kind) && bonusOn() && !blast.bonus && blast.bonusAt!=null && blast.level>=blast.bonusAt);
 // A round marked inField is played with the game itself: its own things in its own field, steered and
 // shot the way the game is, with the bonus frame only around the edges. The game's input keeps
 // working while it runs (its spawning and its clock don't), and the round watches what the game does.
@@ -97,7 +98,7 @@ function bonusEnd(b){
     if(!blast || blast.bonus!==b) return;
     bonusShift(blast, performance.now()-blast.bonusStart);
     blast.bonus=null; blast.phase=blast.bonusPhase||"play"; blast.last=performance.now();
-    const bar=window[({blaster:"blastBar", command:"blastBarCommand", snake:"snBar", asteroids:"asBar", stack:"stBar", breakout:"boBar", fifths:"fdBar", chopper:"chBar", fleet:"kfBar", sweeper:"swBar", hunt:"hdBar", racer:"krBar", chomp:"ccBar", burger:"bkBar", kong:"dkBar", bros:"sbBar"})[blast.kind]];
+    const bar=window[({blaster:"blastBar", command:"blastBarCommand", snake:"snBar", asteroids:"asBar", stack:"stBar", breakout:"boBar", fifths:"fdBar", chopper:"chBar", fleet:"kfBar", sweeper:"swBar", hunt:"hdBar", racer:"krBar", chomp:"ccBar", burger:"bkBar", kong:"dkBar", bros:"sbBar", pilot:"tpBar", fours:"tfBar"})[blast.kind]];
     if(typeof bar==="function") bar();                        // the score, with the bonus in it
     stats.streak=stats.streak; scoreboard();
   }, b.tally && b.tally.length ? 3400 : 1800);

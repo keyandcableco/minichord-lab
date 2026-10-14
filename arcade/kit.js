@@ -176,7 +176,7 @@ function arcadeKnobsInert(){
 // velocities: turned right down, it sends notes a game can't hear. So a game turns up whichever it
 // listens to, if it's down, for as long as it plays, and says so; and if one goes down mid-game, it says that.
 const ARCADE_HARP=new Set(["command","snake","asteroids","stack","fifths","breakout","fleet","sweeper","racer","chomp","burger","kong","bros"]);
-const ARCADE_CHORDS=k=>k!=="command";
+const ARCADE_CHORDS=k=>k!=="command" && k!=="pilot" && k!=="fours";   // the drum games hear neither: a pad's velocity is how hard it's struck
 function arcadeVolumes(){
   const up=[];
   if(ARCADE_CHORDS(blast.kind) && hasSetting(3) && (mc.params[3]??100)<25){ borrow(3,70); up.push("CHORD"); }
@@ -269,11 +269,15 @@ const ARCADE_OPTS=[
     vals:()=>[["NAMED",1,"EVERY KEY NAMED ROUND THE RIM"],["BARE",1.5,"ONLY C NAMED: KNOW THE CIRCLE OF FIFTHS YOURSELF"]]},
   {id:"replays", group:"game", label:"REPLAYS", on:has("frets"), get:()=>saved.frReplays||0, set:i=>{ saved.frReplays=i; save(); },
     vals:()=>[["ANY",1,"HEAR EACH PAIR AGAIN AS OFTEN AS YOU LIKE"],["ONE",1.25,"ONE MORE LISTEN TO EACH PAIR"],["NONE",1.5,"EACH PAIR PLAYS ONCE"]]},
-  {id:"timing", group:"game", label:"TIMING", on:has("sight"), get:()=>saved.slTight?1:0, set:i=>{ saved.slTight=!!i; save(); },
-    vals:()=>[["LOOSE",1,"A NOTE COUNTS ANYWHERE IN THE WINDOW"],["TIGHT",1.5,"A NARROWER WINDOW: PLAY NEARER THE LINE"]]},
+  {id:"timing", group:"game", label:"TIMING", on:has("sight","pilot"), get:k=>(k==="pilot" ? saved.tpTight : saved.slTight)?1:0,
+    set:(i,k)=>{ saved[k==="pilot" ? "tpTight" : "slTight"]=!!i; save(); },
+    vals:k=>k==="pilot" ? [["LOOSE",1,"PERFECT WITHIN A TWENTIETH OF A BEAT, OK WITHIN A SIXTH"],["TIGHT",1.5,"EVERY WINDOW NARROWER BY A THIRD: HOLD IT CLOSER"]]
+      : [["LOOSE",1,"A NOTE COUNTS ANYWHERE IN THE WINDOW"],["TIGHT",1.5,"A NARROWER WINDOW: PLAY NEARER THE LINE"]]},
+  {id:"call", group:"game", label:"THE CALL", on:has("fours"), ...flag("tfHearOnly"),
+    vals:()=>[["SEE IT",1,"THE RIVAL'S HITS APPEAR ON THE SHEET AS THEY'RE PLAYED"],["HEAR ONLY",1.5,"THE SHEET STAYS BLANK TILL YOU ANSWER: PLAY IT BACK BY EAR"]]},
   {id:"modifier", group:"game", label:"MODIFIER", on:k=>MOD_GAMES.has(k) && canWrite(), get:()=>autoMod()?0:1, set:i=>{ saved.autoMod=!i; save(); },
     vals:()=>[["AUTO",1,"THE GAME SETS SHARP OR FLAT FOR THE CHORD YOU NEED NEXT"],["BY HAND",1.25,"YOU SET SHARP OR FLAT: DOUBLE-TAP THE MODIFIER"]]},
-  {id:"buttons", group:"game", label:"BUTTONS", on:k=>k!=="command" && typeof playOnScreen==="function" && playOnScreen(), ...flag("tdBare"),
+  {id:"buttons", group:"game", label:"BUTTONS", on:k=>k!=="command" && !DRUM_GAMES.has(k) && typeof playOnScreen==="function" && playOnScreen(), ...flag("tdBare"),
     set:i=>{ saved.tdBare=!!i; save(); if(typeof tdDraw==="function") tdDraw(); },
     vals:()=>[["LABELLED",1,"EACH CHORD BUTTON ON THE SCREEN SHOWS ITS CHORD"],["BARE",1.25,"THE SCREEN'S CHORD BUTTONS BLANK, AS ON THE INSTRUMENT"]]},
   {id:"strings", group:"game", label:"STRINGS", on:k=>harpOnScreen(k), ...flag("tdHarpBare"),
@@ -339,6 +343,8 @@ const POINTS_FOR={
   chomp:()=>[["DOT","10"],["POWER PELLET","50"],["GHOST CAUGHT","200, 400, 800, 1600"],["HALF CADENCE","200"],["PLAGAL OR DECEPTIVE","300"],["PERFECT CADENCE","500"],["FULL CADENCE","1500"],["KEY SET","500, +250 A FIFTH"],powerRow(CC_POWERS, "CAPSULES")],
   burger:()=>[["INGREDIENT DROPPED","50"],["SOUR NOTE SQUASHED","500"],["RIDDEN DOWN","1000, 2000, 4000, 8000"],["PLATE SERVED","500, 800 A SEVENTH"],["NOT IN ROOT POSITION","× 1.5"],["AN OPEN VOICING","× 2"],["SERVED HOT","× 1.5"],["TICKET FILLED","1000"],["SOUR NOTES PEPPERED","100, 200, 400"],["COMBO MEAL","1500"],["KEY SET","500, +250 A FIFTH"],["KITCHEN CLEAR","1000, +100 A SHAKE LEFT"],powerRow(BK_POWERS, "BONUS FOOD")],
   bros:[["PEST FLIPPED","10"],["RESOLVED","800"],["SUSPENDED, THEN RESOLVED","1600"],["ICE MELTED","800"],["COIN","800"],["PHASE CLEAR","1000"]],
+  pilot:[["PERFECT, WITH THE CLICK","50"],["GOOD","25"],["OK","10"],["THE RIGHT PAD ON A BACKBEAT","+ 50%"],["IN THE CLOUDS","× 2"],["CLOUD BANK HELD","250 A BAR"]],
+  fours:[["AN ANSWER","1000 × HOW ALIKE"],["ECHO!, 85% ALIKE","850"],["ANSWERED, 60%","600"],["CLOSE, 35%","350"],["K.O.","A BONUS"],["THE BOSS: LAST HIT ON SAM","A BONUS"]],
   kong:[["BARREL JUMPED","100"],["BARREL RESOLVED","300, DOUBLING"],["DECEPTIVE RESOLUTION","500"],["FIREBALL PUT OUT","500"],["HAMMER","300 A BARREL"],["A LOCK OPENED","200"],["THE WHOLE CHAIN","500 A LINK"],["RIVET PULLED","200"],["KEY SET","500, +250 A FIFTH"],["BONUS LEFT","PAID AT THE END"]],
 };
 // the POINTS page's line for a game's power-ups (or capsules): their icons, then their names
@@ -550,7 +556,7 @@ const HS_SECONDS=20;        // the countdown on the initials, as a cabinet has
 // what's shown if the shared one can't be reached.
 const SCORES_API=String(SCORES_HOST||"").replace(/\/+$/,"");   // the Funnel address of arcade-scores (core/scores.js), no trailing slash
 const scoresOnline=()=> !!SCORES_API && !SCORES_API.includes("SCORES-HOST");
-const HS_SLUG={blaster:"invaders", command:"harp-command", snake:"chord-snake", asteroids:"chord-asteroids", stack:"chord-stack", breakout:"chord-breakout", fifths:"fifths-defender", chopper:"chopper-rescue", fleet:"key-fleet", sweeper:"chord-sweeper", frets:"between-the-frets", sight:"sight-line", hunt:"chord-hunt", racer:"key-racer", chomp:"chord-chomp", burger:"chord-burger", kong:"dominant-kong", bros:"sus-bros"};
+const HS_SLUG={blaster:"invaders", command:"harp-command", snake:"chord-snake", asteroids:"chord-asteroids", stack:"chord-stack", breakout:"chord-breakout", fifths:"fifths-defender", chopper:"chopper-rescue", fleet:"key-fleet", sweeper:"chord-sweeper", frets:"between-the-frets", sight:"sight-line", hunt:"chord-hunt", racer:"key-racer", chomp:"chord-chomp", burger:"chord-burger", kong:"dominant-kong", bros:"sus-bros", pilot:"time-pilot", fours:"trading-fours"};
 const HS_CHARS="ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 const hsCache={};                                        // the shared boards, as last fetched
 const hsSlug=()=> HS_SLUG[cabKind()];

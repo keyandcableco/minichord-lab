@@ -10,7 +10,7 @@
 const TAP_MIN=44, TAP_ERR=24;                 // Apple's 44 points; WCAG 2.2's 24 as the floor
 const PIXEL_FONT=/press start 2p/i;           // Press Start 2P fills its em: 8px of it reads like 11px of a book face
 const TEXT_MIN={pixel:{err:6, warn:8}, other:{err:9, warn:11}};
-const INTERACTIVE="a[href],button,input,select,textarea,summary,[role=button],[onclick],.tdcell,.tdharp span,.tdz,.tdknob,.tdmod";
+const INTERACTIVE="a[href],button,input,select,textarea,summary,[role=button],[onclick],.tdcell,.tdharp span,.tdpads span,.tdz,.tdknob,.tdmod";
 
 const cssPath=el=>{
   const parts=[];

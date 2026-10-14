@@ -44,6 +44,7 @@ const vm={
   presses:new Map(),       // a held button, by whatever's holding it (a key's code, a finger): {r, c, t}
   mod:new Set(),           // what's holding the modifier
   strings:new Map(),       // a held harp string, by what's holding it: its index
+  drums:new Set(),         // what's holding a string struck as a drum pad (harp drums on), not plucked
   // what the instrument believes: the chord's column and buttons, its slash, and since when
   col:-1, rows:"", slash:-1, believedAt:0,
   pend:null,               // a change to the chord's buttons waiting out the grace: {rows, since, grow}
@@ -53,11 +54,13 @@ const vm={
 };
 const vmOn=()=> vm.on && !!(typeof mc!=="undefined" && mc.virtual);
 
-// the settings a virtual minichord starts with: enough for every game to set up against
+// the settings a virtual minichord starts with: enough for every game to set up against, both pages
+// of them (page 1, 256 to 511, as a firmware-31 minichord has it), so a game borrows the drum
+// settings here as on the instrument
 function vmDefaults(){
   const p={};
-  for(let a=0;a<256;a++) p[a]=0;
-  Object.assign(p, {2:80, 3:80, 7:0, 31:0, 35:0, 36:0, 39:0, 97:150, 99:1, 112:12, 120:2, 200:0, 201:0});   // 99: the harp sounding as written; 120: the chord shuffling the firmware starts with
+  for(let a=0;a<512;a++) p[a]=0;
+  Object.assign(p, {2:80, 3:80, 7:0, 31:0, 35:0, 36:0, 39:0, 97:150, 99:1, 112:12, 120:2, 200:0, 201:0, 338:70});   // 99: the harp sounding as written; 120: the chord shuffling the firmware starts with; 338: the drum level
   return p;
 }
 // A front end takes the virtual minichord up, or puts it down; it's a minichord while any front end
@@ -73,13 +76,13 @@ function virtualMinichord(front, on=true){
     mc.requestDump=()=>{};
     mc.control=()=>false;                                      // no push and pop: the Lab keeps its own bookkeeping
     mc.probePushPop=()=>Promise.resolve(false);
-    Object.assign(mc.params, vmDefaults());
+    Object.assign(mc.params, vmDefaults()); mc.page1=true;
     mc.zone={type:"lower", members:15, known:false};           // one voice per note, as without MPE
     if(typeof newInstrument==="function") newInstrument();
     mc.dispatchEvent(new Event("device"));
   } else if(!vm.fronts.size && vm.on){
     vmReset();
-    vm.on=false; mc.virtual=false; mc.virtualKnobs=false; mc.out=null; mc.sysex=false;
+    vm.on=false; mc.virtual=false; mc.virtualKnobs=false; mc.out=null; mc.sysex=false; mc.page1=false;
     for(const a of Object.keys(mc.params)) delete mc.params[a];   // the screen's settings go with it: a real minichord's are read afresh
     for(const k of ["writeParam","requestDump","control","probePushPop"]) delete mc[k];   // the real minichord's own again
     if(typeof newInstrument==="function") newInstrument();
@@ -91,7 +94,7 @@ function virtualMinichord(front, on=true){
 function vmKnobs(on){ mc.virtualKnobs=!!on; }
 // everything let go: a window losing focus, a front end put away
 function vmReset(){
-  vm.presses.clear(); vm.mod.clear(); vm.strings.clear(); vm.pend=null; clearTimeout(vm.timer);
+  vm.presses.clear(); vm.mod.clear(); vm.strings.clear(); vm.drums.clear(); vm.pend=null; clearTimeout(vm.timer);
   vm.col=-1; vm.rows=""; vm.slash=-1; vm.overlap={col:-1, since:0}; vm.bassGone=vm.chordGone=0;
   vm.soundAt=0; vmSound();                                     // silent at once, not after a tap's moment
 }
@@ -163,10 +166,21 @@ function vmHarpNote(i){
   return {midi, sound:midi+12*((Number.isFinite(P[99]) ? P[99] : 1)-1)};
 }
 // a harp string: its note, as the harp's settings tune it, and the same events a real pluck and release
-// send; silent when it's only a game's control (the touch screen's d-pad)
-function vmPluck(id, i, silent){
+// send; silent when it's only a game's control (the touch screen's d-pad). stamp: when the finger or
+// key came down (its event's timeStamp), for a game that judges timing.
+// With harp drums on (343) the string is a drum pad, as on the instrument: a "drum" event, as a real
+// minichord's channel-10 note makes one (core/minichord.js), the pad its General MIDI drum, and no
+// harp note and no piano; the game plays the drum. Struck from the computer's keys or the screen.
+function vmPluck(id, i, silent, stamp){
   if(!vmOn()) return;
   vm.strings.set(id, i);
+  if(mc.params[343]===1){
+    vm.drums.add(id);
+    const source=typeof KB_HARP!=="undefined" && KB_HARP.includes(id) ? "keys" : "touch";
+    mc.dispatchEvent(new CustomEvent("drum",{detail:{note:DRUM_GM[i], vel:100, pad:i, t:stamp||performance.now(), source}}));
+    vmTell(); return;
+  }
+  vm.drums.delete(id);
   const h=vmHarpNote(i), note=h.midi;
   mc.dispatchEvent(new CustomEvent("harp",{detail:{note, pitch:note, string:i, ch:0}}));
   if(!silent) vmPlay([h.sound], {dur:.9, vel:70});
@@ -175,6 +189,7 @@ function vmPluck(id, i, silent){
 function vmLetGo(id){
   if(!vm.strings.has(id)) return;
   const i=vm.strings.get(id); vm.strings.delete(id);
+  if(vm.drums.delete(id)){ vmTell(); return; }                // a pad has no letting go: the instrument sends nothing
   if(![...vm.strings.values()].includes(i)) mc.dispatchEvent(new CustomEvent("harpoff",{detail:{note:vmHarpNote(i).midi, string:i, ch:0}}));
   vmTell();
 }
