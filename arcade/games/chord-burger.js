@@ -231,7 +231,7 @@ function buildBurgerField(box){
 function bkBar(){
   if(!blast || blast.kind!=="burger" || !blast.hud) return;
   const k=blast.key ? ` · ${blast.key.label}` : "", v=blast.voicing, L=blast.phase==="play" || blast.phase==="demo" ? bkLevel() : null;
-  const voice=L && (L.full || L.knob || L.inv.length>1) ? ` · ${BK_INV[v.inv]}${L.full ? " · "+BK_SP[v.sp] : ""}` : "";
+  const voice=L && (L.full || L.knob || L.inv.length>1 || v.inv || v.sp) ? ` · ${BK_INV[v.inv]}${L.full ? " · "+BK_SP[v.sp] : ""}` : "";
   const flips=L && L.orders ? ` · FLIP ${blast.flips??0}` : "";
   blast.hud.innerHTML=`<span>SCORE ${blast.score}${multTag()}</span><span class="lvl">LEVEL ${blast.level+1}${k}${voice} · PEPPER ${blast.pepper??0}${flips}${bkPowerHud()}</span><span class="lives">${livesHtml()}</span>`;
 }
@@ -364,7 +364,9 @@ function bkWays(){
     const t=C && pfToward(C.x, C.goal, BK_EPS);
     return [...new Set([...keys, ...pfHeld(), ...(t ? [t] : [])])];
   }
-  const harp=kmHeld().filter(z=>z==="up" || z==="down" || z==="left" || z==="right");
+  // the stick's ways vertical first (jsWays8): held up-left, or up and then left, a walk left takes
+  // the first ladder up (kmHeld would give the one pushed last first, and walk past every ladder)
+  const harp= bkJs() ? jsWays8() : kmHeld().filter(z=>z==="up" || z==="down" || z==="left" || z==="right");
   return [...new Set([...keys, ...harp])];
 }
 document.addEventListener("keydown", e=>{
@@ -713,9 +715,11 @@ function bkPepper(pitches, free){
   bkBar(); return true;
 }
 // the harp: A flips (steered on the knob, any touch but its top and bottom); the rest is read held (bkWays).
-// On the joystick plate the stick is the d-pad, read held as the harp's is (kmHeld has its ways, up-left
+// On the joystick plate the stick is the d-pad, read held as the harp's is (jsWays8 has its ways, up-left
 // up first, so a walk left takes the first ladder up); A flips and B voices the chord its next
-// inversion, round from root position again after the third (MINE voicing; SET FOR ME turns it itself).
+// inversion, round from root position again after the last the kitchen's chords have (the third with a
+// seventh on a plate, the second with only triads, which have no third: MINE voicing; SET FOR ME turns
+// it itself).
 const bkJs=()=> typeof jsOn==="function" && jsOn();
 function burgerHarp(pc){
   if(!blast || blast.kind!=="burger") return;
@@ -723,7 +727,7 @@ function burgerHarp(pc){
   if(blast.phase==="demo" && blast.demo){ endBkDemo(blast.demo); return; }
   if(bkJs()){ const z=kmControl(pc);
     if(z==="A") bkFlip();
-    else if(z==="B" && blast.phase==="play" && !bkAuto()){ const v=blast.voicing; bkVoice((v.inv+1)%4, v.sp, true); }
+    else if(z==="B" && blast.phase==="play" && !bkAuto()){ const v=blast.voicing; bkVoice(v.inv>=bkInvs()-1 ? 0 : v.inv+1, v.sp, true); }
     return; }
   if(pfKnob() ? pfHarpZone(pc)==="jump" : kmControl(pc)==="A") bkFlip();
 }
@@ -745,13 +749,16 @@ function bkFlip(){
 const bkSpaceKnob=()=> steerKnob()===0 ? 1 : 0;
 function bkKnob(knob, v){
   if(!blast || blast.kind!=="burger" || blast.phase!=="play" || bkAuto()) return;
-  const step=Math.min(3, Math.floor(v*4)), w=blast.voicing;
-  if(knob===steerKnob()) bkVoice(step, w.sp, true);
-  else if(knob===bkSpaceKnob()) bkVoice(w.inv, step, true);
+  const w=blast.voicing;
+  if(knob===steerKnob()) bkVoice(Math.floor(v*4), w.sp, true);      // the top quarter the second inversion with only triads (bkVoice)
+  else if(knob===bkSpaceKnob()) bkVoice(w.inv, Math.min(3, Math.floor(v*4)), true);
 }
+// the inversions this kitchen's chords have: four with a seventh on a plate, three with only triads (a
+// triad's "third inversion" is root position an octave up, bkChord)
+const bkInvs=()=> (blast.plates||[]).some(P=>P.chord && P.chord.seventh) ? 4 : 3;
 function bkVoice(inv, sp, byHand){
   if(byHand && bkAuto()) return;
-  inv=Math.max(0, Math.min(3, inv)); sp=Math.max(0, Math.min(3, sp));
+  inv=Math.max(0, Math.min(byHand ? bkInvs()-1 : 3, inv)); sp=Math.max(0, Math.min(3, sp));
   const w=blast.voicing; if(inv===w.inv && sp===w.sp) return;
   const was={...w}; blast.voicing={inv, sp};
   if(canWrite()){ if(inv!==was.inv && hasSetting(37)) borrow(37, inv); if(sp!==was.sp && hasSetting(38)) borrow(38, sp); }

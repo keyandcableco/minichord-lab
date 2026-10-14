@@ -7,7 +7,6 @@ const P=require("./dpad-plate").plateOf(t);
 (async()=>{
   const {w, sb, sleep, check, chord}=t;
   await sleep(150); P.connect(); await sleep(100);
-  if(P.standIn()) console.log("  (the shared joystick layer isn't there yet: a stand-in to its contract)");
   const a=await t.start(0); await sleep(1900);
   check("READY, then play", a.st==="go" && a.phase==="play");
   P.push("up"); await sleep(20);

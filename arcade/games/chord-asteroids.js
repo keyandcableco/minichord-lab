@@ -69,7 +69,11 @@ function asPlace(){ const a=blast.orbitA??Math.PI/2; blast.cx=blast.hx+Math.cos(
 // one, the orbit (or the ship's aim) keeps turning that way, and the whole mapping turns with it, so
 // the knob never jumps back when it's turned away from the stop.
 const AS_EDGE=.025, AS_EDGE_WAIT=420, AS_EDGE_RATE=1.25;   // how close to a stop counts, how long before it starts, radians a second
-function asKnob(v){ if(!blast || blast.kind!=="asteroids") return; blast.orbitV=v; blast.orbitWant=Math.PI/2+(v-.5)*2*Math.PI+(blast.orbitOffset||0); }   // the knob's whole turn is one lap
+// A knob's want is kept within half a turn of the last want, whoever set it, by turning the mapping whole
+// laps (asLap): the stick, the arrow keys and the demo steer round and round without the knob, and the
+// ship, steered by the knob next, would otherwise fly round those laps back to the knob's own.
+function asLap(want, was, off){ const k=was==null ? 0 : Math.round((was-want)/(2*Math.PI)); if(k) blast[off]=(blast[off]||0)+k*2*Math.PI; return want+k*2*Math.PI; }
+function asKnob(v){ if(!blast || blast.kind!=="asteroids") return; blast.orbitV=v; blast.orbitWant=asLap(Math.PI/2+(v-.5)*2*Math.PI+(blast.orbitOffset||0), blast.orbitWant, "orbitOffset"); }   // the knob's whole turn is one lap
 function asEdge(now, dt){
   for(const [V, off, apply] of [["orbitV","orbitOffset",asKnob], ["aimV","aimOffset",asAim]]){
     const v=blast[V], at=V+"EdgeAt"; if(v==null || blast.phase!=="play"){ blast[at]=null; continue; }
@@ -87,7 +91,7 @@ function asEdge(now, dt){
 // MIDI" still reports where they are. Without knob layer, the up and down arrows aim instead.
 const asAimKnob=()=> steerKnob()===0 ? 1 : 0;
 const asManual=()=> !!(blast && blast.kind==="asteroids" && blast.aimManual);
-function asAim(v){ if(!asManual()) return; blast.aimV=v; blast.aimWant=-Math.PI/2+(v-.5)*2*Math.PI+(blast.aimOffset||0); }   // a whole turn of the knob, a whole turn of the ship
+function asAim(v){ if(!asManual()) return; blast.aimV=v; blast.aimWant=asLap(-Math.PI/2+(v-.5)*2*Math.PI+(blast.aimOffset||0), blast.aimWant, "aimOffset"); }   // a whole turn of the knob, a whole turn of the ship
 const asKnobsInert=()=>arcadeKnobsInert();
 document.addEventListener("keydown", e=>{
   if(!blast || blast.kind!=="asteroids" || blast.phase!=="play" || /INPUT|SELECT|TEXTAREA/.test(document.activeElement?.tagName||"")) return;
@@ -154,7 +158,9 @@ const asTurn=(a, b)=> mod(b-a+Math.PI, 2*Math.PI)-Math.PI;
 // and the ship flies round to the top). Manual aim: where it points is where the ship faces, and A and
 // B held fly the orbit anticlockwise and clockwise. Pushed past AS_STICK_ON it steers; let go, it springs
 // back and the ship stays where it was. The stick's angle is clockwise from up; the field's, from the
-// right, a quarter-turn round. Each want is kept within half a turn of where the ship is.
+// right, a quarter-turn round. Each want is kept within half a turn of where the ship is, so the glide
+// (asTick), which follows a want as it is, laps and all, as a knob turned fast must be followed, goes the
+// short way round to it.
 const AS_STICK_ON=.5, AS_STICK_FLY=2.5;            // how far over it must be pushed; radians a second for A and B
 function asStick(dt){
   if(typeof jsOn!=="function" || !jsOn()) return;
@@ -172,14 +178,14 @@ function asTick(now){
   if(!blast || blast.kind!=="asteroids") return;
   const dt=Math.min(DT_MAX,(now-blast.last)/1000); blast.last=now;
   if(blast.phase==="play") asStick(dt);                                   // the joystick plate's stick
-  if(blast.orbitWant!=null && blast.hx!=null){ const a=blast.orbitA??Math.PI/2, d=asTurn(a, blast.orbitWant);   // the ship glides round to where it's steered, the short way
-    blast.orbitA = Math.abs(d)<.002 ? a+d : a+d*Math.min(1,dt*9); asPlace(); }
+  if(blast.orbitWant!=null && blast.hx!=null){ const a=blast.orbitA??Math.PI/2, d=blast.orbitWant-a;   // the ship glides round to where it's steered
+    blast.orbitA = Math.abs(d)<.002 ? blast.orbitWant : a+d*Math.min(1,dt*9); asPlace(); }
   asEdge(now, dt);
   if(blast.phase==="demo" && blast.demo && typeof helpKnobFollow==="function"){   // the demo's steering and aiming, on the on-screen knobs
     const lap=a=>mod((a/(2*Math.PI))+.5, 1);
     if(blast.orbitWant!=null) helpKnobFollow(steerKnob(), lap(blast.orbitWant-Math.PI/2));
     if(blast.aimManual && blast.aimWant!=null) helpKnobFollow(asAimKnob(), lap(blast.aimWant+Math.PI/2)); }
-  if(asManual() && blast.aimWant!=null){ const d=asTurn(blast.shipAng, blast.aimWant); blast.shipAng += Math.abs(d)<.002 ? d : d*Math.min(1,dt*12); }
+  if(asManual() && blast.aimWant!=null){ const d=blast.aimWant-blast.shipAng; blast.shipAng += Math.abs(d)<.002 ? d : d*Math.min(1,dt*12); }
   if(blast.phase==="bonus" && typeof bonusPlaying==="function" && bonusPlaying() && blast.bonus.g.move) blast.bonus.g.move(blast.bonus, now, dt);   // its own bonus round's wreckage drifts
   if(blast.phase==="play") asPowerTick(now, dt);                         // a power running out, the pedal firing
   const held = blast.phase==="play" && asFrozen();                      // fermata: nothing moves
@@ -421,7 +427,7 @@ function endAsDemo(token){
   if(blast && blast.demo===token) demoHarpDone();
   if(!blast || blast.demo!==token) return;
   stopDemo(); blast.phase="menu"; blast.rocks.forEach(r=>{ if(!r.dead) asKill(r); }); blast.rocks=[]; blast.score=0; blast.asPower=null;
-  blast.orbitWant=Math.PI/2;                                                   // the ship home to its starting place
+  { const a=blast.orbitA??Math.PI/2; blast.orbitWant=a+asTurn(a, Math.PI/2); }   // the ship home to its starting place, the short way
   blast.aimManual=false; blast.aimWant=null; blast.shipAng=-Math.PI/2;
   if(blast.overlay) blast.overlay.hidden=false;
   clearTimeout(blast.attract);

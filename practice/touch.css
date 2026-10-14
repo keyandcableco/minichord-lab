@@ -133,10 +133,11 @@
   .tdknob,.tdeck[data-knob="1"] .tdknob{order:1;flex:0 0 40px}
   .tddpad{flex:1 1 auto;min-height:0;grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:repeat(3,minmax(0,1fr)) minmax(0,1.3fr);grid-template-areas:". up ." "left . right" ". down ." "b . a"}
   .tdz-A,.tdz-B{width:100%;height:auto;max-height:100%}
-  /* the drum pads stand in the right-hand column, made wide enough for three pads a thumb wide */
-  :root:has(.tdeck[data-harp="pads"]){--tdr:clamp(156px,24vw,210px)}
+  /* the drum pads stand in the right-hand column, made wide enough for three pads a thumb wide, beside
+     the notch too (the column steps in from it, so it's that much wider) */
+  :root:has(.tdeck[data-harp="pads"]){--tdr:calc(clamp(156px,24vw,210px) + env(safe-area-inset-right,0px))}
   .tdpads{flex:1 1 auto;grid-template-rows:repeat(4,minmax(0,1fr));max-width:none;margin:0}
-  .tdpads span{font-size:.45rem}
+  .tdpads span{font-size:.5rem}
   /* no chord buttons (Harp Command): nothing on the left */
   .tdeck[data-chords=""]{--tdl:0px}
   /* the piano stands too: low at the bottom, the black keys on the left */

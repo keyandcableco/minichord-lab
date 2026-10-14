@@ -7,7 +7,6 @@ const P=require("./dpad-plate").plateOf(t);
   const {w, sb, sleep, check}=t;
   const E=s=>w.eval(s);
   await sleep(150); P.connect({firmware:90}); await sleep(100);
-  if(P.standIn()) console.log("  (the shared joystick layer isn't there yet: a stand-in to its contract)");
   check("the rules teach the strip: C at the bottom is the leftmost cannon", /C AT THE BOTTOM IS THE LEFTMOST CANNON/.test(E("COMMANDMENU_G.rules()")));
   check("and so does the demo", /C AT THE BOTTOM/.test(E("HC_DEMO[0].text")));
   const a=await t.start(0); await sleep(300);

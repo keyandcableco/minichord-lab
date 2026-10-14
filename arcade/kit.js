@@ -56,13 +56,16 @@ function levelList(g, over, best){
   head.innerHTML=`<span class="${over?"":"blink"}">${over ? "OR START FROM" : "CHOOSE A LEVEL"}</span>${!over && best ? `<b>BEST ${best}</b>` : ""}`;
   const lv=document.createElement("div"); lv.className="levels";
   const hint=document.createElement("p"); hint.className="opthint";
-  const idle=()=> playOnScreen() ? "TAP A LEVEL, OR PLAY THE CHORD BESIDE IT" : jsOn() ? "THE STICK PICKS, A STARTS, OR PLAY THE CHORD BESIDE IT" : "CLICK A LEVEL, OR PLAY THE CHORD BESIDE IT ON THE MINICHORD";
+  // played on the screen's deck with no chord buttons on it (the drum games' pads, Harp Command's harp),
+  // a level is only tapped: no chord beside it
+  const noChords=()=> playOnScreen() && typeof tdProfile==="function" && tdProfile().chords===0;
+  const idle=()=> noChords() ? "TAP A LEVEL" : playOnScreen() ? "TAP A LEVEL, OR PLAY THE CHORD BESIDE IT" : jsOn() ? "THE STICK PICKS, A STARTS, OR PLAY THE CHORD BESIDE IT" : "CLICK A LEVEL, OR PLAY THE CHORD BESIDE IT ON THE MINICHORD";
   hint.textContent=idle();
   const N=g.levels.length, f=devFifths();
   g.levels.forEach((L,i)=>{
     const b=document.createElement("button"), ok=g.ok ? g.ok(i) : true, n=g.levelName ? g.levelName(i) : typeof L==="string" ? L : L.n;
     const heat=LV_HEAT[Math.round(i/Math.max(1,N-1)*(LV_HEAT.length-1))];
-    const c=COLUMN_LETTERS[i], key=c ? c+ACC[keyAcc(LETTERS.indexOf(c), f)] : "";
+    const c=COLUMN_LETTERS[i], key=c && !noChords() ? c+ACC[keyAcc(LETTERS.indexOf(c), f)] : "";
     b.type="button"; b.disabled=!ok; b.style.setProperty("--heat", heat);
     b.innerHTML=`<span class="lvnum">${i+1}</span><span class="lvname">${n}${ok ? "" : `<small>${g.needs}</small>`}</span>${ok && key ? `<span class="lvkey" title="${key} on the minichord">${key}</span>` : "<span></span>"}<i class="arr next" aria-hidden="true"></i>`;
     b.setAttribute("aria-label", `Level ${i+1}: ${n}${ok ? "" : `. ${g.needs.toLowerCase()}`}`);
@@ -86,7 +89,9 @@ function demoShell(end){
   gameLater(()=>{ if(blast.demo===token) helperSync(true); }, 0);         // the on-screen minichord, to show what's pressed
   el.innerHTML=`<div class="demohead"><span class="demotag blink">DEMO</span><span class="demotitle"></span><button class="demoskip">SKIP ▶</button></div><p class="democap"></p>`;
   el.querySelector(".demoskip").onclick=()=>end(token);
-  const say=(t,c)=>{ el.querySelector(".demotitle").textContent=t||""; el.querySelector(".democap").textContent=c; };
+  // (a game laid out under the caption, rather than under three lines of it, lays out again as it grows or shrinks: demoClear)
+  const say=(t,c)=>{ const cap=el.querySelector(".democap"), h0=cap.offsetHeight; el.querySelector(".demotitle").textContent=t||""; cap.textContent=c;
+    if(cap.offsetHeight!==h0 && blast && !KM_GAMES.includes(blast.kind)) blast.layoutKey=null; };
   const sleep=ms=>new Promise(r=>setTimeout(r,ms)), step=async ms=>{ await sleep(ms); if(!token.run) throw 0; };
   demoText(el);
   return {el, token, say, sleep, step};
@@ -101,13 +106,16 @@ function demoText(el){
 }
 // How far down the demo's title and three lines of its caption reach on a phone's screen, where they'd
 // cover the game: a game that would start under them starts there instead (pixel.js pxRoom, Chord
-// Breakout's wall). 0 elsewhere, or with nothing laid out.
-function demoClear(){
+// Breakout's wall). 0 elsewhere, or with nothing laid out. `always`: on any screen, and under the whole
+// caption should it run longer (a game whose top is what it shows, not a border round it: its demo's
+// say() has it lay out again as the caption changes).
+function demoClear(always){
   const d=blast && blast.phase==="demo" && blast.demo && blast.demo.el;
-  if(!d || !(d.classList.contains("slim") || d.classList.contains("short"))) return 0;
+  if(!d || !(always || d.classList.contains("slim") || d.classList.contains("short"))) return 0;
   const h=d.querySelector(".demohead"), c=d.querySelector(".democap"); if(!h || !c || !h.offsetHeight) return 0;
   const cs=getComputedStyle(c), px=v=>parseFloat(v)||0, lh=px(cs.lineHeight); if(!lh) return 0;
-  return Math.ceil(h.offsetTop+h.offsetHeight+px(cs.marginTop)+px(cs.paddingTop)+px(cs.paddingBottom)+3*lh+4);
+  const three=Math.ceil(h.offsetTop+h.offsetHeight+px(cs.marginTop)+px(cs.paddingTop)+px(cs.paddingBottom)+3*lh+4);
+  return always ? Math.max(three, Math.ceil(c.offsetTop+c.offsetHeight+6)) : three;
 }
 // a demo's chord, heard on the page's piano
 // what a demo plays, lit on the on-screen minichord: one note its harp string, a chord its buttons

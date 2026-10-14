@@ -221,6 +221,7 @@ const PAGE_SCRIPTS=(function(){
 .field.arcade .ground{z-index:1;background:#FF4B3E;opacity:.7;height:2px}
 .hud{position:absolute;top:8px;left:10px;right:10px;display:flex;justify-content:space-between;align-items:center;z-index:3;font:400 .62rem "Press Start 2P",monospace;color:#F1E8D2;pointer-events:none}
 @media (max-width:480px){.field.arcade .hud{font-size:.5rem;gap:8px}}   /* a phone held upright: the score, level and lives on one line */
+.field.pilot .hud{text-shadow:2px 2px 0 #000,-1px -1px 0 #000}   /* Time Pilot's sky is pale (the clouds, 1910's blue): the HUD outlined to read over it */
 /* the lives: pixel hearts, larger than the HUD's text; lost ones dark and empty; the one just lost shakes as it drains */
 .hud .lives{display:inline-flex;align-items:center;gap:.3rem;color:#FF4B3E;line-height:1}
 .hud .lives .heart{width:1.75rem;height:1.62rem;display:block;filter:drop-shadow(0 0 6px rgba(255,75,62,.55))}
@@ -639,6 +640,8 @@ body.kbplay #connect{opacity:.5}
 .helper .board .hbstrip,.helper .board .kmplate{opacity:.8}
 .helper.hharp{background:rgba(5,4,7,.18);border-color:rgba(107,99,88,.5)}
 .helper.hharp .hstring{background:rgba(14,12,20,.18);border-color:rgba(46,42,64,.5)}
+.field.pilot .helper.hharp:not(.plate){background:#050407;border-color:#6B6358}   /* over Time Pilot's clouds a see-through strip washes out: solid there */
+.field.pilot .helper.hharp .hstring:not(.lit){background:#0E0C14;border-color:#2E2A40}
 
 /* the arcade settings dialog */
 dialog.arcadedlg{background:#130D1E;color:#F1E8D2;border:4px solid #000;box-shadow:0 0 0 3px #2F2342,10px 10px 0 #000;border-radius:0;padding:22px 24px;max-width:min(720px,94vw);font:400 .56rem/1.9 "Press Start 2P",monospace}

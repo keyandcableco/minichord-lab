@@ -34,7 +34,7 @@ const TF_ROSTER=[
   {n:"GL1TCH-9000", style:"CLICKS AND CUTS", kit:"cliqhop", bpm:104, look:"bot"},
   {n:"USTAD TEENTAL", style:"TEENTAL", kit:"tabla", bpm:76, look:"ustad", boss:true},
 ];
-const TF_HP=100, TF_SAM_HIT=8;                 // health each, and the extra blow of an answer landing on sam
+const TF_HP=100, TF_SAM_HIT=8, TF_SAM_MIN=.6;   // health each, and the extra blow of an answer landing on sam (one at least ANSWERED)
 const tfRivalAt=L=> TF_ROSTER[((L||0)%TF_ROSTER.length+TF_ROSTER.length)%TF_ROSTER.length];
 const tfRival=()=> (blast && blast.rival) || tfRivalAt(blast ? blast.level : 0);
 const tfLap=L=> Math.floor((L||0)/TF_ROSTER.length);
@@ -183,12 +183,18 @@ function tfCall(L, ex){
 // reg (or the registers themselves), flat (no accents to judge)}.
 //   The player's steady offset (rhRobustOffset of each hit's distance from its nearest sixteenth) is
 // taken off first. Hits within a quarter of a sixteenth of each other are one onset (two pads struck
-// together, or a flam), with the registers of all. Each call onset is paired with at most one answer
-// onset within a sixteenth and a half: the same sixteenth counts 1, the next one half, times the
-// registers' likeness (same 1, next 1/2, far 0, as .5 + .5·likeness). What's paired, over how many each
-// played, gives a precision and a recall, and their harmonic mean the rhythm's likeness; the accents
-// (a hit well above the player's usual strength, the lower half's middle, against the call's, well
-// above its own) and how alike the counts are temper it. Silence is 0, an exact echo 1, a stream of random hits low.
+// together, or a flam), with the registers of all; in the answer, a hit on another pad a little later
+// still (opts.spread sixteenths, for a two-handed stroke a few tens of milliseconds apart, but never
+// as far as the call's own closest onsets) is part of the same onset too. Each call onset is paired
+// with at most one answer onset within a sixteenth and a half: the same sixteenth counts 1, the next
+// one half, times the registers' likeness: each register of one paired with one of the other's (same
+// 1, next 1/2, far 0) at best, over the more registers either struck, so a chord of every drum against
+// one is a third; as .2 + .8·likeness, the right rhythm on the wrong drums still worth something.
+// What's paired, over how many each played, gives a precision and a recall, and their harmonic mean
+// the rhythm's likeness; the accents (where the call has any: a hit well above the player's usual
+// strength, the lower half's middle, a hit without a strength of its own counted as usual, against the
+// call's, well above its own) and how alike the counts are temper it. Silence is 0, an exact echo 1, a
+// stream of random hits low, every drum at once on every eighth low too.
 const TF_REG_ROLE=[0,1,1,1,2,2,2,0,1,0,1,2,2];
 function tfSimilarity(call, answer, opts={}){
   const reg=opts.reg || (typeof RH_REGISTER!=="undefined" && RH_REGISTER[opts.kit||"studio"]) || TF_REG_ROLE;
@@ -197,22 +203,26 @@ function tfSimilarity(call, answer, opts={}){
   call=call||[]; answer=answer||[];
   const out={score:0, bars:Array(bars).fill(0), rhythm:0, accent:null, density:0, offset:0,
     callMatched:call.map(()=>false), answerMatched:answer.map(()=>false), sam:false, n:{call:0, answer:0}};
-  // onsets: hits close together as one
-  const onsets=(hits, shift)=>{ const o=[];
+  // onsets: hits close together as one (a hit on another pad up to w after the onset's first, too)
+  const onsets=(hits, shift, w=.25)=>{ const o=[];
     hits.map((h,i)=>i).sort((i,j)=>hits[i].step-hits[j].step).forEach(i=>{ const h=hits[i], s=h.step-shift, last=o[o.length-1];
-      if(last && s-last.step<=.25){ last.regs.add(rg(h.pad)); last.vel=Math.max(last.vel, h.vel??100); last.idx.push(i); last.flat=last.flat && !!h.flat; }
-      else o.push({step:s, regs:new Set([rg(h.pad)]), vel:h.vel??100, idx:[i], flat:!!h.flat}); });
+      if(last && (s-last.step<=.25 || (s-last.step<=w && !last.pads.has(h.pad)))){ last.regs.add(rg(h.pad)); last.pads.add(h.pad); last.vel=Math.max(last.vel, h.vel??100); last.idx.push(i); last.flat=last.flat && !!h.flat; }
+      else o.push({step:s, regs:new Set([rg(h.pad)]), pads:new Set([h.pad]), vel:h.vel??100, idx:[i], flat:!!h.flat}); });
     return o; };
   const C=onsets(call,0); out.n.call=C.length;
   if(!answer.length || !C.length) return out;
   let off=typeof rhRobustOffset==="function" ? rhRobustOffset(answer.map(a=>a.step-Math.round(a.step))) : 0;
   off=Math.max(-.45, Math.min(.45, off||0)); out.offset=off;
-  const A=onsets(answer,off); out.n.answer=A.length;
-  // the registers' likeness, both ways round: each register in one set against the nearest in the other
-  const one=(x,y)=>[...x].reduce((s,r)=>s+Math.max(...[...y].map(q=> q===r ? 1 : Math.abs(q-r)===1 ? .5 : 0)),0)/x.size;
-  const regSim=(a,b)=>(one(a,b)+one(b,a))/2;
+  let gap=Infinity; for(let i=1;i<C.length;i++) gap=Math.min(gap, C[i].step-C[i-1].step);
+  const A=onsets(answer, off, Math.max(.25, Math.min(opts.spread||.25, .75*gap))); out.n.answer=A.length;
+  // the registers' likeness: each register of the smaller set paired with one of the larger's, the
+  // pairing that's most alike, over the larger's size
+  const like=(r,q)=> r===q ? 1 : Math.abs(r-q)===1 ? .5 : 0;
+  const regSim=(a,b)=>{ const x=[...(a.size>=b.size ? a : b)], y=[...(a.size>=b.size ? b : a)]; let best=0;
+    const go=(i,used,sum)=>{ if(i===y.length){ best=Math.max(best,sum); return; } x.forEach((r,k)=>{ if(!(used>>k&1)) go(i+1, used|1<<k, sum+like(r,y[i])); }); };
+    go(0,0,0); return best/x.length; };
   const pairs=[];
-  C.forEach((c,i)=>A.forEach((a,j)=>{ const d=Math.abs(a.step-c.step); if(d<=1.5) pairs.push({i, j, d, v:(d<=.5 ? 1 : .5)*(.5+.5*regSim(c.regs,a.regs))}); }));
+  C.forEach((c,i)=>A.forEach((a,j)=>{ const d=Math.abs(a.step-c.step); if(d<=1.5) pairs.push({i, j, d, v:(d<=.5 ? 1 : .5)*(.2+.8*regSim(c.regs,a.regs))}); }));
   pairs.sort((x,y)=>y.v-x.v || x.d-y.d);
   const byC=new Map(), byA=new Map();
   for(const p of pairs) if(!byC.has(p.i) && !byA.has(p.j)){ byC.set(p.i,p); byA.set(p.j,p); }
@@ -220,9 +230,11 @@ function tfSimilarity(call, answer, opts={}){
   const P=M/A.length, Rc=M/C.length;
   out.rhythm= P+Rc>0 ? 2*P*Rc/(P+Rc) : 0;
   out.density=Math.min(A.length,C.length)/Math.max(A.length,C.length);
-  // the accents, where the player has strengths to tell them by
-  if(!(opts.flat || A.every(a=>a.flat)) && byC.size){
-    const up=v=>{ const m=med(v), q=med(v.filter(x=>x<=m)); return Math.max(q+22, m+6); }, upA=up(A.filter(a=>!a.flat).map(a=>a.vel)), upC=up(C.map(c=>c.vel));
+  // the accents, where the call has some and the player has strengths to tell them by (a hit with no
+  // strength of its own, a key or the screen's pad with the stick let go, counted at the usual 100)
+  const up=v=>{ const m=med(v), q=med(v.filter(x=>x<=m)); return Math.max(q+22, m+6); }, upC=up(C.map(c=>c.vel));
+  if(!(opts.flat || A.every(a=>a.flat)) && byC.size && C.some(c=>c.vel>=upC)){
+    const upA=up(A.map(a=>a.flat ? 100 : a.vel));
     let wrong=0; byC.forEach(p=>{ const c=C[p.i], a=A[p.j]; if((c.vel>=upC)!==(!a.flat && a.vel>=upA)) wrong++; });
     out.accent=1-wrong/byC.size;
   }
@@ -285,6 +297,7 @@ function tfSetRival(L, device=true){
   Object.assign(blast, {level:L, rival:R, padNames:tfPadNames(R.kit), bpm:tfBpm(L), calls:{}, answers:{}, result:null,
     hp:{me:TF_HP, foe:TF_HP}, shown:{me:TF_HP, foe:TF_HP}, helpNamesStale:true});
   if(typeof tdPadLabels==="function") tdPadLabels();
+  if(blast.helpHarp && typeof helpString==="function") helpString(blast.helpString??-1);   // beginner's PADS strip renamed too
   if(R.kit==="tabla" && typeof rhLoad==="function") rhLoad("tabla");   // the recorded strokes, decoded while the count-in plays
   if(device && canWrite() && typeof rhDevice==="function") rhDevice(R.kit);
   tfBar();
@@ -356,12 +369,12 @@ function tfTick(now){
 // where the bout is, from the clock as heard: counting in, the call, the answer; the next exchange
 // queued as an answer begins, each answer judged once its window has closed
 function tfStep(){
+  if(blast.halted){ if(!document.hidden) tfResume(); return; }     // (halted before its bout was made, too: hidden as it began)
   const B=blast.bout; if(!B) return;
-  if(blast.halted){ if(!document.hidden) tfResume(); return; }
   if(!["count","call","answer"].includes(blast.st)) return;
   if(!rhClockOverride && B.live!==!!rhLiveCtx()){ tfHalt(); tfResume(); return; }   // the audio clock came alive (or stopped) under the bout: start again on it
   const h=rhNow();
-  if(h<B.t0){ blast.st="count"; return; }
+  if(h<tfCallStart(B.first)){ blast.st="count"; return; }          // (a bout picked up again counts in to its first exchange)
   const e=Math.floor((h-B.t0)/(8*B.bar)), into=h-B.t0-e*8*B.bar;
   blast.ex=e; blast.st= into<4*B.bar ? "call" : "answer";
   const want= blast.st==="answer" ? e+1 : e; while(B.sched<want) tfSchedule(B.sched+1);   // (a long frame, a throttled tab: what's past is skipped)
@@ -390,7 +403,9 @@ function tfHit(pad, vel=100, heard, flat=false){
 function tfJudge(e){
   const B=blast.bout, R=blast.rival, call=tfCallFor(e), ans=blast.answers[e]||[];
   B.judged=e;
-  const res=tfSimilarity(call.hits, ans, {kit:R.kit}), rate=tfRate(res.score, res.n.answer), dmg=tfDamage(res.score), sam=!!(R.boss && res.sam);
+  // (two pads struck as one a little apart: up to 70 ms, as far as a quarter to nearly half a sixteenth)
+  const res=tfSimilarity(call.hits, ans, {kit:R.kit, spread:Math.max(.25, Math.min(.45, .07/B.step))}), rate=tfRate(res.score, res.n.answer), dmg=tfDamage(res.score),
+    sam=!!(R.boss && res.sam && res.score>=TF_SAM_MIN);
   if(sam) dmg.foe+=TF_SAM_HIT;
   blast.hp.foe=Math.max(0, blast.hp.foe-dmg.foe); blast.hp.me=Math.max(0, blast.hp.me-dmg.me);
   let pts=mulPts(Math.round(1000*res.score)*(blast.level+1)); if(sam) pts+=mulPts(500*(blast.level+1));
@@ -489,7 +504,7 @@ function tfLayout(){
 }
 // the sheet's bar b: its left edge, and the top of its row
 const tfBarAt=b=>{ const L=blast.lay; return {x:L.x0+(b%L.cols)*(L.barW+L.gap), y:L.sheetTop+Math.floor(b/L.cols)*L.rowH}; };
-const TF_ME="#7FE9FF", TF_FOE="#FF5AA0";
+const TF_ME="#7FE9FF", TF_FOE="#FF5AA0", TF_MISSED="#6A2A48";
 function tfDraw(_, now){
   const s=blast.screen, g=s && s.getContext("2d"); if(!g || !g.fillRect) return;
   const lk=`${fieldW()}x${fieldH()}@${window.devicePixelRatio||1}|${blast.phase==="demo"}|${!!saved.beginner}`;
@@ -607,13 +622,14 @@ function tfStage(g, L, R, h, now, live){
       pxText(g, L.compact ? `${pct}%` : `${pct}% · +${r.pts}`, mid, ty+8*k+3, "#F1E8D2");
       if(r.sam) pxText(g, "ON SAM!", mid, ty+8*k+13, "#FFD35A"); } }
   // the line over the sheet
-  let say="";
-  if(st==="count") say=`VS ${R.n}`;
+  // (the first of its wordings that fits: an upright phone's screen is as narrow as 144)
+  let say=[];
+  if(st==="count") say=[`VS ${R.n}`, R.n];
   else if(st==="call" || st==="answer"){ const n=Math.max(1, Math.min(4, Math.floor((h-tfCallStart(blast.ex)-(st==="answer" ? 4*B.bar : 0))/B.bar)+1));
-    say= st==="call" ? `${L.wide ? "THE CALL" : "CALL"} · BAR ${n}` : `${L.wide ? "YOUR ANSWER" : "ANSWER"} · BAR ${n}`; }
-  else if(st==="ko") say=`${R.n} IS DOWN`;
-  else if(st==="lost") say="GAME OVER";
-  if(say && [...say].length*8>L.W-4) say=say.replace(/^VS /,"");
+    say=[st==="call" ? `${L.wide ? "THE CALL" : "CALL"} · BAR ${n}` : `${L.wide ? "YOUR ANSWER" : "ANSWER"} · BAR ${n}`]; }
+  else if(st==="ko") say=[`${R.n} IS DOWN`, `${R.n} DOWN`, `${R.n.split(" ")[0]} IS DOWN`, "K.O."];
+  else if(st==="lost") say=["GAME OVER"];
+  say=say.find(x=>[...x].length*8<=L.W-4) || say[say.length-1];
   if(say) pxText(g, say, mid, L.status+1, st==="answer" ? TF_ME : st==="call" ? TF_FOE : "#F1E8D2");
 }
 function tfBlow(g, x, y, col, dir, now){
@@ -715,19 +731,25 @@ function tfSheet(g, L, R, h, now, live){
   if(R.boss){ const {x,y}=tfBarAt(3); pxText(g,"X",x+L.barW+5,y-1,"#FFD35A",false); tfRect(g,x+L.barW+2,y+7,sw,27,"#2A2418"); }
   if(!live || !B) return;
   const reg=p=>((typeof RH_REGISTER!=="undefined" && (RH_REGISTER[R.kit]||[])[p]) ?? 1);
-  // (a hit a shade before a bar line, as played, is that bar's first: drawn there, not past the last bar's end)
-  const mark=(step, pad, row, col)=>{ const b=Math.max(0,Math.min(3, Math.floor((step+.5)/16))), {x,y}=tfBarAt(b), s=Math.max(0, step-16*b);
-    tfRect(g, x+Math.round(s*sw), y+(row ? 22 : 8)+(2-reg(pad))*4, Math.max(2,sw-1), 3, col); };
+  // (a hit a shade before a bar line, as played, is that bar's first: drawn there, not past the last bar's
+  // end; the boss's on the next sam, in sam's own column)
+  const mark=(step, pad, row, col)=>{ const b=Math.max(0,Math.min(3, Math.floor((step+.5)/16))), {x,y}=tfBarAt(b), s=Math.max(0, step-16*b),
+      sam=R.boss && b===3 && step>=63.5;
+    tfRect(g, sam ? x+L.barW+2 : x+Math.round(s*sw), y+(row ? 22 : 8)+(2-reg(pad))*4, Math.max(2,sw-1), 3, col); };
   const blink=Math.floor(now/180)%2===0, r=blast.result;
-  // the last judged exchange, lit and blinking, from step `from` on
+  // the last judged exchange, lit and blinking, from step `from` on (what was missed a dim red, not the
+  // call's own colour: under the next call, ahead of its hits, it's no preview of them)
   const shown=(res, from)=>{
-    res.call.hits.forEach((x,i)=>{ if(x.step<from) return; if(res.res.callMatched[i]) mark(x.step,x.pad,0,"#FFD35A"); else if(blink) mark(x.step,x.pad,0,TF_FOE); });
+    res.call.hits.forEach((x,i)=>{ if(x.step<from) return; if(res.res.callMatched[i]) mark(x.step,x.pad,0,"#FFD35A"); else if(blink) mark(x.step,x.pad,0,TF_MISSED); });
     res.ans.forEach((x,i)=>{ const s=Math.max(0, x.step-res.res.offset); if(s<from) return; mark(s,x.pad,1, res.res.answerMatched[i] ? "#FFFFFF" : "#4A5A6A"); }); };
   const e=blast.ex;
   if(st==="call" || st==="answer"){
     const inCall=st==="call", p=(h-tfCallStart(e)-(inCall ? 0 : 4*B.bar))/B.step, call=tfCallFor(e);
-    if(inCall && r && r.e===e-1) shown(r, p);                     // the last answer's result, wiped as the call goes
-    if(!blast.hearOnly) call.hits.forEach(x=>{ if(!inCall || x.step<=p) mark(x.step,x.pad,0, x.vel>=110 ? "#FFFFFF" : TF_FOE); });
+    // the last answer's result holds the whole sheet for the call's first half bar, then the sheet is
+    // the new call's alone, written out from bar 1 (old marks ahead of new ones read as one muddle)
+    const hold=inCall && r && r.e===e-1 && p<8;
+    if(hold) shown(r, -1);
+    else if(!blast.hearOnly) call.hits.forEach(x=>{ if(!inCall || x.step<=p) mark(x.step,x.pad,0, x.vel>=110 ? "#FFFFFF" : TF_FOE); });
     if(!inCall) (blast.answers[e]||[]).forEach(x=>mark(Math.max(0,x.step),x.pad,1, x.vel>=110 && !x.flat ? "#FFFFFF" : TF_ME));
     // where the music is: a line down the call's row, then the answer's
     if(p>=0 && p<64.5){ const b=Math.min(3,Math.floor(p/16)), {x,y}=tfBarAt(b); tfRect(g, x+Math.round((p-16*b)*sw), y+(inCall ? 7 : 21), 1, 13, inCall ? TF_FOE : TF_ME); }

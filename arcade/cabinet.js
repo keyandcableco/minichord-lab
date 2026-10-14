@@ -356,8 +356,16 @@ function helpMod(on){ const m=blast && blast.helpBoard && blast.helpBoard.mod; i
 function helpZone(z){
   const s=blast.strip; if(s && s.classList.contains("jspic")){ const c=s.querySelector(`[data-zone="${z}"]`); if(c){ c.classList.remove("hit"); void c.offsetWidth; c.classList.add("hit"); } return; }   // the joystick plate: its stick's way, A or B
   const i=kmLayout().byString.indexOf(z); if(i>=0) kmFlash(s, i); }
+// the on-screen minichord's harp (or pads) drawn beside the field now
+const helpShown=()=> !!(blast && blast.helpHarp && blast.helpHarp.el && blast.helpHarp.el.isConnected);
+// The on-screen minichord as beginner mode and the demos want it. It comes after a game has laid itself
+// out (a demo's a moment after it starts), so a game that leaves room for it lays out again.
 function helperSync(rebuild){
   if(!blast || !blast.field) return;
+  const had=helpShown(); helperSet(rebuild);
+  if(rebuild || helpShown()!==had) blast.layoutKey=null;
+}
+function helperSet(rebuild){
   if(typeof tdBandSync==="function") setTimeout(tdBandSync, 0);          // on a phone with a minichord plugged in, a band of its own
   const k=cabKind(), demo=helpDemoing(), want=!!saved.beginner || demo;
   if(rebuild || !want){
@@ -447,11 +455,11 @@ function demoHarp(k){
   if(!blast || !blast.field || blast.helpHarp) return;
   if(k==="asteroids"){ blast.helpBoard=helperBoard(k); blast.field.appendChild(blast.helpBoard.el); blast.helpHarp={el:{remove(){}}, cells:blast.helpBoard.strings, names:blast.helpBoard.names}; }
   else { blast.helpHarp=helperHarp(k); blast.field.appendChild(blast.helpHarp.el); }
-  blast.demoHarp=true;
+  blast.demoHarp=true; blast.layoutKey=null;
   if(typeof tdBandSync==="function") setTimeout(tdBandSync, 0);
 }
 function demoHarpDone(){
-  if(blast && blast.demoHarp){ blast.helpHarp?.el.remove(); if(cabKind()==="asteroids"){ blast.helpBoard?.el.remove(); blast.helpBoard=null; blast.helpKey=null; } blast.helpHarp=null; blast.demoHarp=false; blast.helpString=null; }
+  if(blast && blast.demoHarp){ blast.helpHarp?.el.remove(); if(cabKind()==="asteroids"){ blast.helpBoard?.el.remove(); blast.helpBoard=null; blast.helpKey=null; } blast.helpHarp=null; blast.demoHarp=false; blast.helpString=null; blast.layoutKey=null; }
   else if(blast && blast.helpHarp) helpString(-1);
   if(typeof tdBandSync==="function") setTimeout(tdBandSync, 0);
 }

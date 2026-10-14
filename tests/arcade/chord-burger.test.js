@@ -114,6 +114,8 @@ const t=require("./harness").load("chord-burger");
   // the knobs: the steering knob swings the inversion, written to the minichord
   t.knob(Math.round(127*.3));
   check("the steering knob swings the inversion (address 37)", a.voicing.inv===1 && mc.params[37]===1, `${a.voicing.inv} ${mc.params[37]}`);
+  t.knob(127);
+  check("…to the second at the top with only triads on the plates (a triad has no third)", a.plates.every(P=>!P.chord.seventh) && a.voicing.inv===2 && mc.params[37]===2, `${a.voicing.inv} ${mc.params[37]}`);
   t.knob(0);
   // a first inversion's plate: the bass wrong, then right, by a slash chord
   const P1=a.plates[0]; P1.chord=E(`bkChord(blast.key, "vi", 1, 0)`);

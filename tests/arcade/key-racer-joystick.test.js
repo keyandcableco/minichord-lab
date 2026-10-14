@@ -49,6 +49,5 @@ const P=require("./analog-plate").plateOf(t);
   P.stick(0); clear(); a.x=a.targetX=0; a.speed=a.max; P.stick(0,-1); step(2);
   check("nor does it brake", a.speed>a.max*.9);
   P.stick(0,0);
-  if(P.standIn()) console.log("  (the shared joystick layer wasn't there: the test's stand-in played it)");
   t.done();
 })();

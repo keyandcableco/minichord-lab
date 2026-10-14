@@ -32,10 +32,31 @@ const t=require("./harness").load("trading-fours");
     const acc=tfLine("k...S...k...S...|k...S...k...S...|k...S...k...S...|k...S...k...S..."), sa=a=>tfSimilarity(acc,a,{kit});
     const accEcho=sa(acc.map(h=>({...h}))), accFlat=sa(acc.map(h=>({...h, vel:100, flat:true}))),
       accNone=sa(acc.map(h=>({...h, vel:96}))), accWrong=sa(acc.map(h=>({...h, vel: h.pad===0 ? 124 : 96})));
+    // the drums that don't matter, and the ones that do: the call's rhythm all on the snare, every drum at
+    // once on every eighth without listening, one hit on the hat answered with the whole kit
+    const reg0=RH_REGISTER.studio, snare=[0,1,2,3].map(ex=>{ const c=tfCall(0,ex).hits; return tfSimilarity(c, c.map(h=>({...h, pad:1})), {kit}).score; });
+    const mash=[];
+    for(const [L,ex] of [[0,0],[0,1],[0,2],[0,3],[2,0],[3,5],[4,1],[6,1]]){ const k=tfRivalAt(L).kit, rg=RH_REGISTER[k], ch=[];
+      for(let s=0;s<64;s+=2) for(const r of [0,1,2]) ch.push({step:s, pad:rg.indexOf(r), vel:100, flat:true});
+      mash.push(tfSimilarity(tfCall(L,ex).hits, ch, {kit:k}).score); }
+    const hatKit=tfSimilarity([{step:0,pad:4,vel:96}], [0,1,4].map(p=>({step:0,pad:p,vel:100})), {kit}).score;
+    // the boss's two-handed bols (Dha, Dhin) echoed exactly, and with the second hand 50 ms after the first
+    const tb=tfCall(3,0).hits, bstep=15/76, spread=Math.max(.25, Math.min(.45, .07/bstep)),
+      split=tb.map((h,i)=>({...h, step:h.step+(tb.slice(0,i).some(x=>x.step===h.step) ? .05/bstep : 0)}));
+    const dha=tfSimilarity(tb, tb.map(h=>({...h})), {kit:"tabla"}).score,
+      splitWide=tfSimilarity(tb, split, {kit:"tabla", spread}).score, splitNarrow=tfSimilarity(tb, split, {kit:"tabla"}).score;
+    // GL1TCH's stutters, a third of a sixteenth apart, onto the next drum: kept apart in an exact echo however wide the spread
+    const gc=tfCall(2,4).hits, gl=tfSimilarity(gc, gc.map(h=>({...h})), {kit:"cliqhop", spread:.45});
+    // accents: on the joystick plate, the keys flat and the stick up for exactly the accented snares; a
+    // minichord's own spread of strengths against a call with no accents
+    const stick=sa(acc.map(h=>({...h, vel:h.vel>=110 ? 127 : 100, flat:!(h.vel>=110)}))),
+      natural=tfSimilarity(easy, easy.map((h,i)=>({...h, vel:[70,95,110,85,100,78][i%6]})), {kit});
     const r=x=>({score:+x.score.toFixed(3), bars:x.bars.map(b=>+b.toFixed(2)), accent:x.accent, offset:+x.offset.toFixed(3), sam:x.sam, n:x.n,
       cm:x.callMatched.filter(Boolean).length, am:x.answerMatched.filter(Boolean).length});
     return {n:call.length, echo:r(echo), late:r(late), half:r(half), dbl:r(dbl), halftime:r(halftime), sparse:r(sparse), silence:r(silence), ham:r(ham), swap:r(swap), vary:r(vary), bar0:r(bar0),
-      accEcho:r(accEcho), accFlat:r(accFlat), accNone:r(accNone), accWrong:r(accWrong)};
+      accEcho:r(accEcho), accFlat:r(accFlat), accNone:r(accNone), accWrong:r(accWrong),
+      snare:snare.map(x=>+x.toFixed(3)), mash:mash.map(x=>+x.toFixed(3)), hatKit:+hatKit.toFixed(3), dha:+dha.toFixed(3), splitWide:+splitWide.toFixed(3), splitNarrow:+splitNarrow.toFixed(3),
+      gl:r(gl), glN:gc.length, stick:r(stick), natural:r(natural), callAcc:easy.some(h=>h.vel>=110)};
   })()`);
   check("an exact echo: 1, every hit matched, both ways", J.echo.score>=.99 && J.echo.cm===J.n && J.echo.am===J.n, JSON.stringify(J.echo));
   check("the same, a steady third of a sixteenth late: the offset taken off, still an echo", J.late.score>=.99 && near(J.late.offset,.35,.01), JSON.stringify(J.late));
@@ -47,10 +68,18 @@ const t=require("./harness").load("trading-fours");
   check("random hammering, a hit every sixteenth on any pad: off the page", J.ham.score<.35, J.ham.score);
   check("low and high swapped: partly", J.swap.score>.4 && J.swap.score<.85, J.swap.score);
   check("a fair variation (a hit in five moved, one in four on another drum, one in seven left out): 0.6-0.8", J.vary.score>=.6 && J.vary.score<=.85, J.vary.score);
+  check("the call's rhythm all on the snare: answered, not an echo", J.snare.every(x=>x>=.6 && x<.85), J.snare.join());
+  check("every drum at once on every eighth, not listening: off the page, CLOSE at most (the boss's dense two-drum bols)", J.mash.every(x=>x<.6) && J.mash.reduce((a,x)=>a+x,0)/J.mash.length<.45, J.mash.join());
+  check("one hit on the hat answered with kick, snare and hat at once: a third of the drums right, not an echo", J.hatKit<.6, J.hatKit);
+  check("the boss's Dha and Dhin (two drums at once) echoed exactly: 1", J.dha>=.99, J.dha);
+  check("the second hand 50 ms after the first: still one stroke, still an echo (as two strokes, far lower)", J.splitWide>=.99 && J.splitNarrow<.85, `${J.splitWide} ${J.splitNarrow}`);
+  check("GL1TCH's stutters onto the next drum, a third of a sixteenth apart: kept apart in an echo", J.gl.score>=.99 && J.gl.n.answer===J.gl.n.call && J.gl.am===J.glN, JSON.stringify(J.gl));
   check("bar by bar: only the first bar played", J.bar0.bars[0]>=.99 && J.bar0.bars.slice(1).every(b=>b===0), JSON.stringify(J.bar0.bars));
   check("accents echoed: full marks", J.accEcho.score>=.99 && J.accEcho.accent===1, JSON.stringify(J.accEcho));
   check("the screen's pads (no strength of their own): no accents to judge, still full marks", J.accFlat.accent===null && J.accFlat.score>=.99);
   check("played flat on the minichord: the accents missed, a little lower", J.accNone.score<J.accEcho.score && J.accNone.score>.75, JSON.stringify(J.accNone));
+  check("the keys flat and the stick up for the accents: the accents heard, full marks", J.stick.accent===1 && J.stick.score>=.99, JSON.stringify(J.stick));
+  check("a minichord's own spread of strengths against a call with no accents: none to judge, full marks", !J.callAcc && J.natural.accent===null && J.natural.score>=.99, JSON.stringify(J.natural));
   check("accented on the wrong hits: lower than none at all", J.accWrong.score<J.accNone.score && J.accWrong.score>.6, JSON.stringify(J.accWrong));
   const R=ev(`[[0,0],[1,3],[.9,3],[.85,3],[.7,5],[.6,5],[.4,5],[.35,5],[.2,5]].map(([s,n])=>tfRate(s,n).name).join()`);
   check("ratings: SILENCE, ECHO!, ANSWERED, CLOSE, OFF THE PAGE", R==="SILENCE,ECHO!,ECHO!,ECHO!,ANSWERED,ANSWERED,CLOSE,CLOSE,OFF THE PAGE", R);
@@ -80,6 +109,13 @@ const t=require("./harness").load("trading-fours");
   ev("{ const d=rhDevice, l=rhLoad; window.rhDevice=k=>{ __kits.push(k); return d(k); }; window.rhLoad=k=>{ __loads.push(k); return l(k); }; }");
   ev("window.__snd=0; { const s=rhSound; window.rhSound=(...a)=>{ __snd++; return s(...a); }; }");
   ev("window.__T=50; rhClockOverride={now:()=>__T, ctxNow:()=>__T+.1, heard:p=>p/1000, perf:x=>x*1000}");
+  // the picture, drawn onto a canvas that keeps each rectangle (its colour, x, y, width, height) and
+  // each line of lettering
+  const draw=code=>ev(`(()=>{ const rects=[], said=[], px=pxText;
+    const g=new Proxy({}, {get:(o,k)=> k==="fillRect" ? (x,y,w,h)=>rects.push([o.fillStyle,x,y,w,h]) : k in o ? o[k] : ()=>({data:[]}), set:(o,k,v)=>{ o[k]=v; return true; }});
+    window.pxText=(_,text)=>said.push(text);
+    try{ if(!blast.lay) tfLayout(); ${code}; } finally{ window.pxText=px; }
+    return {rects, said}; })()`);
   const a=await t.start(0,{speed:2});
   check("level 1: playing against MAX BACKBEAT at 96 BPM, the studio kit's names on the pads", a.phase==="play" && ev("blast.rival.n")==="MAX BACKBEAT" && ev("blast.bpm")===96 && ev("blast.padNames.join()")===ev("RH_PAD_NAMES.studio.join()"));
   check("harp drums on the minichord, in the studio kit", mc.params[343]===1 && mc.params[337]===4 && kits.includes("studio"), kits.join());
@@ -104,6 +140,13 @@ const t=require("./harness").load("trading-fours");
   check("the blow flies", ev("blast.fly.length")===1 && ev("blast.fly[0].from")==="me");
   ev("__T=tfCallStart(2)+.2; tfStep()");
   check("silence: SILENCE, 28 off the player", ev("blast.result.rate.name")==="SILENCE" && ev("blast.hp.me")===72 && ev("blast.hp.foe")===60);
+  { const missed=ev("tfCallFor(1).hits.length");
+    let S=draw("tfSheet(g, blast.lay, blast.rival, rhNow(), 0, true)"), n=c=>S.rects.filter(r=>r[0]===c && r[4]===3).length;
+    check("the next call's first half bar: the last result holds the whole sheet, its missed hits a dim red, none of the new call yet", ev("blast.st")==="call" && n("#6A2A48")===missed && missed>0 && n("#FF5AA0")===0, JSON.stringify({missed, dim:n("#6A2A48"), pink:n("#FF5AA0")}));
+    ev("__T=tfCallStart(2)+9*blast.bout.step; tfStep()");
+    const now=ev(`(()=>{ const p=(rhNow()-tfCallStart(2))/blast.bout.step; return tfCallFor(2).hits.filter(h=>h.step<=p && h.vel<110).length; })()`);
+    S=draw("tfSheet(g, blast.lay, blast.rival, rhNow(), 0, true)");
+    check("then the sheet is the new call's alone, written out from bar 1", ev("blast.st")==="call" && n("#6A2A48")===0 && n("#FF5AA0")===now, JSON.stringify({now, dim:n("#6A2A48"), pink:n("#FF5AA0")})); }
   // the third answered a steady 40 ms late, from the minichord's own strengths
   ev("__T=tfCallStart(2)+4*blast.bout.bar+.01; tfStep()");
   ev(`(()=>{ const B=blast.bout, as=tfCallStart(2)+4*B.bar; tfCallFor(2).hits.forEach(h=>tfHit(h.pad,h.vel,as+h.step*B.step+.04,false)); })()`);
@@ -114,6 +157,10 @@ const t=require("./harness").load("trading-fours");
   ev("__T=tfCallStart(3)+4*blast.bout.bar+.01; tfStep()"); echo(3);
   const sc0=ev("blast.score");
   ev("__T=tfCallStart(4)+.2; tfStep()");
+  { const ko=R=>draw(`tfStage(g, {...blast.lay, W:144, wide:false}, ${R}, rhNow(), 0, true)`).said, wide=draw("tfStage(g, {...blast.lay, W:288, wide:true}, blast.rival, rhNow(), 0, true)").said;
+    const max=ko("blast.rival"), ustad=ko("TF_ROSTER[3]"), glitch=ko("TF_ROSTER[2]");
+    check("the K.O.'s line over the sheet, on an upright phone's narrowest screen, shortened to fit: MAX BACKBEAT DOWN, GL1TCH-9000 DOWN, USTAD IS DOWN; in full on a wide one",
+      ev("blast.st")==="ko" && max.includes("MAX BACKBEAT DOWN") && glitch.includes("GL1TCH-9000 DOWN") && ustad.includes("USTAD IS DOWN") && wide.includes("MAX BACKBEAT IS DOWN"), JSON.stringify([max, glitch, ustad, wide])); }
   check("K.O.: the rival down, the music stopped, a bonus", ev("blast.st")==="ko" && ev("blast.hp.foe")===0 && ev("rhQueue.length")===0 && ev("blast.score")===sc0+ev("mulPts(1000)+mulPts(2000)"), `${ev("blast.st")} ${ev("blast.score")-sc0}`);
   // paused and on again at once (P), at the K.O.: no bout counted back in under it
   const koB=ev("blast.bout");
@@ -154,6 +201,14 @@ const t=require("./harness").load("trading-fours");
   Object.defineProperty(d, "hidden", {value:false, configurable:true}); d.dispatchEvent(new w.Event("visibilitychange"));
   ev("__T=200; tfStep()");
   check("back: a fresh count-in into the same exchange's call, the half-played answer forgotten", ev("blast.st")==="count" && ev("blast.bout.first")===0 && ev("JSON.stringify(blast.answers)")==="{}" && ev("rhQueue.filter(e=>e.voice==='accent').length")===1);
+  // paused in a later exchange's call, and on again: counted in to that exchange, not taken for the answer before it
+  ev("__T=tfCallStart(1)+.2; tfStep(); tfHalt()");
+  check("paused in the second exchange's call: waiting to start again from it", ev("blast.st")==="halt" && ev("blast.halted.ex")===1);
+  ev("__T=300; tfStep()");
+  const cnt=[]; for(const f of [.05,.5,.95]){ ev(`__T=blast.bout.tc+${f}*blast.bout.bar; tfStep()`); cnt.push(ev("blast.st")+(ev("tfHit(1,100,__T)")===null ? "" : "+hit")); }
+  check("on again: the whole count-in bar a count-in (its numbers shown), no answer taken in it", cnt.every(x=>x==="count") && ev("blast.bout.first")===1, cnt.join());
+  ev("__T=tfCallStart(1)+.05; tfStep()");
+  check("then the second exchange's call", ev("blast.st")==="call" && ev("blast.ex")===1);
 
   // ---------- the boss, and sam ----------
   loads.length=0; kits.length=0;
@@ -166,9 +221,14 @@ const t=require("./harness").load("trading-fours");
   ev("__T=tfCallStart(1)+.25; tfStep()");
   const bs=ev("({sam:blast.result.sam, foe:blast.hp.foe, pts:blast.result.pts, want:mulPts(4000)+mulPts(2000)})");
   check("an answer landing on sam: the bonus, and a heavier blow", bs.sam===true && bs.foe===100-48 && bs.pts===bs.want, JSON.stringify(bs));
+  { const S=draw("tfSheet(g, blast.lay, blast.rival, rhNow(), 0, true)"), x=ev("tfBarAt(3).x+blast.lay.barW+2"), at=c=>S.rects.some(r=>r[0]===c && r[1]===x && r[4]===3);
+    check("the hit on sam, the call's and the answer's, drawn in sam's own column past the fourth bar", at("#FFD35A") && at("#FFFFFF") && !S.rects.some(r=>r[1]===x-2 && r[4]===3), JSON.stringify(S.rects.filter(r=>r[4]===3 && r[1]>=x-3))); }
+  // a lone hit on sam, the rest of the answer missing: no bonus for it
+  ev("__T=tfCallStart(1)+4*blast.bout.bar+.01; tfStep(); tfHit(0,100,tfCallStart(1)+4*blast.bout.bar+64*blast.bout.step,false)");
 
   // ---------- K.O.'d: game over ----------
   ev("blast.hp.me=5; blast.shown.me=5; __T=tfCallStart(2)+.25; tfStep()");
+  check("a lone hit on sam: on it, but no answer, so no bonus", ev("blast.result.res.sam")===true && ev("blast.result.sam")===false && ev("blast.result.pts")===0, JSON.stringify(ev("({sam:blast.result.sam, s:blast.result.res.score, pts:blast.result.pts})")));
   check("the player K.O.'d", ev("blast.st")==="lost" && ev("blast.hp.me")===0 && ev("rhQueue.length")===0);
   await sleep(3700);
   check("game over: the score kept, the title's game over screen", ev("blast.phase")==="over" && /GAME OVER/.test(t.overlay()?.textContent||"") && ev("saved.best.fours")===ev("blast.score"));
@@ -188,8 +248,13 @@ const t=require("./harness").load("trading-fours");
   pad(7).dispatchEvent(e); await sleep(5);
   h=ev("JSON.stringify((blast.answers[0]||[]).map(x=>[x.pad,x.flat,Math.round(x.step)]))");
   check("a finger on a pad: into the answer at the touch's time, sounded by the page, not counted as the minichord", h==="[[7,true,8]]" && ev("__snd")===s1+1 && ev("blast.midiIn||0")===m1, h);
+  ev("saved.beginner=true; helperSync()"); await sleep(30);
+  const help0=ev("blast.helpHarp && blast.helpHarp.cells[0] && blast.helpHarp.cells[0].textContent");
   ev("tfSetRival(2)"); await sleep(400);
   check("the next rival renames the pads (GL1TCH-9000's cliqhop)", pad(0) && pad(0).textContent==="THUD", pad(0) && pad(0).textContent);
+  const help1=ev("blast.helpHarp && blast.helpHarp.cells[0] && blast.helpHarp.cells[0].textContent");
+  check("and the beginner's PADS strip with them", help0==="KICK" && help1==="THUD", `${help0} ${help1}`);
+  ev("saved.beginner=false; helperSync()");
 
   // ---------- the demo ----------
   ev("rhStop(); tfMenu()"); await sleep(30);
@@ -209,6 +274,14 @@ const t=require("./harness").load("trading-fours");
   ev("__T=900; tfDemo()"); await sleep(30);
   mc.dispatchEvent(new w.CustomEvent("drum",{detail:{note:36, vel:100, pad:0, t:ev("performance.now()"), source:"touch"}}));
   check("a pad struck in the demo ends it", ev("blast.phase")==="menu" && !d.querySelector(".field .demo"));
+  // the attract demo begun in a hidden tab, before it has a bout: it starts when the tab's shown
+  Object.defineProperty(d, "hidden", {value:true, configurable:true});
+  ev("__T=1000; tfDemo()"); await sleep(30);
+  check("the demo begun hidden: waiting, no bout yet", ev("blast.phase")==="demo" && ev("blast.st")==="halt" && ev("blast.bout")===null);
+  Object.defineProperty(d, "hidden", {value:false, configurable:true}); d.dispatchEvent(new w.Event("visibilitychange"));
+  ev("tfStep()");
+  check("shown: its bout made, counting in", ev("blast.phase")==="demo" && ev("blast.st")==="count" && !!ev("blast.bout") && !ev("blast.halted"));
+  ev("endTfDemo(blast.demo)");
   ev("rhClockOverride=null");
   done();
 })();

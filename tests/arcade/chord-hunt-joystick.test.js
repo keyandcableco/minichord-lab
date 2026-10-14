@@ -6,7 +6,6 @@ const P=require("./dpad-plate").plateOf(t);
   const {w, sb, sleep, check}=t;
   const E=s=>w.eval(s);
   await sleep(150); P.connect(); await sleep(100);
-  if(P.standIn()) console.log("  (the shared joystick layer isn't there yet: a stand-in to its contract)");
   const a=await t.start(0); await sleep(100);
   const said=[]; const rep=w.hdReplay; w.hdReplay=what=>{ said.push(what); rep(what); };
   a.phase="play"; if(!a.duck) a.duck={done:false, home:{notes:[60,64,67]}, voiced:[{notes:[65,69,72]}]};

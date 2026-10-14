@@ -34,6 +34,22 @@ const check=(name, ok, detail="")=>{ results.push(!!ok); console.log(`${ok?"  âœ
     drums.length=0;
     button("a", true, 100); button("a", false); button("b", true, 200); button("b", false); button("click", true, 300); button("click", false);
     check("A, B and the click: the kick, the snare and the closed hat, each timed", drums.map(d=>d.pad).join()==="0,1,4" && drums.every(d=>d.source==="plate") && drums.map(d=>d.t).join()==="100,200,300", JSON.stringify(drums));
+    check("marked as buttons' pads (the \"button\" event has them too)", drums.every(d=>d.button===true));
+    // a preset with harp drums on (343), which firmware 90 ignores on this plate: the strip still sends
+    // notes, and with MPE one place is on channel 10. They're the strip's, not drums from the instrument.
+    { const hout=mc.out; hout.name="minichord Port 1";
+      const ins=new Map([["in1",{id:"in1", name:"minichord Port 1"}], ["in2",{id:"in2", name:"minichord Port 2"}]]);
+      mc.midi={inputs:ins, outputs:new Map([["test", hout]])}; mc._ports();
+      mc.params[343]=1; drums.length=0; harps.length=0;
+      const offs=[]; const off=e=>offs.push(e.detail); mc.addEventListener("harpoff", off);
+      ins.get("in2").onmidimessage({data:[0x99, 64, 100], timeStamp:700}); ins.get("in2").onmidimessage({data:[0x89, 64, 0], timeStamp:740});
+      check("firmware 90's plate, 343 on: a strip place on channel 10 is its pad (64: pad 4), not a GM drum", ev("mc.harpDrums")===false && drums.length===1 && drums[0].pad===4 && drums[0].source==="plate" && drums[0].t===700, JSON.stringify(drums));
+      ev("mc.drumFallback=false"); drums.length=0;
+      ins.get("in2").onmidimessage({data:[0x99, 65, 100]}); ins.get("in2").onmidimessage({data:[0x89, 65, 0]});
+      check("and out of a drum game a string and its release, heard as ever", drums.length===0 && harps.length===1 && harps[0].note===65 && offs.length===1 && offs[0].note===65, `${JSON.stringify(drums)} ${JSON.stringify(harps)} ${JSON.stringify(offs)}`);
+      mc.params[7]=91;
+      check("(firmware 91 on the plate: 343 is harp drums)", ev("mc.harpDrums")===true);
+      mc.params[7]=90; mc.params[343]=0; ev("mc.drumFallback=true"); mc.removeEventListener("harpoff", off); mc.midi=null; drums.length=0; harps.length=0; }
     // a title screen wakes at a pad
     await T.start(0); await sleep(200);
     check("playing", ev("blast.phase")==="play");
@@ -42,6 +58,16 @@ const check=(name, ok, detail="")=>{ results.push(!!ok); console.log(`${ok?"  âœ
     check("a plate pad in play counts as playing the minichord", ev("blast.midiIn||0")===n0+1);
     button("click"); button("click", false); await sleep(5);
     check("the click in play: the hi-hat, never pause", ev("blast.phase")==="play" && drums[drums.length-1].pad===4);
+    // the initials: A, B and the click are the stick's buttons there, once each, not also pads (strings)
+    ev("blast.phase='over'; saved.hsInitials='AAA'; window.__next=0; hsEntry('time-pilot', 100, ()=>{ __next++; })"); await sleep(760);
+    const letters=()=>ev("[...document.querySelectorAll('.hsletters span')].map(s=>s.textContent+(s.classList.contains('on')?'*':'')).join(' ')");
+    check("the initials: drum fallback still on", ev("mc.drumFallback")===true && letters()==="A* A A", letters());
+    button("a"); button("a", false); await sleep(5);
+    check("A sets the letter, and nothing else: no letter stepped", letters()==="A A* A", letters());
+    button("b"); button("b", false); await sleep(5);
+    const afterB=letters();
+    check("B: no letter stepped either", afterB.replace("*","")==="A A A", afterB);
+    ev("blast.hsEntry && blast.hsEntry.cancel(); blast.phase='play'");
     w.eval("restoreAll()"); await sleep(20);
     check("given back after: the harp's volume", mc.params[2]===80);
   }
@@ -55,6 +81,14 @@ const check=(name, ok, detail="")=>{ results.push(!!ok); console.log(`${ok?"  âœ
     mc._harp([0x90, 72+5, 100]);
     mc.handle([0x99, 38, 90], 600);
     check("the instrument's own channel-10 pads are the drums", drums.length===1 && drums[0].pad===1 && drums[0].source==="minichord" && drums[0].t===600, JSON.stringify(drums));
+    // the initials: firmware 91 sends A, B and the click as channel-10 pads besides their control changes
+    ev("blast.phase='over'; saved.hsInitials='AAA'; hsEntry('time-pilot', 100, ()=>{})"); await sleep(760);
+    const letters=()=>ev("[...document.querySelectorAll('.hsletters span')].map(s=>s.textContent+(s.classList.contains('on')?'*':'')).join(' ')");
+    T.button("a"); mc.handle([0x99, 36, 100]); mc.handle([0x89, 36, 0]); T.button("a", false); await sleep(5);
+    check("firmware 91, the initials: A and its kick are one press (the letter set, none stepped)", letters()==="A A* A", letters());
+    mc.handle([0x99, 42, 100]); mc.handle([0x89, 42, 0]); await sleep(5);
+    check("and a pad struck there (the strip's) spells nothing: the stick and buttons do", letters()==="A A* A", letters());
+    ev("blast.hsEntry && blast.hsEntry.cancel()");
   }
   const bad=results.filter(r=>!r).length; console.log(bad ? `FAILED ${bad} of ${results.length}` : `ok ${results.length}`); process.exit(bad?1:0);
 })();

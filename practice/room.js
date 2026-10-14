@@ -646,6 +646,10 @@ mc.addEventListener("harp", e=>{
 // and plays a bonus round. Nothing deduped here: two kicks a sixteenth apart are two kicks.
 mc.addEventListener("drum", e=>{
   if(blast && DRUM_GAMES.has(blast.kind) && (blast.phase==="play" || blast.phase==="demo")) return;   // (the joystick plate's pads, source "plate", too: the game counts and sounds them)
+  // A, B and the click are buttons first (the "button" event has them), so their pads (the fallback's, or
+  // firmware 91's harp drums) aren't a second press; and on the plate the stick and buttons spell initials
+  if(e.detail && e.detail.button) return;
+  if(jsOn() && blast && blast.hsEntry) return;
   const pad=e.detail && e.detail.pad;
   if(Number.isInteger(pad) && pad>=0 && pad<=11) answerNote(pad);
 });
@@ -981,7 +985,8 @@ mc.addEventListener("device", ()=>{
   else if(blast && blast.kind==="bros") sbDevice();
   else if(blast && blast.kind==="pilot") tpDevice();
   else if(blast && blast.kind==="fours") tfDevice();
-  else if(blast){ blastSetup(); if(blast.phase!=="play") blastHomeKey(); blastKey(); if(blast.kind==="blaster") blastDevice(); }   // Chord Invaders (and its key bars), the catch-all
+  // the key goes home between games, not while one is paused or in its bonus round: the player's key comes back with the game
+  else if(blast){ blastSetup(); if(blast.phase!=="play" && blast.phase!=="bonus" && !jsPaused()) blastHomeKey(); blastKey(); if(blast.kind==="blaster") blastDevice(); }   // Chord Invaders (and its key bars), the catch-all
   arcadeVolumeWatch();
   if(q && !solved && !rebuilding) applyNeeds();
   mine(); needs();

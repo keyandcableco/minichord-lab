@@ -145,8 +145,10 @@ mc.addEventListener("harp", e=>{
   if(!blast || blast.kind!=="kong" || blast.phase!=="play" || !dkJs() || !dkKnobLift()) return;
   blast.liftKnob=mod(e.detail.note,12)/11;
 });
+// the steering knob is the lift's, but not on the joystick plate: the strip is (above), and the knobs,
+// kept sending there (arcadePreset), would snap the lift from where the strip put it at a brush
 function dkKnob(knob, v){
-  if(!blast || blast.kind!=="kong" || knob!==steerKnob()) return;
+  if(!blast || blast.kind!=="kong" || knob!==steerKnob() || dkJs()) return;
   blast.liftKnob=v;
 }
 // a ladder's lock: the floor above's chord not played yet

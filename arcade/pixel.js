@@ -65,9 +65,19 @@ function pxZoom(k, aw, ah, W, H){ return Math.max(k, Math.min(Math.floor(aw/W), 
 // The room an arcade screen has in the field: beside the strip of harp sections if there is one (and
 // with nothing beside it, right to the field's sides), under the score (in a demo on a phone, under its
 // title and caption: kit.js demoClear) and over the bar along the foot.
+// That's for the games that steer on the harp's d-pad (KM_GAMES), whose strip, or in beginner mode and
+// the demos the on-screen minichord, stands beside the field. Any other (Trading Fours) has only what's
+// really there beside it, the helper's pads in beginner mode and the demos, and its demo's title and
+// caption over its top on any screen, since what it shows at its top (the health bars) is the game.
 // Gives its left edge and top, and its width and height, in CSS pixels.
 function pxRoom(){
-  const fw=fieldW(), fh=fieldH(), strip=kmStripShown(), top=Math.max(40, demoClear());
+  const fw=fieldW(), fh=fieldH();
+  if(!KM_GAMES.includes(blast.kind)){
+    const top=Math.max(40, demoClear(true)), hh=blast.helpHarp && blast.helpHarp.el && blast.helpHarp.el.isConnected ? blast.helpHarp.el : null;
+    const hw= hh ? hh.offsetWidth || (playOnScreen() ? 0 : 58) : 0, side= hw ? Math.ceil(Math.min(fw*.35, hw+26)) : 0;   // (on a phone the deck's pads are lit instead: the helper's hidden)
+    return {left:0, top, aw:fw-side, ah:fh-top-28};
+  }
+  const strip=kmStripShown(), top=Math.max(40, demoClear());
   const left= strip ? 8 : 0, side= !strip ? 0 : (saved.beginner || blast.phase==="demo") ? Math.ceil(Math.min(fw*.3, 300))+20 : (kmLayout().cols===3 ? 150 : 84);
   return {left, top, aw:fw-side-left, ah:fh-top-28};
 }

@@ -39,6 +39,5 @@ const P=require("./analog-plate").plateOf(t);
   w.eval("boServe()"); const b2=a.balls[0]; P.button("a", true); P.button("a", false);
   check("nor does A", b2.stuck && a.serveAt>w.performance.now()+1000);
   P.stick(0);
-  if(P.standIn()) console.log("  (the shared joystick layer wasn't there: the test's stand-in played it)");
   t.done();
 })();

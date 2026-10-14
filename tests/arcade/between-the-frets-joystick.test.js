@@ -7,7 +7,6 @@ const P=require("./dpad-plate").plateOf(t);
   const {w, sb, sleep, check}=t;
   const E=s=>w.eval(s);
   await sleep(150); P.connect(); await sleep(100);
-  if(P.standIn()) console.log("  (the shared joystick layer isn't there yet: a stand-in to its contract)");
   const a=await t.start(0); await sleep(1800);
   const ask=(kind, answer)=>{ E(`blast.q=frQuestion("${kind}")`); Object.assign(a.q, {step:"answer", at:performance.now()-1000, limit:1e9, replays:0, answer}); if(answer===0) a.q.off=50; if(answer===2) a.q.off=-50; if(answer===1) a.q.off=0; };
   ask("note", 0); const r0=a.right; P.push("up"); await sleep(10);

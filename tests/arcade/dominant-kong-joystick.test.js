@@ -1,14 +1,14 @@
 // Dominant Kong on the joystick plate: the stick walks (kmHeld), A or B jumps, taking the stick's left
 // or right; on the lift stages the strip's twelve places send the right lift up and down its shaft (the
-// bottom place the bottom, the top the top), knobs or none, and never jump. Without the plate the strip
-// is the harp's d-pad as ever.
+// bottom place the bottom, the top the top), knobs or none, and never jump; the steering knob, still
+// sending, doesn't move it from there. Without the plate the strip is the harp's d-pad as ever, and the
+// knob the lift's.
 const t=require("./harness").load("dominant-kong");
 const P=require("./dpad-plate").plateOf(t);
 (async()=>{
   const {w, sb, sleep, check}=t;
   const E=s=>w.eval(s);
   await sleep(150); P.connect(); await sleep(100);
-  if(P.standIn()) console.log("  (the shared joystick layer isn't there yet: a stand-in to its contract)");
   const a=await t.start(3); await sleep(2200);                         // level 4: the lifts
   check("the lift stage, its right lift the strip's", a.stage.kind==="lifts" && E("dkKnobLift()"));
   check("the banner and the shaft say STRIP", E("dkJs()"));
@@ -24,6 +24,8 @@ const P=require("./dpad-plate").plateOf(t);
   check("the top place: the top", a.liftKnob===1);
   P.note(6); P.note(6,false);
   check("a middle place: that far up", Math.abs(a.liftKnob-6/11)<1e-9);
+  t.knob(127); await sleep(10); t.knob(3); await sleep(10);
+  check("the steering knob brushed: the lift stays where the strip put it", Math.abs(a.liftKnob-6/11)<1e-9, a.liftKnob);
   const H=a.hero, st=H.state;
   P.note(5); P.note(5,false);
   check("and a strip place never jumps (its middle is A and B on the harp)", H.state===st && H.state!=="air");
@@ -43,6 +45,8 @@ const P=require("./dpad-plate").plateOf(t);
   P.connect({on:false}); await sleep(100);
   a.liftKnob=.5; t.note(0);
   check("without the plate the strip doesn't send the lift", a.liftKnob===.5);
+  t.knob(127); await sleep(10);
+  check("…the steering knob does", a.liftKnob===1, a.liftKnob);
   P.push("right"); await sleep(20);
   check("nor does the stick walk", E("dkWays().length")===0);
   P.push("rest");

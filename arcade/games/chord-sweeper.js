@@ -204,16 +204,28 @@ function swTick(now){
   blast.raf=requestAnimationFrame(swTick);
 }
 // The joystick plate's stick: a cursor eight ways, a diagonal moving it on both axes at once; a push
-// steps at once, and held, steps on after a moment, steadily. A sweeps and B flags (the "button"
+// steps at once, and held, steps on after a moment, steadily. A thumb's diagonal passes one axis on its
+// way in and out (jsWays8 takes an axis at .4 and lets it go under .25): the other axis come soon after
+// the first step (SW_JOIN) makes that step the diagonal, and a way let go steps nowhere, the way still
+// held repeating on, so a flick up-right is one step up-right. A sweeps and B flags (the "button"
 // listener below), and at NEXT FIELD, A goes on; the click is the arcade's pause.
 const swJs=()=> typeof jsOn==="function" && jsOn();
-const SW_REPEAT=[250,110];                                       // ms to the first repeat, and between
+const SW_REPEAT=[250,110], SW_JOIN=60;                           // ms to the first repeat, and between; to join a diagonal
+const swDir=ways=>[ways.includes("left") ? -1 : ways.includes("right") ? 1 : 0, ways.includes("up") ? -1 : ways.includes("down") ? 1 : 0];
+const swAxis=w=> w==="up" || w==="down" ? "v" : "h";
 function swStick(now){
-  if(blast.phase!=="play" || !swJs()){ blast.swWays=""; return; }
+  if(blast.phase!=="play" || !swJs()){ blast.swWays=""; blast.swRep=null; return; }
   const ways=typeof jsWays8==="function" ? (jsWays8()||[]) : [], key=ways.join();
-  const dx=ways.includes("left") ? -1 : ways.includes("right") ? 1 : 0, dy=ways.includes("up") ? -1 : ways.includes("down") ? 1 : 0;
-  if(key!==blast.swWays){ blast.swWays=key; if(dx || dy){ swMove(dx,dy); blast.swRep=now+SW_REPEAT[0]; } return; }
-  if((dx || dy) && now>=blast.swRep){ swMove(dx,dy); blast.swRep=now+SW_REPEAT[1]; }
+  if(key!==blast.swWays){
+    const was=blast.swWays ? blast.swWays.split(",") : [], added=ways.filter(w=>!was.includes(w));
+    blast.swWays=key;
+    if(!ways.length){ blast.swRep=null; return; }
+    if(!added.length) return;                                    // a way let go: no step
+    if(!was.length){ swMove(...swDir(ways)); blast.swFrom=now; blast.swRep=now+SW_REPEAT[0]; return; }
+    if(now-blast.swFrom<SW_JOIN && added.every(w=>!was.some(x=>swAxis(x)===swAxis(w)))){ swMove(...swDir(added)); return; }
+    swMove(...swDir(ways)); blast.swRep=now+SW_REPEAT[0]; return;
+  }
+  if(blast.swRep!=null && now>=blast.swRep){ swMove(...swDir(ways)); blast.swRep=now+SW_REPEAT[1]; }
 }
 mc.addEventListener("button", e=>{
   if(!blast || blast.kind!=="sweeper" || !e.detail || !e.detail.down || !swJs()) return;

@@ -152,6 +152,9 @@ function slLevelStart(){
   blast.keyF = blast.genF = L.key ? rnd(SL_KEYS) : 0; blast.tune=null; blast.tuneAt=0; blast.sinceChange=0; blast.keyWant=null;
   // chords are played on the buttons: the minichord set to the staff's key, so they're plain buttons, and to root position
   if(L.chords && canWrite()){ if(hasSetting(35)) borrow(35, keyIndexOf(blast.keyF)); if(hasSetting(37)) borrow(37,0); blast.inv=0; }
+  // the stick on the joystick plate read afresh: one held through the level's start (or into a new game)
+  // is the voicing again, after the root position just written
+  blast.slStick= slJs() ? slStickOf(slStickY(), 0) : 0; if(blast.slStick) slInvert(blast.slStick);
   for(const n of blast.notes) n.el && n.el.remove(); blast.notes=[];
   slLayout(); slDrawStaff(); slBar();
 }
@@ -281,15 +284,18 @@ function sightKnob(v){ slInvert(Math.min(2,Math.floor(v*3))); }
 // inversion; down, the 2nd; let go, root position. It's written to the minichord as it moves, so it's
 // held before the chord is pressed. Up or down counts from halfway out, and lasts till the stick is
 // nearly back (SL_STICK), so a stick resting near the line doesn't flicker the voicing; and only a
-// change of the stick's is acted on, so the knob and the arrows still work with it resting.
+// change of the stick's is acted on, so the knob and the arrows still work with it resting. The stick
+// is followed outside play too (only in play does it turn the voicing), so one let go in the menus is
+// let go; and each level's start reads it afresh (slLevelStart).
 const slJs=()=> typeof jsOn==="function" && jsOn();
 const SL_STICK=[.5,.3];                                            // on beyond, off within
-mc.addEventListener("stick", e=>{
-  if(!blast || blast.kind!=="sight" || blast.phase!=="play" || !slJs()) return;
-  const y=typeof jsXY==="function" ? (jsXY()||{}).y||0 : (e.detail && e.detail.y)||0, was=blast.slStick||0;
-  const now = was && Math.sign(y)===(was===1 ? 1 : -1) && Math.abs(y)>=SL_STICK[1] ? was : y>=SL_STICK[0] ? 1 : y<=-SL_STICK[0] ? 2 : 0;
+const slStickY=()=> typeof jsXY==="function" ? (jsXY()||{}).y||0 : (mc.stick && mc.stick.y)||0;
+const slStickOf=(y, was)=> was && Math.sign(y)===(was===1 ? 1 : -1) && Math.abs(y)>=SL_STICK[1] ? was : y>=SL_STICK[0] ? 1 : y<=-SL_STICK[0] ? 2 : 0;
+mc.addEventListener("stick", ()=>{
+  if(!blast || blast.kind!=="sight" || !slJs()) return;
+  const was=blast.slStick||0, now=slStickOf(slStickY(), was);
   if(now===was) return;
-  blast.slStick=now; slInvert(now);
+  blast.slStick=now; if(blast.phase==="play") slInvert(now);
 });
 document.addEventListener("keydown", e=>{
   if(!blast || blast.kind!=="sight" || blast.phase!=="play" || /INPUT|SELECT|TEXTAREA/.test(document.activeElement?.tagName||"")) return;

@@ -23,6 +23,8 @@ const t=require("./harness").load("time-pilot");
       const p=blast.tp; if(p && p.segs) for(const x of p.targets){ if(x.T>__T+.5) break; if(x.flown || skip(x)) continue; const at=x.T+err(x); if(at<=__T){ x.flown=true; tpHit(pad(x), 100, at); } }
       tpStep(__T); } }`);
   const segStart=(stage, sortie)=>ev(`(()=>{ const s=blast.tp.segs.find(s=>s.stage==='${stage}' && s.sortie===${sortie}); return s ? tpSegStart(s) : null; })()`);
+  // a moment after the clouds part, when the bank's been judged (half a beat, the player's offset, 50 ms)
+  const revealed=sortie=>segStart("clear", sortie)+.7*ev("blast.tp.B")+.06;
 
   // ---------- a game begins ----------
   check("the game's on the page", ev("typeof tpHit==='function' && typeof tpFitTaps==='function' && typeof tpResume==='function'"));
@@ -67,6 +69,8 @@ const t=require("./harness").load("time-pilot");
   check("the HUD says only that", ev("blast.tp.stage")==="cloud" && /IN THE CLOUDS|1910/.test(ev("blast.hud.textContent")));
   const s0=ev("blast.score");
   ev(`__fly(${segStart("clear",0)}+.03, t=>.04)`);
+  check("the clouds parting: the bank judged a moment later, when its last stroke's surely in", !ev("blast.tp.reveal") && ev("blast.tp.revealDue.at")>ev("__T"));
+  ev(`__fly(${revealed(0)}, t=>.04, undefined, t=>t.seg.stage==='clear')`);
   const rv=ev("blast.tp.reveal");
   check("the clouds part: 40 ms late is their time, so ON THE BEAT", rv && !rv.lost && near(rv.drift, 0, 1e-6) && ev("tpDriftWords(blast.tp.reveal.drift)")==="ON THE BEAT", JSON.stringify(rv));
   check("every hit in the clouds PERFECT, doubled, and 250 for the bar held", rv.items.every(i=>i && i.res==="PERFECT") && rv.pts===4*100+250 && ev("blast.score")-s0===650, `${rv.pts} ${ev("blast.score")-s0}`);
@@ -75,16 +79,50 @@ const t=require("./harness").load("time-pilot");
 
   // ---------- banks lost ----------
   ev("beginPilot(0)"); await sleep(30);
-  ev(`__fly(${segStart("clear",0)}+.05, t=>t.cloud ? .25*blast.tp.B+.02 : 0)`);
+  ev(`__fly(${revealed(0)}, t=>t.cloud ? .25*blast.tp.B+.02 : 0)`);
   check("adrift by more than a quarter of a beat: lost, a plane down", ev("blast.tp.reveal.lost")===true && ev("blast.lives")===2 && /^BEHIND 2\d\d MS$/.test(ev("tpDriftWords(blast.tp.reveal.drift)")), ev("tpDriftWords(blast.tp.reveal.drift)"));
-  ev(`__fly(${segStart("clear",1)}+.05, t=>0, t=>1, t=>t.cloud && t.bar===blast.tp.segs.find(s=>s.stage==='cloud' && s.sortie===1).bar0+1)`);
+  ev(`__fly(${revealed(1)}, t=>0, t=>1, t=>t.cloud && t.bar===blast.tp.segs.find(s=>s.stage==='cloud' && s.sortie===1).bar0+1)`);
   check("half the bank played, nothing in its last bar: lost", ev("blast.tp.reveal.lost")===true && ev("blast.tp.reveal.held")===4 && ev("blast.lives")===1);
   ev(`__fly(${segStart("count",2)}+.05)`);
   ev("beginPilot(0)"); await sleep(30);
-  ev(`__fly(${segStart("clear",0)}+.05, t=>0, t=>1, t=>t.cloud && t.beat>0)`);
+  ev(`__fly(${revealed(0)}, t=>0, t=>1, t=>t.cloud && t.beat>0)`);
   check("one beat of four: fewer than half, lost", ev("blast.tp.reveal.lost")===true && ev("blast.lives")===2);
-  ev(`__fly(${segStart("clear",1)}+.05, t=>t.cloud ? -.1 : 0)`);
+  ev(`__fly(${revealed(1)}, t=>t.cloud ? -.1 : 0)`);
   check("100 ms ahead, under a quarter of a beat: held, AHEAD 100 MS, nothing PERFECT", ev("blast.tp.reveal.lost")===false && ev("tpDriftWords(blast.tp.reveal.drift)")==="AHEAD 100 MS" && ev("blast.tp.reveal.items.every(i=>i.res==='OK')"));
+
+  // ---------- the bank fitted to the player's own line ----------
+  // i: a target's place in its bank
+  ev("window.__bi=t=>blast.tp.targets.filter(x=>x.seg===t.seg).indexOf(t)");
+  ev("beginPilot(2)"); await sleep(30);
+  ev(`__fly(${revealed(0)}, t=>t.cloud ? .7*blast.tp.B*(__bi(t)+1)/16 : 0)`);
+  check("1970, eighths: a slow slide to most of a beat behind is lost as BEHIND, not folded onto the next eighth",
+    ev("blast.tp.reveal.lost")===true && /^BEHIND \d+ MS$/.test(ev("tpDriftWords(blast.tp.reveal.drift)")) && ev("blast.tp.reveal.drift")>.25*ev("blast.tp.B") && ev("blast.lives")===2,
+    `${ev("tpDriftWords(blast.tp.reveal.drift)")} ${ev("blast.tp.reveal.lost")}`);
+  ev("beginPilot(0)"); await sleep(30);
+  ev(`__fly(${revealed(0)})`);
+  ev(`__fly(${revealed(1)}, t=>t.cloud ? blast.tp.B*(__bi(t)+1)/8 : 0)`);
+  check("1910: a slide of a whole beat, not taken for the next beat on time", ev("blast.tp.reveal.lost")===true && /^BEHIND/.test(ev("tpDriftWords(blast.tp.reveal.drift)")), ev("tpDriftWords(blast.tp.reveal.drift)"));
+  ev("beginPilot(0)"); await sleep(30);
+  const c0=segStart("cloud",0);
+  ev(`__fly(${c0}-.02)`);
+  ev(`tpHit(3, 100, ${c0}+1.55*blast.tp.B)`);                      // a wild stroke half a beat off, before the second beat's
+  ev(`__fly(${revealed(0)})`);
+  check("one wild stroke in the clouds: the rest still on the beat, it set aside", ev("blast.tp.reveal.lost")===false && ev("tpDriftWords(blast.tp.reveal.drift)")==="ON THE BEAT" && ev("blast.tp.reveal.items.every(i=>i && i.res==='PERFECT')"), JSON.stringify(ev("blast.tp.reveal.items")));
+  ev("beginPilot(0)"); await sleep(30);
+  ev(`__fly(${revealed(0)}, t=>.45*blast.tp.B)`);
+  check("not with the click at all (every stroke .45 of a beat late): formation all missed, nothing taken as their own time", ev("blast.tp.targets.filter(t=>t.seg.stage==='form' && t.sortie===0).every(t=>!t.hit && t.missed)") && ev("blast.tp.offset")===0 && ev("blast.tp.offErrs.length")===0);
+  check("so the clouds aren't judged on their phase: lost, BEHIND", ev("blast.tp.reveal.lost")===true && /^BEHIND 3\d\d MS$/.test(ev("tpDriftWords(blast.tp.reveal.drift)")) && ev("blast.lives")===2, ev("tpDriftWords(blast.tp.reveal.drift)"));
+  ev(`__fly(${segStart("cloud",1)}-.02)`); ev("blast.tp.offErrs=[.3,.31,.3,.29]"); ev(`__fly(${segStart("cloud",1)}+.02)`);
+  check("their own time is never taken as more than the OK window", near(ev("blast.tp.offset"), ev("tpWins()[2]")), ev("blast.tp.offset"));
+  // a last stroke in the clouds whose event is handled after the clouds have parted
+  ev("beginPilot(2)"); await sleep(30);
+  const cl2=segStart("clear",0), lastT=ev("blast.tp.targets.filter(t=>t.cloud && t.sortie===0).pop().T");
+  ev(`__fly(${cl2}+.01, t=>.06, undefined, t=>Math.abs(t.T-${lastT})<1e-9)`);
+  check("1970, 60 ms behind with the click: their time", near(ev("blast.tp.offset"), .06, 1e-6) && ev("blast.tp.stage")==="clear" && !ev("blast.tp.reveal"));
+  check("the bank's last stroke, handled late: still in the bank", ev(`tpHit(1, 100, ${lastT}+.07)`).cloud===true);
+  ev(`__fly(${revealed(0)}, t=>.06)`);
+  check("and counted when the clouds part", ev("blast.tp.reveal.items.every(i=>i && i.res)") && ev("blast.tp.reveal.lost")===false && ev("blast.tp.reveal.items.length")===16);
+  check("one handled after the reveal counts for nothing", ev(`tpHit(1, 100, ${lastT}+.07)`).late===true);
 
   // ---------- tap tempo ----------
   const fit=ev("tpFitTaps([10, 10.5, 11, 11.5])");
@@ -174,6 +212,49 @@ const t=require("./harness").load("time-pilot");
   check("the arcade's pause holds it", ev("blast.tp.held")===true);
   ev("blast.phase='play'; tpResume()");
   check("going on: counted back in, the bank flown again", ev("blast.tp.held")===false && ev("blast.tp.segs[2].stage")==="cloud" && ev("blast.tp.T0")>ev("__T"));
+  check("but the bank left in the middle is lost, a plane with it: no way out of the clouds", ev("blast.lives")===2);
+  ev(`__fly(${segStart("form",0)}+.5)`); ev("blast.phase='pause'"); await sleep(40); ev("blast.phase='play'; tpResume()");
+  check("paused in formation: nothing lost", ev("blast.lives")===2);
+  ev(`__fly(${segStart("clear",0)}+.02)`);
+  check("the clouds just parted, not judged yet", ev("!!blast.tp.revealDue") && !ev("blast.tp.reveal"));
+  ev("blast.phase='pause'"); await sleep(40);
+  check("paused then: the bank judged at once, with what was played in it", ev("!!blast.tp.reveal && blast.tp.reveal.lost===false") && ev("blast.lives")===2);
+  // held, the sky stands where it was
+  const hAt=ev("blast.tp.heldAt"); ev("__T+=5");
+  check("held: the sky's drawn at the moment it stopped", near(ev("tpDrawTime()"), hAt) && ev("__T")-hAt>4);
+  ev("blast.phase='play'; tpResume()");
+  check("going on: the sky's on the clock again", near(ev("tpDrawTime()"), ev("__T")) && ev("blast.tp.heldAt")===null);
+  // back with the sound still asleep (a phone after a call): the old plan's put away
+  ev(`__fly(${segStart("form",0)}+.5)`);
+  ev("tpHold(); window.__ok=tpClockOk; tpClockOk=()=>false; tpResume()");
+  check("back, the sound asleep: waiting, the old plan gone, nothing judged against it", ev("blast.tp.stage")==="wait" && ev("blast.tp.segs")===null && ev("blast.tp.targets.length")===0 && ev("tpHit(0,100,__T)")===null);
+  ev("tpClockOk=__ok; tpStep(__T)");
+  check("and once it wakes, a fresh count-in", ev("blast.tp.stage")==="ready" && ev("blast.tp.segs[0].stage")==="count" && ev("blast.tp.T0")>ev("__T"));
+  // the last plane, left in the clouds
+  ev(`blast.lives=1; __fly(${segStart("cloud",0)}+.05)`); ev("blast.phase='pause'"); await sleep(40); ev("blast.phase='play'; tpResume()");
+  check("the last plane left in the clouds: down, and nothing more flown", ev("blast.lives")===0 && ev("blast.tp.over")===true && ev("blast.tp.stage")==="down" && ev("blast.tp.segs")===null);
+  await sleep(1800);
+  check("then game over", ev("blast.phase")==="over");
+
+  // ---------- the sky's layout ----------
+  ev("beginPilot(0)"); await sleep(30);
+  // (the field's size as a ResizeObserver would have it; the helper minichord away, as on a phone)
+  const lay=(fw, fh)=>{ ev(`window.__hh=blast.helpHarp; window.__ro=blast.fx.ro; blast.helpHarp=null; blast.fx.ro={}; blast.fx.fw=${fw}; blast.fx.fh=${fh}; tpLayout(); blast.helpHarp=__hh; blast.fx.ro=__ro`); return ev("blast.lay"); };
+  let L=lay(1280, 800);
+  check("wide: the gunsight under the band the sortie's words are in", L.cy-L.R>=L.top+L.band && L.band>=22, JSON.stringify(L));
+  ev("blast.sky.pops=[]; tpPop(blast.lay.cx, blast.lay.cy-blast.lay.R-12, 'PERFECT', '#fff')");
+  const pp=ev("blast.sky.pops[0]");
+  check("a PERFECT over a plane at the top of the ring never rises into them", (pp.dir<0 ? pp.y-.8*14 : pp.y)>=L.top+L.band, JSON.stringify(pp));
+  ev("blast.sky.pops=[]; tpPop(blast.lay.cx, blast.lay.top+blast.lay.band+6, 'PERFECT', '#fff')");
+  check("one that would: under its plane instead, sinking", ev("blast.sky.pops[0].y")>=L.top+L.band+20 && ev("blast.sky.pops[0].dir")===1);
+  for(const [fw, fh] of [[375,435],[375,342],[393,700]]){
+    L=lay(fw, fh);
+    check(`upright ${fw}x${fh}: the reveal's panel all on the screen, the ring under the band`, L.panel.y+76<=L.H && L.cy-L.R>=L.top+L.band && L.R>=26, `panel ${L.panel.y} H ${L.H} R ${L.R} cy ${L.cy}`);
+  }
+  L=lay(592, 390);                                                  // a phone on its side, the screen's pads beside the game
+  const lx=ev(`tpFitX("LOST IN THE CLOUDS", ${L.panel.x}, ${L.W})`);
+  check("sideways on a phone: LOST IN THE CLOUDS moved in, all on the screen", L.wide && lx+72<=L.W && lx-72>=0 && L.panel.x+72>L.W, `${lx} ${L.W}`);
+  ev("tpHold()");
 
   // ---------- the demo ----------
   ev("stopBlaster(); startPilot()"); await sleep(60);
@@ -204,6 +285,8 @@ const t=require("./harness").load("time-pilot");
   check("six pads from the minichord, counted", ev("blast.midiIn")===6);
   ev(`__fly(blast.tp.T0+blast.tp.totalBars*4*blast.tp.B, ()=>0, ()=>1, t=>t.cloud)`);
   check("three banks with nothing in them: three planes lost", ev("blast.lives")===0 && ev("blast.tp.over")===true);
+  check("the last bank's CLEAR not flown on: its planes not counted missed, no MISS over them", ev("blast.tp.targets.filter(t=>t.sortie===2 && t.seg.stage==='clear' && t.missed).length")===0 && !ev("blast.sky.pops.some(p=>p.text==='MISS')") && ev("blast.tp.segs[blast.tp.segI].stage")==="clear");
+  check("and the sky held on the reveal", ev("tpDrawTime()")<=ev("blast.tp.overH") && ev("__T")>ev("blast.tp.overH"));
   check("and nothing more is judged", ev("tpHit(0,100,__T)")===null);
   await sleep(3500);
   check("game over", ev("blast.phase")==="over" && ev("saved.best.pilot")>0);

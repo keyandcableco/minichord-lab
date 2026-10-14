@@ -7,7 +7,7 @@ const fs=require("fs"), path=require("path");
 const {JSDOM}=require("jsdom");
 const ROOT=path.resolve(__dirname,"../..");
 
-function load(slug, {storage, every}={}){
+function load(slug, {storage, every, epochStamps}={}){
   const html=fs.readFileSync(path.join(ROOT,"practice/index.html"),"utf8");
   const first=html.indexOf('<script type="module"'), body=html.slice(html.indexOf("<body>")+6, first);
   const dom=new JSDOM(`<!doctype html><html><body>${body}</body></html>`,
@@ -26,8 +26,9 @@ function load(slug, {storage, every}={}){
   w.matchMedia=()=>({matches:false, addEventListener(){}});
   w.fetch=()=>Promise.reject(new Error("offline"));
   // an event's timeStamp in performance.now()'s timebase, as a browser has it (jsdom's counts from 1970),
-  // so a game that times a key or a touch by its event (the drum games) is timed here as there
-  { const ts=Object.getOwnPropertyDescriptor(w.Event.prototype,"timeStamp");
+  // so a game that times a key or a touch by its event (the drum games) is timed here as there.
+  // {epochStamps:true} leaves jsdom's, as an old WebKit has them, for a test of a page that must cope.
+  if(!epochStamps){ const ts=Object.getOwnPropertyDescriptor(w.Event.prototype,"timeStamp");
     if(ts && ts.get) Object.defineProperty(w.Event.prototype,"timeStamp",{get(){ return ts.get.call(this)-w.performance.timeOrigin; }, configurable:true, enumerable:true}); }
   w.HTMLDialogElement.prototype.showModal=function(){ this.setAttribute("open",""); };
   w.HTMLDialogElement.prototype.close=function(){ this.removeAttribute("open"); };

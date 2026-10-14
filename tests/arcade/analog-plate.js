@@ -5,26 +5,14 @@
 // own. Not a test itself: each <game>-joystick test loads it.
 //
 // The shared joystick layer (controller.js: jsOn, jsXY, jsAngle; the core's mc.stick and mc.buttons and
-// their "stick" and "button" events) is the arcade's own. Should a test run before it's there, a stand-in
-// to the same contract is put in, and the test says so.
+// their "stick" and "button" events) is the arcade's own, and the tests play it: with it missing, connect
+// fails a check rather than play something in its place.
 function plateOf(t){
   const {w, mc}=t;
-  let standIn=false;
+  let looked=false;
   function connect({on=true, firmware=90, extra={}}={}){
     t.connect({firmware, extra:{238:1, 243:on ? 4 : 0, ...extra}});
-    if(w.eval("typeof jsOn")!=="function"){
-      standIn=true;
-      w.eval(`window.jsOn=()=>!mc.virtual && (mc.params[7]??0)>=90 && mc.params[243]===4;
-        window.jsXY=()=>{ const s=mc.stick||{x:0,y:0}, dz=v=>Math.abs(v)<.15 ? 0 : Math.sign(v)*(Math.abs(v)-.15)/.85; return {x:dz(s.x), y:dz(s.y)}; };
-        window.jsAngle=()=>{ const s=mc.stick||{x:0,y:0}; return {a:mod(Math.atan2(s.x, s.y), 2*Math.PI), mag:Math.min(1, Math.hypot(s.x, s.y))}; };
-        if(!mc._jsStandIn){ mc._jsStandIn=true; const h=mc.handle.bind(mc);
-          mc.handle=(d, stamp)=>{ const c=d[1], v=d[2];
-            if((d[0]&0xF0)===0xB0 && c>=112 && c<=116){ const t=stamp??performance.now();
-              if(c<114){ const s=mc.stick||(mc.stick={x:0,y:0}), f=v<64 ? (v-64)/64 : (v-64)/63; s[c===112?"x":"y"]=f; mc.dispatchEvent(new CustomEvent("stick",{detail:{x:s.x, y:s.y, t}})); }
-              else { const b=mc.buttons||(mc.buttons={a:false,b:false,click:false}), name=["a","b","click"][c-114]; b[name]=v>=64; mc.dispatchEvent(new CustomEvent("button",{detail:{name, down:v>=64, t}})); }
-              return; }
-            return h(d, stamp); }; }`);
-    }
+    if(!looked && (looked=true)) t.check("the shared joystick layer is loaded", ["jsOn","jsXY","jsAngle"].every(f=>w.eval(`typeof ${f}`)==="function"));
   }
   // a CC value for a place on an axis, -1 … 1 (64 the rest; up is the high end)
   const cc=f=> f<0 ? Math.max(0, Math.round(64+f*64)) : Math.min(127, Math.round(64+f*63));
@@ -40,6 +28,6 @@ function plateOf(t){
     for(let k=0;k<Math.round(ms/step);k++){ now+=step; tick(now); }
     return now;
   }
-  return {connect, stick, toward, button, freeze, drive, cc, standIn:()=>standIn};
+  return {connect, stick, toward, button, freeze, drive, cc};
 }
 module.exports={plateOf};

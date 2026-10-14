@@ -76,5 +76,24 @@ const check=(name, ok, detail="")=>{ results.push(!!ok); console.log(`${ok?"  âœ
     check("a game's own pause phase isn't the arcade's: its timers still fire", w.eval("__g")===1 && !w.eval("jsPaused()"));
     w.eval("blast.phase='play'");
   }
+  { // ---- Chord Invaders: the key the player set holds through a pause (its settings are read all along)
+    const T=t.load("chord-invaders"), {w, mc, sleep, key, writes}=T;
+    await sleep(150); T.connect({firmware:60}); await sleep(100);
+    await T.start(0); await sleep(300);
+    const g=w.eval("keyIndexOf(7)");
+    mc.params[35]=g; mc.dispatchEvent(new w.Event("device")); await sleep(20);   // the key combo: G major
+    check("Chord Invaders: G major set in play", w.eval("blast.phase")==="play" && mc.params[35]===g);
+    writes.length=0;
+    key("KeyP"); await sleep(5);
+    check("paused", w.eval("blast.phase")==="pause");
+    for(let i=0;i<3;i++){ mc.dispatchEvent(new w.Event("device")); await sleep(600); }   // its settings, read as they are while it stands
+    check("the key isn't sent home while it's paused", !writes.some(([a])=>a===35) && mc.params[35]===g, JSON.stringify(writes));
+    key("KeyP"); await sleep(5);
+    check("and is the player's when it goes on", w.eval("blast.phase")==="play" && mc.params[35]===g);
+    w.eval("blast.phase='bonus'"); mc.dispatchEvent(new w.Event("device")); await sleep(20);
+    check("nor in a bonus round, which goes back to the game", !writes.some(([a])=>a===35) && mc.params[35]===g, JSON.stringify(writes));
+    w.eval("blast.phase='over'"); mc.dispatchEvent(new w.Event("device")); await sleep(20);
+    check("between games it goes home, as ever", mc.params[35]===w.eval("keyIndexOf(0)") && writes.some(([a,v])=>a===35 && v===w.eval("keyIndexOf(0)")), JSON.stringify(writes));
+  }
   const bad=results.filter(r=>!r).length; console.log(bad ? `FAILED ${bad} of ${results.length}` : `ok ${results.length}`); process.exit(bad?1:0);
 })();

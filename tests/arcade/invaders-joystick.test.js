@@ -47,6 +47,5 @@ const P=require("./analog-plate").plateOf(t);
   check("without the plate the stick does nothing", a.shipWant===.5);
   t.key("ArrowRight");
   check("and the arrow keys still steer", near(a.shipWant, .56));
-  if(P.standIn()) console.log("  (the shared joystick layer wasn't there: the test's stand-in played it)");
   t.done();
 })();

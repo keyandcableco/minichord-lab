@@ -16,7 +16,9 @@
  *             (Port 2), or from the harp channels of the chord port in single port mode
  *   "harpoff" a harp string was let go: detail {note, ch}, from the same places
  *   "drum"    a harp pad struck while harp drums (address 343) is on: detail {note, vel, pad, t,
- *             source}, from the channel-10 note the minichord sends for it (see DRUM_GM)
+ *             source}, from the channel-10 note the minichord sends for it (see DRUM_GM); or, with
+ *             drumFallback, a joystick plate's strip place or button (source "plate"; button true for A,
+ *             B and the click, which also send "button")
  *   "page1"   settings 256 to 511 arrived (firmware 31 on); this.page1 is then true
  *   "stick"   the joystick plate's stick moved (harp plate 4, firmware 90, with "knobs send MIDI"
  *             on): detail {x, y, t}, each -1 to 1, x right and y UP positive (this.stick)
@@ -56,6 +58,10 @@ export const JOY_CC=112;
 // events from source "plate", the place's pitch class its pad (the arcade's harp is chromatic from C),
 // and A, B and the click the kick, the snare and the closed hat. The page sounds them.
 const JOY_PADS=[0,1,4];
+/** an event's timestamp if it is in performance.now()'s timebase, or now: a browser whose stamps count
+ *  from 1970 (old WebKit, some WebViews), or a message with none, is timed as it arrives. A day ahead
+ *  is another clock (1970's is decades ahead); nearer than that is left alone, for a test's own clock. */
+export const stampOr=s=>{ const now=performance.now(); return s>0 && s<=now+864e5 ? s : now; };
 export const temperIndex=(value, firmware)=> value===11 && firmware<18 ? 12 : value;
 /** the number to store for a position in the Lab's list, or null if that firmware hasn't it */
 export const temperValue=(index, firmware)=> firmware>=18 ? index : index===12 ? 11 : index===11 ? null : index;
@@ -149,9 +155,10 @@ export class Minichord extends EventTarget {
     const role=i=>portRole(i, ins);
     const chord=ins.find(i=>role(i)==="chord");
     ins.forEach(i=>i.onmidimessage=e=>{
-      if(this._drum(e.data, e.timeStamp)) return;           // harp drums, from either port: before anything reads them as notes
       if(e.data[0]===0xF0){ if(role(i)==="chord") this._dump(e.data); return; }
-      if(role(i)==="harp"){ this._harp(e.data, e.timeStamp); return; }   // the harp's own zone reuses channel numbers, so it never reaches the chord voices
+      // the harp's own zone reuses channel numbers, so it never reaches the chord voices; its harp drums are
+      // read first, as handle() reads the chord port's. A drum from any other input counts only if that input is heard.
+      if(role(i)==="harp"){ if(!this._drum(e.data, e.timeStamp)) this._harp(e.data, e.timeStamp); return; }
       const use = this.inputChoice==="all" || this.inputChoice===i.id || (this.inputChoice==="auto" && chord && i.id===chord.id);
       if(use || (this.inputChoice==="auto" && !chord)) this.handle(e.data, e.timeStamp);
     });
@@ -284,9 +291,12 @@ export class Minichord extends EventTarget {
   // (performance.now()'s timebase) where it has one, and its note-off (sent 40 ms later, whatever the
   // finger does) nothing. Swallowed either way, so it's never a chord voice or a harp string. With harp
   // drums off, channel 10 is whatever it always was (in single port mode with MPE, harp strings).
+  // Firmware 90 has no harp drums on the joystick plate: 343 is inert there, and its strip's notes (on
+  // channel 10 too, with MPE) are still notes.
+  get harpDrums(){ return this.params[343]===1 && !(this.params[243]===4 && (this.params[7]??0)<91); }
   _drum(d, stamp){
-    if(this.params[343]!==1 || (d[0]!==0x99 && d[0]!==0x89)) return false;
-    if(d[0]===0x99 && d[2]>0) this.dispatchEvent(new CustomEvent("drum",{detail:{note:d[1], vel:d[2], pad:DRUM_GM.indexOf(d[1]), t:stamp||performance.now(), source:"minichord"}}));
+    if(!this.harpDrums || (d[0]!==0x99 && d[0]!==0x89)) return false;
+    if(d[0]===0x99 && d[2]>0) this.dispatchEvent(new CustomEvent("drum",{detail:{note:d[1], vel:d[2], pad:DRUM_GM.indexOf(d[1]), t:stampOr(stamp), source:"minichord"}}));
     return true;
   }
   _chordChannel(ch){
@@ -356,7 +366,7 @@ export class Minichord extends EventTarget {
   // decoded to -1 to 1 (64 counts down, 63 up, so both ends reach 1); a button 127 down, 0 up. Each
   // arrives on change only, and is passed on only when it changes here, timed by its message.
   _joy(k, val, stamp){
-    const t=stamp||performance.now();
+    const t=stampOr(stamp);
     if(k<2){
       const v= val<64 ? (val-64)/64 : (val-64)/63, s=this.stick, axis=k===0 ? "x" : "y";
       if(s[axis]===v) return;
@@ -368,7 +378,8 @@ export class Minichord extends EventTarget {
     if(this.buttons[name]===down) return;
     this.buttons={...this.buttons, [name]:down};
     this.dispatchEvent(new CustomEvent("button",{detail:{name, down, t}}));
-    if(down && this.drumFallback){ const pad=JOY_PADS[k-2]; this.dispatchEvent(new CustomEvent("drum",{detail:{note:DRUM_GM[pad], vel:100, pad, t, source:"plate"}})); }
+    // the button's pad, marked as a button's: it was already heard as one, by whatever takes buttons
+    if(down && this.drumFallback){ const pad=JOY_PADS[k-2]; this.dispatchEvent(new CustomEvent("drum",{detail:{note:DRUM_GM[pad], vel:100, pad, t, source:"plate", button:true}})); }
   }
   /** the stick back at rest and the buttons up (another instrument, or the plate changed), each change told */
   stickRest(){
@@ -380,7 +391,7 @@ export class Minichord extends EventTarget {
   // the game turns the harp's volume down to silence its pitch; its note-off nothing)
   _plateDrum(note, vel, stamp){
     if(!this.drumFallback) return false;
-    if(vel>0){ const pad=((note%12)+12)%12; this.dispatchEvent(new CustomEvent("drum",{detail:{note:DRUM_GM[pad], vel:100, pad, t:stamp||performance.now(), source:"plate"}})); }
+    if(vel>0){ const pad=((note%12)+12)%12; this.dispatchEvent(new CustomEvent("drum",{detail:{note:DRUM_GM[pad], vel:100, pad, t:stampOr(stamp), source:"plate"}})); }
     return true;
   }
   _changed(noteChange){

@@ -35,6 +35,5 @@ const P=require("./analog-plate").plateOf(t);
   P.stick(1); P.drive(tick, 400, 20);
   check("without the plate the stick doesn't turn the dial", a.tune && a.tune.dial===.5);
   P.stick(0);
-  if(P.standIn()) console.log("  (the shared joystick layer wasn't there: the test's stand-in played it)");
   t.done();
 })();

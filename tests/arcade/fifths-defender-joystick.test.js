@@ -47,6 +47,5 @@ const P=require("./analog-plate").plateOf(t);
   P.button("b", true); P.button("b", false);
   check("nor do the buttons", a.aim===10);
   P.stick(0,0);
-  if(P.standIn()) console.log("  (the shared joystick layer wasn't there: the test's stand-in played it)");
   t.done();
 })();

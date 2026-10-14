@@ -76,6 +76,23 @@ const t=require("./harness").load("harp-command"), {w, d, mc, sb, check, sleep}=
   check("mc.handle(data, stamp) hears drums the same way", dr.length===1 && dr[0].d.pad===4 && dr[0].d.vel===80 && dr[0].d.t===777, JSON.stringify(dr));
   const t2=now(); w.eval("mc.handle([0x99,46,70])"); dr=take("drum");
   check("and with no stamp, now", dr.length===1 && dr[0].d.pad===5 && dr[0].d.t>=t2);
+  // a stamp from another clock (1970's, as old WebKit has it) or none at all: timed as it's read
+  { const a=now(); port("in2", [0x99,38,90], w.performance.timeOrigin+a); port("in2", [0x99,38,90], 0); port("in2", [0x99,38,90], -5); const b=now(); await sleep(10);
+    dr=take("drum");
+    check("a stamp counted from 1970, 0 or below 0: the drum is timed as it's read", dr.length===3 && dr.every(e=>e.d.t>=a && e.d.t<=b), JSON.stringify(dr.map(e=>e.d.t))); }
+  // another instrument plugged in (an e-drum kit, "Midi Through"): its channel 10 is no more heard than its other notes
+  ins.set("in3", {id:"in3", name:"Roland TD-07 e-drums"}); mc._ports(); ev.length=0;
+  port("in3", [0x90,60,100]); port("in3", [0x99,38,100], 3100); await sleep(60);
+  check("another input, the minichord's chord port listened to: its drums aren't the minichord's pads", ev.length===0 && mc.notes.size===0, JSON.stringify(ev));
+  mc.selectInput("in1"); await sleep(10); ev.length=0;
+  port("in2", [0x99,38,100], 3200); port("in3", [0x99,38,100], 3210); await sleep(10);
+  dr=take("drum");
+  check("the chord port picked: the harp port's pads still heard, the other input's not", dr.length===1 && dr[0].d.t===3200, JSON.stringify(dr));
+  mc.selectInput("in3"); await sleep(10); ev.length=0;
+  port("in3", [0x99,38,100], 3300); await sleep(10);
+  dr=take("drum");
+  check("that input picked: its channel 10 heard as the pads, as any picked input's notes are", dr.length===1 && dr[0].d.t===3300 && dr[0].d.pad===1, JSON.stringify(dr));
+  mc.selectInput("auto"); ins.delete("in3"); mc._ports(); await sleep(60); ev.length=0;
   // ---------- harp drums off: channel 10 as it always was ----------
   P[343]=0; port("in1", page1()); await sleep(10); ev.length=0;
   port("in2", [0x99,38,90], 3000); await sleep(10); port("in2", [0x89,38,0], 3040); await sleep(10);
@@ -137,6 +154,10 @@ const t=require("./harness").load("harp-command"), {w, d, mc, sb, check, sleep}=
   ev.length=0; w.eval("window.__piano=0; vmPluck('x', 1, false, 500)"); await sleep(10);
   dr=take("drum");
   check("harp drums on: a string is a drum event, the stamp given", dr.length===1 && JSON.stringify(dr[0].d)===JSON.stringify({note:38, vel:100, pad:1, t:500, source:"touch"}), JSON.stringify(dr));
+  w.eval("vmLetGo('x')");
+  { const a=now(); w.eval(`vmPluck('x', 1, false, ${Date.now()})`); const b=now(); await sleep(10);
+    dr=take("drum");
+    check("a string's stamp counted from 1970 (an old WebKit's touch or key): timed as it's struck", dr.length===1 && dr[0].d.t>=a && dr[0].d.t<=b, JSON.stringify(dr)); }
   check("never a harp note, never the piano", !ev.some(e=>e.k==="harp") && w.eval("window.__piano")===0);
   w.eval("vmLetGo('x')"); await sleep(10);
   check("and letting go sends nothing", !ev.some(e=>e.k==="harpoff"));
@@ -173,7 +194,10 @@ const t=require("./harness").load("harp-command"), {w, d, mc, sb, check, sleep}=
   check("a second finger, the first still down: a second hit", dr.length===1 && dr[0].d.pad===4 && dr[0].d.t===930 && pad(0).classList.contains("on") && pad(4).classList.contains("on"));
   finger(pad(4), "pointerdown", 3, 0, 0, 940); await sleep(10);
   check("two fingers on one pad: two hits", take("drum").length===1);
-  for(const id of [1,2,3]) finger(grid, "pointerup", id, 0, 0); await sleep(10);
+  { const a=now(); finger(pad(7), "pointerdown", 8, 0, 0, Date.now()); const b=now(); await sleep(10);
+    dr=take("drum");
+    check("a touch stamped from 1970: the pad timed as it's struck", dr.length===1 && dr[0].d.pad===7 && dr[0].d.t>=a && dr[0].d.t<=b, JSON.stringify(dr)); }
+  for(const id of [1,2,3,8]) finger(grid, "pointerup", id, 0, 0); await sleep(10);
   check("let go: the pads go out, and nothing is sent", !pad(0).classList.contains("on") && !pad(4).classList.contains("on") && ev.length===0, JSON.stringify(ev));
   // between pads, by where the finger is
   grid.getBoundingClientRect=()=>({left:0, top:0, right:300, bottom:200, width:300, height:200});
@@ -198,5 +222,15 @@ const t=require("./harness").load("harp-command"), {w, d, mc, sb, check, sleep}=
   check("a string, harp drums still on: a drum", take("drum").length===1 && !ev.some(e=>e.k==="harp"));
   w.eval("touchMinichord(false)"); await sleep(50);
   check("the screen's minichord put away: page 1 goes with it", mc.page1===false && mc.params[343]===undefined && mc.virtual===false);
+
+  // ---------- a browser whose events are stamped from 1970 (jsdom's own, an old WebKit's) ----------
+  { const E=require("./harness").load("harp-command", {epochStamps:true}), dr2=[];
+    await E.sleep(250);
+    E.w.eval("keyboardMinichord(true)"); await E.sleep(50); E.w.eval("ensure(343, 1)");
+    E.mc.addEventListener("drum", e=>dr2.push(e.detail));
+    const a=E.w.performance.now(); E.key("Digit2"); const b=E.w.performance.now(); await E.sleep(10);
+    E.w.eval("document.dispatchEvent(new KeyboardEvent('keyup',{code:'Digit2'}))");
+    check("a key stamped from 1970: the pad timed as it's struck, not decades late", dr2.length===1 && dr2[0].pad===1 && dr2[0].t>=a && dr2[0].t<=b,
+      JSON.stringify(dr2)+" event stamp "+E.w.eval("new Event('x').timeStamp")); }
   t.done();
 })();

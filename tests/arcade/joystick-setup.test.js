@@ -39,6 +39,36 @@ const check=(name, ok, detail="")=>{ results.push(!!ok); console.log(`${ok?"  âœ
     w.eval("restoreAll()"); await sleep(20);
     check("given back after", mc.params[396]===1 && mc.params[402]===12 && mc.params[412]===30 && mc.params[238]===0);
   }
+  { // ---- a preset whose own stick settings differ from the last one's: those are what's given back
+    const T=t.load("chord-snake"), {w, mc, sleep, writes}=T;
+    await sleep(150);
+    T.connect({firmware:90, extra:{243:4, 396:1, 404:31}}); await sleep(120);
+    await T.start(0); await sleep(200);
+    check("set up: the stick silenced, 1 and 31 to give back", mc.params[396]===0 && mc.params[404]===0 && w.eval("borrowed[396]")===1 && w.eval("borrowed[404]")===31, w.eval("JSON.stringify(borrowed)"));
+    Object.assign(mc.params, {238:0, 199:300, 21:1, 111:1});
+    mc.unasked=true; mc.changed=new Set([238,199,21,111,184]); mc.dispatchEvent(new w.Event("device")); mc.unasked=false; mc.changed=new Set();
+    await sleep(20);
+    Object.assign(mc.params, {396:2, 404:20});                          // the new preset's, not the old one's
+    writes.length=0; mc.requestPage1(); await sleep(30);
+    check("its page 1 in: the stick silenced again", mc.params[396]===0 && mc.params[404]===0 && writes.some(([a,v])=>a===396 && v===0) && writes.some(([a,v])=>a===404 && v===0), JSON.stringify(writes));
+    check("and the new preset's 2 and 20 are what's given back, not the old 1 and 31", w.eval("borrowed[396]")===2 && w.eval("borrowed[404]")===20, w.eval("JSON.stringify(borrowed)"));
+    w.eval("restoreAll()"); await sleep(20);
+    check("given back as the new preset had them", mc.params[396]===2 && mc.params[404]===20, `396=${mc.params[396]} 404=${mc.params[404]}`);
+  }
+  { // ---- "Put my settings back" mid-game, on a minichord with push and pop: they stay back
+    const T=t.load("chord-snake"), {w, d, mc, sleep, writes}=T;
+    await sleep(150);
+    T.connect({firmware:90, pushPop:true, extra:{243:4, 396:1, 404:31}}); await sleep(900);
+    await T.start(0); await sleep(200);
+    check("push and pop: set up", mc.params[238]===1 && mc.params[396]===0 && w.eval("'396' in borrowed"), w.eval("JSON.stringify(borrowed)"));
+    writes.length=0;
+    d.getElementById("restore").click(); await sleep(30);
+    mc.requestPage1(); await sleep(30);                                 // as the pop's dump asks for it
+    check("put back, and the page 1 that follows the pop borrows nothing again", mc.params[238]===0 && mc.params[396]===1 && mc.params[404]===31 && !writes.some(([a,v])=>(a===238 && v===1) || (a>=396 && a<=414 && v===0)), JSON.stringify(writes));
+    check("nor holds the stick's settings as borrowed", !w.eval("Object.keys(borrowed).some(a=>a==='238' || (a>=396 && a<=414))"), w.eval("JSON.stringify(borrowed)"));
+    w.eval("stopBlaster(); nextQuestion()"); await sleep(100); await T.start(0); await sleep(200);
+    check("the next game sets them up again", mc.params[238]===1 && mc.params[396]===0, `238=${mc.params[238]} 396=${mc.params[396]}`);
+  }
   { // ---- Chord Invaders (its own setup)
     const T=t.load("invaders"), {mc, sleep}=T;
     await sleep(150); T.connect({firmware:90, extra:{243:4, 396:1}}); await sleep(120);

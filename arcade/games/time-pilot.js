@@ -98,7 +98,7 @@ function tpBar(){
   const word=tp && tp.stage!=="tap" && (blast.phase==="play" || blast.phase==="demo") && fieldW()>=560 ? tpWord(tp.stage) : "";
   blast.hud.innerHTML=`<span>SCORE ${blast.score}${multTag()}</span><span class="lvl">${E.year}${bpm ? ` · ${bpm} BPM` : " · TAP TEMPO"}${word ? ` · ${word}` : ""}</span><span class="lives">${livesHtml()}</span>`;
 }
-const tpWord=st=>({wait:"GET READY", ready:"GET READY", tap:"TAP TEMPO", count:"COUNT-IN", form:"FORMATION", cloud:"IN THE CLOUDS", clear:"CLEAR", warp:"TIME WARP"})[st]||"";
+const tpWord=st=>({wait:"GET READY", ready:"GET READY", tap:"TAP TEMPO", count:"COUNT-IN", form:"FORMATION", cloud:"IN THE CLOUDS", clear:"CLEAR", warp:"TIME WARP", down:"LOST IN THE CLOUDS"})[st]||"";
 
 // ---------- the title screen ----------
 const TPMENU_G={key:"pilot", title:"TIME PILOT",
@@ -133,13 +133,13 @@ function tpOver(){
 // out from T0 (the context time of the first count-in click) as segments, and a target on every grid
 // point of FORMATION, CLOUD BANK and CLEAR. Everything in seconds on the audio clock as heard.
 function tpFresh(o){
-  return {offset:0, offErrs:[], segs:null, segI:-1, targets:[], taps:[], cloudStray:0, stage:"wait", held:false, over:false,
-    shots:[], booms:[], reveal:null, B:null, unit:null, T0:0, lead:.6, ...o};
+  return {offset:0, offErrs:[], segs:null, segI:-1, targets:[], taps:[], cloudHits:[], cloudStray:0, stage:"wait", held:false, heldAt:null, over:false,
+    shots:[], booms:[], reveal:null, revealDue:null, B:null, unit:null, T0:0, lead:.6, ...o};
 }
 // an era begins: a tempo (or the player's, tapped), and its three sorties laid out
 function tpEraStart(L, at, announce){
   const tp=blast.tp; blast.level=L; const E=tpEra(L); tpBankWarm(E);
-  Object.assign(tp, {segs:null, segI:-1, targets:[], taps:[], reveal:null, tapMsg:"", tapped:0});
+  Object.assign(tp, {segs:null, segI:-1, targets:[], taps:[], reveal:null, revealDue:null, cloudHits:[], tapMsg:"", tapped:0});
   if(E.tap && !tp.demo){
     tp.stage="tap"; tp.B=null; tpBar();
     if(announce) banner(`${E.year}`, `${E.craft} · TAP THE TEMPO`);
@@ -159,7 +159,12 @@ function tpClockOk(){
   if(c.state!=="running") return false;
   return c.currentTime>0 || performance.now()-(blast.tp.waitFrom||0)>500;
 }
-function tpWait(fn){ const tp=blast.tp; tp.stage="wait"; tp.go=fn; tp.waitFrom=performance.now(); if(tpClockOk()) tpGo(); }
+// (the plan that was flying is put away while it waits: nothing's drawn or judged on a grid that's gone,
+// and the sky can ask for a tap when a phone's sound is still asleep)
+function tpWait(fn){
+  Object.assign(blast.tp, {stage:"wait", go:fn, waitFrom:performance.now(), segs:null, targets:[], segI:-1, reveal:null, revealDue:null, cloudHits:[]});
+  if(tpClockOk()) tpGo();
+}
 function tpGo(){ const tp=blast.tp, fn=tp.go; tp.go=null; if(fn) fn(rhCtxNow()+rhLead()+tp.lead); tp.lead=.6; }
 // The bars from sortie s0 to the era's end: count-in, formation, the bank, clear, for each; then the
 // warp. (The demo flies one sortie and no warp.) A target on every grid point that's played.
@@ -180,7 +185,7 @@ function tpPlan(T0, s0){
         low:E.beat==="backbeat" && beat%2===0, ang:(k*2.39996+spin)%(Math.PI*2), hit:null, missed:false, plan:null});
     }
   }
-  Object.assign(tp, {T0, unit, per, segs, totalBars:bar, targets, segI:-1, sched:0, stage:"ready", planI:0});
+  Object.assign(tp, {T0, unit, per, segs, totalBars:bar, targets, segI:-1, sched:0, stage:"ready", planI:0, cloudHits:[], revealDue:null});
   if(typeof rhStart==="function") rhStart();
 }
 const tpBarLen=()=> 4*blast.tp.B;
@@ -203,14 +208,18 @@ function tpSchedule(){
   }
 }
 // Each frame (and in the tests, at any heard time): the clicks put ahead, each new segment entered in
-// turn, the planes that slipped past the gunsight counted, and in the demo, the autopilot's strokes.
+// turn, a bank judged once its last strokes are in, the planes that slipped past the gunsight counted,
+// and in the demo, the autopilot's strokes. Nothing once the last plane's down: the sky holds on the
+// bank's reveal till the game's over.
 function tpStep(h){
   const tp=blast && blast.tp; if(!tp || tp.held) return;
   if(tp.stage==="wait"){ if(!tpClockOk()) return; tpGo(); }
-  if(!tp.segs) return;
+  if(!tp.segs || tp.over) return;
   tpSchedule();
   const segs=tp.segs, i=tpSegIndexAt(h);
   while(tp.segI<i){ tpEnter(tp.segI+1, h); if(blast.tp!==tp || tp.segs!==segs) return; }
+  if(tp.revealDue && h>=tp.revealDue.at) tpReveal(tp.revealDue.clear, tp.revealDue.bank);
+  if(tp.over) return;
   const ok=tpWins()[2];
   for(const t of tp.targets){
     if(t.T>h) break;
@@ -231,15 +240,22 @@ function tpEnter(j, h){
   else if(seg.stage==="form") tp.reveal=null;
   else if(seg.stage==="cloud"){
     // the player's own time, from the latest hits with the click (the stray ones set aside); carried
-    // on as it was if there aren't enough to tell
-    if(tp.offErrs.length>=3) tp.offset=rhRobustOffset(tp.offErrs);
+    // on as it was if there aren't enough to tell. Never more than the OK window, as formation itself
+    // allows: a player who isn't with the click at all doesn't get the clouds judged on their own phase.
+    if(tp.offErrs.length>=3){ const w=tpWins()[2]; tp.offset=Math.max(-w, Math.min(w, rhRobustOffset(tp.offErrs))); }
     tp.cloudStray=0;
   }
-  else if(seg.stage==="clear") tpReveal(seg, tp.segs[j-1]);
+  else if(seg.stage==="clear"){
+    // the bank's judged a moment after the clouds part, when its last stroke (half a beat late, say, on a
+    // late player's time) is surely in, however late its event got here
+    const bank=tp.segs[j-1];
+    if(tp.revealDue) tpReveal(tp.revealDue.clear, tp.revealDue.bank);
+    if(bank && bank.stage==="cloud") tp.revealDue={at:tpSegStart(seg)+Math.max(0, tp.unit/2+tp.offset)+.05, clear:seg, bank};
+  }
   else if(seg.stage==="warp"){
     tp.reveal=null; sfx("warp");
   }
-  if(tp.demo) tpDemoSay(seg);
+  if(tp.demo && seg.stage!=="clear") tpDemoSay(seg);               // (the clear's caption waits for the reveal: it tells the drift)
   tpBar();
 }
 
@@ -263,25 +279,40 @@ function tpHit(pad, vel=100, h){
   const tp=blast && blast.kind==="pilot" && blast.tp; if(!tp || tp.held || tp.over) return null;
   if(blast.phase!=="play" && blast.phase!=="demo") return null;
   if(tp.stage==="tap") return tpTap(h);
-  if(!tp.segs) return null;
-  const seg=tp.segs[tpSegIndexAt(h)], judged=!!seg && (seg.stage==="form" || seg.stage==="cloud" || seg.stage==="clear");
-  // the nearest grid point; one in the clouds where the player's own time puts it
+  if(!tp.segs || tp.stage==="wait") return null;
+  const seg=tp.segs[tpSegIndexAt(h)], inCloud=!!seg && seg.stage==="cloud", judged=!!seg && (seg.stage==="form" || inCloud || seg.stage==="clear");
+  // A stroke in a cloud bank (its beats where the player's own time puts them): kept as it was struck,
+  // and fitted to the bank's beats only when the clouds part, all of them together (tpReveal). One whose
+  // event got here after that is too late to count.
+  const bank=tpBankAt(h);
+  if(bank){
+    tpShot(null, h);
+    if(bank.revealed) return {late:true};
+    tp.cloudHits.push({h, pad, vel, bank});
+    const x=h-tp.offset-tpSegStart(bank); return {cloud:true, err:x-Math.round(x/tp.unit)*tp.unit};
+  }
+  // with the click: the nearest grid point
   let best=null, bd=Infinity;
-  for(const t of tp.targets){ const d=Math.abs(h-t.T-(t.cloud ? tp.offset : 0)); if(d<bd){ bd=d; best=t; } if(t.T-h>tp.unit) break; }
+  for(const t of tp.targets){ if(t.cloud) continue; const d=Math.abs(h-t.T); if(d<bd){ bd=d; best=t; } if(t.T-h>tp.unit) break; }
   const near=best && bd<=tp.unit/2;
-  tpShot(near && !best.cloud && !(seg && seg.stage==="cloud") ? best : null, h);
-  if(!near){ if(judged){ if(seg.stage==="cloud") tp.cloudStray++; else tpStray(null); } return {stray:true}; }
+  tpShot(near && !inCloud ? best : null, h);
+  if(!near){ if(inCloud) tp.cloudStray++; else if(judged) tpStray(null); return {stray:true}; }
   if(best.hit) return {double:true};
-  const err=h-best.T-(best.cloud ? tp.offset : 0);
-  if(best.cloud){ best.hit={err, pad, vel}; return {cloud:true, err}; }   // judged when the clouds part
-  tp.offErrs.push(err); if(tp.offErrs.length>16) tp.offErrs.shift();
-  const res=tpJudge(err);
-  if(!res){ tpStray(best, err); return {res:"MISS", err}; }
+  const err=h-best.T, res=tpJudge(err);
+  // (only a hit that counts says where the player's time is: one that missed may not be with the click at all)
+  if(res){ tp.offErrs.push(err); if(tp.offErrs.length>16) tp.offErrs.shift(); }
+  if(!res){ if(inCloud) tp.cloudStray++; else tpStray(best, err); return {res:"MISS", err}; }
   const pts=tpPoints(res, best, pad), at=tpPos(best, h);
   best.hit={err, res, pad, vel};
   blast.score+=pts; stats.streak++; scoreboard(); tpBar();
-  if(at){ tpBoom(at.x, at.y, best.low); tpPop(at.x, at.y-12, res, TP_RES_INK[res], tpEra().beat==="backbeat" && (best.low ? !tpLow(pad) : tpLow(pad)) ? "WRONG PAD" : ""); }
+  if(at && !inCloud){ tpBoom(at.x, at.y, best.low); tpPop(at.x, at.y-12, res, TP_RES_INK[res], tpEra().beat==="backbeat" && (best.low ? !tpLow(pad) : tpLow(pad)) ? "WRONG PAD" : ""); }
   return {res, err, pts};
+}
+// the cloud bank whose strokes a stroke at heard time h is among: from half a grid unit before its first
+// beat to half a unit before the clear's first, on the player's own time
+function tpBankAt(h){
+  const tp=blast.tp, x=h-tp.offset+tp.unit/2, BL=tpBarLen();
+  return tp.segs.find(s=>s.stage==="cloud" && x>=tpSegStart(s) && x<tpSegStart(s)+s.bars*BL) || null;
 }
 // a plane that slipped past the gunsight: the streak's broken
 function tpMissed(t){
@@ -300,8 +331,25 @@ function tpStray(t, err){
 // The bank judged as a whole: every hit made in it scored now (doubled), the strip of its errors, the
 // drift of its last bar, held or lost.
 function tpReveal(clear, bankSeg){
-  const tp=blast.tp; if(!bankSeg || bankSeg.stage!=="cloud") return;
-  const cl=tp.targets.filter(t=>t.seg===bankSeg), hits=cl.filter(t=>t.hit), lastBar=bankSeg.bar0+bankSeg.bars-1;
+  const tp=blast.tp; if(tp.revealDue && tp.revealDue.bank===bankSeg) tp.revealDue=null;
+  if(!bankSeg || bankSeg.stage!=="cloud" || bankSeg.revealed) return;
+  bankSeg.revealed=true;
+  const cl=tp.targets.filter(t=>t.seg===bankSeg), T=tpSegStart(bankSeg), u=tp.unit, recent=[];
+  // Each stroke, in turn, given the beat nearest to where the player's time had got to by then (the
+  // median of their last three errors, from 0: their offset with the click is allowed for already). A
+  // slow slide past half a beat (or half an eighth) shows as the drift it is, not folded onto the next
+  // beat and called early, or on it; and one wild stroke doesn't throw the rest. Two on one beat: the
+  // one nearer the time as the others have it is kept.
+  const phase=not=>rhMedian(recent.filter(r=>r.t!==not).slice(-3).map(r=>r.err));
+  for(const c of tp.cloudHits.filter(c=>c.bank===bankSeg).sort((a,b)=>a.h-b.h)){
+    const x=c.h-tp.offset-T, i=Math.round((x-phase())/u), t=cl[i];
+    if(!t){ tp.cloudStray++; continue; }
+    const err=x-i*u;
+    if(t.hit){ const q=phase(t); if(Math.abs(t.hit.err-q)<=Math.abs(err-q)) continue; recent.splice(recent.findIndex(r=>r.t===t), 1); }
+    t.hit={err, pad:c.pad, vel:c.vel}; recent.push({t, err});
+  }
+  tp.cloudHits=tp.cloudHits.filter(c=>c.bank!==bankSeg);
+  const hits=cl.filter(t=>t.hit), lastBar=bankSeg.bar0+bankSeg.bars-1;
   const last=hits.filter(t=>t.bar===lastBar), drift=last.length ? last.reduce((a,t)=>a+t.hit.err,0)/last.length : null;
   const lost= hits.length*2<cl.length || drift==null || Math.abs(drift)>.25*tp.B;
   let pts=0;
@@ -314,11 +362,12 @@ function tpReveal(clear, bankSeg){
   const bonus= lost ? 0 : mulPts(250*bankSeg.bars);
   blast.score+=pts+bonus;
   tp.reveal={at:tpSegStart(clear), n:cl.length, D:bankSeg.bars, items:cl.map(t=>t.hit ? {err:t.hit.err, res:t.hit.res} : null), drift, lost, pts:pts+bonus, held:hits.length};
-  if(lost && blast.phase==="play"){
+  if(lost && !tp.demo){
     blast.lives--; tp.downAt=performance.now(); sfx("lost");
-    if(blast.lives<=0){ tp.over=true; gameLater(()=>tpOver(), 3200); }
+    if(blast.lives<=0){ tp.over=true; tp.overH=tpSegStart(clear)+.8; gameLater(()=>tpOver(), 3200); }   // (the sky held once the clouds have parted)
   } else sfx("clear");
   scoreboard(); tpBar();
+  if(tp.demo) tpDemoSay(clear);
 }
 // what the drift reads as, in words: on the beat within the PERFECT window
 function tpDriftWords(d){
@@ -358,19 +407,39 @@ function tpTap(h){
 // ---------- pausing ----------
 // A hidden page (or the arcade's pause) stops the music at once; nothing is judged across the gap.
 // Coming back, the sortie that was flying starts again from a fresh count-in bar at the same tempo
-// (a warp goes straight on into the next era; a tap tempo is tapped again).
-function tpHold(){ const tp=blast && blast.kind==="pilot" && blast.tp; if(!tp) return; tp.held=true; if(typeof rhStop==="function") rhStop(); }
+// (a warp goes straight on into the next era; a tap tempo is tapped again). Held, the sky stands still
+// where it was (heldAt); a bank the clouds had just parted on is judged first, with what was played in
+// it. And a bank left in the middle is a bank lost: stopping can't be the way out of the clouds.
+function tpHold(){
+  const tp=blast && blast.kind==="pilot" && blast.tp; if(!tp) return;
+  if(!tp.held){
+    const h=rhNow();
+    if(tp.segs && !tp.over && tp.stage!=="wait"){ tpStep(h); if(tp.revealDue) tpReveal(tp.revealDue.clear, tp.revealDue.bank); }
+    tp.held=true; tp.heldAt=h;
+  }
+  if(typeof rhStop==="function") rhStop();
+}
 function tpResume(){
   const tp=blast && blast.kind==="pilot" && blast.tp; if(!tp) return;
-  tp.held=false;
+  const at=tp.heldAt; tp.held=false; tp.heldAt=null;
   if((blast.phase!=="play" && blast.phase!=="demo") || tp.over) return;
   if(tp.stage==="tap"){ tp.taps=[]; return; }
   if(tp.stage==="wait" && !tp.segs){ tp.waitFrom=performance.now(); return; }
-  const seg=tp.segs && tp.segs[Math.max(0, Math.min(tp.segs.length-1, tp.segI))];
+  const si=!tp.segs ? -1 : at!=null ? tpSegIndexAt(at) : tp.segI, seg=tp.segs && tp.segs[Math.max(0, Math.min(tp.segs.length-1, si))];
+  if(tp.segs && tp.segs[si] && tp.segs[si].stage==="cloud" && !tp.demo && tpAbandon()) return;
   tp.reveal=null; tp.lead=.6;
   if(seg && seg.stage==="warp") tpEraStart(blast.level+1, null, true);
   else { const s=seg ? seg.sortie : 0; tpWait(T0=>tpPlan(T0, s)); }
   tpBar();
+}
+// the bank that was flying when the game stopped: lost, a plane with it, and nothing in it scored. True
+// if that was the last.
+function tpAbandon(){
+  const tp=blast.tp, L=blast.lay; blast.lives--; tp.downAt=performance.now(); stats.streak=0; sfx("lost"); scoreboard();
+  if(blast.lives>0){ if(L) tpPop(L.cx, L.cy-L.R*.6-12, "LOST IN THE CLOUDS", "#FF5A5A"); tpBar(); return false; }
+  tp.over=true; Object.assign(tp, {segs:null, targets:[], segI:-1, reveal:null, revealDue:null, cloudHits:[], stage:"down"}); tpBar();
+  gameLater(()=>tpOver(), 1600);
+  return true;
 }
 document.addEventListener("visibilitychange", ()=>{
   if(typeof blast==="undefined" || !blast || blast.kind!=="pilot" || !blast.tp) return;
@@ -404,7 +473,7 @@ function tpTick(now){
   const dt=Math.max(0, Math.min(DT_MAX,(now-blast.last)/1000)); blast.last=now;
   const tp=blast.tp;
   if(tp){
-    if(blast.phase==="pause") tp.held=true;                       // the arcade's pause: rhStop is done; tpResume counts back in
+    if(blast.phase==="pause"){ if(!tp.held) tpHold(); }          // the arcade's pause: the music's stopped; tpResume counts back in
     else if((blast.phase==="play" || blast.phase==="demo") && !tp.held) tpStep(rhNow());
   }
   tpSkyMove(dt);
@@ -488,16 +557,23 @@ function tpLayout(){
   const hh=blast.helpHarp && blast.helpHarp.el && blast.helpHarp.el.isConnected ? blast.helpHarp.el : null;
   const hw= hh ? hh.offsetWidth || (playOnScreen() ? 0 : 58) : 0, side= hw ? Math.min(fw*.35, hw+26) : 0;   // (on a phone the deck's pads are lit instead: the helper's hidden)
   const top=Math.max(30, demoClear())/k, bottom=Math.max(top+40, (fh-26)/k), right=(fw-side)/k, rw=right, rh=bottom-top, wide=rw>rh*1.35;
+  // (a band at the top for the sortie's two lines of words, the gunsight under it: a PERFECT over a
+  // plane at the top of the ring doesn't write through CLOUDS NEXT. The demo's caption says it instead.)
+  const band= blast.phase==="demo" ? 0 : 24, rt=top+band;
   let R, cx, cy, panel;
   if(wide){
-    R=Math.floor(Math.min(rh*.36, rw*.24)); cx=Math.round(Math.max(R+26, rw*.36)); cy=Math.round(top+rh*.52);
+    const rr=bottom-rt;
+    R=Math.floor(Math.min(rr*.36, rw*.24)); cx=Math.round(Math.max(R+26, rw*.36)); cy=Math.round(rt+rr*.52);
     const x0=cx+R+16, w=Math.max(80, Math.min(right-x0-12, 220)); panel={x:Math.round(x0+(right-x0)/2), w, y:Math.round(cy-36)};
   } else {
-    R=Math.floor(Math.min(rw*.36, rh*.25)); cx=Math.round(rw/2); cy=Math.round(top+Math.max(R+14, rh*.40));
-    panel={x:cx, w:Math.min(rw-10, 230), y:Math.round(cy+R+12)};
+    // the reveal's panel under the ring needs 78 of the screen's pixels: on a short phone the ring's made
+    // smaller and goes up, so the panel's all on the screen, over the ring's foot if it must
+    R=Math.floor(Math.max(26, Math.min(rw*.36, rh*.25, (H-rt-92)/2))); cx=Math.round(rw/2);
+    cy=Math.round(Math.max(rt+R+2, Math.min(top+rh*.40, H-90-R)));
+    panel={x:cx, w:Math.min(rw-10, 230), y:Math.max(rt, Math.min(Math.round(cy+R+12), H-78))};
   }
   const far=Math.max(...[[0,0],[W,0],[0,H],[W,H]].map(([x,y])=>Math.hypot(x-cx, y-cy)))+14;
-  blast.lay={k, W, H, cx, cy, R, far, top, bottom, right, panel, wide};
+  blast.lay={k, W, H, cx, cy, R, far, top, band, bottom, right, panel, wide};
 }
 // where a target's plane is, at heard time h: spiralling in to the gunsight, on it at its beat, then
 // (missed) flying straight on out
@@ -517,7 +593,14 @@ function tpBoom(x, y, big){
     S.parts.push({x, y, vx:Math.cos(a)*v, vy:Math.sin(a)*v, life:.5+Math.random()*.5, c:cols[i%cols.length]}); }
   if(S.parts.length>220) S.parts.splice(0, S.parts.length-220);
 }
-function tpPop(x, y, text, col, sub){ const S=blast.sky; S.pops.push({x, y, text, col, sub, at:performance.now()}); if(S.pops.length>8) S.pops.shift(); }
+// what a hit was judged, over its plane, rising; under it and sinking if it would rise into the words at
+// the top of the sky
+function tpPop(x, y, text, col, sub){
+  const S=blast.sky, L=blast.lay, flip=!!L && y-14<L.top+L.band;
+  S.pops.push({x, y:flip ? y+24 : y, dir:flip ? 1 : -1, text, col, sub, at:performance.now()}); if(S.pops.length>8) S.pops.shift();
+}
+// a line of lettering's centre, moved in as far as it must to stay on the screen
+const tpFitX=(text, x, W)=>{ const h=[...text].length*4; return Math.max(h+1, Math.min(W-h-1, x)); };
 
 // The craft, nose up, a character a pixel: W wing, B body, D dark, C cockpit, F flame; P and Q the
 // propeller (or a saucer's lights) in its two frames. Turned to their heading when they're drawn.
@@ -579,8 +662,8 @@ function tpDraw(_, now){
   if(blast.layoutKey!==lk){ blast.layoutKey=lk; tpLayout(); }
   const L=blast.lay; if(!L) return;
   const S=blast.sky, tp=blast.tp, live=!!tp && (blast.phase==="play" || blast.phase==="demo" || blast.phase==="pause"), W=s.width, H=s.height;
-  const h=live ? rhNow() : 0, E=tpEra(), si=live ? tpSegIndexAt(h) : -1, seg=live && tp.segs ? tp.segs[si] : null;
-  const stage=!live ? "menu" : seg ? seg.stage : tp.segs && si>=tp.segs.length ? "done" : tp.stage==="wait" || tp.stage==="tap" ? tp.stage : "ready";
+  const h=live ? tpDrawTime() : 0, E=tpEra(), si=live ? tpSegIndexAt(h) : -1, seg=live && tp.segs ? tp.segs[si] : null;
+  const stage=!live ? "menu" : seg ? seg.stage : tp.segs && si>=tp.segs.length ? "done" : tp.stage==="wait" || tp.stage==="tap" || tp.stage==="down" ? tp.stage : "ready";
   const fdt=Math.min(.1, (now-(S.drawn||now))/1000); S.drawn=now;
   g.imageSmoothingEnabled=false;
   // the sky, and in a warp the next era's coming in, streaks flying out from the middle
@@ -595,7 +678,7 @@ function tpDraw(_, now){
   // the gunsight, and the planes on their way to it (none in the clouds, nor any till they part)
   const ring= live && (stage==="count" || stage==="form" || stage==="clear" || stage==="ready");
   if(ring){ g.fillStyle="rgba(255,211,90,.6)"; for(let i=0;i<56;i++){ if(i%7===6) continue; const a=i/56*Math.PI*2; g.fillRect(Math.round(L.cx+Math.sin(a)*L.R), Math.round(L.cy-Math.cos(a)*L.R), 1, 1); } }
-  if(live && tp.segs && stage!=="cloud" && stage!=="warp"){
+  if(live && tp.segs && stage!=="cloud" && stage!=="warp" && !tp.over){
     for(const t of tp.targets){
       if(t.cloud || (t.hit && t.hit.res)) continue;
       const u=(t.T-h)/tp.B; if(u>3.4) break; if(u<-2.6) continue;
@@ -606,7 +689,7 @@ function tpDraw(_, now){
     }
   }
   // the planes shot down in the clouds, falling as they part
-  if(live) tp.booms=tp.booms.filter(b=>{ if(performance.now()<b.at) return true; const p=tpPos(b.t, b.t.T); if(p) tpBoom(p.x, p.y, b.t.low); sfx("down"); return false; });
+  if(live && !tp.held) tp.booms=tp.booms.filter(b=>{ if(performance.now()<b.at) return true; const p=tpPos(b.t, b.t.T); if(p) tpBoom(p.x, p.y, b.t.low); sfx("down"); return false; });
   // the clouds: rolled in at the bank's first beat, parted at the clear's
   const cover= stage==="cloud" ? Math.min(1, (h-tpSegStart(seg))/.35) : stage==="clear" ? Math.max(0, 1-(h-tpSegStart(seg))/.7) : 0;
   // (a grey, and big puffs scattered over it at random, two layers drifting at their own speeds: no
@@ -636,9 +719,15 @@ function tpDraw(_, now){
     p.x+=p.vx*fdt; p.y+=p.vy*fdt; p.vx*=.96; p.vy*=.96; p.life-=fdt*1.4; if(p.life<=0) return false;
     g.fillStyle=p.c; g.fillRect(Math.round(p.x), Math.round(p.y), p.life>.5 ? 2 : 1, p.life>.5 ? 2 : 1); return true; });
   // what each hit was judged, rising
-  S.pops=S.pops.filter(p=>{ const age=(performance.now()-p.at)/1000; if(age>.8) return false; const y=p.y-age*14, cl=(t,x)=>Math.max(t.length*4+1, Math.min(W-t.length*4-1, x));
-    pxText(g, p.text, cl(p.text, p.x), y, p.col); if(p.sub) pxText(g, p.sub, cl(p.sub, p.x), y+10, "#F1E8D2"); return true; });
+  S.pops=S.pops.filter(p=>{ const age=(performance.now()-p.at)/1000; if(age>.8) return false; const y=Math.max(L.top+(L.band||0), p.y+(p.dir||-1)*age*14);
+    pxText(g, p.text, tpFitX(p.text, p.x, W), y, p.col); if(p.sub) pxText(g, p.sub, tpFitX(p.sub, p.x, W), y+10, "#F1E8D2"); return true; });
   if(live) tpWords(g, h, seg, stage);
+}
+// The heard time the sky's drawn at: while held, the moment it stopped (nothing flies on behind the
+// PAUSED box); with the last plane down, no further than the clouds' parting (the reveal stays up).
+function tpDrawTime(){
+  const tp=blast.tp, n=rhNow();
+  return tp.held && tp.heldAt!=null ? tp.heldAt : tp.over && tp.overH!=null ? Math.min(n, tp.overH) : n;
 }
 // the words on the sky: what the sortie's doing, the count-in, the tap, the clouds' strip
 function tpWords(g, h, seg, stage){
@@ -661,6 +750,7 @@ function tpWords(g, h, seg, stage){
   }
   else if(stage==="form"){ pxText(g, "FORMATION", x, y0, "#FFD35A"); pxText(g, `CLOUDS NEXT: ${seg.D} BAR${seg.D>1 ? "S" : ""}`, x, y0+10, "#F1E8D2"); }
   else if(stage==="cloud") pxText(g, "IN THE CLOUDS", x, y0, "#F1E8D2");
+  else if(stage==="down") pxText(g, "LOST IN THE CLOUDS", x, y0, "#FF5A5A");
   else if(stage==="clear") pxText(g, "CLEAR", x, y0, "#7FE08A");
   else if(stage==="warp"){ const N=tpEra(blast.level+1); pxText(g, "TIME WARP", x, y0, "#FFD35A"); tpBig(g, `${N.year}`, L.cx, L.cy-L.R*.55-14, "#F1E8D2", 2);
     pxText(g, N.tap ? "TAP THE TEMPO" : `${N.craft} · ${tpBpm(blast.level+1)} BPM`, L.cx, L.cy+L.R*.55, "#F1E8D2"); }
@@ -671,8 +761,9 @@ function tpWords(g, h, seg, stage){
 // at the strip's edge), coloured as it was judged; a beat with no hit a red mark on the line.
 function tpStrip(g, r){
   const L=blast.lay, P=L.panel, tp=blast.tp, B=tp.B, sw=Math.round(P.w), sx=Math.round(P.x-sw/2), y=P.y;
-  pxText(g, r.lost ? "LOST IN THE CLOUDS" : `BANK HELD +${r.pts}`, P.x, y, r.lost ? "#FF5A5A" : "#FFD35A");
-  pxText(g, tpDriftWords(r.drift), P.x, y+11, r.lost ? "#FFB0B0" : "#F1E8D2");
+  const say=r.lost ? "LOST IN THE CLOUDS" : `BANK HELD +${r.pts}`, dw=tpDriftWords(r.drift);   // (moved in from the screen's edge on a narrow panel)
+  pxText(g, say, tpFitX(say, P.x, L.W), y, r.lost ? "#FF5A5A" : "#FFD35A");
+  pxText(g, dw, tpFitX(dw, P.x, L.W), y+11, r.lost ? "#FFB0B0" : "#F1E8D2");
   const top=y+34, hgt=30, mid=top+Math.floor(hgt/2), band=Math.max(1, Math.round(Math.min(1, tpWins()[2]/(.25*B))*(hgt/2-2)));
   g.fillStyle="rgba(7,6,12,.82)"; g.fillRect(sx-3, top-3, sw+6, hgt+6);
   g.fillStyle="rgba(127,224,138,.25)"; g.fillRect(sx, mid-band, sw, band*2+1);

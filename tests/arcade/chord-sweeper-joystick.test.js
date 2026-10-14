@@ -1,5 +1,6 @@
 // Chord Sweeper on the joystick plate: in play the game reads the stick itself (blast.jsOwn), a cursor
-// eight ways, a diagonal moving both: a step at once, then after 250 ms every 110 ms. A sweeps, B flags;
+// eight ways, a diagonal moving both: a step at once, then after 250 ms every 110 ms; a flick through
+// one axis on its way into a diagonal and out is one diagonal step. A sweeps, B flags;
 // at NEXT FIELD, A goes on (through the edge path), and that press isn't a sweep too. Without the
 // plate the stick does nothing.
 const t=require("./harness").load("chord-sweeper");
@@ -7,7 +8,6 @@ const P=require("./dpad-plate").plateOf(t);
 (async()=>{
   const {w, sb, sleep, check}=t;
   await sleep(150); P.connect(); await sleep(100);
-  if(P.standIn()) console.log("  (the shared joystick layer isn't there yet: a stand-in to its contract)");
   const a=await t.start(0); P.freeze();
   check("in play the game claims the stick", a.jsOwn===true);
   const tick=now=>w.swTick(now), at=()=>a.cur.join();
@@ -23,6 +23,21 @@ const P=require("./dpad-plate").plateOf(t);
   P.push("rest"); now+=10; tick(now);
   a.cur=[3,2]; P.stick(-.9,.9); now+=10; tick(now);
   check("up-left: a diagonal step", at()==="2,1", at());
+  P.push("rest"); now+=10; tick(now);
+  // a thumb's flick up-right, a frame at a time: y ahead of x going out, x let go first coming back
+  a.cur=[3,3]; const path=[];
+  for(const [x,y] of [[0,.3],[.2,.6],[.6,.9],[.7,.9],[.2,.7],[0,.3],[0,0]]){ P.stick(x,y); now+=16; tick(now); path.push(at()); }
+  check("a flick up-right through its one-axis states: one step up-right, never up twice", at()==="4,2" && !path.some(p=>/,1$/.test(p)), path.join(" "));
+  // up-right held and right let go: no step for the letting go, and up repeats on
+  a.cur=[3,3]; P.stick(.9,.9); now+=16; tick(now);
+  check("up-right from rest: a diagonal step at once", at()==="4,2", at());
+  P.stick(0,.9); now+=16; tick(now);
+  check("right let go: no step", at()==="4,2", at());
+  now=P.drive(tick, 250, 10, now);
+  check("up still held repeats up", at()==="4,1", at());
+  // a way added well after the first step is a step of its own, diagonal
+  P.stick(.9,.9); now+=16; tick(now);
+  check("right added later: a diagonal step at once", at()==="5,0", at());
   P.push("rest"); now+=10; tick(now);
   a.cur=[0,0]; P.push("up"); now+=10; tick(now);
   check("at the edge it stays on the field", at()==="0,0");

@@ -38,6 +38,11 @@ const T=require("./harness").load("chord-snake");
   await push(0,.9); await push(0,.9); await push(0,.9);
   const a0=at(); stick(0,-.9); await sleep(1100); stick(0,0); await sleep(5);
   check("held down, it carries on down the list", at()-a0>=3, `${a0} → ${at()}`);
+  // after a moment, then briskly: the first line at once, the next not for a moment, then the rest quickly
+  { const lines=d.querySelectorAll(".cab-optpage button").length;
+    d.querySelector(".cab-optpage button").focus(); stick(0,-.9); await sleep(300);
+    const early=at(); await sleep(480); const late=at(); stick(0,0); await sleep(5);
+    check("held: one line, a moment's wait, then briskly", early===1 && late>=Math.min(lines-1, 5), `${early} at 0.3 s, ${late} at 0.78 s, of ${lines}`); }
   // the harp layout's line, on the plate
   const harp=d.querySelector('.opt[data-opt="harp"]');
   check("the HARP line says JOYSTICK, and nothing else", harp && /JOYSTICK/.test(harp.textContent), harp && harp.textContent);

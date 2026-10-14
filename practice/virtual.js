@@ -177,7 +177,7 @@ function vmPluck(id, i, silent, stamp){
   if(mc.params[343]===1){
     vm.drums.add(id);
     const source=typeof KB_HARP!=="undefined" && KB_HARP.includes(id) ? "keys" : "touch";
-    mc.dispatchEvent(new CustomEvent("drum",{detail:{note:DRUM_GM[i], vel:100, pad:i, t:stamp||performance.now(), source}}));
+    mc.dispatchEvent(new CustomEvent("drum",{detail:{note:DRUM_GM[i], vel:100, pad:i, t:stampOr(stamp), source}}));
     vmTell(); return;
   }
   vm.drums.delete(id);

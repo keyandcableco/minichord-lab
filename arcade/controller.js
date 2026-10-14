@@ -214,7 +214,8 @@ function jsButton(d){
 // skipped, the menus, and in play the games that steer on the harp's d-pad.
 function jsPress(zone){
   if(jsPaused()) return;
-  if(blast.bonus && !bonusInField()) return;                                 // a bonus round has controls of its own
+  // a bonus round has controls of its own; TUNE IT's are the d-pad's (up and right sharpen, A locks it)
+  if(blast.bonus && !bonusInField()){ if(blast.bonus.g.id==="tune") jsAnswer(zone); return; }
   if(blast.hsEntry){ jsAnswer(zone); return; }
   if(cabWaiting()){ cabWake(); return; }
   if(blast.phase==="demo"){ blast.demo?.el?.querySelector(".demoskip")?.click(); return; }
@@ -235,7 +236,7 @@ function jsClick(){
 // option, A presses the line (with none chosen on the options, on to the levels, as Enter does), B goes
 // back from the levels to the options, as Escape does.
 let jsRepT=0;
-function jsMenu(zone){
+function jsMenu(zone, again){
   const ov=blast.overlay; if(!ov || ov.hidden) return;
   const stage=ov.dataset.stage, levels=ov.dataset.optpage==="levels";
   const page= stage==="options" ? ov.querySelector(levels ? ".cab-levelpage" : ".cab-optpage") : stage ? null : ov;
@@ -246,9 +247,9 @@ function jsMenu(zone){
   const firstLevel=()=>page.querySelector(".levels button:not(:disabled)") || items[0];
   if(zone==="up" || zone==="down"){
     focus(at<0 ? (levels ? firstLevel() : items[zone==="up" ? items.length-1 : 0]) : items[Math.max(0, Math.min(items.length-1, at+(zone==="up"?-1:1)))]);
-    jsRepeat(zone);
+    jsRepeat(zone, again);
   } else if(zone==="left" || zone==="right"){
-    if(cur && cur.jsStep){ cur.jsStep(zone==="left" ? -1 : 1); jsRepeat(zone); }
+    if(cur && cur.jsStep){ cur.jsStep(zone==="left" ? -1 : 1); jsRepeat(zone, again); }
   } else if(zone==="A"){
     if(cur) cur.click();
     else if(stage==="options" && !levels){ ov.dataset.optpage="levels"; sfx("press"); focus(ov.querySelector(".cab-levelpage .levels button:not(:disabled)")); }
@@ -257,11 +258,13 @@ function jsMenu(zone){
     if(stage==="options" && levels){ ov.dataset.optpage="options"; sfx("press"); focus(ov.querySelector(".cab-optpage .go")); }
   }
 }
-// held, a way repeats: after a moment, then briskly, for as long as the stick stays that way
-function jsRepeat(zone){
+// held, a way repeats: after a moment, then briskly, for as long as the stick stays that way (an
+// option's value a little less briskly than the lines, so one that goes round can still be stopped on)
+const JS_REPEAT={first:420, lines:110, values:220};
+function jsRepeat(zone, again){
   clearTimeout(jsRepT); const b=blast;
-  const go=ms=>{ jsRepT=gameLater(()=>{ if(blast!==b || jsWay4()!==zone || !["menu","over"].includes(b.phase)) return; jsMenu(zone); }, ms); };
-  go(420);
+  const go=ms=>{ jsRepT=gameLater(()=>{ if(blast!==b || jsWay4()!==zone || !["menu","over"].includes(b.phase)) return; jsMenu(zone, true); }, ms); };
+  go(!again ? JS_REPEAT.first : zone==="up" || zone==="down" ? JS_REPEAT.lines : JS_REPEAT.values);
 }
 
 // ---------- pause ----------
@@ -278,9 +281,10 @@ function jsPause(){
   if(!jsCanPause()) return false;
   blast.pausePhase=blast.phase; blast.phase="pause"; blast.jsPaused=true; blast.pauseStart=performance.now();
   if(typeof rhStop==="function") rhStop();                                   // the drums, if any, stop at once
+  jsHush(true);
   blast.field.querySelectorAll(".jspause").forEach(e=>e.remove());
   const el=document.createElement("div"); el.className="jspause";
-  el.innerHTML=`<div class="jspbox"><b class="blink">PAUSED</b><span>${jsOn() ? "CLICK THE STICK OR P TO GO ON" : playOnScreen() ? "TAP HERE TO GO ON" : "PRESS P, OR CLICK HERE, TO GO ON"}</span></div>`;
+  el.innerHTML=`<div class="jspbox"><b class="blink">PAUSED</b><span>${jsOn() ? "CLICK THE STICK OR P TO GO ON" : jsTouch() ? "TAP HERE TO GO ON" : "PRESS P, OR CLICK HERE, TO GO ON"}</span></div>`;
   el.addEventListener("click", e=>{ e.stopPropagation(); jsResume(); });
   jsCss(); blast.field.appendChild(el); sfx("press");
   return true;
@@ -290,12 +294,24 @@ function jsResume(){
   const d=performance.now()-(blast.pauseStart||performance.now());
   blast.field && blast.field.querySelectorAll(".jspause").forEach(e=>e.remove());
   if(!DRUM_GAMES.has(blast.kind)){ bonusShift(blast, d); bonusShiftOwn(d); }   // the drum games' clock is the audio's: they count back in
+  if(blast.startedAt) blast.startedAt+=d;                                   // the time played, for the scores, leaves the pause out (every game: it's the page's clock)
   blast.phase=blast.pausePhase||"play"; blast.pausePhase=null; blast.jsPaused=false; blast.last=performance.now();
+  jsHush(false);
   const r=jsDrumResume(blast.kind); if(r && DRUM_GAMES.has(blast.kind)) r();
   sfx("press");
   return true;
 }
 const jsPauseToggle=()=> jsPaused() ? jsResume() : jsPause();
+// a phone or a tablet, played on its screen or with a minichord plugged in (the bare cabinet): tapped, not clicked
+const jsTouch=()=> playOnScreen() || !!document.querySelector(".fscab.phone") || (typeof matchMedia==="function" && matchMedia("(pointer:coarse)").matches);
+// What a game holds sounding stops with it, and starts again as it goes on: Chopper Rescue's radio
+// tuning in (the station's tone, the radio's and the static, as the dial has them) and Chord Hunt's drone.
+function jsHush(on){
+  const ch= blast.kind==="chopper" && blast.tune && blast.tune.audio;
+  if(ch){ ch.g.gain.value= on ? 0 : .09; if(on) ch.ng.gain.value=0; else if(typeof chDial==="function") chDial(blast.tune.dial); }
+  const dr= blast.kind==="hunt" && blast.drone;
+  if(dr) try{ const t=piano.ctx.currentTime; dr.g.gain.cancelScheduledValues?.(t); dr.g.gain.setTargetAtTime(on ? 0 : .05, t, .05); }catch(e){}
+}
 // P pauses and goes on (no letter row of keyboard play has it); while paused, the game's keys wait
 document.addEventListener("keydown", e=>{
   if(/INPUT|SELECT|TEXTAREA/.test(document.activeElement?.tagName||"")) return;
@@ -322,7 +338,15 @@ function jsPreset(){
   if(!mc.page1){ if(!blast.jsAsked){ blast.jsAsked=true; if(typeof mc.requestPage1==="function") mc.requestPage1(); else mc.control(7,1); } return; }
   for(const [a,v] of Object.entries(JS_QUIET)) ensure(+a, v);
 }
-mc.addEventListener("page1", ()=>{ if(blast && blast.jsWant && canWrite()) jsPreset(); });
+// Not after "Put my settings back" (until the next game sets it up again). Nor after a preset loaded
+// mid-game, once the stick's settings are among what the game wants: the room's own listener (room.js,
+// which runs after this) sets them again and keeps the new preset's values to give back after, which a
+// borrow here first, with the old preset's values still kept, would stop.
+mc.addEventListener("page1", ()=>{
+  if(!blast || !blast.jsWant || !canWrite() || (typeof userRestored!=="undefined" && userRestored)) return;
+  if(typeof page1Preset!=="undefined" && page1Preset && typeof wanted!=="undefined" && Object.keys(JS_QUIET).every(a=>a in wanted)) return;
+  jsPreset();
+});
 // the plate found (its settings arrive after the page is drawn) or gone: the pictures follow, and the
 // menus' words. Nothing held carries over.
 let jsWas=false;
@@ -402,6 +426,6 @@ function jsCss(){
 .jspause{position:absolute;inset:0;z-index:40;display:flex;align-items:center;justify-content:center;background:rgba(5,4,10,.72);cursor:pointer;text-align:center;padding:0 16px}
 .jspause .jspbox{display:flex;flex-direction:column;align-items:center;gap:16px;background:#0C0B14;border:3px solid #FFD35A;box-shadow:0 0 0 3px #000,0 0 24px rgba(255,211,90,.35);padding:22px 26px;max-width:min(440px,92%)}
 .jspause b{font:400 clamp(1.1rem,4.5vw,2rem) "Press Start 2P",monospace;color:#FFD35A;text-shadow:3px 3px 0 #000}
-.jspause span{font:400 clamp(.42rem,1.6vw,.62rem) "Press Start 2P",monospace;color:#F1E8D2;line-height:1.8;text-shadow:2px 2px 0 #000}`;
+.jspause span{font:400 clamp(.5rem,1.6vw,.62rem) "Press Start 2P",monospace;color:#F1E8D2;line-height:1.8;text-shadow:2px 2px 0 #000}`;
   document.head.appendChild(st);
 }
