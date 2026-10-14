@@ -171,9 +171,10 @@ function beginBlast(level){
   // plain buttons; the player's own key goes back when they leave
   blastSetup(); mxApply();                                   // the minichord to the chosen matrix
   // manual aim: the ship steered by a knob (or the arrow keys), a chord firing straight up from it
-  blast.aimManual=!!saved.invAim; blast.shipWant=.5; blast.powers={}; blast.energy=1; blast.beamOn=false;
+  blast.aimManual=!!saved.invAim; blast.shipWant=.5; blast.stickAt=null; blast.powers={}; blast.energy=1; blast.beamOn=false;
   if(blast.aimManual){ const inert=arcadeKnobsInert();
-    gameLater(()=>banner("MANUAL AIM ×2", inert ? `STEER THE SHIP WITH THE ${KNOB_NAMES[steerKnob()]} KNOB` : "STEER THE SHIP WITH ← →"), 1300); }
+    const plate=typeof jsOn==="function" && jsOn();           // the joystick plate: its stick steers
+    gameLater(()=>banner("MANUAL AIM ×2", plate ? "STEER THE SHIP WITH THE STICK" : inert ? `STEER THE SHIP WITH THE ${KNOB_NAMES[steerKnob()]} KNOB` : "STEER THE SHIP WITH ← →"), 1300); }
   if(canWrite() && hasSetting(35)){ borrow(35, keyIndexOf(0)); blast.dir = Math.random()<.5 ? 1 : -1; ensure(31, blast.dir>0 ? 0 : 1); modPill(); }   // written every time, whatever the page last read
   settings.blastStart=String(level+1); save();
   stats.streak=0; scoreboard(); blastBar();
@@ -317,6 +318,19 @@ document.addEventListener("keydown", e=>{
   const d={ArrowLeft:-1,ArrowRight:1}[e.code]; if(!d) return;
   e.preventDefault(); blast.shipWant=Math.max(.06, Math.min(.94, (blast.shipWant??.5)+d*.06));
 });
+// manual aim on the joystick plate: the stick is the ship's speed, not its place, so a full push
+// crosses the field in under a second and a small one fine-tunes (the square of the push). Called every
+// frame of play and of an in-field bonus round (blastPowerTick, blastBeamDraw) with its own clock, so
+// two calls in a frame move it once, and a gap (a pause, a hidden page) moves it not at all.
+const BLAST_STICK_RATE=1.3;          // of the field's width a second, at a full push
+function blastStick(now){
+  if(!blast || blast.kind!=="blaster" || !blast.aimManual) return;
+  const last=blast.stickAt; blast.stickAt=now;
+  if(typeof jsOn!=="function" || !jsOn() || typeof jsXY!=="function") return;
+  const x=(jsXY()||{}).x||0, dt=last==null || now-last>250 ? 0 : Math.max(0,(now-last)/1000);
+  if(!x || !dt) return;
+  blast.shipWant=Math.max(.06, Math.min(.94, (blast.shipWant??.5)+Math.sign(x)*x*x*BLAST_STICK_RATE*dt));
+}
 
 // ---------- the demo's shown moves: manual aim, the beam, a power-up ----------
 // Chords dropped where the scene wants them, the ship steered under them by the knob (turning on the

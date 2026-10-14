@@ -88,7 +88,7 @@ function fdBar(){
   blast.hud.innerHTML=`<span>SCORE ${blast.score}${multTag()}</span><span class="lvl">LEVEL ${blast.level+1} · ${L.n.toUpperCase()}</span><span class="lives">${livesHtml()}</span>`;
 }
 const FDMENU_G={key:"fifths", title:"FIFTHS DEFENDER",
-  rules:()=>`<p>THE TWELVE KEYS STAND ROUND YOU IN FIFTHS: C AT THE TOP, G ONE STEP ROUND, F ONE STEP BACK.</p><p>${playOnScreen() ? "AIM DOWN A KEY: DRAG THE KNOB UNDER THE GAME, OR SLIDE A FINGER ROUND THE CIRCLE." : knobsReady() ? "TURN A KNOB ON THE MINICHORD TO AIM DOWN A KEY: C IN THE MIDDLE, SHARPS TO THE RIGHT, FLATS TO THE LEFT. HOLD IT AT EITHER END TO KEEP TURNING." : "AIM DOWN A KEY WITH THE MOUSE OR THE ARROW KEYS. WITH FIRMWARE 17, A KNOB DOES IT."}</p><p>PLAY THAT KEY'S CHORD TO FIRE. LATER, ITS RELATIVE MINOR, ITS DOMINANT SEVENTH, OR ITS NOTE ON THE HARP.</p><p>AN ENEMY THAT REACHES THE MIDDLE COSTS A LIFE.</p>`,
+  rules:()=>`<p>THE TWELVE KEYS STAND ROUND YOU IN FIFTHS: C AT THE TOP, G ONE STEP ROUND, F ONE STEP BACK.</p><p>${typeof jsOn==="function" && jsOn() ? "PUSH THE STICK TOWARD A KEY TO AIM DOWN IT. A STEPS ONE KEY BACK, B ONE KEY ON." : playOnScreen() ? "AIM DOWN A KEY: DRAG THE KNOB UNDER THE GAME, OR SLIDE A FINGER ROUND THE CIRCLE." : knobsReady() ? "TURN A KNOB ON THE MINICHORD TO AIM DOWN A KEY: C IN THE MIDDLE, SHARPS TO THE RIGHT, FLATS TO THE LEFT. HOLD IT AT EITHER END TO KEEP TURNING." : "AIM DOWN A KEY WITH THE MOUSE OR THE ARROW KEYS. WITH FIRMWARE 17, A KNOB DOES IT."}</p><p>PLAY THAT KEY'S CHORD TO FIRE. LATER, ITS RELATIVE MINOR, ITS DOMINANT SEVENTH, OR ITS NOTE ON THE HARP.</p><p>AN ENEMY THAT REACHES THE MIDDLE COSTS A LIFE.</p>`,
   levels:FD_LEVELS, ok:fdLevelOk, needs:"NEEDS A MINICHORD", sig:()=>String(knobsReady()),
   begin:i=>beginFifths(i), demo:()=>fdDemo(), modNote:"title"};
 function fdMenu(over){ arcadeMenu(FDMENU_G, over); }
@@ -132,11 +132,33 @@ function fdEdge(now){
   if(now<blast.edgeAt) return;
   blast.edgeAt=now+FD_EDGE_STEP; blast.aimOffset=(blast.aimOffset||0)+dir; fdKnob(v);
 }
+// The joystick plate: Tempest's dial, by angle. Pushed well over (past FD_STICK_ON), the stick aims
+// down the spoke it points at, the same maths as the mouse's: C up, G one step clockwise, the circle
+// of fifths under the thumb with no seam and no end stop. A spoke is let go only once the stick is
+// FD_STICK_HYST past the half-way line to the next, so a thumb resting on a boundary doesn't flicker
+// between two keys; let go, the aim holds where it was. A and B step one spoke back or on.
+const FD_STICK_ON=.6, FD_STICK_HYST=8*Math.PI/180;
+function fdStick(){
+  if(typeof jsOn!=="function" || !jsOn() || typeof jsAngle!=="function") return;
+  const s=jsAngle(); if(!s || !(s.mag>FD_STICK_ON)) return;
+  // the angle from the stick as it is, not past the dead zone axis by axis, which would bend it toward
+  // the nearest of up, down, left and right and make C's, F♯'s, A's and E♭'s spokes the widest
+  const r=mc.stick, a=r && (r.x || r.y) ? mod(Math.atan2(r.x, r.y), 2*Math.PI) : s.a;
+  const step=Math.PI/6, from=mod(a-(blast.aim??0)*step+Math.PI, 2*Math.PI)-Math.PI;   // how far round from the spoke aimed now
+  if(blast.aim!=null && Math.abs(from)<=step/2+FD_STICK_HYST) return;
+  fdAimAt(mod(Math.round(a/step),12));
+}
+mc.addEventListener("button", e=>{
+  const {name, down}=e.detail||{};
+  if(!down || !blast || blast.kind!=="fifths" || blast.phase!=="play" || typeof jsOn!=="function" || !jsOn()) return;
+  if(name==="a") fdAimAt((blast.aim??0)-1); else if(name==="b") fdAimAt((blast.aim??0)+1);
+});
 function fdTick(now){
   if(!blast || blast.kind!=="fifths") return;
   const dt=Math.min(DT_MAX,(now-blast.last)/1000); blast.last=now;
   if(blast.phase==="play" || blast.phase==="demo"){
     fdEdge(now);
+    if(blast.phase==="play") fdStick();
     if(blast.phase==="play" && now>=blast.next && blast.foes.filter(f=>!f.dead).length<4+blast.level){ fdSpawn(); blast.next=now+blast.gap*(.75+Math.random()*.5); }
     for(const f of blast.foes){
       if(f.dead) continue;

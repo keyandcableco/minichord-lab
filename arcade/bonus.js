@@ -20,15 +20,28 @@ const bonusOn=()=> saved.bonus!==false;
 // the games whose harp is chromatic while they play, so any note can be plucked
 const BONUS_HARP_OK=new Set(["snake","stack","sweeper","asteroids","fifths","breakout","fleet","chopper","sight","chomp","burger","kong","bros"]);
 // every timestamp a game keeps, moved on by the bonus's length when the game resumes
-const BONUS_TIME_KEYS=new Set(["t0","born","next","nextMove","nextFall","deadAt","serveAt","jamUntil","frozenUntil","edgeAt","shieldAt","hurtAt","crackedAt","callAt","deadline","fieldAt","fallAt","stepAt","powerUntil","sprayAt","releaseAt","boTouchAt","codaUntil"]);
-function bonusShift(o, d, depth=0){
-  if(!o || typeof o!=="object" || depth>2 || o.nodeType) return;
+const BONUS_TIME_KEYS=new Set(["t0","born","next","nextMove","nextFall","deadAt","serveAt","jamUntil","frozenUntil","edgeAt","shieldAt","hurtAt","crackedAt","callAt","deadline","fieldAt","fallAt","stepAt","powerUntil","sprayAt","releaseAt","boTouchAt","codaUntil","beatAt"]);
+// (each thing once: one a game keeps in two places, the lowest note and the list of notes, say, is
+// moved on once, not twice)
+function bonusShift(o, d, depth=0, seen=new Set()){
+  if(!o || typeof o!=="object" || depth>2 || o.nodeType || seen.has(o)) return;
+  seen.add(o);
   for(const [k,v] of Object.entries(o)){
     if(typeof v==="number" && BONUS_TIME_KEYS.has(k) && v>0) o[k]=v+d;
-    else if(Array.isArray(v)) v.forEach(x=>bonusShift(x,d,depth+1));
-    else if(v && typeof v==="object" && !(v instanceof Map) && !(v instanceof Set) && !v.nodeType && k!=="fx" && k!=="bonus" && depth<1) bonusShift(v,d,depth+1);
+    else if(Array.isArray(v)) v.forEach(x=>bonusShift(x,d,depth+1,seen));
+    else if(v && typeof v==="object" && !(v instanceof Map) && !(v instanceof Set) && !v.nodeType && k!=="fx" && k!=="bonus" && depth<1) bonusShift(v,d,depth+1,seen);
   }
   if(depth===0 && o.fx && o.fx.missiles) o.fx.missiles.forEach(m=>{ if(m.t0) m.t0+=d; });
+}
+// The clocks a game keeps under a name the list can't take for all of them ("at" and "until" are game
+// time, in seconds, in the maze and ladder games): Between the Frets' answer clock, Chopper Rescue's
+// radio and its signal, Chord Invaders' timed powers. Moved on too, after a bonus round or a pause.
+function bonusShiftOwn(d){
+  if(!blast || !(d>0)) return;
+  const k=blast.kind, on=(o,key)=>{ if(o && typeof o[key]==="number" && o[key]>0) o[key]+=d; };
+  if(k==="frets") on(blast.q, "at");
+  if(k==="chopper"){ on(blast.tune, "at"); on(blast.tune, "heldAt"); on(blast.signal, "until"); }
+  if(k==="blaster" && blast.powers) for(const p of Object.keys(blast.powers)) on(blast.powers, p);
 }
 // (never in the drum games: a round would stop the band mid-bar, and their pads play no notes)
 const bonusDue=()=> !!(blast && blast.phase==="play" && !DRUM_GAMES.has(blast.kind) && bonusOn() && !blast.bonus && blast.bonusAt!=null && blast.level>=blast.bonusAt);
@@ -96,7 +109,7 @@ function bonusEnd(b){
   setTimeout(()=>{
     b.el.remove();
     if(!blast || blast.bonus!==b) return;
-    bonusShift(blast, performance.now()-blast.bonusStart);
+    bonusShift(blast, performance.now()-blast.bonusStart); bonusShiftOwn(performance.now()-blast.bonusStart);
     blast.bonus=null; blast.phase=blast.bonusPhase||"play"; blast.last=performance.now();
     const bar=window[({blaster:"blastBar", command:"blastBarCommand", snake:"snBar", asteroids:"asBar", stack:"stBar", breakout:"boBar", fifths:"fdBar", chopper:"chBar", fleet:"kfBar", sweeper:"swBar", hunt:"hdBar", racer:"krBar", chomp:"ccBar", burger:"bkBar", kong:"dkBar", bros:"sbBar", pilot:"tpBar", fours:"tfBar"})[blast.kind]];
     if(typeof bar==="function") bar();                        // the score, with the bonus in it

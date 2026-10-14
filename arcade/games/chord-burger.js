@@ -239,7 +239,7 @@ function bkBar(){
 // ---------- the title screen ----------
 const bkAuto=()=> !!saved.bkAuto;
 const BKMENU_G={key:"burger", title:"CHORD BURGER",
-  rules:()=>`<p>WALK ACROSS AN INGREDIENT TO DROP IT A FLOOR. WALK THEM ALL DOWN ONTO THE PLATES.</p><p>A FULL PLATE IS A CHORD, READ FROM THE PLATE UP: THE BOTTOM BUN IS THE BASS. SERVE IT BY PLAYING IT, ${bkAuto() ? "THE KNOBS TURNED FOR YOU" : "VOICED AS STACKED: ONE KNOB PUTS THE RIGHT NOTE ON THE BOTTOM, THE OTHER OPENS IT OUT"}.</p><p>THE SOUR NOTES WEAR NOTES. PEPPER THEM WITH A CHORD THAT HAS THEIR NOTE IN IT, OR DROP AN INGREDIENT ON THEM. DROP ONE WITH THEM ON IT AND IT KNOCKS ALL UNDER IT DOWN ONTO THE PLATE.</p><p>SERVE THE PLATES LEFT TO RIGHT FOR A COMBO MEAL.</p><p>${playOnScreen() ? "WALK WITH THE ARROWS UNDER THE GAME" : pfKnob("burger") ? pfSteerSay("FLIP") : "WALK ON THE HARP OR THE ARROW KEYS: HOLD THE WAY"}.</p>`,
+  rules:()=>`<p>WALK ACROSS AN INGREDIENT TO DROP IT A FLOOR. WALK THEM ALL DOWN ONTO THE PLATES.</p><p>A FULL PLATE IS A CHORD, READ FROM THE PLATE UP: THE BOTTOM BUN IS THE BASS. SERVE IT BY PLAYING IT, ${bkAuto() ? "THE KNOBS TURNED FOR YOU" : bkJs() ? "VOICED AS STACKED: B (OR ONE KNOB) PUTS THE RIGHT NOTE ON THE BOTTOM, THE OTHER KNOB OPENS IT OUT" : "VOICED AS STACKED: ONE KNOB PUTS THE RIGHT NOTE ON THE BOTTOM, THE OTHER OPENS IT OUT"}.</p><p>THE SOUR NOTES WEAR NOTES. PEPPER THEM WITH A CHORD THAT HAS THEIR NOTE IN IT, OR DROP AN INGREDIENT ON THEM. DROP ONE WITH THEM ON IT AND IT KNOCKS ALL UNDER IT DOWN ONTO THE PLATE.</p><p>SERVE THE PLATES LEFT TO RIGHT FOR A COMBO MEAL.</p><p>${bkJs() && !pfKnob("burger") ? "WALK WITH THE STICK: HOLD THE WAY. UP-LEFT WALKS LEFT AND TAKES THE FIRST LADDER UP. A FLIPS" : bkJs() ? "THE KNOB IS WHERE YOU STAND: TURN IT AND YOU WALK THERE. THE STICK UP OR DOWN TAKES A LADDER; A FLIPS" : playOnScreen() ? "WALK WITH THE ARROWS UNDER THE GAME" : pfKnob("burger") ? pfSteerSay("FLIP") : "WALK ON THE HARP OR THE ARROW KEYS: HOLD THE WAY"}.</p>`,
   levels:BK_LEVELS, ok:i=>bkLevelOk(i), needs:"NEEDS A MINICHORD THE GAME CAN VOICE", begin:i=>beginBurger(i), demo:()=>bkDemo(), modNote:"title"};
 function bkMenu(over){ arcadeMenu(BKMENU_G, over); }
 function beginBurger(level){
@@ -712,11 +712,19 @@ function bkPepper(pitches, free){
   if(!free) heard(`${chordName(pitches, devFifths())} · ${hit.map(e=>e.name).join(" ")}`, true);
   bkBar(); return true;
 }
-// the harp: A flips (steered on the knob, any touch but its top and bottom); the rest is read held (bkWays)
+// the harp: A flips (steered on the knob, any touch but its top and bottom); the rest is read held (bkWays).
+// On the joystick plate the stick is the d-pad, read held as the harp's is (kmHeld has its ways, up-left
+// up first, so a walk left takes the first ladder up); A flips and B voices the chord its next
+// inversion, round from root position again after the third (MINE voicing; SET FOR ME turns it itself).
+const bkJs=()=> typeof jsOn==="function" && jsOn();
 function burgerHarp(pc){
   if(!blast || blast.kind!=="burger") return;
   kmFlash(blast.strip, pc);
   if(blast.phase==="demo" && blast.demo){ endBkDemo(blast.demo); return; }
+  if(bkJs()){ const z=kmControl(pc);
+    if(z==="A") bkFlip();
+    else if(z==="B" && blast.phase==="play" && !bkAuto()){ const v=blast.voicing; bkVoice((v.inv+1)%4, v.sp, true); }
+    return; }
   if(pfKnob() ? pfHarpZone(pc)==="jump" : kmControl(pc)==="A") bkFlip();
 }
 // FLIP: the ingredient underfoot swapped with the next one down its column (the Orders kitchens)
@@ -914,7 +922,7 @@ function bkDemo(){
   blast.kitchen=BK_KITCHENS[0]; blast.key=bkKey(0); bkFloorsApart();
   bkDeal(); blast.pepper=5; blast.flips=0; blast.served=[]; blast.caps=[]; blast.fermataUntil=0;
   blast.cook={x:BK_START.x, y:BK_START.f, dir:"left", moving:false}; blast.sour=[]; blast.st="go"; blast.demoWays=[];
-  const zones=(...zs)=>{ if(blast.strip) [...blast.strip.children].forEach(c=>c.classList.toggle("demo-on", zs.includes(c.dataset.zone))); };
+  const zones=(...zs)=>{ if(blast.strip) blast.strip.querySelectorAll("[data-zone]").forEach(c=>c.classList.toggle("demo-on", zs.includes(c.dataset.zone))); };
   const walkTo=async(x, f)=>{
     for(let k=0; k<160; k++){
       const C=blast.cook, onF=bkOnFloor(C);
@@ -937,7 +945,8 @@ function bkDemo(){
     try{
       say("CHORD BURGER","FOUR PLATES, EACH BURGER A CHORD. ITS INGREDIENTS LIE ON THE FLOORS ABOVE IT, EACH SPELLED WITH ITS NOTE."); await step(4200);
       const P1=blast.plates[1], P2=blast.plates[2];
-      say("WALK ON THE HARP", saved.harpLayout==="kmpad" ? "THE KEYMASTER AS A D-PAD: HOLD 5 UP, 4 LEFT, 3 RIGHT, 2 DOWN, AS LONG AS YOU WANT TO GO." : "HOLD THE WAY YOU WANT TO GO: THE TOP THREE UP, TWO LEFT, TWO RIGHT, THE BOTTOM THREE DOWN.");
+      if(bkJs()) say("WALK WITH THE STICK", "HOLD THE WAY YOU WANT TO GO. PUSH UP-LEFT AND YOU WALK LEFT, TAKING THE FIRST LADDER UP.");
+      else say("WALK ON THE HARP", saved.harpLayout==="kmpad" ? "THE KEYMASTER AS A D-PAD: HOLD 5 UP, 4 LEFT, 3 RIGHT, 2 DOWN, AS LONG AS YOU WANT TO GO." : "HOLD THE WAY YOU WANT TO GO: THE TOP THREE UP, TWO LEFT, TWO RIGHT, THE BOTTOM THREE DOWN.");
       await step(2600);
       say("DROP IT","WALK ACROSS AN INGREDIENT AND IT DROPS A FLOOR. FROM THE BOTTOM FLOOR, ONTO ITS PLATE.");
       await walkTo(P1.x0-1, BK_NF-1); await step(1600);
@@ -948,7 +957,7 @@ function bkDemo(){
       serve(P1); await step(2200);
       fill(P2); P2.chord=bkChord(blast.key, P2.chord.num, 1, 0);
       P2.stack.forEach((ing,k)=>Object.assign(ing, {name:P2.chord.names[k], pitch:P2.chord.pitches[k], pc:P2.chord.pcs[k]}));
-      say("AN INVERSION",`${P2.stack.map(i=>i.name).join(" ")}: ${P2.stack[0].name} IN THE BASS, THE CHORD'S 3RD. TURN THE KNOB TO 1ST INV, THEN PLAY ${P2.chord.root}.`);
+      say("AN INVERSION",`${P2.stack.map(i=>i.name).join(" ")}: ${P2.stack[0].name} IN THE BASS, THE CHORD'S 3RD. ${bkJs() ? "PRESS B" : "TURN THE KNOB"} TO 1ST INV, THEN PLAY ${P2.chord.root}.`);
       await step(1800); bkVoice(1, 0); sfx("press"); await step(1600); serve(P2); await step(2200);
       const pc=mod(blast.key.pc+6,12), e={i:0, kind:"pickle", x:blast.cook.x+5, y:blast.cook.y, dir:"left", state:"walk", pc, name:SHARP_NAMES[pc]};
       blast.sour=[e];
@@ -956,7 +965,7 @@ function bkDemo(){
       const d=[62,66,69]; demoPlay(d); bkPepper(d, true); await step(3200);
       say("RIDE THEM DOWN","DROP AN INGREDIENT WITH SOUR NOTES ON IT AND THEY RIDE IT DOWN, A FLOOR FURTHER FOR EACH, FOR A BONUS THAT DOUBLES."); await step(4200);
       say("SERVE THEM IN ORDER","SERVE THE PLATES LEFT TO RIGHT AND THEY'RE A PROGRESSION: A COMBO MEAL."); await step(3800);
-      say("READY?",`CHOOSE A LEVEL. ${playOnScreen() ? "WALK WITH THE ARROWS UNDER THE GAME" : pfKnob("burger") ? "TURN THE KNOB TO WHERE YOU WANT TO STAND" : "WALK ON THE HARP OR THE ARROW KEYS"}.`); sfx("level"); await step(2800);
+      say("READY?",`CHOOSE A LEVEL. ${bkJs() && !pfKnob("burger") ? "WALK WITH THE STICK" : playOnScreen() ? "WALK WITH THE ARROWS UNDER THE GAME" : pfKnob("burger") ? "TURN THE KNOB TO WHERE YOU WANT TO STAND" : "WALK ON THE HARP OR THE ARROW KEYS"}.`); sfx("level"); await step(2800);
       endBkDemo(token);
     }catch(e){ /* skipped */ }
   })();
@@ -966,7 +975,7 @@ function endBkDemo(token){
   stopDemo(); blast.phase="menu"; blast.demoAuto=false; blast.demoWays=null;
   blast.cook=null; blast.sour=[]; blast.ings=[]; blast.plates=[]; blast.caps=[]; blast.key=null; blast.kitchen=null; blast.layoutKey=null; blast.st="idle";
   blast.voicing={inv:0, sp:0}; if(canWrite()){ if(hasSetting(37)) borrow(37,0); if(hasSetting(38)) borrow(38,0); }
-  if(blast.strip) [...blast.strip.children].forEach(c=>c.classList.remove("demo-on"));
+  if(blast.strip) blast.strip.querySelectorAll("[data-zone]").forEach(c=>c.classList.remove("demo-on"));
   helpChord(null); bkBar();
   if(blast.overlay) blast.overlay.hidden=false;
   clearTimeout(blast.attract);

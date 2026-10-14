@@ -306,8 +306,8 @@ function kfSide(){
   if(crippled && blast.phase==="play") h+=`<p class="kfcall blink">${crippled>1?crippled+" SHIPS":"A SHIP"} CRIPPLED: CALL ${crippled>1?"THEM":"IT"}!</p>`;
   if(blast.islands && blast.islands.size) h+=`<p class="kfhow">ROCKS: NO SHIP THERE.</p>`;
   if(L.counts) h+=`<p class="kfhow">THE NUMBERS: HOW MANY SHIP CHORDS IN EACH COLUMN AND ROW.</p>`;
-  if(kfWide()) h+=`<p class="kfmod">MODIFIER: <b>${kfSharp()?"♯ SHARPENS":"♭ FLATTENS"}</b><br><span>${kfHarpFlips()?"PLUCK THE HARP":"DOUBLE-TAP IT"} TO FLIP IT</span></p>`;
-  h+=`<p class="kfhow">SINK A SHIP BY CALLING IT: ${kfHarpFlips() && kfWide() ? "CALL IT (OR SPACE)" : "PLUCK THE HARP (OR CALL IT, OR SPACE)"}, THEN NAME ITS KEY: PLAY ITS HOME CHORD, ITS I (C FOR F C G, GM FOR CM GM DM). ${L.fleet.includes("prog") ? "A PROGRESSION: PLAY IT, IN ITS ORDER." : ""}<br>${L.blind ? "CALL A SHIP BEFORE A HIT IF THE CHART PROVES IT, FOR A BIG BONUS. A GUESS SINKS FOR LESS; A WRONG CALL COSTS TWO TORPEDOES." : "ONLY A SHIP YOU'VE HIT CAN BE CALLED; A WRONG OR BLIND CALL COSTS A TORPEDO."}</p>`;
+  if(kfWide()) h+=`<p class="kfmod">MODIFIER: <b>${kfSharp()?"♯ SHARPENS":"♭ FLATTENS"}</b><br><span>${kfJs() ? "PRESS B" : kfHarpFlips()?"PLUCK THE HARP":"DOUBLE-TAP IT"} TO FLIP IT</span></p>`;
+  h+=`<p class="kfhow">SINK A SHIP BY CALLING IT: ${kfJs() ? "PRESS A (OR TOUCH THE STRIP, OR CALL IT)" : kfHarpFlips() && kfWide() ? "CALL IT (OR SPACE)" : "PLUCK THE HARP (OR CALL IT, OR SPACE)"}, THEN NAME ITS KEY: PLAY ITS HOME CHORD, ITS I (C FOR F C G, GM FOR CM GM DM). ${L.fleet.includes("prog") ? "A PROGRESSION: PLAY IT, IN ITS ORDER." : ""}<br>${L.blind ? "CALL A SHIP BEFORE A HIT IF THE CHART PROVES IT, FOR A BIG BONUS. A GUESS SINKS FOR LESS; A WRONG CALL COSTS TWO TORPEDOES." : "ONLY A SHIP YOU'VE HIT CAN BE CALLED; A WRONG OR BLIND CALL COSTS A TORPEDO."}</p>`;
   blast.sideEl.innerHTML=h;
 }
 const kfWide=()=> !!KF_LEVELS[blast.level||0].span;
@@ -320,7 +320,7 @@ function kfBar(){
   blast.hud.innerHTML=`<span>SCORE ${blast.score}${multTag()}</span><span class="lvl">LEVEL ${blast.level+1} · ${KF_LEVELS[blast.level].n.toUpperCase()}</span><span class="lives">${livesHtml()}</span>`;
 }
 const KFMENU_G={key:"fleet", title:"KEY FLEET",
-  rules:()=>`<p>THE ENEMY'S SHIPS ARE KEYS, HIDDEN ON THE CHORD CHART. THREE CHORDS SIDE BY SIDE IN A ROW ARE A KEY'S IV, I AND V: F C G IS C MAJOR.</p><p>FIRE BY PLAYING CHORDS. HITS CRIPPLE A SHIP; TO SINK IT, CALL IT: PLUCK THE HARP (OR CALL IT, OR SPACE), THEN NAME ITS KEY: PLAY ITS HOME CHORD. C CALLS F C G, C MAJOR; AM CALLS DM AM EM, A MINOR.</p><p>ONCE YOU'VE HIT ONE OF A SHIP'S CHORDS, CALL IT EARLY: A BONUS IF THE CHART PROVES IT. A WRONG OR BLIND CALL COSTS A TORPEDO.</p><p>FROM LEVEL 7, CALL SHIPS SIGHT UNSEEN; THE LAST FLEETS SAIL AS PROGRESSIONS, CALLED BY PLAYING THEM IN THEIR ORDER.</p>`,
+  rules:()=>`<p>THE ENEMY'S SHIPS ARE KEYS, HIDDEN ON THE CHORD CHART. THREE CHORDS SIDE BY SIDE IN A ROW ARE A KEY'S IV, I AND V: F C G IS C MAJOR.</p><p>FIRE BY PLAYING CHORDS. HITS CRIPPLE A SHIP; TO SINK IT, CALL IT: ${kfJs() ? "PRESS A (OR TOUCH THE STRIP, OR CALL IT)" : "PLUCK THE HARP (OR CALL IT, OR SPACE)"}, THEN NAME ITS KEY: PLAY ITS HOME CHORD. C CALLS F C G, C MAJOR; AM CALLS DM AM EM, A MINOR.</p><p>ONCE YOU'VE HIT ONE OF A SHIP'S CHORDS, CALL IT EARLY: A BONUS IF THE CHART PROVES IT. A WRONG OR BLIND CALL COSTS A TORPEDO.</p><p>FROM LEVEL 7, CALL SHIPS SIGHT UNSEEN; THE LAST FLEETS SAIL AS PROGRESSIONS, CALLED BY PLAYING THEM IN THEIR ORDER.</p>`,
   stat:()=>`FLEETS SUNK ${blast.waves}`,
   levels:KF_LEVELS,
   begin:i=>beginFleet(i), demo:()=>kfDemo(), modNote:"title"};
@@ -356,9 +356,17 @@ function fleetNote(pc){
   if(!blast || blast.kind!=="fleet") return;
   if(blast.phase==="demo" && blast.demo){ endKfDemo(blast.demo); return; }
   if(blast.phase!=="play") return;
-  if(kfWide() && kfHarpFlips()){ if(canWrite()){ borrow(31, kfSharp()?1:0); } sfx("press"); kfSide(); return; }   // the modifier, flipped
+  if(kfWide() && kfHarpFlips() && !kfJs()){ kfFlip(); return; }   // the modifier, flipped (on the joystick plate, B does that)
   kfCallKey();
 }
+function kfFlip(){ if(canWrite()){ borrow(31, kfSharp()?1:0); } sfx("press"); kfSide(); }
+// The joystick plate: A is CALL IT; B flips the modifier's way on the wide levels, on any firmware, so
+// the strip only ever calls.
+const kfJs=()=> typeof jsOn==="function" && jsOn();
+mc.addEventListener("button", e=>{
+  if(!blast || blast.kind!=="fleet" || blast.phase!=="play" || !e.detail || !e.detail.down || !kfJs()) return;
+  if(e.detail.name==="a") kfCallKey(); else if(e.detail.name==="b" && kfWide()) kfFlip();
+});
 // A chord's root, spelled as the modifier made it: a plain button's letter, or, off the plain buttons,
 // sharpened or flattened as the modifier is set (address 31: 0 sharpens, 1 flattens)
 const kfSharp=()=> (mc.params[31]??0)!==1;
@@ -528,7 +536,7 @@ function kfDemo(){
       blast.phase="play"; blast.lastHit=[2,0]; kfSide(); blast.phase="demo"; kfSideDemo();
       say("A HIT","G IS IN C MAJOR (F C G), G MAJOR (C G D) OR D MAJOR (G D A)."); await step(4200);
       say("","TRY D. A MISS, SO IT'S NOT G OR D MAJOR: IT'S C MAJOR."); await fire("D"); await step(2400);
-      say("CALL IT","ONCE A SHIP'S BEEN HIT, CALL ITS KEY: NO NEED TO HIT F AND C. PLUCK THE HARP, THEN PLAY ITS HOME CHORD: C."); await step(2600);
+      say("CALL IT",`ONCE A SHIP'S BEEN HIT, CALL ITS KEY: NO NEED TO HIT F AND C. ${kfJs() ? "PRESS A" : "PLUCK THE HARP"}, THEN PLAY ITS HOME CHORD: C.`); await step(2600);
       play([60]); await step(600); play(CH.C); kfCall(s=>s.tonic==="C",null,true); await step(2800);
       say("THE OTHER","A E B: HOME IS ALWAYS THE MIDDLE ONE. PLUCK, THEN E CALLS E MAJOR."); await step(2600);
       play([64]); await step(600); play(CH.E); kfCall(s=>s.tonic==="E",null,true); await step(2800);

@@ -120,7 +120,7 @@ function frDrawStaff(notes=[]){
   el.innerHTML=h+"</svg>";
 }
 const FRMENU_G={key:"frets", title:"BETWEEN THE FRETS",
-  rules:()=>`<p>A NOTE PLAYS, THEN ANOTHER: THE SAME, A QUARTER-TONE SHARP, OR A QUARTER-TONE FLAT?</p><p>ANSWER ON ANY COLUMN: MAJOR ROW SHARP, MINOR ROW IN TUNE, 7 ROW FLAT. PLUCK THE HARP TO HEAR IT AGAIN.</p><p>THEN FIND THE NOTE IN BETWEEN: HERE THE MODIFIER MEANS A QUARTER-TONE.</p><p>${frInstrument() ? "YOUR MINICHORD PLAYS THE QUARTER-TONES ITSELF, IN 24-EDO." : "THE PAGE PLAYS THEM; FIRMWARE 18 LETS THE MINICHORD PLAY THEM ITSELF."}</p>`,
+  rules:()=>`<p>A NOTE PLAYS, THEN ANOTHER: THE SAME, A QUARTER-TONE SHARP, OR A QUARTER-TONE FLAT?</p><p>ANSWER ON ANY COLUMN: MAJOR ROW SHARP, MINOR ROW IN TUNE, 7 ROW FLAT.${frJs() ? " OR THE STICK UP FOR SHARP, A FOR IN TUNE, THE STICK DOWN FOR FLAT; B HEARS IT AGAIN." : ""} PLUCK THE HARP TO HEAR IT AGAIN.</p><p>THEN FIND THE NOTE IN BETWEEN: HERE THE MODIFIER MEANS A QUARTER-TONE.</p><p>${frInstrument() ? "YOUR MINICHORD PLAYS THE QUARTER-TONES ITSELF, IN 24-EDO." : "THE PAGE PLAYS THEM; FIRMWARE 18 LETS THE MINICHORD PLAY THEM ITSELF."}</p>`,
   stat:()=>`RIGHT ${blast.right}`,
   levels:FR_LEVELS, begin:i=>beginFrets(i), demo:()=>frDemo(), modNote:false};
 function frMenu(over){ arcadeMenu(FRMENU_G, over); }
@@ -169,12 +169,12 @@ function frAsk(){
   if(!blast || blast.phase!=="play") return;
   const L=FR_LEVELS[blast.level], kind = L.kind==="mix" ? rnd(["note","interval","neutral","riff"]) : L.kind;
   const q=frQuestion(kind); blast.q=q; q.step="answer"; q.replays=0; frAgainButton();
-  const legend = kind==="riff" ? ["NOTE 1: F COLUMN","NOTE 2: C","NOTE 3: G","NOTE 4: D"] : FR_ROWS[kind].map((t,i)=>`${["MAJ","MIN","7"][i]} ROW: ${t}`);
+  const legend = kind==="riff" ? ["NOTE 1: F COLUMN","NOTE 2: C","NOTE 3: G","NOTE 4: D"] : FR_ROWS[kind].map((t,i)=>`${["MAJ","MIN","7"][i]} ROW${frJs() ? [" OR UP"," OR A"," OR DOWN"][i] : ""}: ${t}`);
   blast.stageEl.querySelector(".frrows").innerHTML=legend.map(t=>`<span>${t}</span>`).join("");
   const say = kind==="note" ? "THE SAME, ¼ SHARP OR ¼ FLAT?" : kind==="interval" ? `${q.what} UP: IS ITS TOP NOTE IN TUNE?` : kind==="neutral" ? "MAJOR, MINOR, OR NEUTRAL: THE THIRD HALFWAY?" : "THE RIFF, THEN AGAIN: WHICH NOTE BENT?";
   frSay(say); frDrawBoard(q.show.ref!=null ? [{m:q.show.ref, c:"#F1E8D2", t:"REF"}] : []); frDrawStaff(frStaffNotes(q, false));
   frHarpRank(q);
-  if(frHarpAnswers(q)) blast.stageEl.querySelector(".frrows").insertAdjacentHTML("beforeend", `<span class="harp">OR PLUCK IT ON THE HARP</span>`);
+  if(frHarpAnswers(q)) blast.stageEl.querySelector(".frrows").insertAdjacentHTML("beforeend", `<span class="harp">${frJs() ? "OR TOUCH IT ON THE STRIP" : "OR PLUCK IT ON THE HARP"}</span>`);
   const len=frPlay(q); q.at=performance.now()+len; q.limit=(L.fast?6000:9000)*speedMul()*(frHarpAnswers(q)?1.5:1);   // finding it on the harp takes a little longer
 }
 // On firmware 18 the harp can answer a note, an interval's top note or a riff's bent note: pluck the
@@ -236,6 +236,26 @@ function fretsNote(){
   }
   if(q.step==="answer") frReplay();
 }
+// The joystick plate stands in for the chord rows, laid out as they are: the stick pushed up is the
+// top row's answer (¼ SHARP, or MAJOR), A the middle's (IN TUNE, MINOR), the stick pushed down the
+// bottom's (¼ FLAT, NEUTRAL). A push counts once, as it crosses out (jsWay4's hysteresis); riffs keep
+// the columns. B hears it again; the click is the arcade's pause.
+const frJs=()=> typeof jsOn==="function" && jsOn();
+function frRow(row){
+  const q=blast && blast.kind==="frets" && blast.phase==="play" && blast.q;
+  if(!q || q.step!=="answer" || !FR_ROWS[q.kind] || performance.now()<q.at-400) return;
+  if(row===q.answer) frRight(); else frWrong("NOT QUITE", FR_ROWS[q.kind][row]);
+}
+mc.addEventListener("stick", ()=>{
+  if(!blast || blast.kind!=="frets" || !frJs()) return;
+  const w=typeof jsWay4==="function" ? jsWay4() : null, was=blast.frWay; blast.frWay=w;
+  if(w===was) return;
+  if(w==="up") frRow(0); else if(w==="down") frRow(2);
+});
+mc.addEventListener("button", e=>{
+  if(!blast || blast.kind!=="frets" || blast.phase!=="play" || !e.detail || !e.detail.down || !frJs()) return;
+  if(e.detail.name==="a") frRow(1); else if(e.detail.name==="b") frReplay();
+});
 const frNoteName=m=>{ const s=frSpell(m); return FR_LETTERS[s.li][0]+(s.acc===.5?" +¼":s.acc===-.5?" −¼":s.acc===1?"♯":s.acc===-1?"♭":""); };
 function fretsChord(voices){
   if(!blast || blast.kind!=="frets") return;

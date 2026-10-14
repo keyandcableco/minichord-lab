@@ -129,7 +129,9 @@ const t=require("./harness").load("sight-line");
   r=await setup(90, "brushes");
   check("firmware 90: brushes", wrote(337,5) && wrote(343,1));
   r=await setup(90, "studio", {243:4});
-  check("firmware 90 with the joystick plate: no harp drums, and the player is told", ev("rhNeeds()").includes("JOYSTICK") && drumWrites().length===0);
+  // (the joystick plate: on firmware 90 the page plays the pads, and says firmware 91 would; more in joystick-drums.test.js)
+  check("firmware 90 with the joystick plate: no harp drums asked for, the page's pads instead, and the player is told", ev("rhNeeds()").includes("FIRMWARE 91") && ev("mc.params[343]")!==1 && ev("mc.params[2]")===0 && ev(`rhDevice("studio"), mc.drumFallback`)===true);
+  // (asked for as rhDevice runs, and read then: this page's game is no drum game, so the room takes it back on the next dump)
 
   // the second page lost on the way: asked for again, and set up when it comes
   w.restoreAll(); await sleep(10);

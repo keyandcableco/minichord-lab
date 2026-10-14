@@ -133,7 +133,7 @@ function slBar(){
   blast.hud.innerHTML=`<span>SCORE ${blast.score}${multTag()}</span><span class="lvl">LEVEL ${blast.level+1} · ${SL_LEVELS[blast.level].n.toUpperCase()}${mult>1?` · STREAK ×${mult}`:""}</span><span class="lives">${livesHtml()}</span>`;
 }
 const SLMENU_G={key:"sight", title:"SIGHT LINE",
-  rules:()=>`<p>NOTES SCROLL ALONG THE STAFF TO THE PLAYHEAD. PLUCK EACH ONE ON THE HARP, AND PLAY EACH CHORD ON THE BUTTONS, AS IT REACHES THE LINE: DEAD ON SCORES DOUBLE.</p><p>THE HARP FOLLOWS THE STAFF: A NOTE WRITTEN HIGH OR LOW SOUNDS IN ITS OWN OCTAVE.</p><p>A KEY SIGNATURE'S SHARPS AND FLATS APPLY TO EVERY NOTE ON THEIR LETTER. WHEN THE KEY CHANGES, SET THE MINICHORD TO IT.</p><p>A CHORD WITH ITS 3RD OR 5TH IN THE BASS IS AN INVERSION: SWING THE VOICING WITH A KNOB, OR ↑ ↓.</p>`,
+  rules:()=>`<p>NOTES SCROLL ALONG THE STAFF TO THE PLAYHEAD. PLUCK EACH ONE ON THE HARP, AND PLAY EACH CHORD ON THE BUTTONS, AS IT REACHES THE LINE: DEAD ON SCORES DOUBLE.</p><p>THE HARP FOLLOWS THE STAFF: A NOTE WRITTEN HIGH OR LOW SOUNDS IN ITS OWN OCTAVE.</p><p>A KEY SIGNATURE'S SHARPS AND FLATS APPLY TO EVERY NOTE ON THEIR LETTER. WHEN THE KEY CHANGES, SET THE MINICHORD TO IT.</p><p>A CHORD WITH ITS 3RD OR 5TH IN THE BASS IS AN INVERSION: SWING THE VOICING WITH A KNOB, OR ↑ ↓${slJs() ? ", OR HOLD THE STICK BEFORE YOU PRESS THE CHORD: UP FOR THE 1ST INVERSION, DOWN FOR THE 2ND" : ""}.</p>${slJs() ? "<p>THE STRIP IS AN OCTAVE OF PIANO, C AT THE BOTTOM.</p>" : ""}`,
   stat:()=>`NOTES ${blast.hits}`,
   levels:SL_LEVELS, begin:i=>beginSight(i), demo:()=>slDemo(), modNote:false};
 function slMenu(over){ arcadeMenu(SLMENU_G, over); }
@@ -277,6 +277,20 @@ function slInvert(v){
   blast.inv=inv; borrow(37,inv); if(blast.invEl) blast.invEl.textContent=`VOICING: ${SL_INV[inv]}`; sfx("press");
 }
 function sightKnob(v){ slInvert(Math.min(2,Math.floor(v*3))); }
+// On the joystick plate the stick is a voicing held for the chord about to be pressed: held up, the 1st
+// inversion; down, the 2nd; let go, root position. It's written to the minichord as it moves, so it's
+// held before the chord is pressed. Up or down counts from halfway out, and lasts till the stick is
+// nearly back (SL_STICK), so a stick resting near the line doesn't flicker the voicing; and only a
+// change of the stick's is acted on, so the knob and the arrows still work with it resting.
+const slJs=()=> typeof jsOn==="function" && jsOn();
+const SL_STICK=[.5,.3];                                            // on beyond, off within
+mc.addEventListener("stick", e=>{
+  if(!blast || blast.kind!=="sight" || blast.phase!=="play" || !slJs()) return;
+  const y=typeof jsXY==="function" ? (jsXY()||{}).y||0 : (e.detail && e.detail.y)||0, was=blast.slStick||0;
+  const now = was && Math.sign(y)===(was===1 ? 1 : -1) && Math.abs(y)>=SL_STICK[1] ? was : y>=SL_STICK[0] ? 1 : y<=-SL_STICK[0] ? 2 : 0;
+  if(now===was) return;
+  blast.slStick=now; slInvert(now);
+});
 document.addEventListener("keydown", e=>{
   if(!blast || blast.kind!=="sight" || blast.phase!=="play" || /INPUT|SELECT|TEXTAREA/.test(document.activeElement?.tagName||"")) return;
   const d={ArrowUp:1,ArrowDown:-1}[e.code]; if(!d) return;

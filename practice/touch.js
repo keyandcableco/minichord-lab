@@ -263,6 +263,8 @@ function tdMenu(){
   const onOff=on=> on ? "ON" : `<em>OFF</em>`;
   if(navigator.requestMIDIAccess && !tdReal()) row("MINICHORD", mc.midi ? `<em>NOT FOUND</em>` : "CONNECT ▶", ()=>{ shut(); tdConnect(); });
   if(tdUsbAudio()!=null) row("SOUND OUT", TD_SOUND_OUT.find(o=>o.v===tdUsbAudio()).short, ()=>{ shut(); tdSoundOut(false); });
+  // a game playing can be paused from here (arcade/controller.js), and gone on with
+  if(typeof jsCanPause==="function" && blast && (jsPaused() || jsCanPause())) row(jsPaused() ? "GO ON" : "PAUSE", "▶", ()=>{ shut(); jsPauseToggle(); });
   row("SOUND", onOff(settings.sounds), b=>{
     const m=document.getElementById("muteBtn"); if(m) m.click(); else { settings.sounds=!settings.sounds; save(); }
     b.querySelector("b").innerHTML=onOff(settings.sounds);

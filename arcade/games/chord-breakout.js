@@ -206,12 +206,28 @@ function boPaddleTick(now, dt){
     p.target = blast.demoAim!=null ? blast.demoAim-p.w/2 : lead ? lead.x-p.w/2+Math.sin(now/300)*p.w*.2 : p.target; }
   if(blast.phase==="demo" && blast.demo && typeof helpKnobFollow==="function") helpKnobFollow(steerKnob(), Math.max(0,Math.min(1,p.x/Math.max(1,W-p.w))));   // the paddle, on the on-screen knob
   boPaddleGrowTick(dt);                                            // CRESCENDO widening it, centred, or narrowing it back
+  if(blast.phase!=="demo") boStick();                              // the joystick plate's stick pushes it, as the arrow keys do
   if(blast.keyDir) p.target=(p.target??p.x)+blast.keyDir*560*dt;
   if(p.target!=null){ p.target=Math.max(0,Math.min(W-p.w,p.target)); p.x+=(p.target-p.x)*Math.min(1,dt*22); }
   p.x=Math.max(0,Math.min(W-p.w,p.x));
   if(dt>0) p.vx=p.vx*.6+((p.x-x0)/dt)*.4;
   blast.padEl.style.transform=`translateX(${p.x}px)`;
 }
+// The joystick plate: the stick's push is the paddle's speed, as the arrow keys' is but by degrees,
+// the square of the push (Arkanoid's spinner: a nudge fine-tunes, a full push crosses the field). It
+// sets keyDir while it's pushed, and clears only what it set, so the keys still work beside it.
+function boStick(){
+  const on=typeof jsOn==="function" && jsOn() && typeof jsXY==="function", x=on ? (jsXY()||{}).x||0 : 0;
+  if(x){ blast.keyDir=Math.sign(x)*x*x; blast.boStick=true; blast.steer="stick"; }
+  else if(blast.boStick){ blast.keyDir=0; blast.boStick=false; }
+}
+// A or B on the plate: a caught ball let go, and a ball waiting on the paddle served at once
+mc.addEventListener("button", e=>{
+  const {name, down}=e.detail||{};
+  if(!down || (name!=="a" && name!=="b") || !blast || blast.kind!=="breakout" || blast.phase!=="play" || !blast.balls || typeof jsOn!=="function" || !jsOn()) return;
+  if(blast.balls.some(b=>b.caught)){ boRelease(); return; }
+  if(blast.balls.some(b=>b.stuck && !b.caught)) blast.serveAt=Math.min(blast.serveAt||0, performance.now());
+});
 // the ball the paddle should be under: the lowest one coming down, else the lowest
 const boLowestBall=()=> [...blast.balls].sort((a,b)=>(b.vy>0)-(a.vy>0) || b.y-a.y)[0] || null;
 // The ball moves in small steps, never more than two pixels at a time, so it can't pass through a

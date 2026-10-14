@@ -481,6 +481,7 @@ function later(fn){
 function answerChord(voices){
   clearTimeout(pendingWrong); pendingWrong=null; heardAt=performance.now();   // the arcade's background sounds keep clear of it
   if(!q || solved) return;
+  if(jsPaused()) return;                                                         // a paused game hears nothing till it goes on
   if(blast && blast.hsEntry){ blast.hsEntry.set(); return; }                     // initials: a chord sets the letter
   if(blast && blast.bonus && !bonusInField()){ bonusChord(voices); return; }   // a bonus round (an in-field one is played with the game)
   if(blast && blast.bonus && bonusPlaying() && blast.bonus.g.chord){ blast.bonus.g.chord(blast.bonus, voices.map(v=>v.pitch)); return; }   // one that listens to chords itself
@@ -535,6 +536,7 @@ function answerChord(voices){
 }
 function answerNote(pc, pickedName){
   heardAt=performance.now();
+  if(jsPaused()) return;
   if(blast && blast.bonus && !bonusInField()){ bonusNote(pc); return; }        // a bonus round (an in-field one is played with the game)
   if(blast && blast.hsEntry){ const c=kmControl(pc), h=blast.hsEntry;               // initials: the harp as a d-pad
     if(!c) return;                                                               // a dead corner of the keymaster
@@ -643,12 +645,22 @@ mc.addEventListener("harp", e=>{
 // goes, its pad the string (the chromatic harp's pitch class): it wakes a title screen, spells initials
 // and plays a bonus round. Nothing deduped here: two kicks a sixteenth apart are two kicks.
 mc.addEventListener("drum", e=>{
-  if(blast && DRUM_GAMES.has(blast.kind) && (blast.phase==="play" || blast.phase==="demo")) return;
+  if(blast && DRUM_GAMES.has(blast.kind) && (blast.phase==="play" || blast.phase==="demo")) return;   // (the joystick plate's pads, source "plate", too: the game counts and sounds them)
   const pad=e.detail && e.detail.pad;
   if(Number.isInteger(pad) && pad>=0 && pad<=11) answerNote(pad);
 });
 // The minichord's second page of settings (256-511: the drums among them) arrives after the first:
 // a drum game sets up again once it can see them
+// What the game set there is set again if the page shows it isn't: a preset loaded mid-game resets
+// settings 256 and up as well, and they only show here, after the page-0 dump the preset load sent
+// (whose own re-apply, below, still sees the game's values for them). The preset's own values are then
+// what's given back after, as for page 0.
+let page1Preset=false;
+mc.addEventListener("page1", ()=>{
+  const preset=page1Preset; page1Preset=false;
+  if(canWrite()) for(const [a,v] of Object.entries(wanted)) if(+a>=256 && mc.params[a]!==v){
+    if(preset){ borrowed[a]=mc.params[a]; roundBorrows.add(+a); } mc.writeParam(+a, v); }
+});
 mc.addEventListener("page1", ()=>{
   if(blast && blast.kind==="pilot" && typeof tpDevice==="function") tpDevice();
   else if(blast && blast.kind==="fours" && typeof tfDevice==="function") tfDevice();
@@ -934,7 +946,8 @@ function mine(){
 mc.addEventListener("device", ()=>{
   // a preset loaded on the instrument makes the firmware forget what was pushed (it belonged to the
   // last preset), so the next thing borrowed pushes the new one
-  if(mc.presetLoaded) pushHeld=false;
+  if(mc.presetLoaded){ pushHeld=false; page1Preset=true; }
+  if(mc.drumFallback && !(blast && DRUM_GAMES.has(blast.kind))) mc.drumFallback=false;   // the joystick plate's pads, for a drum game only
   if(mc.pushPop===undefined && canWrite() && mc.params[35]!==undefined) mc.probePushPop().then(pushAfterProbe);
   // A preset loaded on the instrument mid-game (its preset buttons) sets everything anew: what the
   // game had set goes back on, and the new preset's own values become what's given back after

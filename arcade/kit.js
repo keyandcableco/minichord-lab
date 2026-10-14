@@ -56,7 +56,7 @@ function levelList(g, over, best){
   head.innerHTML=`<span class="${over?"":"blink"}">${over ? "OR START FROM" : "CHOOSE A LEVEL"}</span>${!over && best ? `<b>BEST ${best}</b>` : ""}`;
   const lv=document.createElement("div"); lv.className="levels";
   const hint=document.createElement("p"); hint.className="opthint";
-  const idle=()=> playOnScreen() ? "TAP A LEVEL, OR PLAY THE CHORD BESIDE IT" : "CLICK A LEVEL, OR PLAY THE CHORD BESIDE IT ON THE MINICHORD";
+  const idle=()=> playOnScreen() ? "TAP A LEVEL, OR PLAY THE CHORD BESIDE IT" : jsOn() ? "THE STICK PICKS, A STARTS, OR PLAY THE CHORD BESIDE IT" : "CLICK A LEVEL, OR PLAY THE CHORD BESIDE IT ON THE MINICHORD";
   hint.textContent=idle();
   const N=g.levels.length, f=devFifths();
   g.levels.forEach((L,i)=>{
@@ -122,9 +122,9 @@ function demoPlay(notes){ demoLight(notes); heardAt=performance.now(); if(settin
 // of its own. A timer set with gameLater belongs to the run that set it, and only fires if that run is
 // still going: a timer from a game that's over can't reach into the next one (Play Again pressed at
 // once, say, while the old game still had a wave or a radio call on its way).
-function newRun(){ if(blast) blast.gen=(blast.gen||0)+1; optApplyNext(); }
+function newRun(){ if(blast){ blast.gen=(blast.gen||0)+1; blast.jsPaused=false; } optApplyNext(); }
 function gameLater(fn, ms){ const b=blast, g=b && b.gen;
-  const run=()=>{ if(!(b && blast===b && b.gen===g)) return; if(b.phase==="bonus"){ setTimeout(run,200); return; } fn(); };   // a bonus playing: wait for it
+  const run=()=>{ if(!(b && blast===b && b.gen===g)) return; if(b.phase==="bonus" || (b.phase==="pause" && b.jsPaused)){ setTimeout(run,200); return; } fn(); };   // a bonus playing, or the game paused: wait for it
   return setTimeout(run, ms||0); }
 // A title screen rebuilt because the minichord's settings changed what it offers (once they first
 // arrive, usually). Only at a quiet moment: not while the title loop is mid-way through its rules,
@@ -153,9 +153,11 @@ const arcadeCleanSound=()=> saved.arcadeSound!=="mine";
 function arcadePreset(){
   for(const [a,v] of Object.entries(ARCADE_PLAY)) if(hasSetting(+a)) ensure(+a, v);
   if(arcadeCleanSound()) for(const [a,v] of Object.entries(ARCADE_SOUND)) if(hasSetting(+a)) ensure(+a, v);
+  jsPreset();                           // the joystick plate: its stick and buttons sent, and silent (controller.js)
 }
 // setting up for the minichord, once per game: its settings read regularly, and whatever it borrows
 function arcadeSetup(fn){ if(blast.setupDone) return; blast.setupDone=true; poll(true); arcadeVolumes();
+  mc.drumFallback=false;                // the joystick plate's strip as pads is a drum game's to ask for (rhDevice)
   if(hasSetting(39)) ensure(39,0);      // the standard chord layout: every game asks for its chords
   if(canWrite()) arcadePreset();        // glide and voice leading off, and a clean sound unless the player keeps their own
   if(fn) fn(); }
@@ -177,15 +179,17 @@ function arcadeKnobsInert(){
 // listens to, if it's down, for as long as it plays, and says so; and if one goes down mid-game, it says that.
 const ARCADE_HARP=new Set(["command","snake","asteroids","stack","fifths","breakout","fleet","sweeper","racer","chomp","burger","kong","bros"]);
 const ARCADE_CHORDS=k=>k!=="command" && k!=="pilot" && k!=="fours";   // the drum games hear neither: a pad's velocity is how hard it's struck
+// (on the joystick plate the d-pad games steer on the stick, whose CCs don't hang on the harp's volume)
+const arcadeHarpHeard=k=> ARCADE_HARP.has(k) && !(typeof jsOn==="function" && jsOn() && KM_GAMES.includes(k));
 function arcadeVolumes(){
   const up=[];
   if(ARCADE_CHORDS(blast.kind) && hasSetting(3) && (mc.params[3]??100)<25){ borrow(3,70); up.push("CHORD"); }
-  if(ARCADE_HARP.has(blast.kind) && hasSetting(2) && (mc.params[2]??100)<25){ borrow(2,70); up.push("HARP"); }
+  if(arcadeHarpHeard(blast.kind) && hasSetting(2) && (mc.params[2]??100)<25){ borrow(2,70); up.push("HARP"); }
   if(up.length) banner(`${up.join(" AND ")} VOLUME UP`, "IT WAS DOWN, SO THE GAME COULDN'T HEAR IT");
 }
 function arcadeVolumeWatch(){
   if(!blast || blast.phase!=="play" || !canWrite()) return;
-  const down=[]; if(ARCADE_CHORDS(blast.kind) && (mc.params[3]??100)<5) down.push("CHORD"); if(ARCADE_HARP.has(blast.kind) && (mc.params[2]??100)<5) down.push("HARP");
+  const down=[]; if(ARCADE_CHORDS(blast.kind) && (mc.params[3]??100)<5) down.push("CHORD"); if(arcadeHarpHeard(blast.kind) && (mc.params[2]??100)<5) down.push("HARP");
   const key=down.join(); if(key===blast.volWarned) return; blast.volWarned=key;
   if(down.length) banner(`TURN THE ${down.join(" AND ")} VOLUME UP`, "AT ZERO THE GAME CAN'T HEAR YOU");
 }
@@ -246,9 +250,10 @@ const ARCADE_OPTS=[
     vals:()=>[["NAMES",1,"THE KEY'S CHORDS BY NAME AND NUMERAL"],["NUMERALS",1.25,"THE KEY'S CHORDS BY NUMERAL ONLY"],["NONE",1.5,"NO GUIDE: KNOW THE KEY'S CHORDS YOURSELF"]]},
   {id:"aim", group:"game", label:"AIM", on:has("blaster","asteroids"), get:k=>(k==="asteroids" ? saved.asAim : saved.invAim)?1:0,
     set:(i,k)=>{ saved[k==="asteroids" ? "asAim" : "invAim"]=i; save(); },
-    vals:k=>[["AUTO",1,"THE SHIP AIMS ITSELF AT THE CHORD YOU PLAY"],["MANUAL",2, k==="asteroids" ? "SPIN THE SHIP YOURSELF: A CHORD OR PLUCK FIRES WHERE IT POINTS" : "STEER UNDER A CHORD YOURSELF, THEN PLAY IT"]]},
-  {id:"steer", group:"game", label:"STEER", on:has("racer"), get:()=>saved.krSteer?1:0, set:i=>{ saved.krSteer=i; save(); },
-    vals:()=>[["HARP",1,"THE HARP'S TWELVE STRINGS ACROSS THE ROAD"],["KNOB",1.25,"A KNOB STEERS, THE HARP LEFT ALONE"]]},
+    vals:k=>[["AUTO",1,"THE SHIP AIMS ITSELF AT THE CHORD YOU PLAY"],["MANUAL",2, k==="asteroids" ? "SPIN THE SHIP YOURSELF: A CHORD OR PLUCK FIRES WHERE IT POINTS" : typeof jsOn==="function" && jsOn() ? "THE STICK STEERS THE SHIP: GET UNDER A CHORD, THEN PLAY IT" : "STEER UNDER A CHORD YOURSELF, THEN PLAY IT"]]},
+  // STICK only on the joystick plate (jsOn, controller.js); chosen there and played without it, the harp
+  {id:"steer", group:"game", label:"STEER", on:has("racer"), get:()=>saved.krSteer===2 ? (typeof jsOn==="function" && jsOn() ? 2 : 0) : saved.krSteer?1:0, set:i=>{ saved.krSteer=i; save(); },
+    vals:()=>[["HARP",1,"THE HARP'S TWELVE STRINGS ACROSS THE ROAD"],["KNOB",1.25,"A KNOB STEERS, THE HARP LEFT ALONE"], ...(typeof jsOn==="function" && jsOn() ? [["STICK",1.25,"THE STICK STEERS; PULL IT DOWN TO BRAKE"]] : [])]},
   {id:"hold", group:"game", label:"CHORDS", on:has("chomp"), ...flag("ccHold"),
     vals:()=>[["LATCH",1,"A CHORD PLAYED ONCE STAYS ON TILL THE NEXT"],["HOLD",1.25,"A CHORD LASTS ONLY AS LONG AS IT'S HELD"]]},
   {id:"voicing", group:"game", label:"VOICING", on:has("burger"), get:()=>saved.bkAuto?0:1, set:i=>{ saved.bkAuto=!i; save(); },
@@ -289,16 +294,18 @@ const ARCADE_OPTS=[
   {id:"beginner", group:"game", label:"BEGINNER", now:true, on:()=>true, get:()=>saved.beginner?1:0, set:i=>{ saved.beginner=!!i; save(); if(i && blast && !blast.over) blast.helped=true; helperSync(true); },
     vals:()=>[["OFF",1,"PLAY IT STRAIGHT"],["ON",1,"THE MINICHORD ON SCREEN, LIT WITH WHAT TO PRESS. NO HIGH SCORES","UNRANKED"]]},
   // ----- the setup: how it looks, sounds and is steered
-  {id:"harp", group:"setup", label:"HARP", on:k=>KM_GAMES.includes(k) || (saved.beginner && helpUsesHarp(k) && k!=="breakout"), get:harpLayoutIndex,
-    set:i=>{ saved.harpLayout=HARP_LAYOUTS[i][1]; save(); if(KM_GAMES.includes(cabKind())) kmRestrip(); else helperSync(true); },
-    vals:()=>[["STRIP",1,"THE STANDARD HARP: TWELVE STRINGS IN A LINE"],["GRID",1,"THE KEYMASTER'S FOUR ROWS OF THREE"],["D-PAD",1,"THE KEYMASTER AS A D-PAD"]]},
+  // (on the joystick plate there's no choosing: the plate's the plate, shown and left alone)
+  {id:"harp", group:"setup", label:"HARP", on:k=>KM_GAMES.includes(k) || (saved.beginner && helpUsesHarp(k) && k!=="breakout"), get:()=>jsOn() ? 0 : harpLayoutIndex(),
+    set:i=>{ if(jsOn()) return; saved.harpLayout=HARP_LAYOUTS[i][1]; save(); if(KM_GAMES.includes(cabKind())) kmRestrip(); else helperSync(true); },
+    vals:()=>jsOn() ? [["JOYSTICK",1,"THE JOYSTICK PLATE: THE STICK IS THE D-PAD, A AND B ARE A AND B, THE CLICK PAUSES"]]
+      : [["STRIP",1,"THE STANDARD HARP: TWELVE STRINGS IN A LINE"],["GRID",1,"THE KEYMASTER'S FOUR ROWS OF THREE"],["D-PAD",1,"THE KEYMASTER AS A D-PAD"]]},
   {id:"harpAs", group:"setup", label:"HARP AS", on:k=>harpOnScreen(k), ...flag("tdPiano"),
     set:i=>{ saved.tdPiano=!!i; save(); if(typeof tdSync==="function") tdSync(); },
     vals:()=>[["STRINGS",1,"THE SCREEN'S HARP AS THE MINICHORD'S TWELVE STRINGS"],["PIANO",1,"THE SCREEN'S HARP AS AN OCTAVE OF PIANO KEYS, C TO B"]]},
-  {id:"harpSound", group:"setup", label:"HARP SOUND", on:has("snake","stack","sweeper","racer","chomp","burger","kong","bros"), get:()=>saved.harpSound??1,
+  {id:"harpSound", group:"setup", label:"HARP SOUND", on:k=>has("snake","stack","sweeper","racer","chomp","burger","kong","bros")(k) && !jsOn(), get:()=>saved.harpSound??1,
     set:i=>{ saved.harpSound=i; save(); if(blast && blast.setupDone) kmHarp(); },
     say:"THE HARP STEERS HERE: HOW MUCH OF IT YOU HEAR", vals:()=>[["NORMAL",1],["QUIET",1],["OFF",1]]},
-  {id:"knob", group:"setup", label:"KNOB", on:k=>knobsReady() && (has("breakout","fifths","stack","asteroids","sight","burger","kong","chomp")(k) || (k==="blaster" && saved.invAim) || (k==="racer" && saved.krSteer) || (k==="bros" && saved.pfKnob)),
+  {id:"knob", group:"setup", label:"KNOB", on:k=>knobsReady() && (has("breakout","fifths","stack","asteroids","sight","burger","kong","chomp")(k) || (k==="blaster" && saved.invAim) || (k==="racer" && saved.krSteer===1) || (k==="bros" && saved.pfKnob)),
     get:()=>steerKnob(), set:i=>{ saved.steerKnob=i; save(); }, say:"WHICH OF THE MINICHORD'S KNOBS STEERS", vals:()=>KNOB_NAMES.map(n=>[n,1])},
   {id:"size", group:"setup", label:k=>k==="command" ? "NOTE SIZE" : "LABEL SIZE", on:has("blaster","asteroids","breakout","command"), get:()=>saved.chordSize??1,
     set:i=>{ saved.chordSize=i; save(); applyChordSize(); }, say:"HOW BIG THE LETTERING IS", vals:()=>SIZES.map(([n])=>[n,1])},
@@ -368,7 +375,7 @@ const POINTS_FOR={
   burger:()=>[["INGREDIENT DROPPED","50"],["SOUR NOTE SQUASHED","500"],["RIDDEN DOWN","1000, 2000, 4000, 8000"],["PLATE SERVED","500, 800 A SEVENTH"],["NOT IN ROOT POSITION","× 1.5"],["AN OPEN VOICING","× 2"],["SERVED HOT","× 1.5"],["TICKET FILLED","1000"],["SOUR NOTES PEPPERED","100, 200, 400"],["COMBO MEAL","1500"],["KEY SET","500, +250 A FIFTH"],["KITCHEN CLEAR","1000, +100 A SHAKE LEFT"],powerRow(BK_POWERS, "BONUS FOOD")],
   bros:[["PEST FLIPPED","10"],["RESOLVED","800"],["SUSPENDED, THEN RESOLVED","1600"],["ICE MELTED","800"],["COIN","800"],["PHASE CLEAR","1000"]],
   pilot:[["PERFECT, WITH THE CLICK","50"],["GOOD","25"],["OK","10"],["THE RIGHT PAD ON A BACKBEAT","+ 50%"],["IN THE CLOUDS","× 2"],["CLOUD BANK HELD","250 A BAR"]],
-  fours:[["AN ANSWER","1000 × HOW ALIKE"],["ECHO!, 85% ALIKE","850"],["ANSWERED, 60%","600"],["CLOSE, 35%","350"],["K.O.","A BONUS"],["THE BOSS: LAST HIT ON SAM","A BONUS"]],
+  fours:[["AN ANSWER","1000 × HOW ALIKE"],["ECHO!, 85% ALIKE","850"],["ANSWERED, 60%","600"],["CLOSE, 35%","350"],["K.O.","2000"],["THE BOSS: LAST HIT ON SAM","500"]],
   kong:[["BARREL JUMPED","100"],["BARREL RESOLVED","300, DOUBLING"],["DECEPTIVE RESOLUTION","500"],["FIREBALL PUT OUT","500"],["HAMMER","300 A BARREL"],["A LOCK OPENED","200"],["THE WHOLE CHAIN","500 A LINK"],["RIVET PULLED","200"],["KEY SET","500, +250 A FIFTH"],["BONUS LEFT","PAID AT THE END"]],
 };
 // the POINTS page's line for a game's power-ups (or capsules): their icons, then their names
@@ -433,7 +440,7 @@ function arcadeOpts(groups){
   const box=document.createElement("div"); box.className="opts";
   const list=document.createElement("div"); list.className="optlist";
   const hint=document.createElement("p"); hint.className="opthint";
-  const idle=()=> playOnScreen() ? "TAP AN OPTION TO CHANGE IT" : "CLICK AN OPTION TO CHANGE IT, OR USE THE ARROW KEYS";
+  const idle=()=> playOnScreen() ? "TAP AN OPTION TO CHANGE IT" : jsOn() ? "THE STICK: UP AND DOWN PICK AN OPTION, LEFT AND RIGHT CHANGE IT" : "CLICK AN OPTION TO CHANGE IT, OR USE THE ARROW KEYS";
   hint.textContent=idle();
   box.append(list, hint);
   const k=()=>cabKind() || settings.mode;
@@ -461,6 +468,7 @@ function arcadeOpts(groups){
             const all=[...list.querySelectorAll(".opt")], at=all.indexOf(b), n=all[at+(e.code==="ArrowUp"?-1:1)]; if(n) n.focus(); }
         });
         b.addEventListener("focus", ()=>say(o)); b.addEventListener("mouseenter", ()=>say(o));
+        b.jsStep=step;                                                 // the joystick's left and right (controller.js jsMenu)
         list.appendChild(b);
       });
     });
@@ -625,7 +633,7 @@ function hsEntry(slug, score, next){
   const letters=(saved.hsInitials||"AAA").split("");
   ov.innerHTML=`<h3>NEW HIGH SCORE!</h3><p class="hsscore">${score.toLocaleString("en-US")}</p><p>ENTER YOUR INITIALS</p><div class="hsletters">${letters.map(()=>"<span></span>").join("")}</div>
     <p class="hscount"><i>${HS_SECONDS}</i></p>
-    <p class="padhint">▲▼, A KNOB OR THE HARP PICKS A LETTER · ◀▶ MOVES · A CHORD OR ENTER SETS IT</p>
+    <p class="padhint">${jsOn() ? "THE STICK: ▲▼ PICKS A LETTER · ◀▶ MOVES · A OR A CHORD SETS IT" : "▲▼, A KNOB OR THE HARP PICKS A LETTER · ◀▶ MOVES · A CHORD OR ENTER SETS IT"}</p>
     <button type="button" class="hsno">NO THANKS · DON'T SEND MY SCORE</button>
     <p class="padhint">LEFT ALONE, IT ISN'T SENT</p>`;
   blast.field.appendChild(ov);

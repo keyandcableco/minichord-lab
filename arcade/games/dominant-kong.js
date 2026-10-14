@@ -110,7 +110,7 @@ function dkLiftStage(base){
   const S={...base, floors:base.floors.map(F=>({...F})), plats:[]};
   const span=base.bottom-base.top;
   for(const lift of base.lifts){
-    const knob=lift.knob && knobsReady() && !pfKnob("kong"), n=knob ? 1 : 3, way=lift.way || (knob ? 0 : 1);
+    const knob=lift.knob && ((knobsReady() && !pfKnob("kong")) || dkJs()), n=knob ? 1 : 3, way=lift.way || (knob ? 0 : 1);
     for(let i=0;i<n;i++){ const y=knob ? base.bottom-4 : base.top+span*(i+.5)/n;
       const F={x0:lift.x-11, x1:lift.x+11, yL:y, yR:y, plat:true, lift, way, knob}; S.plats.push(S.floors.length); S.floors.push(F); }
   }
@@ -136,6 +136,15 @@ function dkLifts(dt){
   }
 }
 const dkKnobLift=()=> !!blast && !!dkStage() && dkStage().plats && dkStage().plats.some(f=>dkStage().floors[f].knob);
+// On the joystick plate the strip is the second lift's shaft, a vertical slider for a vertical lift:
+// its bottom place the bottom of the shaft, its top the top, with or without the knobs, and the stick
+// left free to walk. Read straight from the strip's notes: the arcade's d-pad layer keeps them out of
+// the d-pad (arcade/controller.js), where the middle places would be A and B, and jump.
+const dkJs=()=> typeof jsOn==="function" && jsOn();
+mc.addEventListener("harp", e=>{
+  if(!blast || blast.kind!=="kong" || blast.phase!=="play" || !dkJs() || !dkKnobLift()) return;
+  blast.liftKnob=mod(e.detail.note,12)/11;
+});
 function dkKnob(knob, v){
   if(!blast || blast.kind!=="kong" || knob!==steerKnob()) return;
   blast.liftKnob=v;
@@ -253,7 +262,7 @@ function dkBar(){
 
 // ---------- the title screen ----------
 const DKMENU_G={key:"kong", title:"DOMINANT KONG",
-  rules:()=>`<p>KONG IS THE DOMINANT. EVERY BARREL HE THROWS IS A DOMINANT SEVENTH: JUMP IT, OR PLAY THE CHORD IT RESOLVES TO AND IT BREAKS. G7 RESOLVES TO C; G7 TO Am IS DECEPTIVE, AND SCORES MORE.</p><p>THE WAY UP IS A CHAIN OF FIFTHS HOME: A LOCKED LADDER OPENS WHEN YOU PLAY THE CHORD OF THE FLOOR ABOVE IT. HOME IS THE KEY'S I, AT THE TOP.</p><p>ON THE RIVETS, STAND ON EACH AND PLAY ITS CHORD TO PULL IT. PULL THEM ALL AND KONG COMES DOWN.</p><p>${playOnScreen() ? "WALK WITH THE ARROWS UNDER THE GAME, A TO JUMP" : pfKnob("kong") ? pfSteerSay("JUMP") : "WALK ON THE HARP OR THE ARROW KEYS, HOLDING THE WAY; A OR SPACE TO JUMP"}.</p>`,
+  rules:()=>`<p>KONG IS THE DOMINANT. EVERY BARREL HE THROWS IS A DOMINANT SEVENTH: JUMP IT, OR PLAY THE CHORD IT RESOLVES TO AND IT BREAKS. G7 RESOLVES TO C; G7 TO Am IS DECEPTIVE, AND SCORES MORE.</p><p>THE WAY UP IS A CHAIN OF FIFTHS HOME: A LOCKED LADDER OPENS WHEN YOU PLAY THE CHORD OF THE FLOOR ABOVE IT. HOME IS THE KEY'S I, AT THE TOP.</p><p>ON THE RIVETS, STAND ON EACH AND PLAY ITS CHORD TO PULL IT. PULL THEM ALL AND KONG COMES DOWN.</p><p>${dkJs() && !pfKnob("kong") ? "WALK WITH THE STICK, HOLDING THE WAY; A OR B TO JUMP. ON THE LIFTS, THE STRIP SENDS THE RIGHT LIFT: ITS BOTTOM TO THE BOTTOM, ITS TOP TO THE TOP" : dkJs() ? "THE KNOB IS WHERE YOU STAND: TURN IT AND YOU WALK THERE. THE STICK UP OR DOWN TAKES A LADDER; A OR B JUMPS. ON THE LIFTS, THE STRIP SENDS THE RIGHT LIFT" : playOnScreen() ? "WALK WITH THE ARROWS UNDER THE GAME, A TO JUMP" : pfKnob("kong") ? pfSteerSay("JUMP") : "WALK ON THE HARP OR THE ARROW KEYS, HOLDING THE WAY; A OR SPACE TO JUMP"}.</p>`,
   levels:DK_LEVELS, begin:i=>beginKong(i), demo:()=>dkDemo(), modNote:"title"};
 function dkMenu(over){ arcadeMenu(DKMENU_G, over); }
 function beginKong(level){
@@ -271,7 +280,7 @@ function beginKong(level){
 }
 // on the screen's minichord, how to set the key while it's still the player's to set
 const dkKeyHint=()=> keyOnScreen() && dkComboOk() && !blast.keySet ? ` · SET IT: ${keyHoldHow(blast.key.f)}` : "";
-function dkLevelBanner(){ banner(`LEVEL ${blast.level+1}`, `${dkLevel().n.toUpperCase()} · ${blast.key.label}${dkKeyHint()}${dkKnobLift() ? " · THE RIGHT LIFT IS YOUR KNOB" : ""}`); }
+function dkLevelBanner(){ banner(`LEVEL ${blast.level+1}`, `${dkLevel().n.toUpperCase()} · ${blast.key.label}${dkKeyHint()}${dkKnobLift() ? (dkJs() ? " · THE RIGHT LIFT IS THE STRIP" : " · THE RIGHT LIFT IS YOUR KNOB") : ""}`); }
 
 // A fresh stage: its girders (as tall as the room has), its key, the locks on the chain home or the
 // rivets dealt, the bonus (more for a taller stage).
@@ -715,7 +724,7 @@ function kongHarp(pc){
   if(!blast || blast.kind!=="kong") return;
   kmFlash(blast.strip, pc);
   if(blast.phase==="demo" && blast.demo){ endDkDemo(blast.demo); return; }
-  const z=kmControl(pc); if(pfKnob() ? pfHarpZone(pc)==="jump" : z==="A" || z==="B") dkJump();
+  const z=kmControl(pc); if(dkJs() ? z==="A" || z==="B" : pfKnob() ? pfHarpZone(pc)==="jump" : z==="A" || z==="B") dkJump();   // on the plate only A and B jump: the stick's ways are walking
 }
 
 // ---------- drawing ----------
@@ -854,7 +863,7 @@ function kongDraw(_, now){
   if(S.plats){
     for(const lift of S.lifts){ g.fillStyle="#9A93B5"; g.fillRect(ox+lift.x-10, oy+S.top-8, 1, S.bottom-S.top+8); g.fillRect(ox+lift.x+10, oy+S.top-8, 1, S.bottom-S.top+8);
       g.fillStyle="#E8323C"; g.fillRect(ox+lift.x-12, oy+S.top-10, 25, 3); g.fillRect(ox+lift.x-12, oy+S.bottom, 25, 3);
-      if(lift.knob && dkKnobLift()) pxText(g, "KNOB", ox+lift.x, oy+S.top-22, "#7FE9FF"); }
+      if(lift.knob && dkKnobLift()) pxText(g, dkJs() ? "STRIP" : "KNOB", ox+lift.x, oy+S.top-22, "#7FE9FF"); }
     for(const f of S.plats){ const F=S.floors[f], y=Math.round(F.yL); g.fillStyle=F.knob ? "#7FE9FF" : "#E8323C"; g.fillRect(ox+F.x0, oy+y, F.x1-F.x0, 3); g.fillStyle="#16132A"; g.fillRect(ox+F.x0+2, oy+y+1, F.x1-F.x0-4, 1); }
     const hm=S.floors[dkHomeF(S)]; spr(pxSprite("dkhome", DK_HOME, {R:"#FF5AA0", W:"#F1E8D2", Y:"#FFD35A", D:"#7A4A2A"}), hm.x0+10, hm.yL);
     pxText(g, "HOME", ox+hm.x0-6, oy+hm.yL-20, "#FF5AA0");
@@ -920,7 +929,7 @@ function dkDemo(){
   const {token, say, step}=demoShell(endDkDemo);
   blast.phase="demo"; blast.level=0; blast.stageN=0; blast.clock=0; blast.layoutKey=null;
   dkNewStage(); dkPlace(); blast.st="go"; blast.throwAt=1e9; blast.demoWays=[];
-  const zones=(...zs)=>{ if(blast.strip) [...blast.strip.children].forEach(c=>c.classList.toggle("demo-on", zs.includes(c.dataset.zone))); };
+  const zones=(...zs)=>{ if(blast.strip) blast.strip.querySelectorAll("[data-zone]").forEach(c=>c.classList.toggle("demo-on", zs.includes(c.dataset.zone))); };
   const H=blast.hero, S=dkStage(), K=S.kong;
   const barrel=(id, x, f)=>{ const chord=dkBarrel(blast.key, id); const b={x, y:dkSurf(f,x), f, dir:dkDownhill(f), state:"roll", chord, spin:0, tried:new Set(S.ladders)}; blast.barrels.push(b); return b; };
   const chordOf=(pc, q)=>FORM[q].map(f=>48+pc+f[1]);
@@ -928,7 +937,8 @@ function dkDemo(){
   (async()=>{
     try{
       say("DOMINANT KONG","KONG IS THE DOMINANT. EVERYTHING HE THROWS IS TENSION: A DOMINANT SEVENTH. HOME, THE TONIC, IS AT THE TOP."); blast.kongPose=2; await step(4200); blast.kongPose=0;
-      say("WALK ON THE HARP","HOLD THE WAY: THE TOP THREE UP A LADDER, TWO LEFT, TWO RIGHT, THE BOTTOM THREE DOWN. A JUMPS.");
+      if(dkJs()) say("WALK WITH THE STICK","HOLD THE WAY: UP A LADDER, LEFT, RIGHT, DOWN. A OR B JUMPS, THE WAY YOU'RE PUSHING.");
+      else say("WALK ON THE HARP","HOLD THE WAY: THE TOP THREE UP A LADDER, TWO LEFT, TWO RIGHT, THE BOTTOM THREE DOWN. A JUMPS.");
       blast.demoWays=["right"]; zones("right"); await step(1600); blast.demoWays=[]; zones(); await step(400);
       say("JUMP IT","A BARREL ROLLING AT YOU: JUMP IT FOR POINTS.");
       const b1=barrel("V7", H.x+70, 0); b1.dir=-1;
@@ -943,7 +953,7 @@ function dkDemo(){
       say("THE CHAIN HOME","A LOCKED LADDER OPENS WHEN YOU PLAY THE CHORD OF THE FLOOR ABOVE. UNDER HOME, G7; UNDER THAT, D7: A CHAIN OF FIFTHS.");
       blast.locks=new Set([K.f-1, K.f]); blast.girderCv=null; await step(4600);
       say("RIVETS","EVERY OTHER STAGE, THE RIVETS: EACH IS A CHORD OF THE KEY. STAND ON ONE AND PLAY IT TO PULL IT. PULL THEM ALL, AND KONG COMES DOWN."); await step(4600);
-      say("READY?",`CHOOSE A LEVEL. ${playOnScreen() ? "WALK WITH THE ARROWS UNDER THE GAME, A TO JUMP" : pfKnob("kong") ? "TURN THE KNOB TO WHERE YOU WANT TO STAND; TOUCH THE HARP TO JUMP" : "WALK ON THE HARP OR THE ARROW KEYS, A TO JUMP"}.`); sfx("level"); await step(2800);
+      say("READY?",`CHOOSE A LEVEL. ${dkJs() ? "WALK WITH THE STICK, A OR B TO JUMP" : playOnScreen() ? "WALK WITH THE ARROWS UNDER THE GAME, A TO JUMP" : pfKnob("kong") ? "TURN THE KNOB TO WHERE YOU WANT TO STAND; TOUCH THE HARP TO JUMP" : "WALK ON THE HARP OR THE ARROW KEYS, A TO JUMP"}.`); sfx("level"); await step(2800);
       endDkDemo(token);
     }catch(e){ /* skipped */ }
   })();
@@ -952,7 +962,7 @@ function endDkDemo(token){
   if(!blast || blast.demo!==token) return;
   stopDemo(); blast.phase="menu"; blast.demoWays=null;
   blast.hero=null; blast.barrels=[]; blast.fires=[]; blast.stage=null; blast.key=null; blast.layoutKey=null; blast.st="idle"; blast.rivets=null; blast.hammers=[];
-  if(blast.strip) [...blast.strip.children].forEach(c=>c.classList.remove("demo-on"));
+  if(blast.strip) blast.strip.querySelectorAll("[data-zone]").forEach(c=>c.classList.remove("demo-on"));
   helpChord(null); dkBar();
   if(blast.overlay) blast.overlay.hidden=false;
   clearTimeout(blast.attract);

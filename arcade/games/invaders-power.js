@@ -52,6 +52,7 @@ function blastShieldTakes(it){
 }
 // every frame: time slows, the beam charges, fires and burns what's in it
 function blastPowerTick(now, dt){
+  if(typeof blastStick==="function") blastStick(now);                     // the joystick plate's stick steers, in manual aim
   // slow time: everything falling (and what's to come) takes twice as long
   if(powerOn("slow")){ const ms=dt*1000*.5; blast.items.forEach(i=>{ if(!i.done) i.t0+=ms; }); blast.next+=ms; if(blast.keyBar) blast.keyBar.t0+=ms; }
   if(blast.powers) for(const k of Object.keys(blast.powers)) if(POWERS[k].secs && now>=blast.powers[k]){ delete blast.powers[k]; banner(`${POWERS[k].name} OVER`); blastBar(); }
@@ -82,6 +83,8 @@ function blastPowerTick(now, dt){
 }
 // the beam, drawn on the field's canvas: from the ship to the top, flickering
 function blastBeamDraw(g, sx, sy, now){
+  // an in-field bonus round has no play frames, but is steered as the game is: by the stick too
+  if(typeof bonusPlaying==="function" && bonusPlaying() && typeof blastStick==="function") blastStick(now);
   if(!blast.beamOn) return;
   const omni=powerOn("omni"), w=omni?3:2, flick=Math.floor(now/60)%2;
   g.fillStyle = omni ? (flick ? "#FF5AA0" : "#FFD35A") : (flick ? "#7FE9FF" : "#F1E8D2");

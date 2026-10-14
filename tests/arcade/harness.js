@@ -96,6 +96,12 @@ function load(slug, {storage, every}={}){
   const chord=(root, q="")=>sb.answerChord(IV[q].map((x,i)=>({pitch:48+(typeof root==="number"?root:PC[root])+x, voice:i})));
   const note=pc=>sb.answerNote(pc);
   const knob=(v,cc=22)=>mc.handle([0xBF,cc,v]);
+  // the joystick plate (harp plate 4, firmware 90): the stick as the firmware sends it, CC 112 and 113
+  // (x right, y up, each -1 to 1, 64 at rest), and A, B and the click, CC 114 to 116; stamp is the
+  // message's timeStamp, as a browser gives it
+  const joyCC=v=>Math.max(0, Math.min(127, Math.round(v<0 ? 64+v*64 : 64+v*63)));
+  const stick=(x, y, stamp)=>{ mc.handle([0xB0,112,joyCC(x)], stamp); mc.handle([0xB0,113,joyCC(y)], stamp); };
+  const button=(name, down=true, stamp)=>mc.handle([0xB0,{a:114, b:115, click:116}[name], down?127:0], stamp);
   const key=code=>d.dispatchEvent(new w.KeyboardEvent("keydown",{code, bubbles:true}));
   const overlay=()=>d.querySelector(".field .overlay");
   const heard=()=>{ const h=d.querySelector(".field .heard"); return h ? h.textContent : ""; };
@@ -113,6 +119,6 @@ function load(slug, {storage, every}={}){
   function check(name, ok, detail=""){ results.push({name, ok:!!ok}); console.log(`${ok?"  ✓":"  ✗"} ${name}${detail?`  (${detail})`:""}`); }
   function done(){ const bad=results.filter(r=>!r.ok).length; console.log(bad ? `FAILED ${bad} of ${results.length}` : `ok ${results.length}`); process.exit(bad?1:0); }
   process.on("unhandledRejection", e=>{ console.log("  ✗ error:", e && e.message); process.exit(1); });
-  return {w, d, mc, sb, sleep, connect, writes, chord, note, knob, key, overlay, heard, start, check, done, IV, PC};
+  return {w, d, mc, sb, sleep, connect, writes, chord, note, knob, stick, button, joyCC, key, overlay, heard, start, check, done, IV, PC};
 }
 module.exports={load};

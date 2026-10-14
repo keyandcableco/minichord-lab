@@ -234,7 +234,7 @@ function sbBar(){
 
 // ---------- the title screen ----------
 const SBMENU_G={key:"bros", title:"SUS BROS.",
-  rules:()=>`<p>EVERY PEST IS A SUSPENDED CHORD. JUMP UP UNDER THE FLOOR IT'S WALKING ON TO FLIP IT, THEN ${sbBoth() ? "PLAY ITS SUSPENSION AND THEN ITS RESOLUTION: Dsus4, THEN Dm. THE SUS CHORDS ARE ON TWO BUTTONS: MAJOR AND 7 FOR sus4, MINOR AND 7 FOR sus2, MAJOR AND MINOR FOR 7sus4" : "IT SOUNDS ITS SUSPENSION: PLAY WHERE IT RESOLVES, THE 4TH FALLING TO A 3RD"}.</p><p>A SUS CHORD HAS NO 3RD, SO EITHER ONE RESOLVES IT. THE ONE THE KEY HAS KEEPS THE MUSIC THERE: IN C, Dsus4 TO Dm. THE OTHER TAKES IT TO A NEW KEY: D TAKES IT TO G. AWAY FROM HOME EVERYTHING SCORES MORE, THE FURTHER THE MORE, IN A POT THAT ONLY BANKS WHEN THE MUSIC GETS HOME. LOSE A LIFE AWAY AND IT'S GONE.</p><p>THE CRABS ARE 7sus4: BUMP ONE AND IT'S A DOMINANT SEVENTH, ANGRY; BUMP IT AGAIN, AND RESOLVE IT HOME. THE ICE IS A DIMINISHED SEVENTH: MELT IT WITH A CHORD A SEMITONE ABOVE ANY OF ITS NOTES.</p><p>LEAVE ONE FLIPPED TOO LONG, OR LET IT DOWN THE PIPE, AND IT COMES BACK FASTER. THE POW BLOCK FLIPS EVERYTHING.</p><p>${playOnScreen() ? "WALK WITH THE ARROWS UNDER THE GAME, A TO JUMP" : pfKnob("bros") ? "THE KNOB IS WHERE YOU STAND: TURN IT AND YOU WALK THERE. TOUCH THE HARP ANYWHERE TO JUMP" : "WALK ON THE HARP OR THE ARROW KEYS, HOLDING THE WAY; A OR SPACE TO JUMP"}.</p>`,
+  rules:()=>`<p>EVERY PEST IS A SUSPENDED CHORD. JUMP UP UNDER THE FLOOR IT'S WALKING ON TO FLIP IT, THEN ${sbBoth() ? "PLAY ITS SUSPENSION AND THEN ITS RESOLUTION: Dsus4, THEN Dm. THE SUS CHORDS ARE ON TWO BUTTONS: MAJOR AND 7 FOR sus4, MINOR AND 7 FOR sus2, MAJOR AND MINOR FOR 7sus4" : "IT SOUNDS ITS SUSPENSION: PLAY WHERE IT RESOLVES, THE 4TH FALLING TO A 3RD"}.</p><p>A SUS CHORD HAS NO 3RD, SO EITHER ONE RESOLVES IT. THE ONE THE KEY HAS KEEPS THE MUSIC THERE: IN C, Dsus4 TO Dm. THE OTHER TAKES IT TO A NEW KEY: D TAKES IT TO G. AWAY FROM HOME EVERYTHING SCORES MORE, THE FURTHER THE MORE, IN A POT THAT ONLY BANKS WHEN THE MUSIC GETS HOME. LOSE A LIFE AWAY AND IT'S GONE.</p><p>THE CRABS ARE 7sus4: BUMP ONE AND IT'S A DOMINANT SEVENTH, ANGRY; BUMP IT AGAIN, AND RESOLVE IT HOME. THE ICE IS A DIMINISHED SEVENTH: MELT IT WITH A CHORD A SEMITONE ABOVE ANY OF ITS NOTES.</p><p>LEAVE ONE FLIPPED TOO LONG, OR LET IT DOWN THE PIPE, AND IT COMES BACK FASTER. THE POW BLOCK FLIPS EVERYTHING.</p><p>${sbJs() ? `${pfKnob("bros") ? "THE KNOB IS WHERE YOU STAND: TURN IT AND YOU WALK THERE" : "WALK WITH THE STICK, HOLDING THE WAY"}; PUSH IT UP, OR PRESS A OR B, TO JUMP` : playOnScreen() ? "WALK WITH THE ARROWS UNDER THE GAME, A TO JUMP" : pfKnob("bros") ? "THE KNOB IS WHERE YOU STAND: TURN IT AND YOU WALK THERE. TOUCH THE HARP ANYWHERE TO JUMP" : "WALK ON THE HARP OR THE ARROW KEYS, HOLDING THE WAY; A OR SPACE TO JUMP"}.</p>`,
   levels:SB_LEVELS, begin:i=>beginBros(i), demo:()=>sbDemo(), modNote:"title"};
 function sbMenu(over){ arcadeMenu(SBMENU_G, over); }
 function beginBros(level){
@@ -574,12 +574,15 @@ function sbClearPest(e, pts, ch){
   sfx("resolve", {pc:ch ? ch.pc : e.dim.pc, minor:!!ch && ch.q==="m"});
   sbCoinOut();
 }
-// the harp: A (or B) jumps (steered on the knob, any touch); walking is read held (sbWays)
+// the harp: A (or B) jumps (steered on the knob, any touch); walking is read held (sbWays). On the
+// joystick plate the stick walks (kmHeld holds its left and right), pushing it up is a jump as ↑ is,
+// and A and B jump; only those, so its left and right never jump steering on the knob either.
+const sbJs=()=> typeof jsOn==="function" && jsOn();
 function brosHarp(pc){
   if(!blast || blast.kind!=="bros") return;
   kmFlash(blast.strip, pc);
   if(blast.phase==="demo" && blast.demo){ endSbDemo(blast.demo); return; }
-  const z=kmControl(pc); if(pfKnob() || z==="A" || z==="B" || z==="up") sbJump();
+  const z=kmControl(pc); if((pfKnob() && !sbJs()) || z==="A" || z==="B" || z==="up") sbJump();
 }
 
 // ---------- drawing ----------
@@ -716,7 +719,7 @@ function sbDemo(){
   const {token, say, step}=demoShell(endSbDemo);
   blast.phase="demo"; blast.level=0; blast.phaseN=0; blast.clock=0; blast.layoutKey=null; blast.pow=3;
   sbNewPhase(); blast.queue=[]; sbPlace(); blast.st="go"; blast.demoWays=[];
-  const zones=(...zs)=>{ if(blast.strip) [...blast.strip.children].forEach(c=>c.classList.toggle("demo-on", zs.includes(c.dataset.zone))); };
+  const zones=(...zs)=>{ if(blast.strip) blast.strip.querySelectorAll("[data-zone]").forEach(c=>c.classList.toggle("demo-on", zs.includes(c.dataset.zone))); };
   const H=blast.hero, F1=SB_FLOORS[1];
   const play=c=>{ const v=FORM[c.q].map(f=>48+c.pc+f[1]); demoPlay(v); sbPlay(v); };
   sfx("attract");
@@ -740,7 +743,7 @@ function sbDemo(){
       say("HOME",`THEN THE DOMINANT RESOLVES HOME: G7, THEN C. THE MUSIC'S HOME, AND WHAT IT SCORED AWAY IS BANKED.`); await step(2600);
       if(sbBoth()) play(sbPestChords(k).sus); else k.suspended=true; await step(1200); play(sbPestChords(k).res); await step(2000);
       blast.demoStill=false;
-      say("READY?",`CHOOSE A PHASE. ${playOnScreen() ? "WALK WITH THE ARROWS UNDER THE GAME, A TO JUMP" : pfKnob("bros") ? "TURN THE KNOB TO WHERE YOU WANT TO STAND; TOUCH THE HARP TO JUMP" : "WALK ON THE HARP OR THE ARROW KEYS, A TO JUMP"}.`); sfx("level"); await step(2800);
+      say("READY?",`CHOOSE A PHASE. ${sbJs() ? "WALK WITH THE STICK; UP, A OR B TO JUMP" : playOnScreen() ? "WALK WITH THE ARROWS UNDER THE GAME, A TO JUMP" : pfKnob("bros") ? "TURN THE KNOB TO WHERE YOU WANT TO STAND; TOUCH THE HARP TO JUMP" : "WALK ON THE HARP OR THE ARROW KEYS, A TO JUMP"}.`); sfx("level"); await step(2800);
       endSbDemo(token);
     }catch(e){ /* skipped */ }
   })();
@@ -749,7 +752,7 @@ function endSbDemo(token){
   if(!blast || blast.demo!==token) return;
   stopDemo(); blast.phase="menu"; blast.demoWays=null; blast.demoStill=false;
   blast.hero=null; blast.pests=[]; blast.coins=[]; blast.queue=[]; blast.key=blast.home=null; blast.pot=0; blast.layoutKey=null; blast.st="idle";
-  if(blast.strip) [...blast.strip.children].forEach(c=>c.classList.remove("demo-on"));
+  if(blast.strip) blast.strip.querySelectorAll("[data-zone]").forEach(c=>c.classList.remove("demo-on"));
   helpChord(null); sbBar();
   if(blast.overlay) blast.overlay.hidden=false;
   clearTimeout(blast.attract);

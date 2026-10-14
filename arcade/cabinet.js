@@ -259,7 +259,7 @@ function cabinet(ov){
 // what wakes a title screen, as the player can do it
 // (the drum games: a pad struck, there being no chords to play)
 const cabPress=()=> blast && DRUM_GAMES.has(blast.kind) ? (playOnScreen() ? "STRIKE A PAD · TAP THE SCREEN" : "STRIKE A PAD · PRESS ANY KEY")
-  : playOnScreen() ? "PLAY A CHORD · TAP THE SCREEN" : "PLAY A CHORD · PLUCK THE HARP · PRESS ANY KEY";
+  : playOnScreen() ? "PLAY A CHORD · TAP THE SCREEN" : jsOn() ? "PLAY A CHORD · MOVE THE STICK · PRESS ANY KEY" : "PLAY A CHORD · PLUCK THE HARP · PRESS ANY KEY";
 function cabStage(ov, stage){
   if(!blast) return;
   clearTimeout(blast.cabT); clearTimeout(blast.attract);
@@ -353,7 +353,9 @@ function helpKnobFollow(k, v){ const was=(blast.knobShown||(blast.knobShown=[]))
 // a direction or button on the harp as a d-pad, flashed as a demo presses it
 // the modifier, lit or not, by itself (Between the Frets' quarter-tone: a chord and the modifier)
 function helpMod(on){ const m=blast && blast.helpBoard && blast.helpBoard.mod; if(m) m.classList.toggle("lit", !!on); }
-function helpZone(z){ const i=kmLayout().byString.indexOf(z); if(i>=0) kmFlash(blast.strip, i); }
+function helpZone(z){
+  const s=blast.strip; if(s && s.classList.contains("jspic")){ const c=s.querySelector(`[data-zone="${z}"]`); if(c){ c.classList.remove("hit"); void c.offsetWidth; c.classList.add("hit"); } return; }   // the joystick plate: its stick's way, A or B
+  const i=kmLayout().byString.indexOf(z); if(i>=0) kmFlash(s, i); }
 function helperSync(rebuild){
   if(!blast || !blast.field) return;
   if(typeof tdBandSync==="function") setTimeout(tdBandSync, 0);          // on a phone with a minichord plugged in, a band of its own
@@ -391,7 +393,10 @@ function helperBoard(k){
   let pad=null;
   if(k==="snake" || k==="stack" || k==="sweeper" || k==="chomp" || k==="burger" || k==="kong" || k==="bros"){
     const board=el.querySelector(".board"), L=kmLayout();
-    if(L.cols===3){
+    if(jsOn()){                                                 // the joystick plate, where the keymaster's would mount
+      const cover=document.createElement("div"); cover.className="hbcover"; place(cover, MC_HARP.slot); board.appendChild(cover);
+      pad=document.createElement("div"); place(pad, MC_HARP.plate); board.appendChild(pad); jsPlate(pad); pad.classList.add("onboard");
+    } else if(L.cols===3){
       const cover=document.createElement("div"); cover.className="hbcover"; place(cover, MC_HARP.slot); board.appendChild(cover);
       pad=document.createElement("div"); place(pad, MC_HARP.plate); board.appendChild(pad);
       kmPlate(pad, sI=>kmGlyph(L.byString[sI])+`<i class="kmn">${sI+1}</i>`).forEach((d,sI)=>{ const z=L.byString[sI]; d.classList.add("km",`km-${z}`); d.dataset.zone=z; });
@@ -403,7 +408,11 @@ function helperBoard(k){
   }
   if(helpBoardHarp(k)){
     const board=el.querySelector(".board"), nameOf=i=>SHARP_NAMES[i];
-    if(kmGrid()){
+    if(jsOn()){
+      const cover=document.createElement("div"); cover.className="hbcover"; place(cover, MC_HARP.slot); board.appendChild(cover);
+      const plate=document.createElement("div"); place(plate, MC_HARP.plate); board.appendChild(plate);
+      strings=jsPlate(plate); plate.classList.add("onboard");
+    } else if(kmGrid()){
       const cover=document.createElement("div"); cover.className="hbcover"; place(cover, MC_HARP.slot); board.appendChild(cover);   // no strip under the plate
       const plate=document.createElement("div"); place(plate, MC_HARP.plate); board.appendChild(plate);
       strings=kmPlate(plate, nameOf); plate.classList.add("onboard");
@@ -448,13 +457,15 @@ function demoHarpDone(){
 }
 // the harp, drawn as the player's harp is laid out, its strings named, the one to pluck lit
 function helperHarp(k){
-  const grid=kmGrid();
-  const el=document.createElement("div"); el.className="helper hharp "+(grid?"plate":"line");
+  const grid=kmGrid(), joy=jsOn();
+  const el=document.createElement("div"); el.className="helper hharp "+(joy?"plate":grid?"plate":"line");
   let cells=[];
-  if(grid) cells=kmPlate(el, ()=>"");                                           // the keymaster's own plate
+  if(joy) cells=jsPlate(el);                                                    // the joystick plate: its strip's keys
+  else if(grid) cells=kmPlate(el, ()=>"");                                           // the keymaster's own plate
   else [11,10,9,8,7,6,5,4,3,2,1,0].forEach(sI=>{ const c=document.createElement("span"); c.className="hstring"; cells[sI]=c; el.appendChild(c); });   // the strip, high strings at the top
   const pads=DRUM_GAMES.has(k), padName=i=>((blast && blast.padNames) || (typeof RH_PAD_NAMES_DEFAULT!=="undefined" && RH_PAD_NAMES_DEFAULT) || SHARP_NAMES)[i];   // the drum games' strings are pads, named for the kit's drums
-  const names=()=>{ const st = k==="command" ? hcStrings() : [...Array(12)].map((_,i)=>({name:pads ? padName(i) : SHARP_NAMES[i]})); st.forEach((x,i)=>{ if(cells[i]) cells[i].textContent=x.name; }); };
+  const names=()=>{ if(joy) return;                                             // piano keys: no names on them
+    const st = k==="command" ? hcStrings() : [...Array(12)].map((_,i)=>({name:pads ? padName(i) : SHARP_NAMES[i]})); st.forEach((x,i)=>{ if(cells[i]) cells[i].textContent=x.name; }); };
   names();
   const cap=document.createElement("small"); cap.textContent=pads ? "PADS" : "HARP"; el.appendChild(cap);
   return {el, cells, names};

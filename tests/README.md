@@ -80,11 +80,19 @@ its own before it counts: the checks keep real time, and a busy machine can make
 | `lobby` | the arcade lobby's cabinets, best scores and ticker |
 | `bonus` | every two levels a bonus round starts; each of the five mini-games can be won; the game carries on after |
 | `locks` | the fork's firmware 76 locks: a locked setting borrowed by a game is written down, locked again as it's given back, and put back on the next visit if a page died before giving it back; older firmware notes nothing |
-| `game-clock` | every game's clock keeps true time down to ten frames a second: all fifteen ticks take up to a tenth of a second, and Breakout's ball covers the same ground at ten frames a second as at sixty |
+| `game-clock` | every game's clock keeps true time down to ten frames a second: all seventeen ticks take up to a tenth of a second, and Breakout's ball covers the same ground at ten frames a second as at sixty |
 | `cabinet-plain` | the light mode judged by time, long frames counted, never a fast machine or a tab coming back; slow in full screen on AUTO, the plain cabinet first, remembered for that screen, then the field light; CABINET, PLAIN and AUTO in the settings; the player's CRT choice can't bring scanlines into a plain cabinet |
 | `fullscreen` | full screen builds the cabinet round the game, in CRT, its SOUND, RESET and connection status working; leaving puts it back |
 | `timers` | a game's timers belong to its run, so none from an old game reaches the next |
 | `practice-room` | the Practice Room around the arcade: every one of its games opens and deals a round |
+| `joystick-core` | the joystick plate (firmware 90, harp plate 4): the stick and buttons read from their CCs with their timestamps, put to rest when the plate goes; the four-way and eight-way stick with hysteresis; the angle; the stick and A and B held for the walking games; the strip kept out of the d-pad |
+| `joystick-dpad` | the stick pushed and A and B pressed play the d-pad games as the harp's d-pad does, initials and title screens too; a game that reads the stick itself gets none of it |
+| `joystick-pause` | the click and P pause and go on: the game's clocks and timers wait and are moved on by the pause; the drum games keep the click as their hi-hat and count themselves back in |
+| `joystick-menus` | the stick moves through the options and levels and changes an option, A presses, B goes back; a real move wakes the title, the knobs' first reports don't |
+| `joystick-setup` | on the plate a game turns knobs-send-MIDI on and the stick's own sound off once page 1 is in, and again after a preset load; nothing written without the plate |
+| `joystick-drums` | the drum games on the plate: firmware 91's harp drums as usual; on 90 the strip and buttons heard as pads, sounded by the page |
+| `chord-snake-joystick`, `chord-chomp-joystick`, `chord-stack-joystick`, `chord-sweeper-joystick`, `chord-burger-joystick`, `dominant-kong-joystick`, `sus-bros-joystick`, `harp-command-joystick`, `sight-line-joystick`, `chord-hunt-joystick`, `key-fleet-joystick`, `between-the-frets-joystick` | each d-pad and harp game on the joystick plate: what the stick, A and B do there (BURST, rotate and slam, sweep and flag, flip and invert, jump, the lift on the strip, the inversion held, replays, CALL IT, the frets' rows), and nothing changed without the plate |
+| `invaders-joystick`, `chord-breakout-joystick`, `fifths-defender-joystick`, `chord-asteroids-joystick`, `chopper-rescue-joystick`, `key-racer-joystick` | each analog game on the joystick plate: the ship, the paddle, the dial and the car steered by the stick at a rate, the spokes and the orbit aimed by its angle, A and B; and nothing changed without the plate |
 
 The harness (`arcade/harness.js`) loads `practice/index.html`, where the games play, running its
 scripts one by one in the page's order as a browser does, and uses the page's test hooks (`window.__sb`).

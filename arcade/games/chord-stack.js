@@ -12,7 +12,8 @@
 // that lines up as they fall can be played next. Notes side by side (three for a triad, four for a
 // seventh, nothing else between) light brighter and score double; a whole row of one chord, five times. A full row that spells nothing is just weight, and the
 // stack reaching the top ends the game. The harp is a d-pad (◀ ▶ move, ▼ drops a row, A rotates, B
-// drops it all the way), a knob slides the piece, and the arrow keys work too.
+// drops it all the way), a knob slides the piece, and the arrow keys work too. On the joystick plate the
+// stick is the d-pad with a falling-block game's auto-repeat, A rotates and B drops it (stStick).
 const ST_W=10, ST_ROWS=18;
 const ST_LEVELS=[
   {n:"Triads in C", keys:[0], qs:["","m"], suffix:" in C"},
@@ -87,7 +88,8 @@ function stReadyRows(){
 }
 function startStack(){
   blast={kind:"stack", grid:[], piece:null, next:null, score:0, lives:1, level:0, clears:0, over:true, phase:"menu", raf:0, field:null, hud:null, fx:null,
-    noShip:true, last:performance.now(), nextFall:0, keyF:0};
+    noShip:true, last:performance.now(), nextFall:0, keyF:0,
+    get jsOwn(){ return this.phase==="play"; }};                      // in play the game reads the stick itself (stStick)
   blast.grid=stEmpty();
   stDevice();
   stats.streak=0; scoreboard(); buildSpecial();
@@ -139,7 +141,7 @@ function stBar(){
   blast.hud.innerHTML=`<span>SCORE ${blast.score}${multTag()}</span><span class="lvl">LEVEL ${blast.level+1} · ${stName(stKeyTonic(blast.keyF||0),blast.keyF||0)} MAJOR${stBarry() && mxChoice()==="standard"?" · BARRY HARRIS":""}${mxTag()}</span><span>CHORDS ${blast.clears}</span>`;
 }
 const STMENU_G={key:"stack", title:"CHORD STACK",
-  rules:()=>`<p>TETRIS, WHERE THE BLOCKS ARE NOTES. MOVE AND ROTATE EACH PIECE AS IT FALLS${knobsReady()?": A KNOB SLIDES IT":""}.</p><p>WHEN A ROW HOLDS ALL OF A CHORD'S NOTES, ANYWHERE IN IT, THEY LIGHT UP: PLAY THAT CHORD TO CLEAR THEM. SIDE BY SIDE SCORES DOUBLE; A WHOLE ROW OF ONE CHORD, FIVE TIMES.</p><p>${playOnScreen() ? "UNDER THE GAME: ◀ ▶ MOVE, ▼ DROPS A ROW, A ROTATES, B DROPS IT." : "ON THE HARP: ◀ ▶ MOVE, ▼ DROPS A ROW, A ROTATES, B DROPS IT. OR THE ARROW KEYS, AND SPACE TO DROP."}</p><p>THE CHORDS FOLLOW YOUR MINICHORD: WITH BARRY HARRIS MODE ON, SIXTHS AND DIMINISHED SEVENTHS LIGHT UP INSTEAD OF TRIADS. CHOOSE THE ALTERNATE CHORDS, OR YOUR PRESET'S OWN, UNDER CHORDS.</p>`,
+  rules:()=>`<p>TETRIS, WHERE THE BLOCKS ARE NOTES. MOVE AND ROTATE EACH PIECE AS IT FALLS${knobsReady()?": A KNOB SLIDES IT":""}.</p><p>WHEN A ROW HOLDS ALL OF A CHORD'S NOTES, ANYWHERE IN IT, THEY LIGHT UP: PLAY THAT CHORD TO CLEAR THEM. SIDE BY SIDE SCORES DOUBLE; A WHOLE ROW OF ONE CHORD, FIVE TIMES.</p><p>${stJs() ? "THE STICK: ◀ ▶ MOVE, HELD TO SLIDE; ▼ DROPS, HELD TO KEEP DROPPING; ▲ OR A ROTATES; B DROPS IT ALL THE WAY." : playOnScreen() ? "UNDER THE GAME: ◀ ▶ MOVE, ▼ DROPS A ROW, A ROTATES, B DROPS IT." : "ON THE HARP: ◀ ▶ MOVE, ▼ DROPS A ROW, A ROTATES, B DROPS IT. OR THE ARROW KEYS, AND SPACE TO DROP."}</p><p>THE CHORDS FOLLOW YOUR MINICHORD: WITH BARRY HARRIS MODE ON, SIXTHS AND DIMINISHED SEVENTHS LIGHT UP INSTEAD OF TRIADS. CHOOSE THE ALTERNATE CHORDS, OR YOUR PRESET'S OWN, UNDER CHORDS.</p>`,
   stat:()=>`CHORDS ${blast.clears}`,
   levels:ST_LEVELS, levelName:i=>stLevelName(i),
   begin:i=>beginStack(i), demo:()=>stDemo(), modNote:"always"};
@@ -181,9 +183,26 @@ function stTick(now){
   if(!blast || blast.kind!=="stack") return;
   const dt=Math.min(DT_MAX,(now-blast.last)/1000); blast.last=now;
   if(blast.fx) fxDraw(now, dt);
+  stStick(now);
   if(blast.phase==="play" && blast.piece && now>=blast.nextFall){ stFall(); blast.nextFall=now+blast.fallMs; }
   blast.raf=requestAnimationFrame(stTick);
 }
+// The joystick plate's stick, as a falling-block game's d-pad: left or right steps at once, then after
+// a moment repeats quickly; down drops a row and keeps dropping while held; up rotates once a push,
+// never repeating and never a slam, so a push that strays up as it goes sideways can't throw a piece
+// down the well. A rotates and B slams it (the "button" listener below); the click is the arcade's pause.
+const stJs=()=> typeof jsOn==="function" && jsOn();
+const ST_REPEAT={left:[170,50], right:[170,50], down:[40,40]};    // ms to the first repeat, and between
+function stStick(now){
+  if(blast.phase!=="play" || !stJs()){ blast.stWay=null; return; }
+  const w=typeof jsWay4==="function" ? jsWay4() : null;
+  if(w!==blast.stWay){ blast.stWay=w; if(w) stControl(w); if(ST_REPEAT[w]) blast.stRep=now+ST_REPEAT[w][0]; return; }
+  if(ST_REPEAT[w] && now>=blast.stRep){ stControl(w); blast.stRep=now+ST_REPEAT[w][1]; }
+}
+mc.addEventListener("button", e=>{
+  if(!blast || blast.kind!=="stack" || blast.phase!=="play" || !e.detail || !e.detail.down || !stJs()) return;
+  if(e.detail.name==="a") stControl("A"); else if(e.detail.name==="b") stControl("B");
+});
 function stFall(){ const p=blast.piece; if(!p) return; if(stFits(p.cells,p.x,p.y+1)){ p.y++; stDraw(); } else stLock(); }
 // the piece comes to rest: its blocks become the board's, and the next one comes
 function stLock(){
@@ -219,6 +238,7 @@ function stackHarp(pc){
   if(!blast || blast.kind!=="stack") return;
   kmFlash(blast.strip, pc);
   if(blast.phase==="demo" && blast.demo){ endStDemo(blast.demo); return; }
+  if(blast.phase==="play" && stJs()) return;                             // the plate's stick and buttons are read in stStick
   stControl(kmControl(pc));
 }
 document.addEventListener("keydown", e=>{
@@ -323,7 +343,7 @@ function stDemo(){
       const F=ST_ROWS-1, r=stRowChord(blast.grid[F], 0, "");
       if(r) r.xs.forEach(x=>{ explode(blast.bx+(x+.5)*blast.cell, blast.by+(F+.5)*blast.cell, 8, ["#7FE9FF","#FFD35A","#FFFFFF"]); blast.grid[F][x]=null; });
       stGravity(); sfx("boom"); stDraw(); await step(1800);
-      say("ROTATE","A ON THE HARP (OR UP) TURNS A PIECE; B DROPS IT. A WHOLE ROW OF ONE CHORD SCORES FIVE TIMES.");
+      say("ROTATE",`${stJs() ? "A (OR THE STICK UP)" : "A ON THE HARP (OR UP)"} TURNS A PIECE; B DROPS IT. A WHOLE ROW OF ONE CHORD SCORES FIVE TIMES.`);
       blast.piece={kind:"T", cells:ST_PIECES.T.map(q=>[...q]), notes:[7,11,2,5], x:4, y:0}; stDraw(); await step(900);
       for(let k=0;k<3;k++){ helpZone("A"); stRotate(); await step(600); }
       await step(1200);

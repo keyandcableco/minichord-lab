@@ -214,10 +214,11 @@ function krKeySign(){
 }
 
 // ---------- the title screen ----------
-// steering: the harp (the default), a knob (a quarter more), or the mouse and arrow keys
-const krSteer=()=> saved.krSteer===1 && knobsReady() ? "knob" : saved.krSteer===1 ? "keys" : "harp";
+// steering: the harp (the default), a knob (a quarter more), or the mouse and arrow keys; on the
+// joystick plate the stick (a quarter more), the harp again without it
+const krSteer=()=> saved.krSteer===2 ? (typeof jsOn==="function" && jsOn() ? "stick" : "harp") : saved.krSteer===1 && knobsReady() ? "knob" : saved.krSteer===1 ? "keys" : "harp";
 const KRMENU_G={key:"racer", title:"KEY RACER",
-  rules:()=>`<p>THE KEY'S CHORDS ARE FUEL: DRIVE THROUGH THEM. CHORDS OUT OF THE KEY ARE OIL: STEER ROUND THEM.</p><p>STEER ON THE HARP: ITS LOW STRINGS ARE THE LEFT OF THE ROAD, ITS HIGH ONES THE RIGHT. OR STEER WITH A KNOB, FOR A QUARTER MORE.</p><p>FROM THE FOURTH CIRCUIT A GATE ONLY OPENS IF YOU PLAY ITS CHORD ON THE WAY IN.</p><p>PLAY A CAR'S CHORD AND IT PULLS OVER. A CAR OUT OF THE KEY HAS TO BE STEERED ROUND. V THEN I IS THE TURBO.</p><p>GRAND PRIX: QUALIFY BY PLAYING THE KEY'S SEVEN CHORDS, THEN RACE THE CIRCUIT. ENDURANCE: ROUND THE CIRCLE OF FIFTHS AGAINST THE CLOCK, A KEY CHANGE AT EVERY CHECKPOINT. PLAY THE NEW KEY'S I BEFORE IT FOR EXTRA TIME.</p>`,
+  rules:()=>`<p>THE KEY'S CHORDS ARE FUEL: DRIVE THROUGH THEM. CHORDS OUT OF THE KEY ARE OIL: STEER ROUND THEM.</p><p>${typeof jsOn==="function" && jsOn() ? "STEER ON THE STRIP: ITS BOTTOM IS THE LEFT OF THE ROAD, ITS TOP THE RIGHT. OR STEER WITH THE STICK, FOR A QUARTER MORE: PULL IT DOWN TO BRAKE." : "STEER ON THE HARP: ITS LOW STRINGS ARE THE LEFT OF THE ROAD, ITS HIGH ONES THE RIGHT. OR STEER WITH A KNOB, FOR A QUARTER MORE."}</p><p>FROM THE FOURTH CIRCUIT A GATE ONLY OPENS IF YOU PLAY ITS CHORD ON THE WAY IN.</p><p>PLAY A CAR'S CHORD AND IT PULLS OVER. A CAR OUT OF THE KEY HAS TO BE STEERED ROUND. V THEN I IS THE TURBO.</p><p>GRAND PRIX: QUALIFY BY PLAYING THE KEY'S SEVEN CHORDS, THEN RACE THE CIRCUIT. ENDURANCE: ROUND THE CIRCLE OF FIFTHS AGAINST THE CLOCK, A KEY CHANGE AT EVERY CHECKPOINT. PLAY THE NEW KEY'S I BEFORE IT FOR EXTRA TIME.</p>`,
   stat:()=> blast.mode==="endurance" ? `LAP ${blast.lap||1} · PASSED ${blast.passed||0}` : `CHAMPIONSHIP ${blast.champ||0} PTS`,
   levels:KR_LEVELS, begin:i=>beginRacer(i), demo:()=>krDemo(), modNote:"title"};
 function krMenu(over){ arcadeMenu(KRMENU_G, over); }
@@ -379,6 +380,10 @@ function krTick(now){
     const q=blast.qual; if(q){ const s=(now-q.t0)/1000, t=blast.qualEl && blast.qualEl.querySelector(".krqtime b"); if(t) t.textContent=s.toFixed(1); if(s>30*Math.sqrt(speedMul())) krQualified(null); } }
   blast.raf=requestAnimationFrame(krTick);
 }
+// steering with the joystick plate's stick: a wheel by speed, the square of the push, so a full push
+// crosses the road in under a second, a touch nudges within a lane, and letting go holds the line;
+// pulled down, a brake pedal, to half the top speed at the bottom (to hang behind a car, or time a gate)
+const KR_STICK_RATE=2.4, KR_STICK_BRAKE=.5;
 // the car, the rivals and the clock, moved on by dt seconds
 function krStep(dt){
   const yellow=blast.clock<blast.yellowUntil;
@@ -387,10 +392,12 @@ function krStep(dt){
   const racing = blast.st==="race";
   if(blast.demoAuto) krAutopilot();
   // steering: the car eases toward where the harp (or the knob) says, quicker at speed
+  const stick = blast.phase==="play" && krSteer()==="stick" && typeof jsXY==="function" ? jsXY()||{x:0,y:0} : null;
+  if(stick && stick.x) blast.targetX=Math.max(-1.12, Math.min(1.12, blast.targetX+Math.sign(stick.x)*stick.x*stick.x*KR_STICK_RATE*dt));
   if(blast.clock>=blast.spinUntil){ const ds=(blast.targetX-blast.x); blast.x+=Math.sign(ds)*Math.min(Math.abs(ds), dt*(1.6+2.4*blast.speed/blast.max)); }
   else blast.x+=Math.sin(blast.clock*40)*.01;                       // a spin: the wheel's not yours
   // speed: up to cruising, more on a boost, less off the road; nothing on the grid
-  const top = !racing ? 0 : blast.max*(blast.clock<blast.boostUntil ? (blast.turboOn?1.4:1.18) : 1)*(Math.abs(blast.x)>1.05 ? .45 : 1);
+  const top = !racing ? 0 : blast.max*(blast.clock<blast.boostUntil ? (blast.turboOn?1.4:1.18) : 1)*(Math.abs(blast.x)>1.05 ? .45 : 1)*(stick && stick.y<0 ? 1+stick.y*KR_STICK_BRAKE : 1);   // the stick pulled down brakes
   if(blast.clock<blast.spinUntil) blast.speed=Math.max(blast.max*.15, blast.speed-blast.max*1.4*dt);
   else blast.speed += (top-blast.speed)*Math.min(1, dt*(blast.speed<top ? 1.1 : 2));
   if(blast.speed<0) blast.speed=0;
@@ -514,7 +521,7 @@ function racerNote(pc){
   krAim(mod(pc,12)/11);
 }
 const krAim=f=>{ blast.targetX=-1.12+Math.max(0,Math.min(1,f))*2.24; };
-function krKnob(v){ if(blast && blast.kind==="racer" && blast.phase==="play" && krSteer()!=="harp") krAim(v); }
+function krKnob(v){ if(blast && blast.kind==="racer" && blast.phase==="play" && (krSteer()==="knob" || krSteer()==="keys")) krAim(v); }
 document.addEventListener("keydown", e=>{
   if(!blast || blast.kind!=="racer" || blast.phase!=="play" || /INPUT|SELECT|TEXTAREA/.test(document.activeElement?.tagName||"")) return;
   const d={ArrowLeft:-1,ArrowRight:1}[e.code]; if(!d) return;

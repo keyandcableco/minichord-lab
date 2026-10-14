@@ -131,8 +131,11 @@ function blastBarCommand(){
   const pw = typeof hcPowerHud==="function" ? hcPowerHud() : "";
   blast.hud.innerHTML=`<span>SCORE ${blast.score}${multTag()}</span><span class="lvl">LEVEL ${blast.level+1}${key}${toGo}${pw}</span><span class="lives">${livesHtml()}</span>`;
 }
+// On the joystick plate the strip is the harp, its twelve places the twelve strings, upright: C at the
+// bottom is the leftmost cannon, and up the strip is right across the field.
+const hcJs=()=> typeof jsOn==="function" && jsOn();
 const COMMANDMENU_G={key:"command", title:"HARP COMMAND",
-  rules:()=>`<p>NOTES FALL TOWARD YOUR CANNONS.</p><p>PLUCK THE STRING THAT PLAYS ONE AND ITS CANNON FIRES.</p><p class="starline">${PIXEL_STAR}NOTES SCORE BIG AND NEVER HURT.</p><p>A WRONG STRING FREEZES YOUR CANNONS.</p><p>POWER-UPS FALL NOW AND THEN: PLUCK THEIR STRING TO TAKE THEM.</p><p>EVERY TWO LEVELS, SPELL IT: ALL BUT ONE NOTE SPELL A CHORD. PLUCK THE ODD ONE, OR PLAY THE CHORD FOR THE REST.</p>`,
+  rules:()=>`<p>NOTES FALL TOWARD YOUR CANNONS.</p><p>PLUCK THE STRING THAT PLAYS ONE AND ITS CANNON FIRES.</p>${hcJs() ? "<p>THE STRIP: C AT THE BOTTOM IS THE LEFTMOST CANNON, THE TOP PLACE THE RIGHTMOST.</p>" : ""}<p class="starline">${PIXEL_STAR}NOTES SCORE BIG AND NEVER HURT.</p><p>A WRONG STRING FREEZES YOUR CANNONS.</p><p>POWER-UPS FALL NOW AND THEN: PLUCK THEIR STRING TO TAKE THEM.</p><p>EVERY TWO LEVELS, SPELL IT: ALL BUT ONE NOTE SPELL A CHORD. PLUCK THE ODD ONE, OR PLAY THE CHORD FOR THE REST.</p>`,
   levels:HC_LEVELS, ok:hcLevelOk, needs:"NEEDS THE TEST FIRMWARE",
   begin:i=>beginCommand(i), demo:()=>commandDemo(), modNote:false};
 function commandMenu(over){ arcadeMenu(COMMANDMENU_G, over); }
@@ -281,7 +284,7 @@ function hcShootDown(hit){
 // The strings as cannons: names over them, a note falling, the string lighting and firing; then a key
 // on the strings, a scale degree and a note on the staff. Same cabinet and captions as the chord demo.
 const HC_DEMO=[
-  {title:"THE HARP", text:"YOUR CANNONS ARE THE HARP'S TWELVE STRINGS, THE LOWEST ON THE LEFT.", hold:3600, wave:{kind:"chrom"}, labels:true},
+  {title:"THE HARP", get text(){ return hcJs() ? "YOUR CANNONS ARE THE STRIP'S TWELVE PLACES: C AT THE BOTTOM IS THE LEFTMOST CANNON." : "YOUR CANNONS ARE THE HARP'S TWELVE STRINGS, THE LOWEST ON THE LEFT."; }, hold:3600, wave:{kind:"chrom"}, labels:true},
   {note:4, text:"A NOTE FALLS. PLUCK THE STRING THAT PLAYS IT.", wave:{kind:"chrom"}, labels:true},
   {note:10, text:"EVERY STRING FIRES ITS OWN CANNON.", wave:{kind:"chrom"}, labels:true},
   {freeze:true, text:"PLUCK A STRING THAT ISN'T FALLING AND YOUR CANNONS FREEZE.", hold:2800, wave:{kind:"chrom"}, labels:true},

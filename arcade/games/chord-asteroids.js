@@ -100,7 +100,7 @@ function asBar(){
   blast.hud.innerHTML=`<span>SCORE ${blast.score}${multTag()}</span><span class="lvl">LEVEL ${blast.level+1}${mxTag()}${asPowerHud()}</span><span class="lives">${livesHtml()}</span>`;
 }
 const ASMENU_G={key:"asteroids", title:"CHORD ASTEROIDS",
-  rules:()=>`<p>PLAY A ROCK'S CHORD TO CRACK IT INTO ITS NOTES.</p><p>PLUCK EACH NOTE ON THE HARP TO SHOOT IT DOWN.</p>${playOnScreen() ? "<p>FLY ROUND YOUR ORBIT TO DODGE: DRAG THE KNOB UNDER THE GAME.</p><p>MANUAL AIM SCORES DOUBLE: SPIN THE SHIP WITH THE AIM KNOB. A CHORD OR A PLUCK FIRES WHERE IT POINTS.</p>" : "<p>FLY ROUND YOUR ORBIT TO DODGE: THE MOD KNOB, OR THE ARROW KEYS. HOLD A KNOB AT ITS END AND IT KEEPS GOING ROUND.</p><p>MANUAL AIM SCORES DOUBLE: SPIN THE SHIP WITH ANOTHER KNOB (OR ↑ ↓). A CHORD OR A PLUCK FIRES WHERE IT POINTS.</p>"}<p class="starline">${PIXEL_STAR}ROCKS SCORE BIG AND NEVER HURT.</p><p>NOW AND THEN A POWER-UP ROCK: CRACK IT WITH ITS CHORD TO TAKE IT.</p>`,
+  rules:()=>`<p>PLAY A ROCK'S CHORD TO CRACK IT INTO ITS NOTES.</p><p>PLUCK EACH NOTE ON THE HARP TO SHOOT IT DOWN.</p>${typeof jsOn==="function" && jsOn() ? "<p>FLY ROUND YOUR ORBIT TO DODGE: PUSH THE STICK WHERE YOU WANT THE SHIP TO BE.</p><p>MANUAL AIM SCORES DOUBLE: THE STICK POINTS THE SHIP, AND A AND B HELD FLY IT ROUND. A CHORD OR A PLUCK FIRES WHERE IT POINTS.</p>" : playOnScreen() ? "<p>FLY ROUND YOUR ORBIT TO DODGE: DRAG THE KNOB UNDER THE GAME.</p><p>MANUAL AIM SCORES DOUBLE: SPIN THE SHIP WITH THE AIM KNOB. A CHORD OR A PLUCK FIRES WHERE IT POINTS.</p>" : "<p>FLY ROUND YOUR ORBIT TO DODGE: THE MOD KNOB, OR THE ARROW KEYS. HOLD A KNOB AT ITS END AND IT KEEPS GOING ROUND.</p><p>MANUAL AIM SCORES DOUBLE: SPIN THE SHIP WITH ANOTHER KNOB (OR ↑ ↓). A CHORD OR A PLUCK FIRES WHERE IT POINTS.</p>"}<p class="starline">${PIXEL_STAR}ROCKS SCORE BIG AND NEVER HURT.</p><p>NOW AND THEN A POWER-UP ROCK: CRACK IT WITH ITS CHORD TO TAKE IT.</p>`,
   levels:AS_LEVELS, ok:asLevelOk, levelName:asLevelName, sig:()=>String(mxAvailable().length), needs:"NEEDS A MINICHORD",
   begin:i=>beginAsteroids(i), demo:()=>asDemo(), modNote:"always"};
 function asMenu(over){ arcadeMenu(ASMENU_G, over); }
@@ -114,8 +114,8 @@ function beginAsteroids(level){
   if(AS_LEVELS[level].barry && canWrite()) borrow(33,1); else if(canWrite() && hasSetting(33)) ensure(33,0);
   mxApply();                                    // the minichord to the chosen matrix
   saved.asteroidsStart=level; save();
-  if(blast.aimManual){ const inert=asKnobsInert(); blast.aimWant=blast.shipAng;
-    banner("MANUAL AIM ×2", inert ? `SPIN THE SHIP WITH THE ${KNOB_NAMES[asAimKnob()]} KNOB` : "SPIN THE SHIP WITH ↑ ↓"); }
+  if(blast.aimManual){ const inert=asKnobsInert(), plate=typeof jsOn==="function" && jsOn(); blast.aimWant=blast.shipAng;
+    banner("MANUAL AIM ×2", plate ? "AIM WITH THE STICK · A AND B FLY ROUND" : inert ? `SPIN THE SHIP WITH THE ${KNOB_NAMES[asAimKnob()]} KNOB` : "SPIN THE SHIP WITH ↑ ↓"); }
   stats.streak=0; scoreboard(); asCentre();
   cancelAnimationFrame(blast.raf); blast.last=performance.now(); blast.raf=requestAnimationFrame(asTick);
   banner(`LEVEL ${level+1}`, `${asLevelName(level).toUpperCase()} · ${(SPEEDS[+saved.speed]||SPEEDS[0])[0].toUpperCase()}`);
@@ -147,17 +147,39 @@ function asSpawn(){
     return;
   }
 }
+// how far to turn from angle a to face b, the short way round: never more than half a turn either way,
+// whatever laps either has gone round (a knob's endless turning, the arrow keys, the stick)
+const asTurn=(a, b)=> mod(b-a+Math.PI, 2*Math.PI)-Math.PI;
+// The joystick plate. Auto aim: where the stick points is where the ship sits on its orbit (push it up
+// and the ship flies round to the top). Manual aim: where it points is where the ship faces, and A and
+// B held fly the orbit anticlockwise and clockwise. Pushed past AS_STICK_ON it steers; let go, it springs
+// back and the ship stays where it was. The stick's angle is clockwise from up; the field's, from the
+// right, a quarter-turn round. Each want is kept within half a turn of where the ship is.
+const AS_STICK_ON=.5, AS_STICK_FLY=2.5;            // how far over it must be pushed; radians a second for A and B
+function asStick(dt){
+  if(typeof jsOn!=="function" || !jsOn()) return;
+  // the angle from the stick as it is (past the dead zone axis by axis, it bends toward up, down, left
+  // and right): the dead zone only says whether it's pushed far enough
+  const s=typeof jsAngle==="function" ? jsAngle() : null, r=mc.stick, on=s && s.mag>AS_STICK_ON;
+  const at=on ? (r && (r.x || r.y) ? Math.atan2(r.x, r.y) : s.a)-Math.PI/2 : null;
+  if(asManual()){
+    if(at!=null) blast.aimWant=blast.shipAng+asTurn(blast.shipAng, at);
+    const btn=mc.buttons||{}, fly=(btn.b?1:0)-(btn.a?1:0);
+    if(fly){ const a=blast.orbitWant??blast.orbitA??Math.PI/2; blast.orbitWant=a+fly*AS_STICK_FLY*dt; }
+  } else if(at!=null){ const a=blast.orbitA??Math.PI/2; blast.orbitWant=a+asTurn(a, at); }
+}
 function asTick(now){
   if(!blast || blast.kind!=="asteroids") return;
   const dt=Math.min(DT_MAX,(now-blast.last)/1000); blast.last=now;
-  if(blast.orbitWant!=null && blast.hx!=null){ const a=blast.orbitA??Math.PI/2, d=blast.orbitWant-a;   // the ship glides round to where it's steered
-    blast.orbitA = Math.abs(d)<.002 ? blast.orbitWant : a+d*Math.min(1,dt*9); asPlace(); }
+  if(blast.phase==="play") asStick(dt);                                   // the joystick plate's stick
+  if(blast.orbitWant!=null && blast.hx!=null){ const a=blast.orbitA??Math.PI/2, d=asTurn(a, blast.orbitWant);   // the ship glides round to where it's steered, the short way
+    blast.orbitA = Math.abs(d)<.002 ? a+d : a+d*Math.min(1,dt*9); asPlace(); }
   asEdge(now, dt);
   if(blast.phase==="demo" && blast.demo && typeof helpKnobFollow==="function"){   // the demo's steering and aiming, on the on-screen knobs
     const lap=a=>mod((a/(2*Math.PI))+.5, 1);
     if(blast.orbitWant!=null) helpKnobFollow(steerKnob(), lap(blast.orbitWant-Math.PI/2));
     if(blast.aimManual && blast.aimWant!=null) helpKnobFollow(asAimKnob(), lap(blast.aimWant+Math.PI/2)); }
-  if(asManual() && blast.aimWant!=null){ const d=blast.aimWant-blast.shipAng; blast.shipAng += Math.abs(d)<.002 ? d : d*Math.min(1,dt*12); }
+  if(asManual() && blast.aimWant!=null){ const d=asTurn(blast.shipAng, blast.aimWant); blast.shipAng += Math.abs(d)<.002 ? d : d*Math.min(1,dt*12); }
   if(blast.phase==="bonus" && typeof bonusPlaying==="function" && bonusPlaying() && blast.bonus.g.move) blast.bonus.g.move(blast.bonus, now, dt);   // its own bonus round's wreckage drifts
   if(blast.phase==="play") asPowerTick(now, dt);                         // a power running out, the pedal firing
   const held = blast.phase==="play" && asFrozen();                      // fermata: nothing moves

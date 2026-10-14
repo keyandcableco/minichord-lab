@@ -10,7 +10,9 @@
 // burst of sparks, scoring more for bigger chords and quicker cash-ins, and shrinking back. Every
 // note carried makes it longer; hitting a wall, its own tail, or taking on more than it can carry
 // costs a life. B on the harp drops the oldest note, for a few points. It steers on the harp,
-// played as a controller, or on the arrow keys.
+// played as a controller, or on the arrow keys. On the joystick plate (arcade/controller.js) the stick
+// steers, B drops, and A held is a BURST: the snake at twice its speed, and a cash-in made at that speed
+// scores half as much again.
 const SN_LEVELS=[
   {n:"Major and minor", qs:["","m"], roots:"natural"},
   {n:"Sharps and flats", qs:["","m"], roots:"all"},
@@ -20,6 +22,9 @@ const SN_LEVELS=[
 ];
 const SN_MAX=[6,6,7,8,8];                 // how many notes the snake can carry at each level
 const SN_DIRS={up:[0,-1],down:[0,1],left:[-1,0],right:[1,0]};
+// the joystick plate, and A held on it: the burst
+const snJs=()=> typeof jsOn==="function" && jsOn();
+const snBurst=()=> snJs() && !!(mc.buttons && mc.buttons.a);
 function genSnake(){
   return {kind:"snake", prompt:"Chord Snake", sub:"Steer the snake into notes to carry them. When some of the notes it carries spell a chord, they glow: play that chord on the minichord to cash them in. Walls, your own tail and carrying too much cost a life.",
     answer:{type:"snake", get name(){ const c=blast && blast.kind==="snake" ? snReady()[0] : null; return c ? c.root+c.q : "a chord from the notes you carry"; }},
@@ -87,7 +92,7 @@ function snBar(){
   blast.hud.innerHTML=`<span>SCORE ${blast.score}${multTag()}</span><span class="lvl">LEVEL ${blast.level+1} · LOAD ${load}/${max}${mxTag()}</span><span class="lives">${livesHtml()}</span>`;
 }
 const SNMENU_G={key:"snake", title:"CHORD SNAKE",
-  rules:()=>`<p>EAT NOTES. WHEN THE ONES YOU CARRY SPELL A CHORD, PLAY IT TO CASH THEM IN.</p><p>${playOnScreen() ? "STEER WITH THE ARROWS UNDER THE GAME" : "STEER ON THE HARP OR THE ARROW KEYS"}. B DROPS YOUR OLDEST NOTE.</p>`,
+  rules:()=>`<p>EAT NOTES. WHEN THE ONES YOU CARRY SPELL A CHORD, PLAY IT TO CASH THEM IN.</p><p>${snJs() ? "STEER WITH THE STICK. B DROPS YOUR OLDEST NOTE. HOLD A TO BURST: TWICE THE SPEED, AND A CASH-IN MADE AT IT SCORES HALF AS MUCH AGAIN" : playOnScreen() ? "STEER WITH THE ARROWS UNDER THE GAME. B DROPS YOUR OLDEST NOTE" : "STEER ON THE HARP OR THE ARROW KEYS. B DROPS YOUR OLDEST NOTE"}.</p>`,
   levels:SN_LEVELS, ok:snLevelOk, levelName:snLevelName, sig:()=>String(mxAvailable().length), needs:"NEEDS A MINICHORD",
   begin:i=>beginSnake(i), demo:()=>snDemo(), modNote:"always"};
 function snMenu(over){ arcadeMenu(SNMENU_G, over); }
@@ -100,7 +105,7 @@ function beginSnake(level){
   newRun();
   piano.start(); stopDemo(); clearTimeout(blast.attract);
   if(blast.overlay){ blast.overlay.remove(); blast.overlay=null; }
-  Object.assign(blast,{score:0, lives:3, level, startLevel:level, cashes:0, phase:"play", over:false, tiles:[], stepMs:260*speedMul()});
+  Object.assign(blast,{score:0, lives:3, level, startLevel:level, cashes:0, phase:"play", over:false, tiles:[], stepMs:260*speedMul(), stepAt:0, burst:false});
   if(SN_LEVELS[level].barry && canWrite()) borrow(33,1); else if(canWrite() && hasSetting(33)) ensure(33,0);
   saved.snakeStart=level; save();
   stats.streak=0; scoreboard(); snLayout(); snReset(); snFill();
@@ -142,7 +147,8 @@ function snDraw(){
   blast.body.forEach(([x,y],i)=>{
     const e=document.createElement("span"), note = i>0 ? blast.tail[i-1] : null;
     e.className = i===0 ? `snseg head dir-${blast.dir}` : "snseg"+(note && ready.has(note.name) ? " ready" : "")+(note?"":" plain");
-    e.style.cssText=snPos(x,y); if(note) e.textContent=note.name;
+    e.style.cssText=snPos(x,y)+(i===0 && blast.burst && blast.phase==="play" ? ";box-shadow:0 0 0 2px #FF8A3D,0 0 14px 5px #FFD35A" : "");   // bursting: the head ablaze
+    if(note) e.textContent=note.name;
     b.appendChild(e);
   });
 }
@@ -150,7 +156,9 @@ function snTick(now){
   if(!blast || blast.kind!=="snake") return;
   const dt=Math.min(DT_MAX,(now-blast.last)/1000); blast.last=now;
   if(blast.fx) fxDraw(now, dt);
-  if(blast.phase==="play" && now>=blast.nextMove){ snStep(); blast.nextMove=now+blast.stepMs*(1+.03*blast.tail.length); }
+  // A pressed between steps: the step under way taken at burst speed too, not only the next
+  if(blast.phase==="play" && !blast.burst && blast.stepAt && snBurst()){ blast.burst=true; blast.nextMove=Math.min(blast.nextMove, blast.stepAt+(blast.nextMove-blast.stepAt)/2); snDraw(); }
+  if(blast.phase==="play" && now>=blast.nextMove){ const was=!!blast.burst; blast.burst=snBurst(); snStep(); blast.stepAt=now; blast.nextMove=now+blast.stepMs*(1+.03*blast.tail.length)*(blast.burst ? .5 : 1); if(was!==blast.burst) snDraw(); }
   blast.raf=requestAnimationFrame(snTick);
 }
 function snTurn(d){
@@ -207,9 +215,9 @@ function snakeChord(voices){
   // the notes left close up behind the head, and the snake shortens from its end
   blast.tail=blast.tail.filter(t=>!gone.has(t.name));
   blast.body=blast.body.slice(0, blast.tail.length+3);
-  const pts=mulPts(hit.tones.length*15*(blast.level+1));
+  const fast=!!blast.burst && snBurst(), pts=mulPts(hit.tones.length*15*(blast.level+1)*(fast ? 1.5 : 1));   // cashed in at burst speed: half as much again
   blast.score+=pts; blast.cashes++; stats.streak=blast.cashes; scoreboard();
-  sfx("cash"); const h=blast.body[0]; snPopup(h[0],h[1],`${hit.root}${hit.q} +${pts}`,"#FFD35A");
+  sfx("cash"); const h=blast.body[0]; snPopup(h[0],h[1],`${hit.root}${hit.q}${fast ? " BURST" : ""} +${pts}`,"#FFD35A");
   if(blast.cashes%5===0){
     const was=blast.level;
     for(let n=blast.level+1;n<SN_LEVELS.length;n++) if(snLevelOk(n)){ blast.level=n; break; }
@@ -226,7 +234,7 @@ function snakeHarp(pc){
   const c=kmControl(pc);
   if(blast.phase==="demo" && blast.demo){ endSnDemo(blast.demo); return; }
   if(blast.phase!=="play") return;
-  if(c==="A") return;                                    // A is spare, for now
+  if(c==="A") return;                                    // A is spare on the harp; held on the joystick plate, the burst (snBurst)
   if(c==="B") return snDrop();
   snTurn(c);
 }
@@ -254,16 +262,21 @@ function snDemo(){
   if(blast.overlay) blast.overlay.hidden=true;
   blast.phase="demo"; snLayout();
   const {el, token, say, sleep, step}=demoShell(endSnDemo), $d=s=>el.querySelector(s);
-  const litZone=(...zs)=>{ [...blast.strip.children].forEach(c=>c.classList.toggle("demo-on", zs.includes(c.dataset.zone))); };
+  const litZone=(...zs)=>{ blast.strip.querySelectorAll("[data-zone]").forEach(c=>c.classList.toggle("demo-on", zs.includes(c.dataset.zone))); };
   sfx("attract");
   (async()=>{
     try{
-      const grid=kmLayout().cols===3, pad=saved.harpLayout==="kmpad";
-      say("THE HARP IS YOUR CONTROLLER", pad ? "THE KEYMASTER AS A D-PAD, BY ITS NUMBERED CONTACTS." : grid ? "ITS FOUR ROWS OF THREE ARE A D-PAD, WITH TWO BUTTONS IN THE MIDDLE." : "TOP TO BOTTOM, THE STRIP IS UP, LEFT, TWO BUTTONS, RIGHT AND DOWN."); await step(3200);
+      const grid=kmLayout().cols===3, pad=saved.harpLayout==="kmpad", js=snJs();
+      if(js){                                                          // the joystick plate: the stick, A and B
+        say("THE STICK IS YOUR CONTROLLER","PUSH IT UP, DOWN, LEFT OR RIGHT AND THE SNAKE TURNS."); litZone("up","down","left","right"); await step(3000);
+        litZone("A"); say("THE STICK IS YOUR CONTROLLER","HOLD A TO BURST: TWICE THE SPEED, AND MORE FOR A CASH-IN AT IT."); sfx("press"); await step(2600);
+        litZone("B"); say("THE STICK IS YOUR CONTROLLER","B DROPS YOUR OLDEST NOTE."); sfx("press"); await step(2000);
+      }
+      if(!js) say("THE HARP IS YOUR CONTROLLER", pad ? "THE KEYMASTER AS A D-PAD, BY ITS NUMBERED CONTACTS." : grid ? "ITS FOUR ROWS OF THREE ARE A D-PAD, WITH TWO BUTTONS IN THE MIDDLE." : "TOP TO BOTTOM, THE STRIP IS UP, LEFT, TWO BUTTONS, RIGHT AND DOWN."); await step(3200);
       const tour = pad ? [[["down"],"CONTACT 2 GOES DOWN"],[["right"],"3 GOES RIGHT"],[["left"],"4 GOES LEFT"],[["up"],"5 GOES UP"],[["A","B"],"10 IS A AND 9 IS B: B DROPS YOUR OLDEST NOTE"]]
         : grid ? [[["up"],"THE TOP MIDDLE GOES UP"],[["down"],"THE BOTTOM MIDDLE GOES DOWN: THE CORNERS DO NOTHING"],[["left"],"THE LEFT SIDE GOES LEFT"],[["right"],"THE RIGHT SIDE GOES RIGHT"],[["A","B"],"A AND B IN THE MIDDLE: B DROPS YOUR OLDEST NOTE"]]
         : [[["up"],"THE TOP THREE GO UP"],[["left"],"THE NEXT TWO GO LEFT"],[["A","B"],"A AND B IN THE MIDDLE: B DROPS YOUR OLDEST NOTE"],[["right"],"TWO FOR RIGHT"],[["down"],"AND THE BOTTOM THREE GO DOWN"]];
-      for(const [zs,t] of tour){
+      if(!js) for(const [zs,t] of tour){
         litZone(...zs); say("THE HARP IS YOUR CONTROLLER", t); sfx("press"); await step(1700); }
       litZone();
       say("EAT NOTES","STEER INTO A NOTE AND THE SNAKE CARRIES IT.");
@@ -277,7 +290,7 @@ function snDemo(){
       demoPlay([52,56,59,64]);                                                   // E major, heard and lit on the buttons
       snDemoCash(); await step(2600);
       say("WATCH YOUR LOAD","WALLS, YOUR OWN TAIL AND CARRYING TOO MUCH COST A LIFE."); await step(3200);
-      say("READY?",`CHOOSE A LEVEL. ${playOnScreen() ? "STEER WITH THE ARROWS UNDER THE GAME" : "STEER ON THE HARP OR THE ARROW KEYS"}.`); sfx("level"); await step(2800);
+      say("READY?",`CHOOSE A LEVEL. ${snJs() ? "STEER WITH THE STICK" : playOnScreen() ? "STEER WITH THE ARROWS UNDER THE GAME" : "STEER ON THE HARP OR THE ARROW KEYS"}.`); sfx("level"); await step(2800);
       endSnDemo(token);
     }catch(e){ /* skipped */ }
   })();
@@ -292,7 +305,7 @@ function snDemoCash(){
 function endSnDemo(token){
   if(!blast || blast.demo!==token) return;
   stopDemo(); blast.phase="menu"; blast.tiles=[]; blast.tail=[]; blast.body=[];
-  if(blast.strip) [...blast.strip.children].forEach(c=>c.classList.remove("demo-on"));
+  if(blast.strip) blast.strip.querySelectorAll("[data-zone]").forEach(c=>c.classList.remove("demo-on"));
   snDraw();
   if(blast.overlay) blast.overlay.hidden=false;
   clearTimeout(blast.attract);

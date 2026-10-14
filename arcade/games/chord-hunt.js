@@ -358,7 +358,7 @@ function hdKeyPicked(idx){
 }
 
 const HDMENU_G={key:"hunt", title:"CHORD HUNT",
-  rules:()=>`<p>EVERY ROUND OPENS WITH ITS KEY.${hdCanSet() ? ` SET THE MINICHORD TO IT BEFORE THE FIRST DUCK FOR POINTS (${typeof playOnScreen==="function" && playOnScreen() ? "HOLD A CHORD BUTTON: TOP ROW SHARP KEYS, MIDDLE NATURAL, BOTTOM FLAT" : "THE KEY CHANGE COMBO"}), OR IT'S SET FOR YOU, SO THE BUTTONS PLAY THE KEY.` : " THE MINICHORD IS SET TO IT, SO THE BUTTONS PLAY THE KEY."} THEN, FOR EACH DUCK, HOME SOUNDS FIRST, THE TONIC CHORD, AND THEN THE DUCK'S OWN CHORD.</p><p>NAME IT AGAINST HOME AND PLAY IT ON THE BUTTONS TO SHOOT: vi IN G IS Em. THREE SHELLS A DUCK, AND A WRONG CHORD SPENDS ONE.</p><p>HIT ENOUGH OF THE TEN TO CLEAR THE ROUND, OR THE DOG LAUGHS AND IT COSTS A LIFE.</p><p>PLUCK THE HARP TO HEAR IT AGAIN: A LOW STRING FOR HOME, A HIGH ONE FOR THE DUCK.</p><p>FIRST-SHOT HITS WITH NO HELP BUILD YOUR PURE EAR, UP TO ×4. GOLDEN DUCKS SING A CHORD FROM THE NEXT LEVEL UP: TRIPLE POINTS, AND NO HARM IF THEY GET AWAY.</p><p>NOW AND THEN THE DOG FETCHES A POWER-UP. PLAY THE CHORD ON ITS TAG TO TAKE IT.</p>`,
+  rules:()=>`<p>EVERY ROUND OPENS WITH ITS KEY.${hdCanSet() ? ` SET THE MINICHORD TO IT BEFORE THE FIRST DUCK FOR POINTS (${typeof playOnScreen==="function" && playOnScreen() ? "HOLD A CHORD BUTTON: TOP ROW SHARP KEYS, MIDDLE NATURAL, BOTTOM FLAT" : "THE KEY CHANGE COMBO"}), OR IT'S SET FOR YOU, SO THE BUTTONS PLAY THE KEY.` : " THE MINICHORD IS SET TO IT, SO THE BUTTONS PLAY THE KEY."} THEN, FOR EACH DUCK, HOME SOUNDS FIRST, THE TONIC CHORD, AND THEN THE DUCK'S OWN CHORD.</p><p>NAME IT AGAINST HOME AND PLAY IT ON THE BUTTONS TO SHOOT: vi IN G IS Em. THREE SHELLS A DUCK, AND A WRONG CHORD SPENDS ONE.</p><p>HIT ENOUGH OF THE TEN TO CLEAR THE ROUND, OR THE DOG LAUGHS AND IT COSTS A LIFE.</p><p>${hdJs() ? "TO HEAR IT AGAIN, A FOR HOME AND B FOR THE DUCK; OR TOUCH THE STRIP: THE BOTTOM HALF FOR HOME, THE TOP FOR THE DUCK." : "PLUCK THE HARP TO HEAR IT AGAIN: A LOW STRING FOR HOME, A HIGH ONE FOR THE DUCK."}</p><p>FIRST-SHOT HITS WITH NO HELP BUILD YOUR PURE EAR, UP TO ×4. GOLDEN DUCKS SING A CHORD FROM THE NEXT LEVEL UP: TRIPLE POINTS, AND NO HARM IF THEY GET AWAY.</p><p>NOW AND THEN THE DOG FETCHES A POWER-UP. PLAY THE CHORD ON ITS TAG TO TAKE IT.</p>`,
   stat:()=>`DUCKS ${blast.ducks} · ROUND ${blast.round}`,
   levels:HD_LEVELS,
   begin:i=>beginHunt(i), demo:()=>hdDemo(), modNote:"title"};
@@ -649,6 +649,12 @@ function hdReplay(what){
   else hdPlay(d.voiced.map((v,i)=>({at:i*1.0, notes:v.notes, dur:.9})));
   heard(what==="home" ? "HOME" : "THE DUCK", true, "");
 }
+// the joystick plate: A hears home again, B the duck (the strip's halves still do too, low for home)
+const hdJs=()=> typeof jsOn==="function" && jsOn();
+mc.addEventListener("button", e=>{
+  if(!blast || blast.kind!=="hunt" || blast.phase!=="play" || !e.detail || !e.detail.down || !hdJs()) return;
+  if(e.detail.name==="a") hdReplay("home"); else if(e.detail.name==="b") hdReplay("duck");
+});
 document.addEventListener("keydown", e=>{
   if(!blast || blast.kind!=="hunt" || blast.phase!=="play" || e.repeat || /INPUT|SELECT|TEXTAREA/.test(document.activeElement?.tagName||"")) return;
   if(typeof kbOn==="function" && kbOn()) return;                   // keyboard play: the letters are chord buttons
@@ -775,7 +781,7 @@ function hdDemo(){
       show("IV"); await step(3400); show();
       say("THREE SHELLS","A WRONG CHORD SPENDS A SHELL, AND SAYS WHAT IT WAS. RUN OUT, OR RUN OUT OF TIME, AND IT GETS AWAY.");
       await duck("vi", {miss:true, wrong:"V"});
-      say("HEAR IT AGAIN","PLUCK THE HARP: A LOW STRING FOR HOME, A HIGH ONE FOR THE DUCK. NO HELP, FIRST SHOT, AND YOUR PURE EAR CLIMBS TO ×4."); await step(4200);
+      say("HEAR IT AGAIN",`${hdJs() ? "A FOR HOME, B FOR THE DUCK, OR THE STRIP: ITS BOTTOM HALF HOME, ITS TOP THE DUCK" : "PLUCK THE HARP: A LOW STRING FOR HOME, A HIGH ONE FOR THE DUCK"}. NO HELP, FIRST SHOT, AND YOUR PURE EAR CLIMBS TO ×4.`); await step(4200);
       say("POWER-UPS","NOW AND THEN THE DOG FETCHES ONE. PLAY THE CHORD ON ITS TAG: A DRONE UNDER THE DUCK, ITS BASS ALONE, A SLOW ARPEGGIO, WHERE IT RESOLVES…");
       hdDogUp("hold", `<span class="hdhand">${hdTagLook("drone","G")}</span>`+HD_DOG.hold, fieldW()*.5); await step(4400); hdDogDown();
       say("LATER","THE RELATIVE MINOR, EVERY TRIAD, MINOR KEYS, SEVENTHS, BORROWED CHORDS, SECONDARY DOMINANTS, INVERSIONS, WHOLE PROGRESSIONS, AND KEYS THAT WANDER."); await step(4400);

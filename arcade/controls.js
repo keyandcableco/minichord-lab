@@ -18,7 +18,7 @@ const KNOB_NAMES=["CHORD","HARP","MOD"];
 const steerKnob=()=> saved.steerKnob ?? 2;
 const knobHold={};
 mc.addEventListener("knob", e=>{
-  if(!blast || !blast.field) return;
+  if(!blast || !blast.field || jsPaused()) return;                         // a paused game: nothing steers
   const {knob, value}=e.detail;
   if(blast.bonus && !bonusInField()){ bonusKnob(value, knob); return; }       // a bonus round: any knob (an in-field one steers the game)
   if(blast.hsEntry){ if(knob===steerKnob()) blast.hsEntry.knob(value); return; }

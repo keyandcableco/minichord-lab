@@ -18,6 +18,10 @@
  *   "drum"    a harp pad struck while harp drums (address 343) is on: detail {note, vel, pad, t,
  *             source}, from the channel-10 note the minichord sends for it (see DRUM_GM)
  *   "page1"   settings 256 to 511 arrived (firmware 31 on); this.page1 is then true
+ *   "stick"   the joystick plate's stick moved (harp plate 4, firmware 90, with "knobs send MIDI"
+ *             on): detail {x, y, t}, each -1 to 1, x right and y UP positive (this.stick)
+ *   "button"  its A, B or the click (pressing the stick in) went down or up: detail {name: "a",
+ *             "b" or "click", down, t} (this.buttons)
  * ========================================================================== */
 
 export const KEY_NAMES = ["C","G","D","A","E","B","F","B♭","E♭","A♭","D♭","G♭",
@@ -42,6 +46,16 @@ export const LOCK_ADDRESS=385, LOCKS_VERSION=76;
 // which no pad plays. While 343 is on those notes are drums, not chords or harp strings: they arrive
 // as "drum" events, timed by the MIDI message itself, and nothing else hears them.
 export const DRUM_GM=[36,38,37,39,42,46,49,45,50,64,63,56,70];
+// The joystick plate (harp plate 243 = 4, firmware 90 on): a thumbstick, its click, buttons A and B,
+// and a one-octave strip. With "knobs send MIDI" (238) on, the stick sends CC 112 (left 0, rest 64,
+// right 127) and CC 113 (down 0 … UP 127, the opposite of a screen's y), and A, B and the click CC 114,
+// 115 and 116 (127 down, 0 up), on the chord channel, each only when it changes.
+export const JOY_CC=112;
+// A drum game on firmware 90 with the joystick plate (no harp drums there yet: firmware 91 has them)
+// sets drumFallback: the strip's places and A, B and the click are then the pads themselves, as "drum"
+// events from source "plate", the place's pitch class its pad (the arcade's harp is chromatic from C),
+// and A, B and the click the kick, the snare and the closed hat. The page sounds them.
+const JOY_PADS=[0,1,4];
 export const temperIndex=(value, firmware)=> value===11 && firmware<18 ? 12 : value;
 /** the number to store for a position in the Lab's list, or null if that firmware hasn't it */
 export const temperValue=(index, firmware)=> firmware>=18 ? index : index===12 ? 11 : index===11 ? null : index;
@@ -74,6 +88,9 @@ export class Minichord extends EventTarget {
     this.notes=new Map();         // "ch:note" -> {ch, note, vel, t}
     this._frame=0; this._settle=0; this._lastChordKey="";
     this.knobs=[null,null,null];   // the three knobs, 0 to 1, once the minichord sends them
+    this.stick={x:0, y:0};          // the joystick plate's stick, -1 to 1, x right and y up
+    this.buttons={a:false, b:false, click:false};
+    this.drumFallback=false;        // the joystick plate's strip and buttons as drum pads (see JOY_PADS)
     // Coming back: once a minichord has been connected on any of the Lab's pages, the next page
     // connects by itself, as long as the browser still holds its MIDI permission. It presses the
     // page's own Connect button, so each page sets up exactly as if you had. Run a moment later,
@@ -134,9 +151,9 @@ export class Minichord extends EventTarget {
     ins.forEach(i=>i.onmidimessage=e=>{
       if(this._drum(e.data, e.timeStamp)) return;           // harp drums, from either port: before anything reads them as notes
       if(e.data[0]===0xF0){ if(role(i)==="chord") this._dump(e.data); return; }
-      if(role(i)==="harp"){ this._harp(e.data); return; }   // the harp's own zone reuses channel numbers, so it never reaches the chord voices
+      if(role(i)==="harp"){ this._harp(e.data, e.timeStamp); return; }   // the harp's own zone reuses channel numbers, so it never reaches the chord voices
       const use = this.inputChoice==="all" || this.inputChoice===i.id || (this.inputChoice==="auto" && chord && i.id===chord.id);
-      if(use || (this.inputChoice==="auto" && !chord)) this.handle(e.data);
+      if(use || (this.inputChoice==="auto" && !chord)) this.handle(e.data, e.timeStamp);
     });
     const out=this.midi ? [...this.midi.outputs.values()].find(o=>isChordPort(o.name))||null : null;
     const fresh = out && (!this.out || this.out.id!==out.id);
@@ -146,7 +163,7 @@ export class Minichord extends EventTarget {
       " System-exclusive access wasn't allowed, so the lab can't read or change the minichord's settings: allow \"MIDI device control & reprogram\" in the browser's site settings, then reload."));
     else this._status("Listening to every MIDI input. No minichord found yet.");
     // another minichord: its locks and its settings 256 to 511 are its own, read afresh after its first dump
-    if(fresh){ this.locks=null; this._locksAsked=false; this._page1Forget(); this.requestDump(); }
+    if(fresh){ this.locks=null; this._locksAsked=false; this._page1Forget(); this.stickRest(); this.requestDump(); }
     this.dispatchEvent(new Event("ports"));
   }
   /** ask for every setting; asks again if no reply comes, and says so if none ever does */
@@ -234,7 +251,9 @@ export class Minichord extends EventTarget {
     // what changed since the last dump: an unasked one that changes only the key signature (or
     // nothing) is the key change combo; one that changes a lot is a preset loaded on the instrument
     const had=Object.keys(this.params).length ? [...Array(256).keys()].map(i=>this.params[i]) : null;   // nothing to compare the first time
+    const plate=this.params[243];
     for(let i=0;i<256;i++) this.params[i]=d[1+2*i]+128*d[2+2*i];
+    if(plate===4 && this.params[243]!==4) this.stickRest();   // the plate changed: the firmware sends no release for what was held
     this.changed = new Set(had ? [...Array(256).keys()].filter(i=>i!==7 && had[i]!==this.params[i]) : []);
     if(this.params[110]===1 && !this.zone.known){ this.zone={type:"lower", members:this.params[108]===1?15:4, known:true}; }
     this.dispatchEvent(new Event("device"));
@@ -250,7 +269,7 @@ export class Minichord extends EventTarget {
     if(this._drum(data, stamp)) return;
     const st=data[0]; if(st>=0xF0) return;
     const type=st&0xF0, ch=st&0x0F;
-    if(type===0x90 && data[2]>0) this._on(ch,data[1],data[2]);
+    if(type===0x90 && data[2]>0) this._on(ch,data[1],data[2],stamp);
     else if(type===0x80 || type===0x90) this._off(ch,data[1]);
     // A bend that moves is a glide, and the chord waits for it to land. The firmware also sends a bend
     // before every note, gliding or not, and resends it each time a flickering press restarts the
@@ -258,7 +277,7 @@ export class Minichord extends EventTarget {
     else if(type===0xE0){ const v=(data[2]<<7)|data[1], b = v>=8192 ? (v-8192)/8191 : (v-8192)/8192;
       if(b!==this.chans[ch].bend) this._lastBend=performance.now();
       this.chans[ch].bend=b; this._changed(false); }
-    else if(type===0xB0) this._cc(ch,data[1],data[2]);
+    else if(type===0xB0) this._cc(ch,data[1],data[2],stamp);
   }
   // A note on channel 10 while harp drums is on (as the Lab knows it: read from the minichord, or
   // written by a game) is a pad: its note-on a "drum" event, timed by the message's own timestamp
@@ -279,14 +298,16 @@ export class Minichord extends EventTarget {
     if(this.params[108]===1 && this.params[107]) return ch !== this.params[107]-1;
     return true;
   }
-  _harp(d){
+  _harp(d, stamp){
     const ch=d[0]&15, t=d[0]&0xF0;
+    if((t===0x90 || t===0x80) && this._plateDrum(d[1], t===0x90 ? d[2] : 0, stamp)) return;
     if(t===0xE0){ (this.harpBend||(this.harpBend=[]))[ch]=((d[2]<<7|d[1])-8192)/8192; return; }   // a string's bend, arriving before its note
     const bend=(this.mpe && this.harpBend && this.harpBend[ch]) || 0;
     if(t===0x90 && d[2]>0) this.dispatchEvent(new CustomEvent("harp",{detail:{note:d[1], ch, pitch:d[1]+bend*48}}));
     else if(t===0x80 || t===0x90) this.dispatchEvent(new CustomEvent("harpoff",{detail:{note:d[1], ch}}));
   }
-  _on(ch,note,vel){
+  _on(ch,note,vel,stamp){
+    if(!this._chordChannel(ch) && this._plateDrum(note, vel, stamp)) return;
     if(!this._chordChannel(ch)){ const c=this.chans[ch]; this.dispatchEvent(new CustomEvent("harp",{detail:{note, ch, pitch:note+(this.mpe?c.bend*c.range:0)}})); return; }
     const key=ch+":"+note;
     // back within the debounce (a button pressed gently, its contact flickering): it never stopped
@@ -300,6 +321,7 @@ export class Minichord extends EventTarget {
   // chord button pressed gently can flicker its contact, sending the chord off and on again and again,
   // and without this the chord never holds still long enough to be read, however clearly it sounds.
   _off(ch,note){
+    if(!this._chordChannel(ch) && this.drumFallback) return;           // a pad's note-off: nothing
     if(!this._chordChannel(ch)){ this.dispatchEvent(new CustomEvent("harpoff",{detail:{note, ch}})); return; }
     const key=ch+":"+note; if(!this.notes.has(key)) return;
     const offs=this._offs||(this._offs=new Map()); clearTimeout(offs.get(key));
@@ -308,10 +330,11 @@ export class Minichord extends EventTarget {
     offs.set(key, setTimeout(()=>{ offs.delete(key); if(this.notes.delete(key)){ if(!this.notes.size) this._lastChordKey=""; this._changed(true); } }, Minichord.OFF_DEBOUNCE));
   }
   allOff(){ if(this._offs){ this._offs.forEach(t=>clearTimeout(t)); this._offs.clear(); } this.notes.clear(); this.chans.forEach(c=>c.bend=0); this._changed(true); }
-  _cc(ch,cc,val){
+  _cc(ch,cc,val,stamp){
     // the knobs, when "knobs send MIDI" (address 238) is on: CC 20 chord, 21 harp, 22 modulation, on the chord channel
     // (channel 16 on the first test builds); nothing else the minichord sends uses these numbers
     if(cc>=20 && cc<=22){ const k=cc-20; this.knobs[k]=val/127; this.lastKnob=k; this.dispatchEvent(new CustomEvent("knob",{detail:{knob:k, value:val/127}})); return; }
+    if(cc>=JOY_CC && cc<=JOY_CC+4){ this._joy(cc-JOY_CC, val, stamp); return; }   // the joystick plate, on any channel
     const c=this.chans[ch];
     if(cc===101) c.rpn[0]=val;
     else if(cc===100) c.rpn[1]=val;
@@ -328,6 +351,37 @@ export class Minichord extends EventTarget {
       for(const [k,n] of this.notes) if(n.ch===ch) this.notes.delete(k);
       this._changed(true);
     }
+  }
+  // The joystick plate's stick and buttons, as the firmware sends them: an axis 0 to 127 with 64 at rest,
+  // decoded to -1 to 1 (64 counts down, 63 up, so both ends reach 1); a button 127 down, 0 up. Each
+  // arrives on change only, and is passed on only when it changes here, timed by its message.
+  _joy(k, val, stamp){
+    const t=stamp||performance.now();
+    if(k<2){
+      const v= val<64 ? (val-64)/64 : (val-64)/63, s=this.stick, axis=k===0 ? "x" : "y";
+      if(s[axis]===v) return;
+      this.stick={...s, [axis]:v};
+      this.dispatchEvent(new CustomEvent("stick",{detail:{x:this.stick.x, y:this.stick.y, t}}));
+      return;
+    }
+    const name=["a","b","click"][k-2], down=val>=64;
+    if(this.buttons[name]===down) return;
+    this.buttons={...this.buttons, [name]:down};
+    this.dispatchEvent(new CustomEvent("button",{detail:{name, down, t}}));
+    if(down && this.drumFallback){ const pad=JOY_PADS[k-2]; this.dispatchEvent(new CustomEvent("drum",{detail:{note:DRUM_GM[pad], vel:100, pad, t, source:"plate"}})); }
+  }
+  /** the stick back at rest and the buttons up (another instrument, or the plate changed), each change told */
+  stickRest(){
+    for(const name of ["a","b","click"]) if(this.buttons[name]) this._joy(2+["a","b","click"].indexOf(name), 0);
+    if(this.stick.x) this._joy(0, 64);
+    if(this.stick.y) this._joy(1, 64);
+  }
+  // a strip note while drumFallback is on: a pad (its note-on a "drum" event at a fixed velocity, since
+  // the game turns the harp's volume down to silence its pitch; its note-off nothing)
+  _plateDrum(note, vel, stamp){
+    if(!this.drumFallback) return false;
+    if(vel>0){ const pad=((note%12)+12)%12; this.dispatchEvent(new CustomEvent("drum",{detail:{note:DRUM_GM[pad], vel:100, pad, t:stamp||performance.now(), source:"plate"}})); }
+    return true;
   }
   _changed(noteChange){
     if(!this._frame) this._frame=requestAnimationFrame(()=>{ this._frame=0; this.dispatchEvent(new Event("voices")); });

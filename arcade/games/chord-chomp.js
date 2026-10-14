@@ -256,7 +256,7 @@ function ccBar(){
 // ---------- the title screen ----------
 const ccMenuSig=()=> `${ccComboOk()}|${knobsReady()}|${steerKnob()}`;
 const CCMENU_G={key:"chomp", title:"CHORD CHOMP",
-  rules:()=>`<p>EAT THE DOTS. PLAY A CHORD ON THE BUTTONS AND THEY SING IT, A NOTE A DOT. ${ccLatch() ? "IT STAYS ON TILL YOU PLAY ANOTHER, OR THE SAME AGAIN TO LET IT GO. OR CHOOSE HOLD, FOR A QUARTER MORE: THEN A CHORD ONLY COUNTS WHILE IT'S HELD." : "A CHORD ONLY COUNTS WHILE IT'S HELD (A QUARTER MORE POINTS); CHOOSE LATCH TO HAVE IT STAY ON."}</p><p>THE GHOSTS WEAR CHORDS OF THE KEY. EAT A POWER PELLET, THEN PLAY A GHOST'S CHORD: THAT GHOST TURNS BLUE AND YOU CAN CATCH IT. THE OTHERS STILL CHASE YOU.</p><p>CATCH THEM IN A CADENCE'S ORDER FOR A BONUS: V THEN I, OR IV, V THEN I FOR THE BIGGEST.</p><p>WHEN A KEY TURNS UP, ${ccComboOk() ? "SET IT WITH THE KEY CHANGE COMBO" : "PLAY ITS HOME CHORD"} BEFORE IT GOES, AND THE MAZE CHANGES KEY. FARTHER KEYS SCORE MORE. WHILE A KEY IS UP, A POWER PELLET TURNS THE GHOSTS ALL BLUE: THE TIME TO SET IT.</p><p>${playOnScreen() ? "STEER WITH THE ARROWS UNDER THE GAME." : knobsReady() ? `STEER ON THE HARP, THE ARROW KEYS, OR THE ${KNOB_NAMES[steerKnob()]} KNOB, LIKE A WHEEL: A LITTLE RIGHT TURNS RIGHT AT THE NEXT TURNING, A LITTLE LEFT LEFT, AND HARD EITHER WAY TURNS YOU ROUND. WHEREVER IT STOPS IS STRAIGHT AHEAD AGAIN, AND THE CORNERS TAKE THEMSELVES.` : "STEER ON THE HARP OR THE ARROW KEYS."}</p>`,
+  rules:()=>`<p>EAT THE DOTS. PLAY A CHORD ON THE BUTTONS AND THEY SING IT, A NOTE A DOT. ${ccLatch() ? "IT STAYS ON TILL YOU PLAY ANOTHER, OR THE SAME AGAIN TO LET IT GO. OR CHOOSE HOLD, FOR A QUARTER MORE: THEN A CHORD ONLY COUNTS WHILE IT'S HELD." : "A CHORD ONLY COUNTS WHILE IT'S HELD (A QUARTER MORE POINTS); CHOOSE LATCH TO HAVE IT STAY ON."}</p><p>THE GHOSTS WEAR CHORDS OF THE KEY. EAT A POWER PELLET, THEN PLAY A GHOST'S CHORD: THAT GHOST TURNS BLUE AND YOU CAN CATCH IT. THE OTHERS STILL CHASE YOU.</p><p>CATCH THEM IN A CADENCE'S ORDER FOR A BONUS: V THEN I, OR IV, V THEN I FOR THE BIGGEST.</p><p>WHEN A KEY TURNS UP, ${ccComboOk() ? "SET IT WITH THE KEY CHANGE COMBO" : "PLAY ITS HOME CHORD"} BEFORE IT GOES, AND THE MAZE CHANGES KEY. FARTHER KEYS SCORE MORE. WHILE A KEY IS UP, A POWER PELLET TURNS THE GHOSTS ALL BLUE: THE TIME TO SET IT.</p><p>${ccJs() ? `STEER WITH THE STICK: PUSH EARLY AND YOU TURN AT THE NEXT TURNING THAT WAY.${ccLatch() ? " A LETS GO OF A LATCHED CHORD." : ""}` : playOnScreen() ? "STEER WITH THE ARROWS UNDER THE GAME." : knobsReady() ? `STEER ON THE HARP, THE ARROW KEYS, OR THE ${KNOB_NAMES[steerKnob()]} KNOB, LIKE A WHEEL: A LITTLE RIGHT TURNS RIGHT AT THE NEXT TURNING, A LITTLE LEFT LEFT, AND HARD EITHER WAY TURNS YOU ROUND. WHEREVER IT STOPS IS STRAIGHT AHEAD AGAIN, AND THE CORNERS TAKE THEMSELVES.` : "STEER ON THE HARP OR THE ARROW KEYS."}</p>`,
   levels:CC_LEVELS, begin:i=>beginChomp(i), demo:()=>ccDemo(), modNote:"title"};
 function ccMenu(over){ blast.ccSig=ccMenuSig(); arcadeMenu(CCMENU_G, over); }
 function beginChomp(level){
@@ -633,12 +633,16 @@ function chompChord(voices){
   const g=blast.ghosts.find(g=>g.chord && g.state!=="eyes" && ccIs(pitches, g.chord));
   if(g) heard(`${name} · ${g.num}`, true); else heard(name, false, "NO GHOST WEARS IT");
 }
-// the harp, as a d-pad
+// the harp, as a d-pad. On the joystick plate the stick is the d-pad (arcade/controller.js sends its
+// ways here as the layout's strings) and A lets go of a latched chord, without playing it again.
+const ccJs=()=> typeof jsOn==="function" && jsOn();
 function chompHarp(pc){
   if(!blast || blast.kind!=="chomp") return;
   kmFlash(blast.strip, pc);
   if(blast.phase==="demo" && blast.demo){ endCcDemo(blast.demo); return; }
-  ccTurn(kmControl(pc));
+  const c=kmControl(pc);
+  if(c==="A" && ccJs()){ if(blast.phase==="play" && ccLatch() && blast.latched){ blast.latched=null; heard("LET GO", true); ccBar(); } return; }
+  ccTurn(c);
 }
 // a way to go: taken at the next turning it's open, at once if it's straight back
 function ccTurn(d){
@@ -988,20 +992,21 @@ function ccDemo(){
   ccNewMaze();
   const nums=["V","IV","I","vi"]; blast.ghosts.forEach((g,i)=>{ g.num=nums[i]; g.chord=ccChord(blast.key, nums[i]); });
   ccPlace(); blast.capNext=1e9; blast.demoAuto=true; blast.demoHeld=null; blast.demoTarget=null;
-  const zones=(...zs)=>{ if(blast.strip) [...blast.strip.children].forEach(c=>c.classList.toggle("demo-on", zs.includes(c.dataset.zone))); };
+  const zones=(...zs)=>{ if(blast.strip) blast.strip.querySelectorAll("[data-zone]").forEach(c=>c.classList.toggle("demo-on", zs.includes(c.dataset.zone))); };
   const hold=c=>{ const v=FORM[c.q].map(f=>48+c.pc+f[1]); blast.demoHeld=v; demoPlay(v); };
   sfx("attract");
   (async()=>{
     try{
       say("CHORD CHOMP","EAT THE DOTS. THE GHOSTS WEAR CHORDS OF THE KEY: THIS MAZE IS IN C MAJOR."); await step(3600);
       const pad=saved.harpLayout==="kmpad", grid=kmLayout().cols===3;
-      say("STEER ON THE HARP", pad ? "THE KEYMASTER AS A D-PAD: 5 UP, 4 LEFT, 3 RIGHT, 2 DOWN." : grid ? "ITS FOUR ROWS OF THREE ARE A D-PAD: TOP UP, SIDES LEFT AND RIGHT, BOTTOM DOWN." : "THE TOP THREE GO UP, THE NEXT TWO LEFT, TWO RIGHT BELOW A AND B, THE BOTTOM THREE DOWN.");
+      if(ccJs()) say("STEER WITH THE STICK", "PUSH IT ANY OF FOUR WAYS. PUSH EARLY AND YOU TURN AT THE NEXT TURNING THAT WAY.");
+      else say("STEER ON THE HARP", pad ? "THE KEYMASTER AS A D-PAD: 5 UP, 4 LEFT, 3 RIGHT, 2 DOWN." : grid ? "ITS FOUR ROWS OF THREE ARE A D-PAD: TOP UP, SIDES LEFT AND RIGHT, BOTTOM DOWN." : "THE TOP THREE GO UP, THE NEXT TWO LEFT, TWO RIGHT BELOW A AND B, THE BOTTOM THREE DOWN.");
       for(const z of ["up","left","right","down"]){ zones(z); sfx("press"); await step(900); } zones();
-      if(knobsReady() && typeof helpKnob==="function"){
+      if(knobsReady() && typeof helpKnob==="function" && !ccJs()){
         say("OR TURN THE KNOB", `THE ${KNOB_NAMES[steerKnob()]} KNOB STEERS LIKE A WHEEL: A LITTLE RIGHT TURNS YOU RIGHT, A LITTLE LEFT LEFT, HARD EITHER WAY TURNS YOU ROUND. WHEREVER IT STOPS IS STRAIGHT AHEAD AGAIN.`);
         for(const v of [.5,.62,.62,.5,.5,.25,.25]){ helpKnob(steerKnob(), v); await step(900); } }
       say("THE DOTS SING",`PLAY A CHORD AND EACH DOT YOU EAT PLAYS ITS NEXT NOTE. HERE, C.${ccLatch() ? " IT STAYS ON TILL YOU PLAY ANOTHER." : ""}`); hold(ccChord(blast.key,"I")); await step(4200);
-      say("CHANGE THE CHORD",`F NOW, AND THE DOTS SING F. ${ccLatch() ? "PLAY F AGAIN TO LET IT GO" : "LET GO"}, AND THEY GO WAKA-WAKA.`); hold(ccChord(blast.key,"IV")); await step(4200);
+      say("CHANGE THE CHORD",`F NOW, AND THE DOTS SING F. ${ccLatch() ? (ccJs() ? "PRESS A, OR PLAY F AGAIN, TO LET IT GO" : "PLAY F AGAIN TO LET IT GO") : "LET GO"}, AND THEY GO WAKA-WAKA.`); hold(ccChord(blast.key,"IV")); await step(4200);
       blast.demoHeld=null; helpChord(null);
       say("POWER PELLET","EAT ONE, THEN PLAY A GHOST'S CHORD. ONLY THAT GHOST TURNS BLUE: CATCH IT. THE OTHERS STILL CHASE YOU.");
       ccPowerStart(); blast.powerUntil=blast.clock+30;
@@ -1018,7 +1023,7 @@ function ccDemo(){
       say("G MAJOR NOW","THE GHOSTS' NUMERALS NAME G'S CHORDS: V IS D NOW. KEYS FARTHER ROUND THE CIRCLE OF FIFTHS SCORE MORE."); await step(4400);
       blast.powerUntil=0;
       say("CAPSULES",`${CC_POWERS.fermata.icon} FERMATA HOLDS THE GHOSTS STILL. ${CC_POWERS.rest.icon} REST HIDES YOU FROM THEM. ${DA_CAPO.icon} DA CAPO IS A LIFE. RUN THROUGH ONE TO TAKE IT.`); await step(4800);
-      say("READY?",`CHOOSE A LEVEL. ${playOnScreen() ? "STEER WITH THE ARROWS UNDER THE GAME" : knobsReady() ? `STEER ON THE HARP, THE ARROW KEYS OR THE ${KNOB_NAMES[steerKnob()]} KNOB` : "STEER ON THE HARP OR THE ARROW KEYS"}.`); sfx("level"); await step(2800);
+      say("READY?",`CHOOSE A LEVEL. ${ccJs() ? "STEER WITH THE STICK" : playOnScreen() ? "STEER WITH THE ARROWS UNDER THE GAME" : knobsReady() ? `STEER ON THE HARP, THE ARROW KEYS OR THE ${KNOB_NAMES[steerKnob()]} KNOB` : "STEER ON THE HARP OR THE ARROW KEYS"}.`); sfx("level"); await step(2800);
       endCcDemo(token);
     }catch(e){ /* skipped */ }
   })();
@@ -1027,7 +1032,7 @@ function endCcDemo(token){
   if(!blast || blast.demo!==token) return;
   stopDemo(); blast.phase="menu"; blast.demoAuto=false; blast.demoHeld=null; blast.demoTarget=null;
   blast.dots=null; blast.pac=null; blast.ghosts=[]; blast.fruit=null; blast.mini=null; blast.jam=null; blast.caps=[]; blast.key=null; blast.layoutKey=null; blast.st="idle";
-  if(blast.strip) [...blast.strip.children].forEach(c=>c.classList.remove("demo-on"));
+  if(blast.strip) blast.strip.querySelectorAll("[data-zone]").forEach(c=>c.classList.remove("demo-on"));
   helpChord(null); ccBar();
   if(blast.overlay) blast.overlay.hidden=false;
   clearTimeout(blast.attract);

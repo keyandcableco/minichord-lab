@@ -64,7 +64,8 @@ function genSweeper(){
 }
 function startSweeper(){
   blast={kind:"sweeper", score:0, lives:3, level:0, fields:0, over:true, phase:"menu", raf:0, field:null, hud:null, fx:null, noShip:true,
-    last:performance.now(), mines:[], clue:new Map(), open:new Set(), flags:new Set(), cur:[3,2], sweeps:0};
+    last:performance.now(), mines:[], clue:new Map(), open:new Set(), flags:new Set(), cur:[3,2], sweeps:0,
+    get jsOwn(){ return this.phase==="play"; }};                      // in play the game reads the stick itself (swStick)
   swDevice();
   stats.streak=0; scoreboard(); buildSpecial();
   swMenu();
@@ -155,7 +156,7 @@ function swBar(){
   blast.hud.innerHTML=`<span>SCORE ${blast.score}${multTag()}</span><span class="lvl">LEVEL ${blast.level+1} · FIELD ${blast.fields+1}</span><span class="lives">${livesHtml()}</span>`;
 }
 const SWMENU_G={key:"sweeper", title:"CHORD SWEEPER",
-  rules:()=>`<p>A GAME OF TENSION AND RELEASE. EACH MINE IS A KEY'S HOME. SWEPT SQUARES SHOW THE TENSION POINTING THERE: NEXT TO A MINE, ITS V7; TWO AWAY, V OF V; THREE AWAY, V OF V OF V. FURTHER OUT IT'S CALM.</p><p>LATER, TRITONE SUBSTITUTES, DIMINISHED SEVENTHS AND BARE TRITONES POINT HOME TOO.</p><p>${playOnScreen() ? "STEER WITH THE ARROWS UNDER THE GAME. A SWEEPS, B FLAGS. OR TAP A SQUARE TO SWEEP IT, AND HOLD ONE TO FLAG IT." : "STEER ON THE HARP OR THE ARROW KEYS. A SWEEPS, B FLAGS. WITH A MOUSE, CLICK TO SWEEP AND RIGHT-CLICK TO FLAG."}</p><p>TO DEFUSE A MINE, PUT THE CURSOR ON IT AND PLAY ITS KEY'S HOME CHORD. SWEEP A MINE, OR PLAY THE WRONG CHORD ON IT, AND IT GOES OFF, AND THE WHOLE FIELD IS SHOWN.</p>`,
+  rules:()=>`<p>A GAME OF TENSION AND RELEASE. EACH MINE IS A KEY'S HOME. SWEPT SQUARES SHOW THE TENSION POINTING THERE: NEXT TO A MINE, ITS V7; TWO AWAY, V OF V; THREE AWAY, V OF V OF V. FURTHER OUT IT'S CALM.</p><p>LATER, TRITONE SUBSTITUTES, DIMINISHED SEVENTHS AND BARE TRITONES POINT HOME TOO.</p><p>${swJs() ? "STEER WITH THE STICK, ANY OF EIGHT WAYS; HOLD IT TO KEEP GOING. A SWEEPS, B FLAGS." : playOnScreen() ? "STEER WITH THE ARROWS UNDER THE GAME. A SWEEPS, B FLAGS. OR TAP A SQUARE TO SWEEP IT, AND HOLD ONE TO FLAG IT." : "STEER ON THE HARP OR THE ARROW KEYS. A SWEEPS, B FLAGS. WITH A MOUSE, CLICK TO SWEEP AND RIGHT-CLICK TO FLAG."}</p><p>TO DEFUSE A MINE, PUT THE CURSOR ON IT AND PLAY ITS KEY'S HOME CHORD. SWEEP A MINE, OR PLAY THE WRONG CHORD ON IT, AND IT GOES OFF, AND THE WHOLE FIELD IS SHOWN.</p>`,
   stat:()=>`FIELDS ${blast.fields}`,
   levels:SW_LEVELS, begin:i=>beginSweeper(i), demo:()=>swDemo(), modNote:false};
 function swMenu(over){ arcadeMenu(SWMENU_G, over); }
@@ -199,8 +200,27 @@ function swTick(now){
   if(!blast || blast.kind!=="sweeper") return;
   const dt=Math.min(DT_MAX,(now-blast.last)/1000); blast.last=now;
   if(blast.fx) fxDraw(now, dt);
+  swStick(now);
   blast.raf=requestAnimationFrame(swTick);
 }
+// The joystick plate's stick: a cursor eight ways, a diagonal moving it on both axes at once; a push
+// steps at once, and held, steps on after a moment, steadily. A sweeps and B flags (the "button"
+// listener below), and at NEXT FIELD, A goes on; the click is the arcade's pause.
+const swJs=()=> typeof jsOn==="function" && jsOn();
+const SW_REPEAT=[250,110];                                       // ms to the first repeat, and between
+function swStick(now){
+  if(blast.phase!=="play" || !swJs()){ blast.swWays=""; return; }
+  const ways=typeof jsWays8==="function" ? (jsWays8()||[]) : [], key=ways.join();
+  const dx=ways.includes("left") ? -1 : ways.includes("right") ? 1 : 0, dy=ways.includes("up") ? -1 : ways.includes("down") ? 1 : 0;
+  if(key!==blast.swWays){ blast.swWays=key; if(dx || dy){ swMove(dx,dy); blast.swRep=now+SW_REPEAT[0]; } return; }
+  if((dx || dy) && now>=blast.swRep){ swMove(dx,dy); blast.swRep=now+SW_REPEAT[1]; }
+}
+mc.addEventListener("button", e=>{
+  if(!blast || blast.kind!=="sweeper" || !e.detail || !e.detail.down || !swJs()) return;
+  if(blast.phase==="next"){ if(e.detail.name==="a") swGoOn(); return; }   // A goes on to the next field
+  if(blast.phase!=="play" || performance.now()-(blast.swOnAt||0)<40) return;   // nor is the press that went on (should it come here too) a sweep
+  if(e.detail.name==="a") swSweep(); else if(e.detail.name==="b") swFlag();
+});
 function swMove(dx,dy){ blast.cur=[Math.max(0,Math.min(SW_W-1,blast.cur[0]+dx)), Math.max(0,Math.min(SW_H-1,blast.cur[1]+dy))]; sfx("tick"); swDraw(); }
 function swFlag(){ const k=swKey(...blast.cur); if(blast.open.has(k)) return; blast.flags.has(k) ? blast.flags.delete(k) : blast.flags.add(k); sfx("flag"); swDraw(); }
 // sweep the square under the cursor: a note, or a mine going off
@@ -227,7 +247,7 @@ function sweeperNote(pc){
   kmFlash(blast.strip, pc);
   if(blast.phase==="demo" && blast.demo){ endSwDemo(blast.demo); return; }
   if(blast.phase==="next"){ if(kmControl(pc)==="A") swGoOn(); return; }      // A goes on to the next field
-  if(blast.phase!=="play") return;
+  if(blast.phase!=="play" || swJs()) return;                             // the plate's stick and buttons are read in swStick
   const c=kmControl(pc);
   if(c==="A") return swSweep();
   if(c==="B") return swFlag();
@@ -277,14 +297,14 @@ function swBoom(m, why, label){
 function swNextPrompt(){
   blast.phase="next";
   const p=document.createElement("div"); p.className="swnext";
-  p.innerHTML=`<b>NEXT FIELD ▶</b><span>${playOnScreen() ? "A, ANY CHORD, OR A TAP" : "A ON THE HARP, ANY CHORD, A CLICK OR ENTER"}</span>`;
+  p.innerHTML=`<b>NEXT FIELD ▶</b><span>${playOnScreen() ? "A, ANY CHORD, OR A TAP" : swJs() ? "A, ANY CHORD, A CLICK OR ENTER" : "A ON THE HARP, ANY CHORD, A CLICK OR ENTER"}</span>`;
   p.onclick=()=>swGoOn();
   blast.field.appendChild(p); blast.nextEl=p;
 }
 function swGoOn(){
   if(!blast || blast.kind!=="sweeper" || blast.phase!=="next") return;
   blast.nextEl && blast.nextEl.remove(); blast.nextEl=null; blast.showMines=false;
-  blast.phase="play"; swField();
+  blast.phase="play"; blast.swOnAt=performance.now(); swField();
 }
 document.addEventListener("keydown", e=>{ if(blast && blast.kind==="sweeper" && blast.phase==="next" && (e.code==="Enter" || e.code==="Space")){ e.preventDefault(); swGoOn(); } });
 function swCleared(){

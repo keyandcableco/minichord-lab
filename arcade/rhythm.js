@@ -334,7 +334,14 @@ const RH_KIT_SETTING={studio:4, brushes:5, tabla:8, cliqhop:12};
 // is where the firmware's own clamp would land). Those settings are on the minichord's second page,
 // which is read after the first; until it's in, this waits, and asks again now and then. The screen's
 // minichord only needs to know the strings are pads.
+// The joystick plate (harp plate 4): from firmware 91 harp drums makes its strip's places the pads (and
+// A, B and the click the kick, snare and closed hat), all set up as above. Firmware 90 has no harp drums
+// there: the strip plays its notes whatever 343 says. So the page plays the pads itself (rhFallback):
+// the harp chromatic from C, its volume borrowed down to nothing so the notes it still sends are silent,
+// and core/minichord.js told (mc.drumFallback) to read the strip's places and the buttons as pads.
 const RH_KINDS=["pilot","fours"];
+const rhPlate=()=> typeof mc!=="undefined" && !mc.virtual && mc.params[243]===4 && (mc.params[7]??0)>=90;
+const rhFallback=()=> rhPlate() && (mc.params[7]??0)<91;
 let rhWant=null;                       // the game waiting for the second page, and its kit
 function rhKitValue(kit, fw){
   if(kit==="tabla") return fw>=61 ? 8 : 7;
@@ -345,9 +352,17 @@ function rhDevice(kit="studio"){
   rhKeysOn();
   if(typeof mc==="undefined" || typeof canWrite!=="function" || !canWrite()) return;
   if(mc.virtual){ ensure(343,1); return; }
-  const fw=mc.params[7]??0; if(fw<60 || rhNeeds()) return;
+  const fw=mc.params[7]??0; if(fw<60) return;
   if(!mc.page1){ rhAwaitPage1(kit); return; }
   rhWant=null;
+  if(rhFallback()){
+    if(typeof asHarp==="function") asHarp();                                 // the strip chromatic from C: its place is its pad
+    ensure(2,0); ensure(334,0); ensure(341,0);                               // its notes silent; no drums of the instrument's own
+    mc.drumFallback=true;
+    const b=rhBlast(); if(b && !b.rhModeOff){ b.rhModeOff=true; mc.control(8,0); }
+    return;
+  }
+  mc.drumFallback=false;
   if(typeof harpInOrder==="function") harpInOrder();
   ensure(343,1); ensure(340,2); ensure(339,0); ensure(334,0); ensure(341,0);
   const lvl=mc.params[338]; if(!Number.isFinite(lvl) || lvl<30) borrow(338,70);
@@ -370,16 +385,19 @@ function rhAwaitPage1(kit){
 function rhReady(){
   if(typeof mc==="undefined") return false;
   if(mc.virtual) return mc.params[343]===1;
+  if(rhFallback()) return !!mc.page1 && !!mc.drumFallback && mc.params[2]===0;
   return !!mc.page1 && mc.params[343]===1 && mc.params[340]===2;
 }
-/** why a real minichord can't be drum pads, in a few words, or "" */
+/** why a real minichord can't be drum pads, in a few words, or "" (rhBlocked says whether it's only a note) */
 function rhNeeds(){
   if(typeof mc==="undefined" || mc.virtual || !mc.sysex || !mc.out) return "";
   const fw=mc.params[7]; if(!Number.isFinite(fw)) return "";
   if(fw<60) return "NEEDS FIRMWARE 60 FOR HARP DRUMS";
-  if(fw>=90 && mc.params[243]===4) return "NO HARP DRUMS ON THE JOYSTICK PLATE";
+  if(rhFallback()) return "FIRMWARE 91 SOUNDS THE PADS ON THE MINICHORD";      // a note, not a block: the page sounds them
   return "";
 }
+/** whether the minichord can't be pads at all (the keyboard, then), rather than played with a note */
+const rhBlocked=()=> !!rhNeeds() && !rhFallback();
 
 // ---------- the keyboard as pads ----------
 // With no minichord to play (or one that can't be pads), the number row is the pads, 1 the kick to =

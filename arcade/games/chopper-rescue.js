@@ -244,7 +244,7 @@ function chTune(){
   const station=48+Math.floor(Math.random()*12), target=.15+Math.random()*.7;   // its note; where on the dial it sits
   blast.tune={pc:station%12, hz:440*Math.pow(2,(station+12-69)/12), target, dial:target+(Math.random()<.5?-1:1)*(.18+Math.random()*.25), at:performance.now(), heldAt:0};
   blast.radioEl.classList.add("tuning");
-  blast.radioEl.querySelector(".chtext").textContent="▒▒ STATIC ▒▒  TUNE IN: A KNOB, ←→, OR PLUCK THE STATION'S NOTE";
+  blast.radioEl.querySelector(".chtext").textContent=`▒▒ STATIC ▒▒  TUNE IN: ${typeof jsOn==="function" && jsOn() ? "THE STICK" : "A KNOB, ←→"}, OR PLUCK THE STATION'S NOTE`;
   const ctx=piano.ctx;
   if(ctx && settings.sounds){ try{
     const g=ctx.createGain(); g.gain.value=.09; g.connect(ctx.destination);
@@ -289,6 +289,7 @@ function chTick(now){
   if(!blast || blast.kind!=="chopper") return;
   const dt=Math.min(DT_MAX,(now-blast.last)/1000); blast.last=now;
   if(blast.fx) fxDraw(now, dt);
+  if(blast.phase==="play" && blast.tune) chStick(dt);                              // the joystick plate's stick fine-tunes
   if(blast.phase==="play" && blast.tune){
     if(blast.tune.heldAt && now-blast.tune.heldAt>500) chTuned("dial");              // held in tune: through
     else if(now-blast.tune.at>CH_TUNE_SECS*1000) chTuned("weak");                   // never found: it comes through weak, less fuel
@@ -310,6 +311,14 @@ function chMissed(){
   blast.call=null; blast.found=null; blast.emerg=[]; blast.crate=null; chDrawMap();
   if(blast.lives<=0){ chQuiet(); blast.phase="over"; blast.over=true; const best=Math.max(saved.best.chopper||0, blast.score); saved.best.chopper=best; save(); chMenu(true); return; }
   gameLater(()=>{ if(blast && blast.kind==="chopper" && blast.phase==="play") chNewCall(); }, 1400);
+}
+// The joystick plate: the stick is the radio's fine-tuning wheel, by speed rather than place. A nudge
+// moves the dial a few cents a second, a full push sweeps the band (the square of the push), and
+// hearing the beats slow under the thumb is the fun. Flying stays the chords'.
+const CH_STICK_RATE=.35;             // of the dial's width a second, at a full push
+function chStick(dt){
+  if(typeof jsOn!=="function" || !jsOn() || typeof jsXY!=="function") return;
+  const x=(jsXY()||{}).x||0; if(x) chDial(blast.tune.dial+Math.sign(x)*x*x*CH_STICK_RATE*dt);
 }
 function chopperKnob(v){ if(blast && blast.kind==="chopper" && blast.phase==="play" && blast.tune) chDial(v); }
 document.addEventListener("keydown", e=>{
