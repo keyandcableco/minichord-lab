@@ -56,7 +56,9 @@ const t=inv, {check, sleep}=t;
     check("and score a quarter more", Math.abs(w.eval("diffMult('blaster')")-m0*1.25)<.02, `${m0} → ${w.eval("diffMult('blaster')")}`);
     w.eval("saved.tdBare=false; tdDraw()"); await sleep(20);
     check("labelled again, they say their chords", d.querySelector('.tdcell[data-r="1"][data-c="1"]').textContent==="Cm");
-    // the choice, on a title screen's options
+    // the choice, on a title screen's options (back at the title from the game begun for beginner mode:
+    // in a game, a game option waits for the next one)
+    w.eval("blast.phase='menu'; blast.over=true; blastMenu()"); await sleep(50);
     const opts=w.eval('arcadeOpts(["game","setup"])'), line=id=>opts.querySelector(`.opt[data-opt="${id}"]`);
     check("the options offer the buttons labelled or bare", !!line("buttons") && /LABELLED/.test(line("buttons").textContent));
     line("buttons").click();

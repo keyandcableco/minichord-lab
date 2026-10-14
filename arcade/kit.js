@@ -122,7 +122,7 @@ function demoPlay(notes){ demoLight(notes); heardAt=performance.now(); if(settin
 // of its own. A timer set with gameLater belongs to the run that set it, and only fires if that run is
 // still going: a timer from a game that's over can't reach into the next one (Play Again pressed at
 // once, say, while the old game still had a wave or a radio call on its way).
-function newRun(){ if(blast) blast.gen=(blast.gen||0)+1; }
+function newRun(){ if(blast) blast.gen=(blast.gen||0)+1; optApplyNext(); }
 function gameLater(fn, ms){ const b=blast, g=b && b.gen;
   const run=()=>{ if(!(b && blast===b && b.gen===g)) return; if(b.phase==="bonus"){ setTimeout(run,200); return; } fn(); };   // a bonus playing: wait for it
   return setTimeout(run, ms||0); }
@@ -212,6 +212,7 @@ new MutationObserver(()=>{ if(saved.crt) crtSync(); }).observe(document.getEleme
 //   vals(k)       its values: [word, multiplier, what it means, a tag for the score column]
 //   say           what it means, where a value doesn't say
 //   get(), set(i) where it's kept
+//   now           a game option that applies at once, even in a game (the rest wait for the next game)
 // Harder settings score more: every point a game awards is multiplied by the product of the game
 // group's multipliers, set when a game begins and shown beside the score, on the options screen as
 // they're chosen, and on its own screen in the title loop, the way Pac-Man listed its ghosts.
@@ -281,7 +282,7 @@ const ARCADE_OPTS=[
     vals:k=>[["LABELLED",1,"EACH HARP STRING ON THE SCREEN SHOWS ITS NOTE"],["BARE",HARP_BY_NAME.has(k)?1.25:1,"THE SCREEN'S HARP STRINGS BLANK, AS ON THE INSTRUMENT"]]},
   // switched on in a game (from the settings, which open during play), the help is there at once, and
   // the game is helped: off the board, as one begun in beginner mode is
-  {id:"beginner", group:"game", label:"BEGINNER", on:()=>true, get:()=>saved.beginner?1:0, set:i=>{ saved.beginner=!!i; save(); if(i && blast && !blast.over) blast.helped=true; helperSync(true); },
+  {id:"beginner", group:"game", label:"BEGINNER", now:true, on:()=>true, get:()=>saved.beginner?1:0, set:i=>{ saved.beginner=!!i; save(); if(i && blast && !blast.over) blast.helped=true; helperSync(true); },
     vals:()=>[["OFF",1,"PLAY IT STRAIGHT"],["ON",1,"THE MINICHORD ON SCREEN, LIT WITH WHAT TO PRESS. NO HIGH SCORES","UNRANKED"]]},
   // ----- the setup: how it looks, sounds and is steered
   {id:"harp", group:"setup", label:"HARP", on:k=>KM_GAMES.includes(k) || (saved.beginner && helpUsesHarp(k) && k!=="breakout"), get:harpLayoutIndex,
@@ -313,9 +314,30 @@ const ARCADE_OPTS=[
 ];
 const optLabel=(o,k)=> typeof o.label==="function" ? o.label(k) : o.label;
 const optsFor=(k, groups)=> ARCADE_OPTS.filter(o=>groups.includes(o.group) && o.on(k));
+// A game's options are the ones it began with, as the settings say. They open during play, and a game
+// option changed there (or at its game over) waits for the next game, kept meanwhile in saved.optNext
+// and shown in the lists as NEXT GAME: otherwise a game begun at Wild speed for ×2 could be finished at
+// Relaxed, still ×2, or begun with bare buttons and finished with them labelled. It's applied as the
+// next run begins (Play Again, the title, a demo), after the board has had what the game was played
+// with. Beginner mode applies at once (now), taking the game off the board.
+const optWaits=o=> o.group==="game" && !o.now && !!blast && blast.playGen!=null && blast.playGen===blast.gen;
+const optWaiting=(o,k)=>{ const p=(saved.optNext||{})[o.id]; return p && p.k===k ? p : null; };
+const optGet=(o,k)=>{ const p=optWaiting(o,k); return p ? p.i : o.get(k); };
+function optPut(o, i, k){
+  const n=saved.optNext||{};
+  if(!optWaits(o)){ if(n[o.id]){ delete n[o.id]; save(); } o.set(i, k); return; }
+  if(i===o.get(k)) delete n[o.id]; else n[o.id]={i, k};      // back to what this game has: nothing waiting
+  saved.optNext=n; save();
+}
+function optApplyNext(){
+  const n=saved.optNext; if(!n) return;
+  delete saved.optNext;
+  for(const [id,{i,k}] of Object.entries(n)){ const o=ARCADE_OPTS.find(x=>x.id===id); if(o && i<o.vals(k).length) o.set(i, k); }
+  save();
+}
 function diffMult(kind=cabKind()){
   let m=1;
-  for(const o of optsFor(kind, ["game"])){ const v=o.vals(kind)[o.get(kind)]; if(v) m*=v[1]; }
+  for(const o of optsFor(kind, ["game"])){ const v=o.vals(kind)[optGet(o,kind)]; if(v) m*=v[1]; }
   return Math.round(m*100)/100;
 }
 // a menu's matrix changed: the menu again, so its level names follow
@@ -409,7 +431,7 @@ function arcadeOpts(groups){
   hint.textContent=idle();
   box.append(list, hint);
   const k=()=>cabKind() || settings.mode;
-  const say=o=>{ const v=o.vals(k())[o.get(k())]; hint.textContent = v ? `${v[0]}: ${v[2] || o.say || ""}` : idle(); };
+  const say=o=>{ const v=o.vals(k())[optGet(o,k())]; hint.textContent = v ? `${v[0]}: ${v[2] || o.say || ""}` : idle(); };
   const render=()=>{
     const kind=k(), had=document.activeElement && box.contains(document.activeElement) ? document.activeElement.dataset.opt : null;
     list.innerHTML="";
@@ -419,12 +441,12 @@ function arcadeOpts(groups){
       h.innerHTML=`<span>${OPT_HEAD[gr]}</span>${gr==="game" ? `<b>${saved.beginner ? "UNRANKED" : `SCORE ×${diffMult(kind)}`}</b>` : ""}`;
       list.appendChild(h);
       os.forEach(o=>{
-        const vs=o.vals(kind), i=Math.max(0, Math.min(vs.length-1, o.get(kind))), v=vs[i], b=document.createElement("button");
+        const vs=o.vals(kind), i=Math.max(0, Math.min(vs.length-1, optGet(o,kind))), v=vs[i], b=document.createElement("button");
         b.type="button"; b.className="opt"; b.dataset.opt=o.id;
-        const tag=optTag(v);
+        const tag=optWaiting(o,kind) ? `NEXT GAME${optTag(v) ? ` ${optTag(v)}` : ""}` : optTag(v);
         b.innerHTML=`<span class="ol">${optLabel(o,kind)}</span><span class="ov"><i class="arr prev" aria-hidden="true"></i><b>${v[0]}</b><i class="arr next" aria-hidden="true"></i></span><span class="ox${v[3]?" warn":""}">${tag}</span>`;
         b.setAttribute("aria-label", `${optLabel(o,kind)}: ${v[0]}${tag?`, ${tag}`:""}. ${vs.length} choices`);
-        const step=d=>{ o.set(((i+d)%vs.length+vs.length)%vs.length, kind); sfx("press"); render(); const n=list.querySelector(`[data-opt="${o.id}"]`); if(n) n.focus({preventScroll:true}); say(o); };
+        const step=d=>{ optPut(o, ((i+d)%vs.length+vs.length)%vs.length, kind); sfx("press"); render(); const n=list.querySelector(`[data-opt="${o.id}"]`); if(n) n.focus({preventScroll:true}); say(o); };
         // a click on the left arrow (or just short of it) steps back; anywhere else, and Enter, on
         b.onclick=e=>{ e.stopPropagation(); const a=b.querySelector(".prev").getBoundingClientRect(); step(e.detail && e.clientX<a.right+8 && e.clientX>a.left-16 ? -1 : 1); };
         b.addEventListener("keydown", e=>{
@@ -450,7 +472,7 @@ mc.addEventListener("status", optsRefresh);
 // an option set from outside the list (the minichord's minor row sets the speed): set, and shown
 function optSet(id, i){
   const o=ARCADE_OPTS.find(x=>x.id===id), k=cabKind(); if(!o || !o.on(k) || i>=o.vals(k).length) return false;
-  o.set(i, k); optsRefresh(); return true;
+  optPut(o, i, k); optsRefresh(); return true;
 }
 
 
