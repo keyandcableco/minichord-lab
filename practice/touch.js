@@ -420,32 +420,92 @@ mc.addEventListener("device", ()=>setTimeout(()=>{ tdUsbAsk(); if(saved.mcMonito
 // browser lists it as a microphone, and only names its inputs once one's been allowed, so it asks,
 // then picks the minichord's (the USB one), and plays it as it comes, untouched (no echo cancelling,
 // no noise suppression, no levelling, which are for voices). quiet: put back by itself, not asked for.
+// An Android phone's Chrome names no input of the minichord's: it lists only what it can switch a call
+// to, each with a speaker ("USB audio" is the minichord at 0 or 1, as a speaker), and at 2 the minichord
+// isn't among them. There the default input is played, which Android takes from a USB input before the
+// phone's own microphone when nothing's cancelled (Chrome's generic AAudio preset; an older Chrome took
+// the camcorder's, the phone's own microphone). The phone's own microphone through its own speaker howls,
+// so a short beep first tells which it is (tdHearsSpeaker), and the sound stops the moment the minichord
+// goes over MIDI: Chrome opens the default input again then, the phone's own microphone, and the track
+// never ends. As minicontrol's listen.js does.
 async function tdMonitor(on, quiet=false){
   if(!quiet){ saved.mcMonitor=on; save(); }
   if(!on){ if(td.mon){ td.mon.stop(); td.mon=null; } return; }
   if(td.mon || td.monStarting) return;
+  const android=tdAndroid();
+  if(android && tdUsbAudio()!==2) return;          // on Android only a minichord here at 2, the only time the menu offers it
   td.monStarting=true;
   const raw={echoCancellation:false, noiseSuppression:false, autoGainControl:false};
   let stream=null;
+  const end=()=>{ if(stream) stream.getTracks().forEach(t=>t.stop()); stream=null; };
   try{
     try{ piano.start(); }catch(e){}
     stream=await navigator.mediaDevices.getUserMedia({audio:raw});
-    const ins=(await navigator.mediaDevices.enumerateDevices()).filter(d=>d.kind==="audioinput");
-    const dev=ins.find(d=>/minichord/i.test(d.label)) || ins.find(d=>/usb/i.test(d.label));
-    if(!dev){ stream.getTracks().forEach(t=>t.stop()); if(!quiet) tdToast("NO MINICHORD SOUND FOUND", "IS IT PLUGGED IN, AND ON?", 3000); return; }
-    if(stream.getAudioTracks()[0]?.getSettings?.().deviceId!==dev.deviceId){
-      stream.getTracks().forEach(t=>t.stop());
-      stream=await navigator.mediaDevices.getUserMedia({audio:{...raw, deviceId:{exact:dev.deviceId}}});
+    if(!android){
+      const ins=(await navigator.mediaDevices.enumerateDevices()).filter(d=>d.kind==="audioinput");
+      const dev=ins.find(d=>/minichord/i.test(d.label)) || ins.find(d=>/usb/i.test(d.label));
+      if(!dev){ end(); if(!quiet) tdToast("NO MINICHORD SOUND FOUND", "IS IT PLUGGED IN, AND ON?", 3000); return; }
+      if(stream.getAudioTracks()[0]?.getSettings?.().deviceId!==dev.deviceId){
+        end();
+        stream=await navigator.mediaDevices.getUserMedia({audio:{...raw, deviceId:{exact:dev.deviceId}}});
+      }
     }
-    const ctx=piano.ctx; if(!ctx){ stream.getTracks().forEach(t=>t.stop()); return; }
+    const ctx=piano.ctx; if(!ctx){ end(); return; }
+    if(android){
+      if(ctx.state!=="running") await Promise.race([ctx.resume(), new Promise(r=>setTimeout(r, 1000))]).catch(()=>{});
+      if(ctx.state!=="running"){ end(); return; }   // the check needs the sound running: without it, nothing plays
+      if(!quiet) tdToast("A SHORT BEEP", "CHECKING IT'S THE MINICHORD'S SOUND, NOT THE PHONE'S MICROPHONE", 1400);
+      if(await tdHearsSpeaker(ctx, stream)){
+        end(); saved.mcMonitor=false; save();
+        tdToast("NOTHING PLAYED", "THE PHONE GAVE ITS OWN MICROPHONE, NOT THE MINICHORD: IS CHROME UP TO DATE?", 4000);
+        return;
+      }
+      if(!saved.mcMonitor || tdUsbAudio()!==2){ end(); return; }   // turned off, or the minichord gone, while it checked
+    }
     const src=ctx.createMediaStreamSource(stream); src.connect(ctx.destination);
     const s=stream; td.mon={stop(){ try{ src.disconnect(); }catch(e){} s.getTracks().forEach(t=>t.stop()); }};
     s.getAudioTracks()[0]?.addEventListener("ended", ()=>{ if(td.mon){ td.mon.stop(); td.mon=null; } });   // unplugged, or restarting
     if(!quiet) tdToast("THE MINICHORD ON THE PHONE", "ITS SOUND THROUGH THE PHONE'S SPEAKER", 2200);
   }catch(e){
-    if(stream) stream.getTracks().forEach(t=>t.stop());
+    end();
     if(!quiet){ saved.mcMonitor=false; save(); tdToast("MICROPHONE NOT ALLOWED", "THE PAGE NEEDS IT TO HEAR THE MINICHORD", 3000); }
   } finally { td.monStarting=false; }
+}
+// on Android the minichord gone over MIDI is its sound gone: dropped before the phone's own microphone takes its place
+mc.addEventListener("ports", ()=>{ if(td.mon && tdAndroid() && !tdReal()){ td.mon.stop(); td.mon=null; } });
+// Whether an input hears the phone's own speaker: a half-second quiet beep at 2.9 kHz (between the
+// notes), and the input's band there watched before, during and after it, as it stands above its
+// neighbours. The phone's own microphone hears it come and go; the minichord's USB sound doesn't, and a
+// note of its own there that starts with the beep doesn't stop with it.
+async function tdHearsSpeaker(ctx, stream){
+  const TONE=2900, LEVEL=0.05, wait=ms=>new Promise(r=>setTimeout(r, ms));
+  const src=ctx.createMediaStreamSource(stream), an=ctx.createAnalyser();
+  an.fftSize=4096; an.smoothingTimeConstant=0; src.connect(an);
+  const db=new Float32Array(an.frequencyBinCount), k=Math.round(TONE*an.fftSize/ctx.sampleRate);
+  const at=i=>Math.max(db[i], -160);                // digital silence is -Infinity
+  // how far the beep's band stands above its neighbours, on average over ms
+  const standing=async ms=>{
+    let sum=0, n=0;
+    for(const until=performance.now()+ms; performance.now()<until; await wait(20)){
+      an.getFloatFrequencyData(db);
+      let around=0; for(let d=8; d<=16; d++) around+=at(k-d)+at(k+d);
+      sum+=Math.max(at(k-1), at(k), at(k+1))-around/18; n++;
+    }
+    return n ? sum/n : 0;
+  };
+  try{
+    const before=await standing(250);
+    const osc=ctx.createOscillator(), g=ctx.createGain(), t=ctx.currentTime+0.02;
+    osc.frequency.value=TONE;
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(LEVEL, t+0.02);
+    g.gain.setValueAtTime(LEVEL, t+0.48); g.gain.linearRampToValueAtTime(0, t+0.5);
+    osc.connect(g).connect(ctx.destination); osc.start(t); osc.stop(t+0.52);
+    await wait(200);                                // out through the speaker and back
+    const during=await standing(260);
+    await wait(250);                                // gone, and its echo
+    const after=await standing(250);
+    return during-Math.max(before, after)>=6;
+  } finally { try{ src.disconnect(); }catch(e){} }
 }
 
 // a button held by a finger: down and up, however the finger leaves

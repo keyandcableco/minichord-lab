@@ -3,8 +3,11 @@
 // THE PHONE writes 2, which restarts the minichord for the phone to see it: the cabinet waits for it
 // rather than putting the deck back, and the game sets it up afresh when it's back. LEAVE IT is
 // remembered. Firmware 23 isn't asked, nor a phone that isn't Android, and the menu has SOUND OUT.
+// THE MINICHORD ON THE PHONE TOO, on Android: Chrome names no input of the minichord's at 2, so the
+// default one is played, after a beep that tells it from the phone's own microphone; it stops the
+// moment the minichord goes over MIDI and comes back with it, and plays nothing if the beep is heard.
 const harness=require("./harness");
-const [a, b, c]=["chord-snake","chord-snake","chord-snake"].map(s=>harness.load(s));
+const [a, b, c, e]=["chord-snake","chord-snake","chord-snake","chord-snake"].map(s=>harness.load(s));
 const {check, sleep}=a;
 const android=(g, yes=true)=>{ g.w.matchMedia=q=>({matches:/coarse/.test(q), addEventListener(){}});
   Object.defineProperty(g.w.navigator, "userAgent", {value: yes ? "Mozilla/5.0 (Linux; Android 14; Pixel 8) Chrome/131" : "Mozilla/5.0 (iPad)", configurable:true}); };
@@ -65,5 +68,36 @@ const opt=(d, label)=>[...d.querySelectorAll("#tdMenuDlg .tdmopt")].find(r=>r.fi
     check("firmware 23 has no such setting: not asked", !card(d) && w.eval("tdUsbAudio()")===null);
     android(c, false); w.eval("td.usbAsked=false; mc.params[7]=24; mc.dispatchEvent(new Event('device'))"); await sleep(50);
     check("nor a touch screen that isn't Android", !card(d)); }
-  a.done(); b.done(); c.done();
+  { const {w, d}=e; android(e); const mcd=minichord(e); mcd.dev[244]=2; mcd.plug();
+    // Chrome on an Android phone: the minichord's input unnamed, the default one handed over
+    const asked=[], tracks=[]; let listed=0;
+    Object.defineProperty(w.navigator, "mediaDevices", {value:{
+      getUserMedia:async c=>{ asked.push(c.audio); const t={stopped:false, stop(){ this.stopped=true; }, addEventListener(){}, getSettings:()=>({deviceId:"default"})};
+        tracks.push(t); return {getTracks:()=>[t], getAudioTracks:()=>[t]}; },
+      enumerateDevices:async()=>{ listed++; return [{kind:"audioinput", label:"Speakerphone", deviceId:"1"}, {kind:"audioinput", label:"Headset earpiece", deviceId:"2"}]; }}, configurable:true});
+    let playing=0;
+    w.AudioContext.prototype.createMediaStreamSource=()=>({connect(){ playing++; }, disconnect(){ playing--; }});
+    w.eval("window.heard=false; tdHearsSpeaker=async()=>window.heard");
+    const toast=()=>d.querySelector(".tdkey")?.textContent||"";
+    w.eval("touchMinichord(true)"); await sleep(400); await e.start(0); await sleep(300);
+    await w.eval("tdConnect()"); await sleep(800);
+    check("a minichord at 2 on an Android phone: nothing asked", !card(d) && w.eval("tdUsbAudio()")===2);
+    await w.eval("tdMonitor(true)"); await sleep(50);
+    check("the minichord on the phone too: the default input opened, untouched, and played", asked.length===1 && !asked[0].deviceId && asked[0].echoCancellation===false && playing===1 && w.eval("!!td.mon"), JSON.stringify(asked));
+    check("without looking for it by name, which Android's Chrome doesn't give", listed===0);
+    check("and says so", /THE MINICHORD ON THE PHONE/.test(toast()));
+    const gone=mcd.restart(); await sleep(50);
+    check("the minichord gone over MIDI: its sound dropped at once, the input closed", playing===0 && !w.eval("td.mon") && tracks[0].stopped);
+    await gone; await sleep(900);
+    check("back at 2: it plays again by itself", asked.length===2 && playing===1 && w.eval("!!td.mon") && w.eval("saved.mcMonitor")===true);
+    await w.eval("tdMonitor(false)"); await sleep(20);
+    check("turned off", playing===0 && tracks[1].stopped && w.eval("saved.mcMonitor")===false);
+    w.eval("window.heard=true"); await w.eval("tdMonitor(true)"); await sleep(50);
+    check("the beep heard (the phone's own microphone): nothing played, the input closed, left off", playing===0 && !w.eval("td.mon") && tracks[2].stopped && w.eval("saved.mcMonitor")===false);
+    check("and says why", /NOTHING PLAYED/.test(toast()));
+    w.eval("window.heard=false; mc.params[244]=0");
+    await w.eval("tdMonitor(true)"); await sleep(50);
+    check("at 0 nothing's opened: the minichord would take the phone's sound, this too", asked.length===3 && playing===0);
+    w.eval("tdMonitor(false)"); }
+  a.done(); b.done(); c.done(); e.done();
 })();
