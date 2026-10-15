@@ -23,8 +23,11 @@ const AS_POWERS={
 };
 const AS_POWER_CHANCE=.08, AS_PEDAL_MS=260;
 const asPowerOn=k=>{ const p=blast && blast.kind==="asteroids" && blast.asPower; return !!(p && p.k===k && (!AS_POWERS[k].secs || performance.now()<p.powerUntil)); };
-// the key's home chord: the tonic of the key the minichord is set to (C without one)
-const asHomeChord=()=> (typeof mc!=="undefined" && mc.keyName) || "C";
+// the key's home chord: the tonic of the key the minichord is set to (C without one), as the major
+// button plays it now, so it can always be played: C6 once Barry Harris mode is on, the matrix's own
+// chord on the alternate layout or a custom one
+const asHomeRoot=()=> (typeof mc!=="undefined" && mc.keyName) || "C";
+const asHomeChord=()=> asHomeRoot()+mxMap("");
 // a held note's name, spelled for the key
 const asPedalName=pc=> spell(pc, devFifths());
 // a power-up to send in with this rock, now and then: never in the demo or a bonus round, never two
@@ -52,7 +55,7 @@ function asPedalPluck(pc, hasRock){
 }
 // Resolution: the home chord, played while it's held, blows up everything there is. True if it went.
 function asResolve(pitches){
-  if(!asPowerOn("resolve") || !isChord(pitches, pcOfName(asHomeChord()), "")) return false;
+  if(!asPowerOn("resolve") || !isChord(pitches, pcOfName(asHomeRoot()), mxMap(""))) return false;
   blast.asPower=null;
   let pts=0;
   for(const r of blast.rocks){ if(r.dead) continue;

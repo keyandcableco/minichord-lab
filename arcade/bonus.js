@@ -75,11 +75,12 @@ function arcadeBonus(id){
   b.say=t=>{ el.querySelector(".boinstr").textContent=t; };
   b.finish=()=>bonusEnd(b);
   blast.bonus=b; sfx("level");
-  if(g.inField){
-    blast.field.classList.add("bonusfield");
-    // its chords are the standard ones, so an alternate or custom layout is put aside for the round
-    if(canWrite() && hasSetting(39) && mc.params[39]){ b.layoutWas=mc.params[39]; borrow(39,0); }
-  }
+  if(g.inField) blast.field.classList.add("bonusfield");
+  // its chords are the standard ones, so an alternate or custom layout is put aside for the round; and
+  // a round that asks for chords by name puts Barry Harris mode aside too, or its majors, minors and
+  // diminished, which the buttons would play as 6, m6 and °7, couldn't be played
+  if((g.inField || g.byName) && canWrite() && hasSetting(39) && mc.params[39]){ b.layoutWas=mc.params[39]; borrow(39,0); }
+  if(g.byName && canWrite() && hasSetting(33) && mc.params[33]===1){ b.barryWas=1; borrow(33,0); }
   // first the warning: what's coming, its rules, and a count down; then the mini-game and its clock
   el.classList.add("intro"); b.stage.innerHTML=`<p class="bocount">3</p>`;
   let n=3; b.countT=setInterval(()=>{ n--; const c=b.stage.querySelector(".bocount");
@@ -97,6 +98,7 @@ function bonusEnd(b){
   if(b.over) return; b.over=true; clearInterval(b.timer); clearInterval(b.countT); if(b.g.stop) b.g.stop(b);
   if(b.g.inField && blast.field) blast.field.classList.remove("bonusfield");
   if(b.layoutWas!=null && canWrite()){ borrow(39, b.layoutWas); b.layoutWas=null; }   // the player's own layout back
+  if(b.barryWas!=null && canWrite()){ borrow(33, b.barryWas); b.barryWas=null; }      // and Barry Harris mode
   const pts=mulPts(b.score*(blast.level+1));
   // the tally: what was caught, what it scored and what the level multiplied it by, held long enough to read
   const lines=(b.tally||[]).map(([what,n])=>`<span>${what}</span><b>${n}</b>`).join("");
@@ -183,7 +185,7 @@ const BONUS_GAMES=[
   // Chord Invaders' own, played with the game itself: four chords fall as they always do and stop,
   // three of them from one key. Steer under the one that doesn't belong and play it, exactly as in the
   // game; shoot a chord that belongs and it costs. Its company gets harder as the game goes on.
-  {id:"oddout", name:"ODD ONE OUT", secs:22, inField:true,
+  {id:"oddout", name:"ODD ONE OUT", secs:22, inField:true, byName:true,
    instr:"THREE OF THESE BELONG TO ONE KEY. SHOOT THE ONE THAT DOESN'T.",
    start(b){
      b.n=0; b.hits=0; b.misses=0; b.tally=[]; b.mine=[];
@@ -252,7 +254,7 @@ const BONUS_GAMES=[
   // one spelling a chord. Pluck the odd note's string and its cannon shoots it down; or play the chord
   // the others spell and every cannon fires at once, which is worth more. The harp is chromatic for
   // the round, so every note has a string; the chords and the odd note get harder as the game does.
-  {id:"spell", name:"SPELL IT", secs:24, inField:true,
+  {id:"spell", name:"SPELL IT", secs:24, inField:true, byName:true,
    instr:"ALL BUT ONE NOTE SPELL A CHORD. PLUCK THE ODD ONE, OR PLAY THE CHORD FOR THE REST.",
    start(b){
      b.hits=0; b.chords=0; b.misses=0; b.mine=[];
@@ -536,7 +538,7 @@ const BONUS_GAMES=[
   // cadence's two chords; shoot both clays by playing them in order, and the cadence is named:
   // authentic, plagal, half or deceptive. A wrong chord and the pair's lost (it's said what it was).
   // Later in the game the keys widen, and V7, the minor iv and the deceptive V7 come in.
-  {id:"clay", name:"CLAY SHOOTING", secs:24,
+  {id:"clay", name:"CLAY SHOOTING", secs:24, byName:true,
    instr:"HOME SOUNDS, THEN A CADENCE: TWO CHORDS. SHOOT BOTH CLAYS BY PLAYING THEM IN ORDER.",
    start(b){ b.pairs=0; b.named={}; this.next(b); },
    next(b){
@@ -575,7 +577,7 @@ const BONUS_GAMES=[
      b.tally=[["CADENCES SHOT", b.pairs], ...Object.entries(b.named).map(([k,n])=>[k, n])];
      if(!b.result) b.result = b.pairs ? `${b.pairs} CADENCE${b.pairs>1?"S":""} NAMED` : "NO CADENCES THIS TIME"; } },
 
-  {id:"odd", name:"ODD ONE OUT", secs:20,
+  {id:"odd", name:"ODD ONE OUT", secs:20, byName:true,
    instr:"THREE OF THESE CHORDS ARE FROM ONE KEY. PLAY THE ONE THAT DOESN'T BELONG.",
    start(b){ b.n=0; this.next(b); },
    next(b){
@@ -589,7 +591,7 @@ const BONUS_GAMES=[
      else if(chordId(pitches)){ sfx("miss"); buzz(b.stage,true); } } },
 
   // a short progression: play the chord of the key it's in
-  {id:"detective", name:"KEY DETECTIVE", secs:20,
+  {id:"detective", name:"KEY DETECTIVE", secs:20, byName:true,
    instr:"WHAT KEY IS THIS IN? PLAY ITS HOME CHORD.",
    start(b){ b.n=0; this.next(b); },
    next(b){
@@ -601,7 +603,7 @@ const BONUS_GAMES=[
      else if(chordId(pitches)){ sfx("miss"); buzz(b.stage,true); } } },
 
   // a sequence of chords flashes up, one more each time: play it back
-  {id:"simon", name:"SIMON SAYS", secs:24,
+  {id:"simon", name:"SIMON SAYS", secs:24, byName:true,
    instr:"WATCH THE CHORDS, THEN PLAY THEM BACK IN ORDER.",
    start(b){ const key=rnd(["C","G","F","D"]); b.pool=bonusDiatonic(key); b.seq=[rnd(b.pool),rnd(b.pool)]; this.show(b); },
    show(b){

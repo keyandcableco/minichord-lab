@@ -328,10 +328,20 @@ function asCleared(group, x, y){
     const was=blast.level;
     for(let n=blast.level+1;n<AS_LEVELS.length;n++) if(asLevelOk(n)){ blast.level=n; break; }
     blast.gap=Math.max(1800*speedMul(), blast.gap*.9); blast.drift*=1.06; sfx("level");
-    if(blast.level!==was){ banner(`LEVEL ${blast.level+1}`, asLevelName(blast.level).toUpperCase()); if(AS_LEVELS[blast.level].barry && canWrite()) borrow(33,1); }
+    if(blast.level!==was){ banner(`LEVEL ${blast.level+1}`, asLevelName(blast.level).toUpperCase()); if(AS_LEVELS[blast.level].barry && canWrite()) asBarryOn(); }
     else banner("FASTER!");
   }
   asBar();
+}
+// Barry Harris mode, come on with its level mid-game: the major, minor and diminished buttons play 6,
+// m6 and °7 from now on, so a rock of one of those three still out there could never be cracked. It
+// goes, scoring nothing and costing nothing. The sevenths and augmented still play, so theirs stay, and
+// so do the notes already out, which the harp still plays.
+function asBarryOn(){
+  borrow(33,1);
+  const plays=mxNow(), gone=blast.rocks.filter(r=>!r.dead && r.kind==="chord" && !plays.includes(r.q));
+  gone.forEach(r=>{ explode(r.x, r.y, 30, ["#C9C0A8","#7FE9FF","#F1E8D2"]); asKill(r); });
+  if(gone.length) sfx("boom", 46);
 }
 // the ship, and the rocks' outlines, on the starfield's canvas
 // The rocks, the ship and its orbit, drawn sharp on their own canvas over the pixel starfield, at
