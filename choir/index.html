@@ -196,7 +196,7 @@ footer p{margin:0;max-width:80ch}
       <select id="perf" aria-label="Performance mode"><option value="standard">Standard</option><option value="light">Light, for older computers</option></select>
     </div>
   </div>
-  <p class="before">You'll need a minichord running the unofficial <a href="https://github.com/keyandcableco/minichord/tree/test-allFeatures">test-allFeatures firmware</a> (flash <a href="https://github.com/keyandcableco/minichord/blob/test-allFeatures/firmware/firmware.hex">firmware.hex</a> with the Teensy Loader), and Chrome, Edge or Opera. No minichord? The test buttons at the bottom play without one.</p>
+  <p class="before">You'll need a minichord running the unofficial <a href="https://github.com/keyandcableco/minichord/releases/latest">advanced firmware</a> (flash the .hex file from its latest release with the Teensy Loader), and Chrome, Edge or Opera. No minichord? The test buttons at the bottom play without one.</p>
   <p class="status" id="sampleStatus" aria-live="polite"></p>
   <p class="status" id="status">Press start, then allow MIDI access when the browser asks. Allowing system-exclusive messages lets this page switch MPE output on the minichord.</p>
   <section class="device panel" id="device" hidden>
@@ -217,7 +217,7 @@ footer p{margin:0;max-width:80ch}
       <label class="ctl" id="ctlCantus" hidden><span class="lbl">Cantus</span><select id="cantusSel" disabled>
         <option value="0">Off</option><option value="1">Bass</option><option value="2">Tenor</option><option value="3">Alto</option><option value="4">Soprano</option><option value="5">Nearest</option></select></label>
     </div>
-    <p class="fine">Changes here are live and last until the preset changes. Save the preset in minicontrol to keep them. Voice leading and the 19-, 24- and 31-EDO temperaments need the test-allFeatures firmware (24-EDO from version 18).</p>
+    <p class="fine">Changes here are live and last until the preset changes. Save the preset in minicontrol to keep them. Voice leading and the 19-, 24- and 31-EDO temperaments need the advanced firmware (24-EDO from version 18).</p>
     <p class="fine">Slash voice picks which voice sings a slash chord's note, counted up from the bottom: bass, tenor, alto or soprano. That voice's strip is marked below. Re-voice lets the other upper voices move to keep the chord whole around it. Choosing a slash voice also sets slash level to root, which then only steers the harp and rhythm mode. On the trace, a red slash marks the moment the chosen voice takes the slash note while the chord you hold stays whole, and "back" when it lets go. Older firmware has "Slash replaces" here instead.</p>
     <p class="fine" id="cantusHelp" hidden>Cantus lets the harp set one voice, the way slash voice lets a slash set one: bass, tenor, alto or soprano, or Nearest, whichever voice can reach the note by the smallest move. The first string of each harp gesture gives that voice its note; the rest of a strum moves nothing. A chord tone re-voices the chord around it, and any other note is a passing tone that voice sings alone. That voice's strip is marked below. With a slash voice on as well, the trace can't tell the harp's moves from the slash's, so both are drawn as slashes.</p>
   </section>
@@ -278,7 +278,7 @@ footer p{margin:0;max-width:80ch}
     </section>
   </div>
   <footer>
-    <p>The minichord is <a href="https://github.com/BenjaminPoilve/minichord">Benjamin Poilve's open-source instrument</a>. MPE output, voice leading and the temperaments come from the unofficial <a href="https://github.com/keyandcableco/minichord/tree/test-allFeatures">test-allFeatures firmware</a>; its settings editor is <a href="https://minicontrol.keyandcable.com/">minicontrol</a>.</p>
+    <p>The minichord is <a href="https://github.com/BenjaminPoilve/minichord">Benjamin Poilve's open-source instrument</a>. MPE output, voice leading and the temperaments come from the unofficial <a href="https://github.com/keyandcableco/minichord/releases/latest">advanced firmware</a>; its settings editor is <a href="https://minicontrol.keyandcable.com/">minicontrol</a>.</p>
     <p>Choir recordings from the FluidR3 (CC BY 3.0), Musyng Kite and FatBoy (CC BY-SA 3.0) soundfonts, as rendered by <a href="https://github.com/gleitz/midi-js-soundfonts">midi-js-soundfonts</a>. See <a href="https://github.com/keyandcableco/minichord-lab/blob/main/samples/README.md">samples/README.md</a>.</p>
     <p>Made by <a href="https://keyandcable.com">The Key &amp; Cable Company</a>. Source on <a href="https://github.com/keyandcableco/minichord-lab">GitHub</a>.</p>
     <p class="explicit" lang="la">Explicit.</p>
@@ -1139,7 +1139,7 @@ function setMpe(v){
   clearTimeout(zoneWatch); zoneSeen=false;
   if(v===1) zoneWatch=setTimeout(()=>{
     if(!zoneSeen) document.getElementById("deviceNote").textContent =
-      "The minichord took the setting but announced no MPE zone, so its firmware likely has no MPE output. Flash the test-allFeatures build.";
+      "The minichord took the setting but announced no MPE zone, so its firmware likely has no MPE output. Flash the advanced firmware.";
   },800);
   setTimeout(requestDump,150);
 }

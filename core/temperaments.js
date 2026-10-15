@@ -3,7 +3,7 @@
  * tune any chord in any of them, with or without the instrument.
  *
  * The table is generated from firmware/generator/temperaments.py on the
- * test-allFeatures branch of keyandcableco/minichord: whole-cent offsets from
+ * advanced branch of keyandcableco/minichord: whole-cent offsets from
  * equal temperament for C..B, with A held fixed, exactly what the device plays.
  * Keep it in step with that file; new temperaments go at the end there too.
  * Its order is firmware 18's, where the divisions read 19, 24, 31. Firmware 17

@@ -162,11 +162,11 @@ fieldset:disabled{opacity:.5}
     <p>The phone plays to the minichord as if it were a speaker, and the minichord listens to what arrives. Every few milliseconds it measures the song three ways: all of it, the bass below 150 Hz where the kick drum is, and the treble above 6 kHz where the hi-hats are. Each is judged against the song's own loudest moments of the last few seconds, so the phone's volume doesn't matter and a quiet song swings as far as a loud one.</p>
     <p>A follower turns one of those levels into a setting: the chords' volume dipping on every kick is the pumping of sidechain compression, and the filter opening on every hi-hat is an auto-wah. The kick is a sudden jump in the bass, and it can strike your chord again or go out as a MIDI note. For the beat, the minichord looks back over six seconds for the spacing at which the music best repeats itself, then lines its rhythm, its MIDI clock and the harp's strum up with it.</p>
     <p>The DJ box sits on the song's own path to the speaker: a filter that muffles it one way and thins it the other, an echo timed to the beat it found, and a tape stop that slows the song to a halt as a turntable does when its power goes. The minichord keeps the last second of the song in memory as it plays, which is what the tape stop slows down and what the harp plays when you grab it, at a third of the usual sample rate, gritty in the way early samplers were.</p>
-    <p>The settings are borrowed: leave the page, or press <i>Give everything back</i>, and the minichord is as it was. The recipes need the unofficial test-allFeatures firmware, version 52 or later; the DJ box and the harp, version 59.</p>
+    <p>The settings are borrowed: leave the page, or press <i>Give everything back</i>, and the minichord is as it was. The recipes need the unofficial advanced firmware, version 52 or later; the DJ box and the harp, version 59.</p>
   </section>
 
   <footer>
-    <p>Part of <a href="../">Minichord Lab</a>. The minichord is <a href="https://github.com/BenjaminPoilve/minichord">Benjamin Poilve's open-source instrument</a>; the phone's features come from the unofficial <a href="https://github.com/keyandcableco/minichord/tree/test-allFeatures">test-allFeatures firmware</a>.</p>
+    <p>Part of <a href="../">Minichord Lab</a>. The minichord is <a href="https://github.com/BenjaminPoilve/minichord">Benjamin Poilve's open-source instrument</a>; the phone's features come from the unofficial <a href="https://github.com/keyandcableco/minichord/releases/latest">advanced firmware</a>.</p>
     <p>Made by <a href="https://keyandcable.com">The Key &amp; Cable Company</a>. Source on <a href="https://github.com/keyandcableco/minichord-lab">GitHub</a>.</p>
   </footer>
 </main>
@@ -176,7 +176,7 @@ import {Minichord} from "../core/minichord.js";
 const $=id=>document.getElementById(id);
 const mc=new Minichord();
 
-// ---------- the settings this page reaches (test-allFeatures firmware) ----------
+// ---------- the settings this page reaches (advanced firmware) ----------
 const A={ usbAudio:244, version:7, vocoder:260, carrier:261, consonants:262, knobMidi:238, clockOut:266,
   f1:[303,304,305,306], f2:[307,308,309,310], beat:311, stab:312, kickNote:313,
   filter:327, res:328, echo:329, echoTime:330, feedback:331, deck:332, strum:333,
@@ -336,7 +336,7 @@ function drawNeeds(){
   const box=$("needs"); let html="";
   const v=version();
   if(mc.out && !mc.sysex) html="<p>The browser didn't allow system-exclusive messages, so the page can't change the minichord's settings: allow \"MIDI device control &amp; reprogram\" in the site settings and reload.</p>";
-  else if(canWrite() && v<FOLLOW_FIRMWARE) html=`<p>This minichord's firmware (version ${v}) doesn't listen to the phone. It needs the unofficial test-allFeatures build, version ${FOLLOW_FIRMWARE} or later, and ${DJ_FIRMWARE} for the DJ box and the harp.</p>`;
+  else if(canWrite() && v<FOLLOW_FIRMWARE) html=`<p>This minichord's firmware (version ${v}) doesn't listen to the phone. It needs the unofficial advanced firmware, version ${FOLLOW_FIRMWARE} or later, and ${DJ_FIRMWARE} for the DJ box and the harp.</p>`;
   else if(canWrite() && mc.params[A.usbAudio]===2) html=`<p>The minichord's USB audio is set to 2, so the phone doesn't see it as a speaker and nothing can reach it.</p><button id="speaker">Offer it as a speaker</button><p class="fine">It restarts a moment later, so the phone sees the change, and comes back by itself.</p>`;
   else if(canWrite() && mc.params[A.usbAudio]===0) html=`<p>The song reaches the minichord, but it plays on the phone's side: the recipes work, the DJ box can't be heard.</p><button id="playalong">Play the song through the minichord</button>`;
   box.innerHTML=html; box.hidden=!html;

@@ -206,7 +206,7 @@ function ccChord(key, num){
 const ccIs=(pitches, c)=> !!c && c.qs.some(q=>isChord(pitches, c.pc, q));
 // the four numerals of a maze, dealt to the ghosts in a shuffled order
 function ccDeal(L){ return shuffle(L.pool ? [...L.pool] : [...L.fixed, ...shuffle([...L.more]).slice(0,2)]); }
-// the key change combo needs the test firmware; without it, a key that turns up is played for
+// the key change combo needs the advanced firmware; without it, a key that turns up is played for
 const ccComboOk=()=> keyComboReady() && hasSetting(35);
 
 // ---------- the game ----------

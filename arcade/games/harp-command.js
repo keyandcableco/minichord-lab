@@ -136,7 +136,7 @@ function blastBarCommand(){
 const hcJs=()=> typeof jsOn==="function" && jsOn();
 const COMMANDMENU_G={key:"command", title:"HARP COMMAND",
   rules:()=>`<p>NOTES FALL TOWARD YOUR CANNONS.</p><p>PLUCK THE STRING THAT PLAYS ONE AND ITS CANNON FIRES.</p>${hcJs() ? "<p>THE STRIP: C AT THE BOTTOM IS THE LEFTMOST CANNON, THE TOP PLACE THE RIGHTMOST.</p>" : ""}<p class="starline">${PIXEL_STAR}NOTES SCORE BIG AND NEVER HURT.</p><p>A WRONG STRING FREEZES YOUR CANNONS.</p><p>POWER-UPS FALL NOW AND THEN: PLUCK THEIR STRING TO TAKE THEM.</p><p>EVERY TWO LEVELS, SPELL IT: ALL BUT ONE NOTE SPELL A CHORD. PLUCK THE ODD ONE, OR PLAY THE CHORD FOR THE REST.</p>`,
-  levels:HC_LEVELS, ok:hcLevelOk, needs:"NEEDS THE TEST FIRMWARE",
+  levels:HC_LEVELS, ok:hcLevelOk, needs:"NEEDS THE ADVANCED FIRMWARE",
   begin:i=>beginCommand(i), demo:()=>commandDemo(), modNote:false};
 function commandMenu(over){ arcadeMenu(COMMANDMENU_G, over); }
 function beginCommand(level){

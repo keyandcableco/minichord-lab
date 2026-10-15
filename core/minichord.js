@@ -111,7 +111,7 @@ export class Minichord extends EventTarget {
   get keyIndex(){ return this.params[35] ?? null; }
   get keyName(){ return this.keyIndex==null ? null : KEY_NAMES[this.keyIndex] ?? null; }
   get keyFifths(){ return this.keyIndex==null ? 0 : (KEY_FIFTHS[this.keyIndex] ?? 0); }
-  /** the dump just in was the key change combo reporting a key picked (the test firmware sends one per pick) */
+  /** the dump just in was the key change combo reporting a key picked (the advanced firmware sends one per pick) */
   get comboPick(){ return !!this.unasked && [...(this.changed||[])].every(a=>a===35); }
   /** the dump just in was a preset being loaded on the instrument (its preset buttons) */
   get presetLoaded(){ return !!this.unasked && (this.changed||new Set()).size>3; }
@@ -206,7 +206,7 @@ export class Minichord extends EventTarget {
    * the pop with a dump, while one that hasn't ignores both and says nothing. The answer is a dump
    * beyond those asked for meanwhile, not any "device" event: a page writing a setting fires one,
    * and a game sets the minichord up as soon as it connects. The version number can't be used: the
-   * test firmware and the released one number themselves separately.
+   * advanced firmware and the classic one number themselves separately.
    * A push goes out again straight afterwards, so the instrument remembers itself as it is now,
    * before any page has changed anything: waiting for the answer would be too late. One that hasn't
    * push and pop ignores it as it ignored the first.
@@ -260,7 +260,7 @@ export class Minichord extends EventTarget {
     if(d.length!==514) return;   // 256 parameters as two 7-bit bytes, plus F0 and F7
     this._dumps=(this._dumps||0)+1;
     // a dump nobody asked for: the minichord reporting a change made on the instrument itself,
-    // such as the key change combo (the test firmware reports every key picked that way)
+    // such as the key change combo (the advanced firmware reports every key picked that way)
     this.unasked = !(this._asked>0); if(this._asked>0) this._asked--;
     // what changed since the last dump: an unasked one that changes only the key signature (or
     // nothing) is the key change combo; one that changes a lot is a preset loaded on the instrument

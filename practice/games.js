@@ -688,7 +688,7 @@ function layoutDiagram(labels, target, shown){
 }
 function layoutText(slots, root, shown){ return slots.map((idx,i)=>idx&&CAT[idx] ? `${COMBOS[i]}: ${root}${CAT[idx][0]}` : null).filter((x,i)=>x && (!shown || shown.includes(i))).join(" · "); }
 function altOffline(kind, prompt){
-  return {kind, wantsWrite:true, prompt, sub:"This game loads secret chords into your minichord's alternate layout, so it needs a minichord connected on the test-allFeatures firmware.",
+  return {kind, wantsWrite:true, prompt, sub:"This game loads secret chords into your minichord's alternate layout, so it needs a minichord connected on the advanced firmware.",
     answer:{type:"alt", name:""}, hint:"Connect a minichord to play.", context:0};
 }
 

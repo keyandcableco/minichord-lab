@@ -1,4 +1,4 @@
-// The 8b8 Link page (8b8/): a stand-in minichord on two ports, with the test firmware's settings, push
+// The 8b8 Link page (8b8/): a stand-in minichord on two ports, with the advanced firmware's settings, push
 // and pop, and its knobs; and a stand-in 8b8, first as the emulator's core (its serial protocol and
 // MIDI queue) and then as the board, over Web Serial with its own MIDI port. Checks what reaches each.
 const fs=require("fs"), path=require("path");
@@ -26,7 +26,7 @@ function load(){
   return w;
 }
 
-// ---------- a minichord on two ports, answering as the test firmware does ----------
+// ---------- a minichord on two ports, answering as the advanced firmware does ----------
 function minichord(w, extra={}){
   const P=new Array(256).fill(0);
   Object.assign(P, {1:2, 2:80, 3:80, 7:21, 35:0, 97:150, 197:100, 109:4400, 187:96, 237:0, 110:0, 238:0}, extra);

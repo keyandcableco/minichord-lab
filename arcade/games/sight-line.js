@@ -11,7 +11,7 @@
 // bass clef, ledger lines on both, sharps and flats, key signatures (where an F in G major is played
 // F-sharp, the sharp only in the signature), chords, changing keys, inversions, both clefs, then tunes.
 //   Key changes: a double bar and the new key signature scroll in; when they reach the line the staff
-//   is in the new key, and on the test firmware the minichord is to be set to it with the key change
+//   is in the new key, and on the advanced firmware the minichord is to be set to it with the key change
 //   combo, as Chord Invaders' key bars ask, so the key's chords are plain buttons again.
 //   Inversions: a chord written with its 3rd or 5th in the bass is played voiced that way: a knob (or
 //   the up and down arrows) swings the minichord's chord inversion (address 37) between them.
