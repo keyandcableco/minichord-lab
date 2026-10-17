@@ -230,6 +230,39 @@ function jsClick(){
   if(cabWaiting()) cabWake();
 }
 
+// ---------- the arcade wheel ----------
+// The arcade wheel (harp plate 9, firmware 99 on): a ring of ten zones round a hub of two. The ring
+// plays notes like any harp, so as a controller it's the standard strip's d-pad already (kmControl);
+// and while a finger is on it the minichord also sends its bearing (core/minichord.js: mc.wheel, the
+// "wheel" event). Here that's for the games that can use an angle — Fifths Defender aims by it, Key
+// Racer steers by it — read as the stick is: a bearing, a signed turn, and a 4- or 8-way direction.
+// Nothing presses the d-pad from here: the ring's own notes do that, as they always have.
+const whOn=()=> typeof mc!=="undefined" && !!mc && !mc.virtual && (mc.params[7]??0)>=99 && mc.params[243]===9;
+/** where the finger is on the ring: a, radians clockwise from the top (0 up, π/2 right); on, whether it's there */
+function whAngle(){ const w=(typeof mc!=="undefined" && mc && mc.wheel) || {angle:0, touched:false}; return {a:w.angle*2*Math.PI, on:whOn() && !!w.touched}; }
+/** the wheel as a steering wheel: how far it's turned from the top, -π to π, right positive; 0 untouched */
+function whTurn(){ const {a, on}=whAngle(); return on ? mod(a+Math.PI, 2*Math.PI)-Math.PI : 0; }
+// The ring as a d-pad, with hysteresis like the stick's: a way is the quarter (or eighth) the bearing
+// is in, held until the finger moves WH_HYST past the boundary to the next or lifts, so one resting on
+// a line doesn't flicker between two.
+const WH_HYST=8*Math.PI/180;
+let whW4=null, whW8=null;
+const whOff=(a,c)=>Math.abs(mod(a-c+Math.PI, 2*Math.PI)-Math.PI);
+/** the way the finger is on the ring, four ways: "up", "right", "down", "left" or null */
+function whWay4(){
+  const {a, on}=whAngle(); if(!on) return whW4=null;
+  if(whW4!=null && whOff(a, whW4*Math.PI/2)>Math.PI/4+WH_HYST) whW4=null;
+  if(whW4==null) whW4=mod(Math.round(a/(Math.PI/2)), 4);
+  return ["up","right","down","left"][whW4];
+}
+/** eight ways: the vertical then the horizontal of the eighth the finger is in, as jsWays8 gives them */
+function whWays8(){
+  const {a, on}=whAngle(); if(!on){ whW8=null; return []; }
+  if(whW8!=null && whOff(a, whW8*Math.PI/4)>Math.PI/8+WH_HYST) whW8=null;
+  if(whW8==null) whW8=mod(Math.round(a/(Math.PI/4)), 8);
+  return [["up"],["up","right"],["right"],["down","right"],["down"],["down","left"],["left"],["up","left"]][whW8];
+}
+
 // ---------- the menus, on the stick ----------
 // A title screen's options and levels and the game over screen, as the arrow keys and Enter work them:
 // the stick up and down moves from line to line (and repeats while it's held), left and right change an

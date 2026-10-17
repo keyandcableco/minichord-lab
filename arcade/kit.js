@@ -259,9 +259,10 @@ const ARCADE_OPTS=[
   {id:"aim", group:"game", label:"AIM", on:has("blaster","asteroids"), get:k=>(k==="asteroids" ? saved.asAim : saved.invAim)?1:0,
     set:(i,k)=>{ saved[k==="asteroids" ? "asAim" : "invAim"]=i; save(); },
     vals:k=>[["AUTO",1,"THE SHIP AIMS ITSELF AT THE CHORD YOU PLAY"],["MANUAL",2, k==="asteroids" ? "SPIN THE SHIP YOURSELF: A CHORD OR PLUCK FIRES WHERE IT POINTS" : typeof jsOn==="function" && jsOn() ? "THE STICK STEERS THE SHIP: GET UNDER A CHORD, THEN PLAY IT" : "STEER UNDER A CHORD YOURSELF, THEN PLAY IT"]]},
-  // STICK only on the joystick plate (jsOn, controller.js); chosen there and played without it, the harp
-  {id:"steer", group:"game", label:"STEER", on:has("racer"), get:()=>saved.krSteer===2 ? (typeof jsOn==="function" && jsOn() ? 2 : 0) : saved.krSteer?1:0, set:i=>{ saved.krSteer=i; save(); },
-    vals:()=>[["HARP",1,"THE HARP'S TWELVE STRINGS ACROSS THE ROAD"],["KNOB",1.25,"A KNOB STEERS, THE HARP LEFT ALONE"], ...(typeof jsOn==="function" && jsOn() ? [["STICK",1.25,"THE STICK STEERS; PULL IT DOWN TO BRAKE"]] : [])]},
+  // STICK only on the joystick plate (jsOn), WHEEL only on the arcade wheel (whOn, both controller.js);
+  // chosen there and played without them, the harp
+  {id:"steer", group:"game", label:"STEER", on:has("racer"), get:()=>saved.krSteer===2 ? ((typeof jsOn==="function" && jsOn()) || (typeof whOn==="function" && whOn()) ? 2 : 0) : saved.krSteer?1:0, set:i=>{ saved.krSteer=i; save(); },
+    vals:()=>[["HARP",1,"THE HARP'S TWELVE STRINGS ACROSS THE ROAD"],["KNOB",1.25,"A KNOB STEERS, THE HARP LEFT ALONE"], ...(typeof jsOn==="function" && jsOn() ? [["STICK",1.25,"THE STICK STEERS; PULL IT DOWN TO BRAKE"]] : typeof whOn==="function" && whOn() ? [["WHEEL",1.25,"HOLD THE RING AND TURN; STRAIGHT UP IS STRAIGHT ON"]] : [])]},
   {id:"hold", group:"game", label:"CHORDS", on:has("chomp"), ...flag("ccHold"),
     vals:()=>[["LATCH",1,"A CHORD PLAYED ONCE STAYS ON TILL THE NEXT"],["HOLD",1.25,"A CHORD LASTS ONLY AS LONG AS IT'S HELD"]]},
   {id:"voicing", group:"game", label:"VOICING", on:has("burger"), get:()=>saved.bkAuto?0:1, set:i=>{ saved.bkAuto=!i; save(); },

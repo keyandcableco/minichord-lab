@@ -24,6 +24,8 @@
  *             on): detail {x, y, t}, each -1 to 1, x right and y UP positive (this.stick)
  *   "button"  its A, B or the click (pressing the stick in) went down or up: detail {name: "a",
  *             "b" or "click", down, t} (this.buttons)
+ *   "wheel"   the arcade wheel's ring (harp plate 9, firmware 99): a finger landed, moved or left:
+ *             detail {angle, touched, t}, the bearing 0 to 1 clockwise from the top (this.wheel)
  * ========================================================================== */
 
 export const KEY_NAMES = ["C","G","D","A","E","B","F","B♭","E♭","A♭","D♭","G♭",
@@ -58,6 +60,13 @@ export const JOY_CC=112;
 // events from source "plate", the place's pitch class its pad (the arcade's harp is chromatic from C),
 // and A, B and the click the kick, the snare and the closed hat. The page sounds them.
 const JOY_PADS=[0,1,4];
+// The arcade wheel (harp plate 243 = 9, firmware 99 on): a ring of ten zones round a two-zone hub
+// (A and B). The ring's zones play notes like any harp, and while a finger is on the ring the firmware
+// also sends where it is, on the harp channel whether or not "knobs send MIDI" is on: CC 23 the bearing
+// (0 at the top, clockwise to 127, about 2.8° a step) and CC 24 as the finger lands (127) and leaves
+// (0). The hub sends neither. Kept as this.wheel and told as "wheel" events, for a page that wants the
+// wheel as a wheel and not only as the d-pad its notes make.
+export const WHEEL_CC=23;
 /** an event's timestamp if it is in performance.now()'s timebase, or now: a browser whose stamps count
  *  from 1970 (old WebKit, some WebViews), or a message with none, is timed as it arrives. A day ahead
  *  is another clock (1970's is decades ahead); nearer than that is left alone, for a test's own clock. */
@@ -97,6 +106,7 @@ export class Minichord extends EventTarget {
     this.stick={x:0, y:0};          // the joystick plate's stick, -1 to 1, x right and y up
     this.buttons={a:false, b:false, click:false};
     this.drumFallback=false;        // the joystick plate's strip and buttons as drum pads (see JOY_PADS)
+    this.wheel={angle:0, touched:false};   // the arcade wheel's ring: the bearing, 0 to 1 clockwise from the top, and whether a finger is on it
     // Coming back: once a minichord has been connected on any of the Lab's pages, the next page
     // connects by itself, as long as the browser still holds its MIDI permission. It presses the
     // page's own Connect button, so each page sets up exactly as if you had. Run a moment later,
@@ -170,7 +180,7 @@ export class Minichord extends EventTarget {
       " System-exclusive access wasn't allowed, so the lab can't read or change the minichord's settings: allow \"MIDI device control & reprogram\" in the browser's site settings, then reload."));
     else this._status("Listening to every MIDI input. No minichord found yet.");
     // another minichord: its locks and its settings 256 to 511 are its own, read afresh after its first dump
-    if(fresh){ this.locks=null; this._locksAsked=false; this._page1Forget(); this.stickRest(); this.requestDump(); }
+    if(fresh){ this.locks=null; this._locksAsked=false; this._page1Forget(); this.stickRest(); this.wheelRest(); this.requestDump(); }
     this.dispatchEvent(new Event("ports"));
   }
   /** ask for every setting; asks again if no reply comes, and says so if none ever does */
@@ -268,6 +278,7 @@ export class Minichord extends EventTarget {
     const plate=this.params[243];
     for(let i=0;i<256;i++) this.params[i]=d[1+2*i]+128*d[2+2*i];
     if(plate===4 && this.params[243]!==4) this.stickRest();   // the plate changed: the firmware sends no release for what was held
+    if(plate===9 && this.params[243]!==9) this.wheelRest();   // likewise the wheel's ring
     this.changed = new Set(had ? [...Array(256).keys()].filter(i=>i!==7 && had[i]!==this.params[i]) : []);
     if(this.params[110]===1 && !this.zone.known){ this.zone={type:"lower", members:this.params[108]===1?15:4, known:true}; }
     this.dispatchEvent(new Event("device"));
@@ -317,6 +328,8 @@ export class Minichord extends EventTarget {
   }
   _harp(d, stamp){
     const ch=d[0]&15, t=d[0]&0xF0;
+    // the arcade wheel's bearing and touch ride the harp port, among the strings' own notes
+    if(t===0xB0){ if((d[1]===WHEEL_CC || d[1]===WHEEL_CC+1) && this.params[243]===9) this._wheel(d[1]-WHEEL_CC, d[2], stamp); return; }
     if((t===0x90 || t===0x80) && this._plateDrum(d[1], t===0x90 ? d[2] : 0, stamp)) return;
     if(t===0xE0){ (this.harpBend||(this.harpBend=[]))[ch]=((d[2]<<7|d[1])-8192)/8192; return; }   // a string's bend, arriving before its note
     const bend=(this.mpe && this.harpBend && this.harpBend[ch]) || 0;
@@ -352,6 +365,8 @@ export class Minichord extends EventTarget {
     // (channel 16 on the first test builds); nothing else the minichord sends uses these numbers
     if(cc>=20 && cc<=22){ const k=cc-20; this.knobs[k]=val/127; this.lastKnob=k; this.dispatchEvent(new CustomEvent("knob",{detail:{knob:k, value:val/127}})); return; }
     if(cc>=JOY_CC && cc<=JOY_CC+4){ this._joy(cc-JOY_CC, val, stamp); return; }   // the joystick plate, on any channel
+    // the arcade wheel, in single port mode, where the harp channel shares the chord port
+    if((cc===WHEEL_CC || cc===WHEEL_CC+1) && this.params[243]===9){ this._wheel(cc-WHEEL_CC, val, stamp); return; }
     const c=this.chans[ch];
     if(cc===101) c.rpn[0]=val;
     else if(cc===100) c.rpn[1]=val;
@@ -388,6 +403,18 @@ export class Minichord extends EventTarget {
     // the button's pad, marked as a button's: it was already heard as one, by whatever takes buttons
     if(down && this.drumFallback){ const pad=JOY_PADS[k-2]; this.dispatchEvent(new CustomEvent("drum",{detail:{note:DRUM_GM[pad], vel:100, pad, t, source:"plate", button:true}})); }
   }
+  // The arcade wheel's ring, as the firmware sends it: the bearing (k 0) 0 at the top, clockwise to
+  // 127, and the touch (k 1) 127 down, 0 up. Each arrives on change only, and is passed on only when
+  // it changes here, timed by its message. The touch lands before the first bearing, but a bearing
+  // counts as a touch by itself, in case the landing was missed; let go, the angle holds where it was.
+  _wheel(k, val, stamp){
+    const t=stampOr(stamp), w=this.wheel;
+    if(k===0){ const angle=val/128; if(w.angle===angle && w.touched) return; this.wheel={angle, touched:true}; }
+    else { const touched=val>=64; if(w.touched===touched) return; this.wheel={...w, touched}; }
+    this.dispatchEvent(new CustomEvent("wheel",{detail:{...this.wheel, t}}));
+  }
+  /** the finger gone from the ring (another instrument, or the plate changed), told if it was there */
+  wheelRest(){ if(this.wheel.touched) this._wheel(1, 0); }
   /** the stick back at rest and the buttons up (another instrument, or the plate changed), each change told */
   stickRest(){
     for(const name of ["a","b","click"]) if(this.buttons[name]) this._joy(2+["a","b","click"].indexOf(name), 0);

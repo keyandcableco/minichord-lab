@@ -215,10 +215,10 @@ function krKeySign(){
 
 // ---------- the title screen ----------
 // steering: the harp (the default), a knob (a quarter more), or the mouse and arrow keys; on the
-// joystick plate the stick (a quarter more), the harp again without it
-const krSteer=()=> saved.krSteer===2 ? (typeof jsOn==="function" && jsOn() ? "stick" : "harp") : saved.krSteer===1 && knobsReady() ? "knob" : saved.krSteer===1 ? "keys" : "harp";
+// joystick plate the stick (a quarter more), on the arcade wheel the wheel itself, the harp again without them
+const krSteer=()=> saved.krSteer===2 ? (typeof jsOn==="function" && jsOn() ? "stick" : typeof whOn==="function" && whOn() ? "wheel" : "harp") : saved.krSteer===1 && knobsReady() ? "knob" : saved.krSteer===1 ? "keys" : "harp";
 const KRMENU_G={key:"racer", title:"KEY RACER",
-  rules:()=>`<p>THE KEY'S CHORDS ARE FUEL: DRIVE THROUGH THEM. CHORDS OUT OF THE KEY ARE OIL: STEER ROUND THEM.</p><p>${typeof jsOn==="function" && jsOn() ? "STEER ON THE STRIP: ITS BOTTOM IS THE LEFT OF THE ROAD, ITS TOP THE RIGHT. OR STEER WITH THE STICK, FOR A QUARTER MORE: PULL IT DOWN TO BRAKE." : "STEER ON THE HARP: ITS LOW STRINGS ARE THE LEFT OF THE ROAD, ITS HIGH ONES THE RIGHT. OR STEER WITH A KNOB, FOR A QUARTER MORE."}</p><p>FROM THE FOURTH CIRCUIT A GATE ONLY OPENS IF YOU PLAY ITS CHORD ON THE WAY IN.</p><p>PLAY A CAR'S CHORD AND IT PULLS OVER. A CAR OUT OF THE KEY HAS TO BE STEERED ROUND. V THEN I IS THE TURBO.</p><p>GRAND PRIX: QUALIFY BY PLAYING THE KEY'S SEVEN CHORDS, THEN RACE THE CIRCUIT. ENDURANCE: ROUND THE CIRCLE OF FIFTHS AGAINST THE CLOCK, A KEY CHANGE AT EVERY CHECKPOINT. PLAY THE NEW KEY'S I BEFORE IT FOR EXTRA TIME.</p>`,
+  rules:()=>`<p>THE KEY'S CHORDS ARE FUEL: DRIVE THROUGH THEM. CHORDS OUT OF THE KEY ARE OIL: STEER ROUND THEM.</p><p>${typeof jsOn==="function" && jsOn() ? "STEER ON THE STRIP: ITS BOTTOM IS THE LEFT OF THE ROAD, ITS TOP THE RIGHT. OR STEER WITH THE STICK, FOR A QUARTER MORE: PULL IT DOWN TO BRAKE." : typeof whOn==="function" && whOn() ? "STEER ON THE WHEEL, FOR A QUARTER MORE: HOLD THE RING AND TURN, STRAIGHT UP IS STRAIGHT ON, A QUARTER TURN IS FULL LOCK." : "STEER ON THE HARP: ITS LOW STRINGS ARE THE LEFT OF THE ROAD, ITS HIGH ONES THE RIGHT. OR STEER WITH A KNOB, FOR A QUARTER MORE."}</p><p>FROM THE FOURTH CIRCUIT A GATE ONLY OPENS IF YOU PLAY ITS CHORD ON THE WAY IN.</p><p>PLAY A CAR'S CHORD AND IT PULLS OVER. A CAR OUT OF THE KEY HAS TO BE STEERED ROUND. V THEN I IS THE TURBO.</p><p>GRAND PRIX: QUALIFY BY PLAYING THE KEY'S SEVEN CHORDS, THEN RACE THE CIRCUIT. ENDURANCE: ROUND THE CIRCLE OF FIFTHS AGAINST THE CLOCK, A KEY CHANGE AT EVERY CHECKPOINT. PLAY THE NEW KEY'S I BEFORE IT FOR EXTRA TIME.</p>`,
   stat:()=> blast.mode==="endurance" ? `LAP ${blast.lap||1} · PASSED ${blast.passed||0}` : `CHAMPIONSHIP ${blast.champ||0} PTS`,
   levels:KR_LEVELS, begin:i=>beginRacer(i), demo:()=>krDemo(), modNote:"title"};
 function krMenu(over){ arcadeMenu(KRMENU_G, over); }
@@ -383,7 +383,9 @@ function krTick(now){
 // steering with the joystick plate's stick: a wheel by speed, the square of the push, so a full push
 // crosses the road in under a second, a touch nudges within a lane, and letting go holds the line;
 // pulled down, a brake pedal, to half the top speed at the bottom (to hang behind a car, or time a gate)
-const KR_STICK_RATE=2.4, KR_STICK_BRAKE=.5;
+// The arcade wheel steers the same way, by how far it's turned from the top (whTurn): a quarter turn
+// is full lock, further adds nothing, and letting go holds the line. No brake: the ring has one axis.
+const KR_STICK_RATE=2.4, KR_STICK_BRAKE=.5, KR_WHEEL_LOCK=Math.PI/2;
 // the car, the rivals and the clock, moved on by dt seconds
 function krStep(dt){
   const yellow=blast.clock<blast.yellowUntil;
@@ -394,6 +396,8 @@ function krStep(dt){
   // steering: the car eases toward where the harp (or the knob) says, quicker at speed
   const stick = blast.phase==="play" && krSteer()==="stick" && typeof jsXY==="function" ? jsXY()||{x:0,y:0} : null;
   if(stick && stick.x) blast.targetX=Math.max(-1.12, Math.min(1.12, blast.targetX+Math.sign(stick.x)*stick.x*stick.x*KR_STICK_RATE*dt));
+  const turn = blast.phase==="play" && krSteer()==="wheel" && typeof whTurn==="function" ? Math.max(-1, Math.min(1, whTurn()/KR_WHEEL_LOCK)) : 0;
+  if(turn) blast.targetX=Math.max(-1.12, Math.min(1.12, blast.targetX+Math.sign(turn)*turn*turn*KR_STICK_RATE*dt));
   if(blast.clock>=blast.spinUntil){ const ds=(blast.targetX-blast.x); blast.x+=Math.sign(ds)*Math.min(Math.abs(ds), dt*(1.6+2.4*blast.speed/blast.max)); }
   else blast.x+=Math.sin(blast.clock*40)*.01;                       // a spin: the wheel's not yours
   // speed: up to cruising, more on a boost, less off the road; nothing on the grid

@@ -47,7 +47,7 @@ function startFifths(){
 function fdDevice(){
   if(!blast || blast.kind!=="fifths" || !canWrite()) return;
   arcadeSetup(()=>{ if(hasSetting(30)) ensure(30,0); if(knobsReady()) borrow(238,1); asHarp(); });
-  const sig=FD_LEVELS.map((_,i)=>fdLevelOk(i)).join()+knobsReady();
+  const sig=FD_LEVELS.map((_,i)=>fdLevelOk(i)).join()+knobsReady()+(typeof whOn==="function" && whOn());
   if(blast.phase==="menu" && blast.overlay && blast.menuSig!==sig){ menuRebuild(()=>fdMenu()); }
 }
 function buildFifthsField(box){
@@ -88,8 +88,8 @@ function fdBar(){
   blast.hud.innerHTML=`<span>SCORE ${blast.score}${multTag()}</span><span class="lvl">LEVEL ${blast.level+1} · ${L.n.toUpperCase()}</span><span class="lives">${livesHtml()}</span>`;
 }
 const FDMENU_G={key:"fifths", title:"FIFTHS DEFENDER",
-  rules:()=>`<p>THE TWELVE KEYS STAND ROUND YOU IN FIFTHS: C AT THE TOP, G ONE STEP ROUND, F ONE STEP BACK.</p><p>${typeof jsOn==="function" && jsOn() ? "PUSH THE STICK TOWARD A KEY TO AIM DOWN IT. A STEPS ONE KEY BACK, B ONE KEY ON." : playOnScreen() ? "AIM DOWN A KEY: DRAG THE KNOB UNDER THE GAME, OR SLIDE A FINGER ROUND THE CIRCLE." : knobsReady() ? "TURN A KNOB ON THE MINICHORD TO AIM DOWN A KEY: C IN THE MIDDLE, SHARPS TO THE RIGHT, FLATS TO THE LEFT. HOLD IT AT EITHER END TO KEEP TURNING." : "AIM DOWN A KEY WITH THE MOUSE OR THE ARROW KEYS. WITH FIRMWARE 17, A KNOB DOES IT."}</p><p>PLAY THAT KEY'S CHORD TO FIRE. LATER, ITS RELATIVE MINOR, ITS DOMINANT SEVENTH, OR ITS NOTE ON THE HARP.</p><p>AN ENEMY THAT REACHES THE MIDDLE COSTS A LIFE.</p>`,
-  levels:FD_LEVELS, ok:fdLevelOk, needs:"NEEDS A MINICHORD", sig:()=>String(knobsReady()),
+  rules:()=>`<p>THE TWELVE KEYS STAND ROUND YOU IN FIFTHS: C AT THE TOP, G ONE STEP ROUND, F ONE STEP BACK.</p><p>${typeof jsOn==="function" && jsOn() ? "PUSH THE STICK TOWARD A KEY TO AIM DOWN IT. A STEPS ONE KEY BACK, B ONE KEY ON." : typeof whOn==="function" && whOn() ? "THE RING IS THE CIRCLE OF FIFTHS: SLIDE A FINGER ROUND IT TO AIM DOWN A KEY, C AT THE TOP." : playOnScreen() ? "AIM DOWN A KEY: DRAG THE KNOB UNDER THE GAME, OR SLIDE A FINGER ROUND THE CIRCLE." : knobsReady() ? "TURN A KNOB ON THE MINICHORD TO AIM DOWN A KEY: C IN THE MIDDLE, SHARPS TO THE RIGHT, FLATS TO THE LEFT. HOLD IT AT EITHER END TO KEEP TURNING." : "AIM DOWN A KEY WITH THE MOUSE OR THE ARROW KEYS. WITH FIRMWARE 17, A KNOB DOES IT."}</p><p>PLAY THAT KEY'S CHORD TO FIRE. LATER, ITS RELATIVE MINOR, ITS DOMINANT SEVENTH, OR ITS NOTE ON THE HARP.</p><p>AN ENEMY THAT REACHES THE MIDDLE COSTS A LIFE.</p>`,
+  levels:FD_LEVELS, ok:fdLevelOk, needs:"NEEDS A MINICHORD", sig:()=>String(knobsReady())+(typeof whOn==="function" && whOn()),
   begin:i=>beginFifths(i), demo:()=>fdDemo(), modNote:"title"};
 function fdMenu(over){ arcadeMenu(FDMENU_G, over); }
 function beginFifths(level){
@@ -153,12 +153,25 @@ mc.addEventListener("button", e=>{
   if(!down || !blast || blast.kind!=="fifths" || blast.phase!=="play" || typeof jsOn!=="function" || !jsOn()) return;
   if(name==="a") fdAimAt((blast.aim??0)-1); else if(name==="b") fdAimAt((blast.aim??0)+1);
 });
+// The arcade wheel: the dial under the finger itself. The ring is the circle of fifths, C at the top,
+// and a finger on it aims down the spoke at its bearing, with the stick's give at the boundaries;
+// lifted, the aim holds. Its plucks say nothing on the chord levels, so sliding round is free — but on
+// the harp level the ring's notes are the gun, and a slide would jam it on every zone it crossed, so
+// there the wheel lets the knob, the mouse and the keys aim, as they do without it.
+function fdWheel(){
+  if(typeof whOn!=="function" || !whOn() || typeof whAngle!=="function") return;
+  if(FD_LEVELS[blast.level||0].fire==="harp") return;
+  const w=whAngle(); if(!w.on) return;
+  const step=Math.PI/6, from=mod(w.a-(blast.aim??0)*step+Math.PI, 2*Math.PI)-Math.PI;
+  if(blast.aim!=null && Math.abs(from)<=step/2+FD_STICK_HYST) return;
+  fdAimAt(mod(Math.round(w.a/step),12));
+}
 function fdTick(now){
   if(!blast || blast.kind!=="fifths") return;
   const dt=Math.min(DT_MAX,(now-blast.last)/1000); blast.last=now;
   if(blast.phase==="play" || blast.phase==="demo"){
     fdEdge(now);
-    if(blast.phase==="play") fdStick();
+    if(blast.phase==="play"){ fdStick(); fdWheel(); }
     if(blast.phase==="play" && now>=blast.next && blast.foes.filter(f=>!f.dead).length<4+blast.level){ fdSpawn(); blast.next=now+blast.gap*(.75+Math.random()*.5); }
     for(const f of blast.foes){
       if(f.dead) continue;
