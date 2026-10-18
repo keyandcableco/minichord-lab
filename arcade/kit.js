@@ -61,7 +61,7 @@ function levelList(g, over, best){
   const noChords=()=> playOnScreen() && typeof tdProfile==="function" && tdProfile().chords===0;
   const idle=()=> noChords() ? "TAP A LEVEL" : playOnScreen() ? "TAP A LEVEL, OR PLAY THE CHORD BESIDE IT" : jsOn() ? "THE STICK PICKS, A STARTS, OR PLAY THE CHORD BESIDE IT" : "CLICK A LEVEL, OR PLAY THE CHORD BESIDE IT ON THE MINICHORD";
   hint.textContent=idle();
-  const N=g.levels.length, f=devFifths();
+  const N=g.levels.length, f=devFifths(), says=[idle()];
   g.levels.forEach((L,i)=>{
     const b=document.createElement("button"), ok=g.ok ? g.ok(i) : true, n=g.levelName ? g.levelName(i) : typeof L==="string" ? L : L.n;
     const heat=LV_HEAT[Math.round(i/Math.max(1,N-1)*(LV_HEAT.length-1))];
@@ -70,14 +70,16 @@ function levelList(g, over, best){
     b.innerHTML=`<span class="lvnum">${i+1}</span><span class="lvname">${n}${ok ? "" : `<small>${g.needs}</small>`}</span>${ok && key ? `<span class="lvkey" title="${key} on the minichord">${key}</span>` : "<span></span>"}<i class="arr next" aria-hidden="true"></i>`;
     b.setAttribute("aria-label", `Level ${i+1}: ${n}${ok ? "" : `. ${g.needs.toLowerCase()}`}`);
     b.onclick=()=>g.begin(i);
-    const say=()=>{ hint.textContent = !ok ? `LEVEL ${i+1} ${g.needs}` : key ? `LEVEL ${i+1}: ${playOnScreen() ? "TAP IT" : "CLICK IT"}, OR PLAY ${key} MAJOR` : `LEVEL ${i+1}: ${playOnScreen() ? "TAP IT" : "CLICK IT, OR PRESS ENTER"}`; };
+    const line=()=> !ok ? `LEVEL ${i+1} ${g.needs}` : key ? `LEVEL ${i+1}: ${playOnScreen() ? "TAP IT" : "CLICK IT"}, OR PLAY ${key} MAJOR` : `LEVEL ${i+1}: ${playOnScreen() ? "TAP IT" : "CLICK IT, OR PRESS ENTER"}`;
+    const say=()=>{ hint.textContent=line(); }; says.push(line());
     b.addEventListener("focus", say); b.addEventListener("mouseenter", say);
     b.addEventListener("keydown", e=>{ if(e.code!=="ArrowUp" && e.code!=="ArrowDown") return; e.preventDefault(); e.stopPropagation();
       const all=[...lv.querySelectorAll("button:not(:disabled)")], at=all.indexOf(b), nx=all[at+(e.code==="ArrowUp"?-1:1)]; if(nx) nx.focus(); });
     lv.appendChild(b);
   });
   lv.addEventListener("mouseleave", ()=>{ if(!lv.contains(document.activeElement)) hint.textContent=idle(); });
-  box.append(head, lv, hint);
+  const room=hintRoom(hint); room.fit(says);
+  box.append(head, lv, room);
   return box;
 }
 // a demo's stage: the DEMO banner with its title and caption, a skip button, the token that stops it,
@@ -445,17 +447,28 @@ function pointsRender(el){
 //            the settings dialog
 const OPT_HEAD={game:"GAME", setup:"SETUP", arcade:"ARCADE"};
 const optTag=(v)=> v[3] || (v[1]!==1 ? `×${v[1]}` : "");
+// The line under a menu that says what's under the finger keeps the height of the longest thing it
+// can say, laid invisibly under it. Growing a line as it changed moved the menu (centred on the screen
+// or in the dialog) under the pointer, which picked another option, which changed the line again: the
+// menu jittered and nothing in it could be read or clicked.
+function hintRoom(hint){
+  const room=document.createElement("div"); room.className="hintroom"; room.appendChild(hint);
+  room.fit=texts=>{ room.querySelectorAll(".hintsize").forEach(s=>s.remove());
+    [...new Set(texts)].forEach(t=>{ const s=document.createElement("p"); s.className=hint.className+" hintsize"; s.setAttribute("aria-hidden","true"); s.textContent=t; room.appendChild(s); }); };
+  return room;
+}
 function arcadeOpts(groups){
   const box=document.createElement("div"); box.className="opts";
   const list=document.createElement("div"); list.className="optlist";
   const hint=document.createElement("p"); hint.className="opthint";
   const idle=()=> playOnScreen() ? "TAP AN OPTION TO CHANGE IT" : jsOn() ? "THE STICK: UP AND DOWN PICK AN OPTION, LEFT AND RIGHT CHANGE IT" : "CLICK AN OPTION TO CHANGE IT, OR USE THE ARROW KEYS";
   hint.textContent=idle();
-  box.append(list, hint);
+  const room=hintRoom(hint);
+  box.append(list, room);
   const k=()=>cabKind() || settings.mode;
   const say=o=>{ const v=o.vals(k())[optGet(o,k())]; hint.textContent = v ? `${v[0]}: ${v[2] || o.say || ""}` : idle(); };
   const render=()=>{
-    const kind=k(), had=document.activeElement && box.contains(document.activeElement) ? document.activeElement.dataset.opt : null;
+    const kind=k(), had=document.activeElement && box.contains(document.activeElement) ? document.activeElement.dataset.opt : null, says=[idle()];
     list.innerHTML="";
     groups.forEach(gr=>{
       const os=optsFor(kind, [gr]); if(!os.length) return;
@@ -464,6 +477,7 @@ function arcadeOpts(groups){
       list.appendChild(h);
       os.forEach(o=>{
         const vs=o.vals(kind), i=Math.max(0, Math.min(vs.length-1, optGet(o,kind))), v=vs[i], b=document.createElement("button");
+        vs.forEach(w=>says.push(`${w[0]}: ${w[2] || o.say || ""}`));
         b.type="button"; b.className="opt"; b.dataset.opt=o.id;
         const tag=optWaiting(o,kind) ? `NEXT GAME${optTag(v) ? ` ${optTag(v)}` : ""}` : optTag(v);
         b.innerHTML=`<span class="ol">${optLabel(o,kind)}</span><span class="ov"><i class="arr prev" aria-hidden="true"></i><b>${v[0]}</b><i class="arr next" aria-hidden="true"></i></span><span class="ox${v[3]?" warn":""}">${tag}</span>`;
@@ -481,6 +495,7 @@ function arcadeOpts(groups){
         list.appendChild(b);
       });
     });
+    room.fit(says);
     if(had){ const n=list.querySelector(`[data-opt="${had}"]`); if(n) n.focus({preventScroll:true}); }
   };
   box.refresh=render;

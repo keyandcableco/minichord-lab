@@ -294,6 +294,7 @@ const PAGE_SCRIPTS=(function(){
 .levels>button:not(:disabled):hover .arr,.levels>button:focus-visible .arr{background:#FFD35A}
 .overlay .lvbox .levels>button:disabled{opacity:.5}
 .lvbox p.opthint{min-height:1.8em}
+.hintroom{display:grid}.hintroom>p{grid-area:1/1}.hintroom>.hintsize{visibility:hidden}   /* the hint as tall as its longest line (hintRoom) */
 /* a short screen (a phone held sideways): no room for the title over the list, or the credit under it */
 @media (max-height:520px){
   .cab-levelpage>h3,.cab-levelpage>p.credit{display:none}
