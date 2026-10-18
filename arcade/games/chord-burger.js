@@ -841,7 +841,7 @@ const bkGirder=f=> f ? "#FFFFFF" : "#2F6BFF";
 function burgerDraw(_, now){
   const s=blast.screen, g=s && s.getContext("2d"); if(!g || !g.fillRect) return;
   if(!blast.kitchen || !blast.cook){ g.clearRect(0,0,s.width,s.height); return; }
-  const lk=`${fieldW()}x${fieldH()}@${window.devicePixelRatio||1}|${BK_FH}|${kmStripShown()}|${!!saved.beginner}|${blast.phase==="demo"}|${saved.harpLayout||""}`;
+  const lk=`${fieldW()}x${fieldH()}@${window.devicePixelRatio||1}|${BK_FH}|${kmStripShown()}|${!!saved.beginner}|${blast.phase==="demo"}|${kmLayoutName()}`;
   if(blast.layoutKey!==lk){ blast.layoutKey=lk; bkLayout(); }
   if(blast.scrolls){ bkCamera(Math.min(.1, (now-(blast.camAt||now))/1000)); blast.camAt=now; }
   const K=bkKitchen(), ox=blast.ox, oy=blast.oy, clock=blast.clock, T=BK_T;
@@ -953,7 +953,7 @@ function bkDemo(){
       say("CHORD BURGER","FOUR PLATES, EACH BURGER A CHORD. ITS INGREDIENTS LIE ON THE FLOORS ABOVE IT, EACH SPELLED WITH ITS NOTE."); await step(4200);
       const P1=blast.plates[1], P2=blast.plates[2];
       if(bkJs()) say("WALK WITH THE STICK", "HOLD THE WAY YOU WANT TO GO. PUSH UP-LEFT AND YOU WALK LEFT, TAKING THE FIRST LADDER UP.");
-      else say("WALK ON THE HARP", saved.harpLayout==="kmpad" ? "THE KEYMASTER AS A D-PAD: HOLD 5 UP, 4 LEFT, 3 RIGHT, 2 DOWN, AS LONG AS YOU WANT TO GO." : "HOLD THE WAY YOU WANT TO GO: THE TOP THREE UP, TWO LEFT, TWO RIGHT, THE BOTTOM THREE DOWN.");
+      else say("WALK ON THE HARP", kmLayoutName()==="kmpad" ? "THE KEYMASTER AS A D-PAD: HOLD 5 UP, 4 LEFT, 3 RIGHT, 2 DOWN, AS LONG AS YOU WANT TO GO." : kmDrawn() ? `HOLD THE WAY YOU WANT TO GO: ${kmWaysSaid()}.` : "HOLD THE WAY YOU WANT TO GO: THE TOP THREE UP, TWO LEFT, TWO RIGHT, THE BOTTOM THREE DOWN.");
       await step(2600);
       say("DROP IT","WALK ACROSS AN INGREDIENT AND IT DROPS A FLOOR. FROM THE BOTTOM FLOOR, ONTO ITS PLATE.");
       await walkTo(P1.x0-1, BK_NF-1); await step(1600);

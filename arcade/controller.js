@@ -1,5 +1,5 @@
-// The harp as a game controller: the standard strip or the keymaster grid read as a d-pad; and the
-// joystick plate (its stick, A, B and the click), the d-pad, the menus and pause.
+// The harp as a game controller: the standard strip, the keymaster grid or the arcade wheel read as
+// a d-pad, drawn as the plate fitted is; and the joystick plate (its stick, A, B and the click), the d-pad, the menus and pause.
 // Part of Minichord Lab's Practice Room page (practice/index.html), loaded there in order with the
 // others as plain scripts sharing one scope; see practice/boot.js.
 "use strict";
@@ -19,20 +19,70 @@
 //    6        B                   1  2  3   ▼ ▼ ▼
 //    5  4     ▶
 //    3  2  1  ▼
+// (side: the room a game leaves for it beside the field)
 const KM_LAYOUTS={
-  strip:{byString:["down","down","down","right","right","B","A","left","left","up","up","up"], drawOrder:[11,10,9,8,7,6,5,4,3,2,1,0], cols:1},
+  strip:{byString:["down","down","down","right","right","B","A","left","left","up","up","up"], drawOrder:[11,10,9,8,7,6,5,4,3,2,1,0], cols:1, side:84},
   // the keymaster's corners do nothing, so up, down, left and right are each clearly apart
-  keymaster:{byString:[null,"down",null,"left","B","right","left","A","right",null,"up",null], drawOrder:[9,10,11,6,7,8,3,4,5,0,1,2], cols:3},
+  keymaster:{byString:[null,"down",null,"left","B","right","left","A","right",null,"up",null], drawOrder:[9,10,11,6,7,8,3,4,5,0,1,2], cols:3, side:150},
   // the keymaster as a d-pad by its contact numbers: 2 down, 3 right, 4 left, 5 up, and A and B on 10
   // and 9, a row clear of the directions; the rest do nothing
-  kmpad:{byString:[null,"down","right","left","up",null,null,null,"B","A",null,null], drawOrder:[9,10,11,6,7,8,3,4,5,0,1,2], cols:3},
+  kmpad:{byString:[null,"down","right","left","up",null,null,null,"B","A",null,null], drawOrder:[9,10,11,6,7,8,3,4,5,0,1,2], cols:3, side:150},
+  // the arcade wheel: the standard strip's zones on a ring round a hub (whPlate), drawn as it is
+  wheel:{byString:["down","down","down","right","right","B","A","left","left","up","up","up"], drawOrder:[11,10,9,8,7,6,5,4,3,2,1,0], cols:1, wheel:true, side:130},
+  // the drum pads plate's two columns of six (dpPlate), top to bottom: ▲ ▲ / ◀ ▶ / ▼ ▼ / a row that
+  // does nothing / A B / A B. By contact: T2 T3 up, T1 left, T4 right, T6 T5 down, T7 T10 nothing,
+  // T8 T12 A, T9 T11 B (contact Tn is string 12-n)
+  drumpads:{byString:["A","B",null,"B","A",null,"down","down","right","up","up","left"], drawOrder:[11,10,9,8,7,6,5,4,3,2,1,0], cols:2, pads:true, side:110},
 };
-// the harp layouts a player can pick, in the order they're offered
-const HARP_LAYOUTS=[["STANDARD STRIP","strip"],["KEYMASTER GRID","keymaster"],["KEYMASTER D-PAD","kmpad"]];
-const harpLayoutIndex=()=>Math.max(0, HARP_LAYOUTS.findIndex(([,v])=>v===(saved.harpLayout||"strip")));
-// the joystick plate's strip is a line of twelve, C at the bottom, whatever the layout chosen for a harp
-const kmLayout=()=> jsOn() ? KM_LAYOUTS.strip : KM_LAYOUTS[saved.harpLayout] || KM_LAYOUTS.strip;
+// The plates by what the arcade makes of them (mc.plate, core/minichord.js). "arcade": a game
+// controller, HARP set to it: drawn as it is (the keymaster, the wheel, the joystick), or, for the
+// drum pads and the xy pad, played as the strip until they have layouts of their own. "strip": twelve
+// zones in the stock strip's order (twin rows' zig-zag too), so its d-pad lands where it should: drawn
+// as the strip, HARP set to it. "play": a plate for playing, not games (strings, ribbons, corners):
+// played as the strip, and the title screen says so. The stock strip, and a plate the firmware doesn't
+// name, leave HARP to the player, who may have any of them fitted on a firmware too old to say.
+const PLATE_GAMES={keymaster:"arcade", wheel:"arcade", joystick:"arcade", drumpads:"arcade", xy:"arcade", piano:"strip", twinrows:"strip",
+  framed:"play", zipper24:"play", fretlesswrap:"play", fretless:"play", pianoglide:"play", torus:"play", tesseract:"play", split:"play", splitxy:"play", celtic:"play"};
+const PLATE_NAMES={keymaster:"THE KEYMASTER", wheel:"THE ARCADE WHEEL", piano:"THE PIANO PLATE", twinrows:"TWIN ROWS", framed:"FRAMED STRINGS", zipper24:"ZIPPER 24",
+  fretlesswrap:"THE FRETLESS WRAP", fretless:"THE FRETLESS", pianoglide:"PIANO GLIDE", drumpads:"THE DRUM PADS", xy:"THE XY PAD", torus:"THE TORUS",
+  tesseract:"THE TESSERACT", split:"THE SPLIT PLATE", splitxy:"THE SPLIT XY PLATE", celtic:"THE CELTIC PLAIT"};
+/** the plate fitted, by name: "stock" with no minichord, or one played on the page */
+const plateFitted=()=> typeof mc!=="undefined" && mc && !mc.virtual && mc.plate || "stock";
+/** what the title screen says of a plate that isn't a game controller, or "" */
+const plateNote=()=>{ const p=plateFitted(); return PLATE_GAMES[p]==="play" ? `${PLATE_NAMES[p]}: A PLATE FOR PLAYING, NOT GAMES. FIT THE STRIP, KEYMASTER OR WHEEL` : ""; };
+// The harp layouts on offer, each [its name in HARP, its layout, what it is]: with a plate the
+// minichord names, that plate's; otherwise all four, the player's choice.
+const HARP_ALL=[["STRIP","strip","THE STANDARD HARP: TWELVE STRINGS IN A LINE"],["GRID","keymaster","THE KEYMASTER'S FOUR ROWS OF THREE"],["D-PAD","kmpad","THE KEYMASTER AS A D-PAD"],
+  ["WHEEL","wheel","THE ARCADE WHEEL: ITS RING THE D-PAD, ITS HUB A AND B"],
+  ["DRUM PADS","drumpads","THE DRUM PADS: THE TOP PAIR UP, LEFT AND RIGHT, A PAIR DOWN, A AND B AT THE FOOT"]];
+function harpChoices(){
+  const p=plateFitted(), g=PLATE_GAMES[p];
+  if(p==="joystick") return [["JOYSTICK","strip","THE JOYSTICK PLATE: THE STICK IS THE D-PAD, A AND B ARE A AND B, THE CLICK PAUSES"]];
+  if(p==="wheel") return [HARP_ALL[3]];
+  if(p==="keymaster") return [HARP_ALL[1], HARP_ALL[2]];
+  if(p==="drumpads") return [HARP_ALL[4]];
+  if(p==="xy") return [["XY PAD","strip",`${PLATE_NAMES[p]}: PLAYED AS THE STANDARD STRIP FOR NOW`]];
+  if(g==="strip") return [["STRIP","strip",`${PLATE_NAMES[p]}: ITS TWELVE ZONES PLAY AS THE STANDARD STRIP`]];
+  if(g==="play") return [["STRIP","strip",plateNote()]];
+  return HARP_ALL;
+}
+/** the layout the harp is read and drawn in: the player's choice, if the plate allows it */
+const kmLayoutName=()=>{ const cs=harpChoices(); return (cs.find(c=>c[1]===saved.harpLayout) || cs[0])[1]; };
+const kmLayout=()=> KM_LAYOUTS[kmLayoutName()];
 const kmGrid=()=>kmLayout().cols===3;          // drawn on the keymaster's plate
+const kmWheel=()=>!!kmLayout().wheel;          // drawn as the arcade wheel
+/** a layout drawn as its own plate (the wheel, the drum pads): the function that draws it, or null */
+const kmDrawn=()=>{ const L=kmLayout(); return L.wheel ? whPlate : L.pads ? dpPlate : null; };
+// the d-pad in words, as the layout lays it out, for a game's demo to say
+function kmWaysSaid(){
+  switch(kmLayoutName()){
+    case "kmpad": return "5 UP, 4 LEFT, 3 RIGHT, 2 DOWN";
+    case "keymaster": return "THE TOP ROW UP, THE SIDES LEFT AND RIGHT, THE BOTTOM ROW DOWN";
+    case "wheel": return "THE RING'S TOP UP, ITS SIDES LEFT AND RIGHT, ITS BOTTOM DOWN";
+    case "drumpads": return "THE TOP PAIR UP, THE NEXT LEFT AND RIGHT, THE THIRD PAIR DOWN";
+    default: return "THE TOP THREE UP, TWO LEFT, TWO RIGHT, THE BOTTOM THREE DOWN";
+  }
+}
 const KM_GLYPH={up:"▲",left:"◀",A:"A",B:"B",right:"▶",down:"▼"};
 // what a zone shows: its arrow or letter, or for a game whose A and B have a clear meaning, a picture
 // of it (Chord Sweeper: A sweeps, a burst; B flags, a flag)
@@ -93,6 +143,7 @@ const kmStripShown=()=> !playOnScreen() && !(document.querySelector(".fscab.bare
 function kmStrip(field){
   const L=kmLayout(), el=document.createElement("div"); el.setAttribute("aria-label","The harp as a controller");
   if(jsOn()){ el.className="kmstrip jspic"; el.setAttribute("aria-label","The joystick plate as a controller"); jsPlate(el); }
+  else if(kmDrawn()){ el.className="kmstrip"; el.setAttribute("aria-label", L.wheel ? "The arcade wheel as a controller" : "The drum pads as a controller"); whZones(kmDrawn()(el, sI=>kmGlyph(L.byString[sI])), L); }
   else if(L.cols===3){   // the keymaster: its own plate, each note marked with what it does
     el.className="kmstrip plate";
     kmPlate(el, sI=>kmGlyph(L.byString[sI])+`<i class="kmn">${sI+1}</i>`).forEach((d,sI)=>{ const z=L.byString[sI]; d.classList.add("km",`km-${z}`); d.dataset.zone=z; });
@@ -148,7 +199,7 @@ function kmHarp(){
 //   analog         jsXY(), jsWay4(), jsWays8() and jsAngle() for a game to read the stick as it likes
 //   the click      PAUSE, in every game (jsPause), but in the drum games, where it's the hi-hat
 // The strip plays notes (it's a harp), and in the d-pad games it's ignored as a d-pad (kmControl).
-const jsOn=()=> typeof mc!=="undefined" && !!mc && !mc.virtual && (mc.params[7]??0)>=90 && mc.params[243]===4;
+const jsOn=()=> typeof mc!=="undefined" && !!mc && !mc.virtual && mc.plate==="joystick";
 // The Lab's own dead zone, on top of the firmware's 8%: where the stick rests isn't bench-checked yet,
 // and may sit a few counts off the middle. Past it the travel is rescaled to run 0 to 1.
 const JS_DEAD=.15;
@@ -237,7 +288,7 @@ function jsClick(){
 // "wheel" event). Here that's for the games that can use an angle — Fifths Defender aims by it, Key
 // Racer steers by it — read as the stick is: a bearing, a signed turn, and a 4- or 8-way direction.
 // Nothing presses the d-pad from here: the ring's own notes do that, as they always have.
-const whOn=()=> typeof mc!=="undefined" && !!mc && !mc.virtual && (mc.params[7]??0)>=99 && mc.params[243]===9;
+const whOn=()=> typeof mc!=="undefined" && !!mc && !mc.virtual && (mc.params[7]??0)>=99 && mc.plate==="wheel";
 /** where the finger is on the ring: a, radians clockwise from the top (0 up, π/2 right); on, whether it's there */
 function whAngle(){ const w=(typeof mc!=="undefined" && mc && mc.wheel) || {angle:0, touched:false}; return {a:w.angle*2*Math.PI, on:whOn() && !!w.touched}; }
 /** the wheel as a steering wheel: how far it's turned from the top, -π to π, right positive; 0 untouched */
@@ -261,6 +312,101 @@ function whWays8(){
   if(whW8!=null && whOff(a, whW8*Math.PI/4)>Math.PI/8+WH_HYST) whW8=null;
   if(whW8==null) whW8=mod(Math.round(a/(Math.PI/4)), 8);
   return [["up"],["up","right"],["right"],["down","right"],["down"],["down","left"],["left"],["up","left"]][whW8];
+}
+
+// ---------- the arcade wheel, drawn ----------
+// As it's made (~/minichord-harp-plates, make_plates.py plate_arcade_wheel): a 32 x 56 mm pill, the
+// ring of ten zones (8 to 15 mm out) round a hub of two (7 mm), A over the top right of a diagonal
+// seam and B the bottom left. Clockwise from the top left the ring's contacts and their widths: T1-T3
+// 30° each across the top, T8 and T9 45° down the right, T10-T12 30° along the bottom, T5 and T4 45°
+// up the left. Contact Tn is string 12-n as the arcade reads the harp (C at T12), so the ring is the
+// standard strip's d-pad and the hub its A and B. Each zone is a group (data-pc its string) holding
+// its shape and its label, lit as the strip's are (lit, hit, demo-on); a dot shows where a finger is
+// on the ring while the minichord sends it (whOn).
+const WH_RING=[[1,30],[2,30],[3,30],[8,45],[9,45],[10,30],[11,30],[12,30],[5,45],[4,45]];
+const WH_CX=16, WH_CY=28, WH_R=15, WH_IN=8, WH_HUB=7, WH_DOT=11.5;
+/** fill el with the wheel; label(stringIndex) gives each zone's text (or a picture's svg). Returns the zones by string. */
+function whPlate(el, label){
+  whCss(); el.classList.add("whpic");
+  const pt=(a,r)=>`${(WH_CX+r*Math.cos(a*Math.PI/180)).toFixed(2)} ${(WH_CY+r*Math.sin(a*Math.PI/180)).toFixed(2)}`;
+  const xy=(a,r)=>pt(a,r).split(" ");
+  const lab=(sI,a,r,size)=>{ const t=label(sI)||"", [x,y]=xy(a,r);
+    return /^<svg/.test(t) ? t.replace(/^<svg/, `<svg x="${(x-size/2).toFixed(2)}" y="${(y-size/2).toFixed(2)}" width="${size}" height="${size}"`) : `<text x="${x}" y="${y}" class="whlbl" style="font-size:${(size*.62).toFixed(2)}px">${t}</text>`; };
+  let svg=`<svg viewBox="0 0 32 56" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><rect x=".4" y=".4" width="31.2" height="55.2" rx="15.6" class="whbody"/>`;
+  svg+=`<circle cx="${WH_CX}" cy="${WH_CY}" r="${WH_R+.6}" class="whrim"/>`;
+  let a=-135;
+  for(const [t,w] of WH_RING){
+    const sI=12-t, a0=a+.8, a1=a+w-.8;
+    svg+=`<g class="whz" data-pc="${sI}"><path d="M${pt(a0,WH_R)}A${WH_R} ${WH_R} 0 0 1 ${pt(a1,WH_R)}L${pt(a1,WH_IN)}A${WH_IN} ${WH_IN} 0 0 0 ${pt(a0,WH_IN)}Z"/>${lab(sI,a+w/2,(WH_R+WH_IN)/2,4.4)}</g>`;
+    a+=w;
+  }
+  // the hub's halves either side of the seam, top left to bottom right: A (string 6) above, B (5) below
+  for(const [sI,mid] of [[6,-45],[5,135]]){
+    const [dx,dy]=[.45*Math.cos(mid*Math.PI/180), .45*Math.sin(mid*Math.PI/180)];
+    svg+=`<g class="whz whhub" data-pc="${sI}" transform="translate(${dx.toFixed(2)} ${dy.toFixed(2)})"><path d="M${pt(mid-90,WH_HUB)}A${WH_HUB} ${WH_HUB} 0 0 1 ${pt(mid+90,WH_HUB)}Z"/>${lab(sI,mid,WH_HUB*.45,5)}</g>`;
+  }
+  svg+=`<circle r="1.5" class="whdot" cx="${WH_CX}" cy="${WH_CY-WH_DOT}"/></svg>`;
+  el.innerHTML=svg;
+  const zones=[]; el.querySelectorAll(".whz").forEach(g=>{ zones[+g.dataset.pc]=g; g.whLabel=g.querySelector("text"); });
+  whPicSync();
+  return zones;
+}
+/** mark the zones with what they do in the layout, as the strip's are (km, km-up …, data-zone) */
+function whZones(zones, L){ zones.forEach((g,sI)=>{ const z=L.byString[sI]; g.classList.add("km",`km-${z}`); g.dataset.zone=z; }); }
+// every drawing of the wheel on the page, as the finger is on the ring now
+function whPicSync(){
+  if(typeof document==="undefined") return;
+  const {a, on}=whAngle();
+  document.querySelectorAll(".whpic .whdot").forEach(d=>{
+    d.classList.toggle("on", on);
+    if(on){ d.setAttribute("cx", (WH_CX+WH_DOT*Math.sin(a)).toFixed(2)); d.setAttribute("cy", (WH_CY-WH_DOT*Math.cos(a)).toFixed(2)); }
+  });
+}
+mc.addEventListener("wheel", whPicSync);
+function whCss(){
+  if(typeof document==="undefined" || document.getElementById("whCss")) return;
+  const st=document.createElement("style"); st.id="whCss";
+  st.textContent=`.whpic svg{display:block;width:100%;height:100%;overflow:visible}
+.kmstrip.whpic{display:block;top:50%;bottom:auto;width:110px;height:auto;aspect-ratio:32/56;max-height:calc(100% - 60px);transform:translateY(-50%);border:none;background:none}
+.helper.hharp.whpic{display:block;background:none;border:none;padding:0;height:min(220px,55%);width:auto;aspect-ratio:32/56}
+.helper.hharp.whpic .whbody{fill-opacity:.45}
+.whpic .whbody{fill:#0C0B0F;stroke:#4A443C;stroke-width:.6}
+.whpic .whrim{fill:none;stroke:#2E2A40;stroke-width:.5}
+.kmstrip.dppic{width:84px;aspect-ratio:32/74}
+.helper.hharp.dppic{aspect-ratio:32/74}
+.whpic .whz path,.whpic .whz rect{fill:#16132A;stroke:#3D3656;stroke-width:.4}
+.whpic .whz.km-A path,.whpic .whz.km-B path,.whpic .whz.km-A rect,.whpic .whz.km-B rect{fill:#3A1414;stroke:#8B2A2A}
+.whpic .whz.km-null{opacity:.28}
+.whpic .whlbl{fill:#9A93B5;font-family:"Press Start 2P",monospace;text-anchor:middle;dominant-baseline:central;pointer-events:none}
+.whpic .whz.km-A .whlbl,.whpic .whz.km-B .whlbl{fill:#FFD35A}
+.whpic .whz.lit path,.whpic .whz.demo-on path,.whpic .whz.lit rect,.whpic .whz.demo-on rect{fill:#FFD35A;stroke:#FFF4C2}
+.whpic .whz.lit .whlbl,.whpic .whz.demo-on .whlbl{fill:#16132A}
+.whpic .whz.hit path,.whpic .whz.hit rect{animation:whhit .3s ease-out}
+@keyframes whhit{from{fill:#FFD35A}}
+.whpic .whdot{fill:#7FE9FF;stroke:#000;stroke-width:.4;opacity:0;transition:opacity .15s}
+.whpic .whdot.on{opacity:1}`;
+  document.head.appendChild(st);
+}
+
+// ---------- the drum pads, drawn ----------
+// As it's made (~/minichord-harp-plates, drum pads PCB): a 32 x 74 mm plate, two columns of six pads
+// with seams between them where neighbours' copper interlocks (drawn as the gaps). Top to bottom,
+// left then right, the contacts T2 T3, T1 T4, T6 T5, T7 T10, T8 T9, T12 T11; contact Tn is string
+// 12-n, as on the wheel. Its zones are the wheel's (whz), lit the same way.
+const DP_ROWS=[[2,3],[1,4],[6,5],[7,10],[8,9],[12,11]];
+/** fill el with the drum pads; label(stringIndex) gives each pad's text (or a picture's svg). Returns the pads by string. */
+function dpPlate(el, label){
+  whCss(); el.classList.add("whpic","dppic");
+  const m=1.4, gap=1.6, w=(32-2*m-gap)/2, h=(74-2*m-5*gap)/6;
+  let svg=`<svg viewBox="0 0 32 74" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><rect x=".4" y=".4" width="31.2" height="73.2" rx="2.2" class="whbody"/>`;
+  DP_ROWS.forEach((row,r)=>row.forEach((t,c)=>{
+    const sI=12-t, x=m+c*(w+gap), y=m+r*(h+gap), cx=x+w/2, cy=y+h/2, lab=label(sI)||"";
+    const inner=/^<svg/.test(lab) ? lab.replace(/^<svg/, `<svg x="${(cx-2.6).toFixed(2)}" y="${(cy-2.6).toFixed(2)}" width="5.2" height="5.2"`) : `<text x="${cx.toFixed(2)}" y="${cy.toFixed(2)}" class="whlbl" style="font-size:3.1px">${lab}</text>`;
+    svg+=`<g class="whz" data-pc="${sI}"><rect x="${x.toFixed(2)}" y="${y.toFixed(2)}" width="${w.toFixed(2)}" height="${h.toFixed(2)}" rx="1.4"/>${inner}</g>`;
+  }));
+  el.innerHTML=svg+`</svg>`;
+  const pads=[]; el.querySelectorAll(".whz").forEach(g=>{ pads[+g.dataset.pc]=g; g.whLabel=g.querySelector("text"); });
+  return pads;
 }
 
 // ---------- the menus, on the stick ----------
@@ -382,10 +528,13 @@ mc.addEventListener("page1", ()=>{
 });
 // the plate found (its settings arrive after the page is drawn) or gone: the pictures follow, and the
 // menus' words. Nothing held carries over.
-let jsWas=false;
+let jsWas=false, plateWas=null;
 mc.addEventListener("device", ()=>{
-  const on=jsOn(); if(on===jsWas) return; jsWas=on;
-  jsHeldAt.clear(); jsW4=jsWv=jsWh=null;
+  const was=plateWas ?? "stock|"+(KM_LAYOUTS[saved.harpLayout] ? saved.harpLayout : "strip");   // as the page was first drawn
+  const on=jsOn(), plate=plateFitted()+"|"+kmLayoutName(); if(on===jsWas && plate===was) return;
+  if(on!==jsWas){ jsHeldAt.clear(); jsW4=jsWv=jsWh=null; }
+  jsWas=on; plateWas=plate;
+  const note=blast && blast.overlay && blast.overlay.querySelector(".cabplate"); if(note) note.textContent=KM_GAMES.includes(blast.kind) ? plateNote() : "";
   if(!blast || !blast.field) return;
   if(blast.strip && typeof KM_GAMES!=="undefined" && KM_GAMES.includes(blast.kind)) kmRestrip();
   else helperSync(true);

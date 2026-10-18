@@ -641,7 +641,7 @@ const SB_COIN=["..YYYY..",".YYOOYY.","YYOYYOYY","YYOYYOYY","YYOYYOYY","YYOYYOYY"
 function brosDraw(_, now){
   const s=blast.screen, g=s && s.getContext("2d"); if(!g || !g.fillRect) return;
   if(!blast.hero){ g.clearRect(0,0,s.width,s.height); return; }
-  const lk=`${fieldW()}x${fieldH()}@${window.devicePixelRatio||1}|${SB_FLOORS.length}|${kmStripShown()}|${!!saved.beginner}|${blast.phase==="demo"}|${saved.harpLayout||""}`;
+  const lk=`${fieldW()}x${fieldH()}@${window.devicePixelRatio||1}|${SB_FLOORS.length}|${kmStripShown()}|${!!saved.beginner}|${blast.phase==="demo"}|${kmLayoutName()}`;
   if(blast.layoutKey!==lk){ blast.layoutKey=lk; sbLayout(); }
   if(blast.scrolls){ sbCamera(Math.min(.1, (now-(blast.camAt||now))/1000)); blast.camAt=now; }
   const ox=blast.ox, oy=blast.oy, clock=blast.clock, H=blast.hero;

@@ -78,7 +78,7 @@ function pxRoom(){
     return {left:0, top, aw:fw-side, ah:fh-top-28};
   }
   const strip=kmStripShown(), top=Math.max(40, demoClear());
-  const left= strip ? 8 : 0, side= !strip ? 0 : (saved.beginner || blast.phase==="demo") ? Math.ceil(Math.min(fw*.3, 300))+20 : (kmLayout().cols===3 ? 150 : 84);
+  const left= strip ? 8 : 0, side= !strip ? 0 : (saved.beginner || blast.phase==="demo") ? Math.ceil(Math.min(fw*.3, 300))+20 : kmLayout().side;
   return {left, top, aw:fw-side-left, ah:fh-top-28};
 }
 // Where an arcade screen of its own (W by H pixels) goes in the field, and how big: a whole number of

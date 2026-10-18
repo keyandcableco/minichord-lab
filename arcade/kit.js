@@ -305,11 +305,12 @@ const ARCADE_OPTS=[
   {id:"beginner", group:"game", label:"BEGINNER", now:true, on:()=>true, get:()=>saved.beginner?1:0, set:i=>{ saved.beginner=!!i; save(); if(i && blast && !blast.over) blast.helped=true; helperSync(true); },
     vals:()=>[["OFF",1,"PLAY IT STRAIGHT"],["ON",1,"THE MINICHORD ON SCREEN, LIT WITH WHAT TO PRESS. NO HIGH SCORES","UNRANKED"]]},
   // ----- the setup: how it looks, sounds and is steered
-  // (on the joystick plate there's no choosing: the plate's the plate, shown and left alone)
-  {id:"harp", group:"setup", label:"HARP", on:k=>KM_GAMES.includes(k) || (saved.beginner && helpUsesHarp(k) && k!=="breakout"), get:()=>jsOn() ? 0 : harpLayoutIndex(),
-    set:i=>{ if(jsOn()) return; saved.harpLayout=HARP_LAYOUTS[i][1]; save(); if(KM_GAMES.includes(cabKind())) kmRestrip(); else helperSync(true); },
-    vals:()=>jsOn() ? [["JOYSTICK",1,"THE JOYSTICK PLATE: THE STICK IS THE D-PAD, A AND B ARE A AND B, THE CLICK PAUSES"]]
-      : [["STRIP",1,"THE STANDARD HARP: TWELVE STRINGS IN A LINE"],["GRID",1,"THE KEYMASTER'S FOUR ROWS OF THREE"],["D-PAD",1,"THE KEYMASTER AS A D-PAD"]]},
+  // (with a plate the minichord names, the plate's: the joystick, the wheel or a strip-like plate is
+  // the plate, shown and left alone; the keymaster its grid or its d-pad. controller.js harpChoices)
+  {id:"harp", group:"setup", label:"HARP", on:k=>KM_GAMES.includes(k) || (saved.beginner && helpUsesHarp(k) && k!=="breakout"),
+    get:()=>Math.max(0, harpChoices().findIndex(c=>c[1]===kmLayoutName())),
+    set:i=>{ const cs=harpChoices(); if(cs.length<2) return; saved.harpLayout=cs[i][1]; save(); if(KM_GAMES.includes(cabKind())) kmRestrip(); else helperSync(true); },
+    vals:()=>harpChoices().map(([name,,say])=>[name,1,say])},
   {id:"harpAs", group:"setup", label:"HARP AS", on:k=>harpOnScreen(k), ...flag("tdPiano"),
     set:i=>{ saved.tdPiano=!!i; save(); if(typeof tdSync==="function") tdSync(); },
     vals:()=>[["STRINGS",1,"THE SCREEN'S HARP AS THE MINICHORD'S TWELVE STRINGS"],["PIANO",1,"THE SCREEN'S HARP AS AN OCTAVE OF PIANO KEYS, C TO B"]]},

@@ -340,7 +340,7 @@ const RH_KIT_SETTING={studio:4, brushes:5, tabla:8, cliqhop:12};
 // the harp chromatic from C, its volume borrowed down to nothing so the notes it still sends are silent,
 // and core/minichord.js told (mc.drumFallback) to read the strip's places and the buttons as pads.
 const RH_KINDS=["pilot","fours"];
-const rhPlate=()=> typeof mc!=="undefined" && !mc.virtual && mc.params[243]===4 && (mc.params[7]??0)>=90;
+const rhPlate=()=> typeof mc!=="undefined" && !mc.virtual && mc.plate==="joystick";
 const rhFallback=()=> rhPlate() && (mc.params[7]??0)<91;
 let rhWant=null;                       // the game waiting for the second page, and its kit
 function rhKitValue(kit, fw){

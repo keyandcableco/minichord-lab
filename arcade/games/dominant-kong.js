@@ -837,7 +837,7 @@ function dkPaint(){
 function kongDraw(_, now){
   const s=blast.screen, g=s && s.getContext("2d"); if(!g || !g.fillRect) return;
   if(!blast.stage || !blast.hero){ g.clearRect(0,0,s.width,s.height); return; }
-  const lk=`${fieldW()}x${fieldH()}@${window.devicePixelRatio||1}|${DK_H}|${kmStripShown()}|${!!saved.beginner}|${blast.phase==="demo"}|${saved.harpLayout||""}`;
+  const lk=`${fieldW()}x${fieldH()}@${window.devicePixelRatio||1}|${DK_H}|${kmStripShown()}|${!!saved.beginner}|${blast.phase==="demo"}|${kmLayoutName()}`;
   if(blast.layoutKey!==lk){ blast.layoutKey=lk; dkLayout(); }
   if(blast.scrolls){ dkCamera(Math.min(.1, (now-(blast.camAt||now))/1000)); blast.camAt=now; }
   const S=dkStage(), ox=blast.ox, oy=blast.oy, clock=blast.clock, H=blast.hero;
@@ -940,7 +940,7 @@ function dkDemo(){
     try{
       say("DOMINANT KONG","KONG IS THE DOMINANT. EVERYTHING HE THROWS IS TENSION: A DOMINANT SEVENTH. HOME, THE TONIC, IS AT THE TOP."); blast.kongPose=2; await step(4200); blast.kongPose=0;
       if(dkJs()) say("WALK WITH THE STICK","HOLD THE WAY: UP A LADDER, LEFT, RIGHT, DOWN. A OR B JUMPS, THE WAY YOU'RE PUSHING.");
-      else say("WALK ON THE HARP","HOLD THE WAY: THE TOP THREE UP A LADDER, TWO LEFT, TWO RIGHT, THE BOTTOM THREE DOWN. A JUMPS.");
+      else say("WALK ON THE HARP", kmDrawn() ? `HOLD THE WAY: ${kmWaysSaid()}. A JUMPS.` : "HOLD THE WAY: THE TOP THREE UP A LADDER, TWO LEFT, TWO RIGHT, THE BOTTOM THREE DOWN. A JUMPS.");
       blast.demoWays=["right"]; zones("right"); await step(1600); blast.demoWays=[]; zones(); await step(400);
       say("JUMP IT","A BARREL ROLLING AT YOU: JUMP IT FOR POINTS.");
       const b1=barrel("V7", H.x+70, 0); b1.dir=-1;

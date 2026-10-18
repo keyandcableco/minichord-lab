@@ -224,7 +224,7 @@ function cabinet(ov){
   const isRule=c=> (c.tagName==="P" && !c.classList.contains("blink") && !/^BEST /.test(c.textContent)) || c.classList.contains("padhint");
   const rules=kids.filter(c=>isRule(c) && !c.classList.contains("credit")), credit=kids.find(c=>c.classList.contains("credit"));
   const title=document.createElement("div"); title.className="cab-title";
-  title.innerHTML=`<h3 class="cabtitle">${TITLE_FOR[cabKind()]||"MINICHORD LAB"}</h3><p class="cabpress blink">${cabPress()}</p>`;
+  title.innerHTML=`<h3 class="cabtitle">${TITLE_FOR[cabKind()]||"MINICHORD LAB"}</h3><p class="cabpress blink">${cabPress()}</p><p class="cabplate">${KM_GAMES.includes(cabKind()) ? plateNote() : ""}</p>`;
   const roll=document.createElement("div"); roll.className="cab-rules";
   const inner=document.createElement("div"); inner.className="cabscroll";
   inner.innerHTML=`<h3>${TITLE_FOR[cabKind()]||""}</h3><p class="cabhead">HOW TO PLAY</p>`;
@@ -404,6 +404,9 @@ function helperBoard(k){
     if(jsOn()){                                                 // the joystick plate, where the keymaster's would mount
       const cover=document.createElement("div"); cover.className="hbcover"; place(cover, MC_HARP.slot); board.appendChild(cover);
       pad=document.createElement("div"); place(pad, MC_HARP.plate); board.appendChild(pad); jsPlate(pad); pad.classList.add("onboard");
+    } else if(kmDrawn()){                                       // the arcade wheel or the drum pads, likewise
+      const cover=document.createElement("div"); cover.className="hbcover"; place(cover, MC_HARP.slot); board.appendChild(cover);
+      pad=document.createElement("div"); place(pad, MC_HARP.plate); board.appendChild(pad); whZones(kmDrawn()(pad, sI=>kmGlyph(L.byString[sI])), L); pad.classList.add("onboard");
     } else if(L.cols===3){
       const cover=document.createElement("div"); cover.className="hbcover"; place(cover, MC_HARP.slot); board.appendChild(cover);
       pad=document.createElement("div"); place(pad, MC_HARP.plate); board.appendChild(pad);
@@ -420,6 +423,10 @@ function helperBoard(k){
       const cover=document.createElement("div"); cover.className="hbcover"; place(cover, MC_HARP.slot); board.appendChild(cover);
       const plate=document.createElement("div"); place(plate, MC_HARP.plate); board.appendChild(plate);
       strings=jsPlate(plate); plate.classList.add("onboard");
+    } else if(kmDrawn()){
+      const cover=document.createElement("div"); cover.className="hbcover"; place(cover, MC_HARP.slot); board.appendChild(cover);
+      const plate=document.createElement("div"); place(plate, MC_HARP.plate); board.appendChild(plate);
+      strings=kmDrawn()(plate, nameOf); plate.classList.add("onboard");
     } else if(kmGrid()){
       const cover=document.createElement("div"); cover.className="hbcover"; place(cover, MC_HARP.slot); board.appendChild(cover);   // no strip under the plate
       const plate=document.createElement("div"); place(plate, MC_HARP.plate); board.appendChild(plate);
@@ -465,15 +472,16 @@ function demoHarpDone(){
 }
 // the harp, drawn as the player's harp is laid out, its strings named, the one to pluck lit
 function helperHarp(k){
-  const grid=kmGrid(), joy=jsOn();
-  const el=document.createElement("div"); el.className="helper hharp "+(joy?"plate":grid?"plate":"line");
+  const grid=kmGrid(), joy=jsOn(), drawn=!joy && kmDrawn();
+  const el=document.createElement("div"); el.className="helper hharp "+(joy||grid||drawn?"plate":"line");
   let cells=[];
   if(joy) cells=jsPlate(el);                                                    // the joystick plate: its strip's keys
+  else if(drawn) cells=drawn(el, ()=>"");                                       // the arcade wheel or the drum pads
   else if(grid) cells=kmPlate(el, ()=>"");                                           // the keymaster's own plate
   else [11,10,9,8,7,6,5,4,3,2,1,0].forEach(sI=>{ const c=document.createElement("span"); c.className="hstring"; cells[sI]=c; el.appendChild(c); });   // the strip, high strings at the top
   const pads=DRUM_GAMES.has(k), padName=i=>((blast && blast.padNames) || (typeof RH_PAD_NAMES_DEFAULT!=="undefined" && RH_PAD_NAMES_DEFAULT) || SHARP_NAMES)[i];   // the drum games' strings are pads, named for the kit's drums
   const names=()=>{ if(joy) return;                                             // piano keys: no names on them
-    const st = k==="command" ? hcStrings() : [...Array(12)].map((_,i)=>({name:pads ? padName(i) : SHARP_NAMES[i]})); st.forEach((x,i)=>{ if(cells[i]) cells[i].textContent=x.name; }); };
+    const st = k==="command" ? hcStrings() : [...Array(12)].map((_,i)=>({name:pads ? padName(i) : SHARP_NAMES[i]})); st.forEach((x,i)=>{ if(cells[i]) (cells[i].whLabel||cells[i]).textContent=x.name; }); };
   names();
   const cap=document.createElement("small"); cap.textContent=pads ? "PADS" : "HARP"; el.appendChild(cap);
   return {el, cells, names};

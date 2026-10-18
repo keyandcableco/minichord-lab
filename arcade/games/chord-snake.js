@@ -46,7 +46,7 @@ function snReady(){
 function snLayout(){
   // room on the right: for the controller strip, or for the on-screen minichord when it's shown (beginner mode, the
   // demo); played on the screen, neither is (the deck under the game is both)
-  const f=blast.field, side = !kmStripShown() ? 16 : (saved.beginner || blast.phase==="demo") ? Math.ceil(Math.min(f.clientWidth*.4, 380))+20 : (kmLayout().cols===3 ? 150 : 84);
+  const f=blast.field, side = !kmStripShown() ? 16 : (saved.beginner || blast.phase==="demo") ? Math.ceil(Math.min(f.clientWidth*.4, 380))+20 : kmLayout().side;
   const W=f.clientWidth-side, H=f.clientHeight-64;
   let cell;
   if(blast.phase==="play" && blast.cols){ cell=Math.max(12, Math.floor(Math.min(W/blast.cols, H/blast.rows))); }   // mid-game the board keeps its cells and only scales
@@ -266,14 +266,16 @@ function snDemo(){
   sfx("attract");
   (async()=>{
     try{
-      const grid=kmLayout().cols===3, pad=saved.harpLayout==="kmpad", js=snJs();
+      const grid=kmLayout().cols===3, pad=kmLayoutName()==="kmpad", js=snJs(), wheel=kmLayoutName()==="wheel", pads=kmLayoutName()==="drumpads";
       if(js){                                                          // the joystick plate: the stick, A and B
         say("THE STICK IS YOUR CONTROLLER","PUSH IT UP, DOWN, LEFT OR RIGHT AND THE SNAKE TURNS."); litZone("up","down","left","right"); await step(3000);
         litZone("A"); say("THE STICK IS YOUR CONTROLLER","HOLD A TO BURST: TWICE THE SPEED, AND MORE FOR A CASH-IN AT IT."); sfx("press"); await step(2600);
         litZone("B"); say("THE STICK IS YOUR CONTROLLER","B DROPS YOUR OLDEST NOTE."); sfx("press"); await step(2000);
       }
-      if(!js) say("THE HARP IS YOUR CONTROLLER", pad ? "THE KEYMASTER AS A D-PAD, BY ITS NUMBERED CONTACTS." : grid ? "ITS FOUR ROWS OF THREE ARE A D-PAD, WITH TWO BUTTONS IN THE MIDDLE." : "TOP TO BOTTOM, THE STRIP IS UP, LEFT, TWO BUTTONS, RIGHT AND DOWN."); await step(3200);
-      const tour = pad ? [[["down"],"CONTACT 2 GOES DOWN"],[["right"],"3 GOES RIGHT"],[["left"],"4 GOES LEFT"],[["up"],"5 GOES UP"],[["A","B"],"10 IS A AND 9 IS B: B DROPS YOUR OLDEST NOTE"]]
+      if(!js) say("THE HARP IS YOUR CONTROLLER", pads ? "THE DRUM PADS ARE A D-PAD, WITH A AND B AT THE FOOT." : wheel ? "THE RING IS A D-PAD, ITS HUB TWO BUTTONS." : pad ? "THE KEYMASTER AS A D-PAD, BY ITS NUMBERED CONTACTS." : grid ? "ITS FOUR ROWS OF THREE ARE A D-PAD, WITH TWO BUTTONS IN THE MIDDLE." : "TOP TO BOTTOM, THE STRIP IS UP, LEFT, TWO BUTTONS, RIGHT AND DOWN."); await step(3200);
+      const tour = pads ? [[["up"],"THE TOP PAIR GOES UP"],[["left"],"THE NEXT ROW: LEFT ON THE LEFT"],[["right"],"AND RIGHT ON THE RIGHT"],[["down"],"THE THIRD PAIR GOES DOWN: THE ROW BELOW DOES NOTHING"],[["A","B"],"A AND B AT THE FOOT: B DROPS YOUR OLDEST NOTE"]]
+        : wheel ? [[["up"],"THE TOP OF THE RING GOES UP"],[["right"],"ITS RIGHT SIDE GOES RIGHT"],[["down"],"ITS BOTTOM GOES DOWN"],[["left"],"ITS LEFT SIDE GOES LEFT"],[["A","B"],"THE HUB IS A AND B: B DROPS YOUR OLDEST NOTE"]]
+        : pad ? [[["down"],"CONTACT 2 GOES DOWN"],[["right"],"3 GOES RIGHT"],[["left"],"4 GOES LEFT"],[["up"],"5 GOES UP"],[["A","B"],"10 IS A AND 9 IS B: B DROPS YOUR OLDEST NOTE"]]
         : grid ? [[["up"],"THE TOP MIDDLE GOES UP"],[["down"],"THE BOTTOM MIDDLE GOES DOWN: THE CORNERS DO NOTHING"],[["left"],"THE LEFT SIDE GOES LEFT"],[["right"],"THE RIGHT SIDE GOES RIGHT"],[["A","B"],"A AND B IN THE MIDDLE: B DROPS YOUR OLDEST NOTE"]]
         : [[["up"],"THE TOP THREE GO UP"],[["left"],"THE NEXT TWO GO LEFT"],[["A","B"],"A AND B IN THE MIDDLE: B DROPS YOUR OLDEST NOTE"],[["right"],"TWO FOR RIGHT"],[["down"],"AND THE BOTTOM THREE GO DOWN"]];
       if(!js) for(const [zs,t] of tour){

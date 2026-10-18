@@ -816,7 +816,7 @@ function ccMazePaint(col){
 function ccDraw(_, now){
   const s=blast.screen, g=s && s.getContext("2d"); if(!g || !g.fillRect) return;
   if(!blast.dots){ g.clearRect(0,0,s.width,s.height); return; }
-  const lk=`${fieldW()}x${fieldH()}@${window.devicePixelRatio||1}|${CC_ROWS}|${kmStripShown()}|${!!saved.beginner}|${blast.phase==="demo"}|${saved.harpLayout||""}`;
+  const lk=`${fieldW()}x${fieldH()}@${window.devicePixelRatio||1}|${CC_ROWS}|${kmStripShown()}|${!!saved.beginner}|${blast.phase==="demo"}|${kmLayoutName()}`;
   if(blast.layoutKey!==lk){ blast.layoutKey=lk; ccLayout(); }
   if(blast.scrolls){ ccCamera(Math.min(.1, (now-(blast.camAt||now))/1000)); blast.camAt=now; }
   const t=CC_T, ox=blast.ox, oy=blast.oy, clock=blast.clock;
@@ -998,9 +998,9 @@ function ccDemo(){
   (async()=>{
     try{
       say("CHORD CHOMP","EAT THE DOTS. THE GHOSTS WEAR CHORDS OF THE KEY: THIS MAZE IS IN C MAJOR."); await step(3600);
-      const pad=saved.harpLayout==="kmpad", grid=kmLayout().cols===3;
+      const pad=kmLayoutName()==="kmpad", grid=kmLayout().cols===3;
       if(ccJs()) say("STEER WITH THE STICK", "PUSH IT ANY OF FOUR WAYS. PUSH EARLY AND YOU TURN AT THE NEXT TURNING THAT WAY.");
-      else say("STEER ON THE HARP", pad ? "THE KEYMASTER AS A D-PAD: 5 UP, 4 LEFT, 3 RIGHT, 2 DOWN." : grid ? "ITS FOUR ROWS OF THREE ARE A D-PAD: TOP UP, SIDES LEFT AND RIGHT, BOTTOM DOWN." : "THE TOP THREE GO UP, THE NEXT TWO LEFT, TWO RIGHT BELOW A AND B, THE BOTTOM THREE DOWN.");
+      else say("STEER ON THE HARP", pad ? "THE KEYMASTER AS A D-PAD: 5 UP, 4 LEFT, 3 RIGHT, 2 DOWN." : kmDrawn() ? kmWaysSaid()+"." : grid ? "ITS FOUR ROWS OF THREE ARE A D-PAD: TOP UP, SIDES LEFT AND RIGHT, BOTTOM DOWN." : "THE TOP THREE GO UP, THE NEXT TWO LEFT, TWO RIGHT BELOW A AND B, THE BOTTOM THREE DOWN.");
       for(const z of ["up","left","right","down"]){ zones(z); sfx("press"); await step(900); } zones();
       if(knobsReady() && typeof helpKnob==="function" && !ccJs()){
         say("OR TURN THE KNOB", `THE ${KNOB_NAMES[steerKnob()]} KNOB STEERS LIKE A WHEEL: A LITTLE RIGHT TURNS YOU RIGHT, A LITTLE LEFT LEFT, HARD EITHER WAY TURNS YOU ROUND. WHEREVER IT STOPS IS STRAIGHT AHEAD AGAIN.`);

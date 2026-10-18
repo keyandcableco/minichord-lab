@@ -50,7 +50,7 @@ export const LOCK_ADDRESS=385, LOCKS_VERSION=76;
 // which no pad plays. While 343 is on those notes are drums, not chords or harp strings: they arrive
 // as "drum" events, timed by the MIDI message itself, and nothing else hears them.
 export const DRUM_GM=[36,38,37,39,42,46,49,45,50,64,63,56,70];
-// The joystick plate (harp plate 243 = 4, firmware 90 on): a thumbstick, its click, buttons A and B,
+// The joystick plate (harp plate 243 = 4 on firmware 90-92; from 101 the joystick harp, 11): a thumbstick, its click, buttons A and B,
 // and a one-octave strip. With "knobs send MIDI" (238) on, the stick sends CC 112 (left 0, rest 64,
 // right 127) and CC 113 (down 0 … UP 127, the opposite of a screen's y), and A, B and the click CC 114,
 // 115 and 116 (127 down, 0 up), on the chord channel, each only when it changes.
@@ -67,6 +67,19 @@ const JOY_PADS=[0,1,4];
 // (0). The hub sends neither. Kept as this.wheel and told as "wheel" events, for a page that wants the
 // wheel as a wheel and not only as the d-pad its notes make.
 export const WHEEL_CC=23;
+// The harp plate fitted (243), by name. Firmware 93 numbered the plates as they're made: 0 the stock
+// strip (and any plate of twelve plain zones with no number of its own), then the rest below; 11 the
+// joystick harp (and the joystick piano, its keys drawn on the same copper) from firmware 101. Before
+// 93, 0 was all there was, but on 90-92 (the joystick plate's own branches) 4 was the joystick.
+export const PLATES={0:"stock", 1:"keymaster", 2:"piano", 3:"twinrows", 4:"framed", 8:"zipper24", 9:"wheel",
+  10:"fretlesswrap", 11:"joystick", 12:"pianoglide", 13:"drumpads", 14:"xy", 15:"torus", 16:"tesseract",
+  17:"split", 18:"splitxy", 19:"celtic", 20:"fretless"};
+/** the plate's name for harp plate n on firmware fw: "stock" for none, "other" for a number not known */
+export function plateName(n, fw){
+  if(!n) return "stock";
+  if(fw<93) return fw>=90 && n===4 ? "joystick" : "other";
+  return PLATES[n] || "other";
+}
 /** an event's timestamp if it is in performance.now()'s timebase, or now: a browser whose stamps count
  *  from 1970 (old WebKit, some WebViews), or a message with none, is timed as it arrives. A day ahead
  *  is another clock (1970's is decades ahead); nearer than that is left alone, for a test's own clock. */
@@ -275,10 +288,10 @@ export class Minichord extends EventTarget {
     // what changed since the last dump: an unasked one that changes only the key signature (or
     // nothing) is the key change combo; one that changes a lot is a preset loaded on the instrument
     const had=Object.keys(this.params).length ? [...Array(256).keys()].map(i=>this.params[i]) : null;   // nothing to compare the first time
-    const plate=this.params[243];
+    const plate=this.plate;
     for(let i=0;i<256;i++) this.params[i]=d[1+2*i]+128*d[2+2*i];
-    if(plate===4 && this.params[243]!==4) this.stickRest();   // the plate changed: the firmware sends no release for what was held
-    if(plate===9 && this.params[243]!==9) this.wheelRest();   // likewise the wheel's ring
+    if(plate==="joystick" && this.plate!=="joystick") this.stickRest();   // the plate changed: the firmware sends no release for what was held
+    if(plate==="wheel" && this.plate!=="wheel") this.wheelRest();         // likewise the wheel's ring
     this.changed = new Set(had ? [...Array(256).keys()].filter(i=>i!==7 && had[i]!==this.params[i]) : []);
     if(this.params[110]===1 && !this.zone.known){ this.zone={type:"lower", members:this.params[108]===1?15:4, known:true}; }
     this.dispatchEvent(new Event("device"));
@@ -311,7 +324,9 @@ export class Minichord extends EventTarget {
   // drums off, channel 10 is whatever it always was (in single port mode with MPE, harp strings).
   // Firmware 90 has no harp drums on the joystick plate: 343 is inert there, and its strip's notes (on
   // channel 10 too, with MPE) are still notes.
-  get harpDrums(){ return this.params[343]===1 && !(this.params[243]===4 && (this.params[7]??0)<91); }
+  get harpDrums(){ return this.params[343]===1 && !(this.plate==="joystick" && (this.params[7]??0)<91); }
+  /** the harp plate fitted, by name (plateName) */
+  get plate(){ return plateName(this.params[243], this.params[7]??0); }
   _drum(d, stamp){
     if(!this.harpDrums || (d[0]!==0x99 && d[0]!==0x89)) return false;
     if(d[0]===0x99 && d[2]>0) this.dispatchEvent(new CustomEvent("drum",{detail:{note:d[1], vel:d[2], pad:DRUM_GM.indexOf(d[1]), t:stampOr(stamp), source:"minichord"}}));
@@ -329,7 +344,7 @@ export class Minichord extends EventTarget {
   _harp(d, stamp){
     const ch=d[0]&15, t=d[0]&0xF0;
     // the arcade wheel's bearing and touch ride the harp port, among the strings' own notes
-    if(t===0xB0){ if((d[1]===WHEEL_CC || d[1]===WHEEL_CC+1) && this.params[243]===9) this._wheel(d[1]-WHEEL_CC, d[2], stamp); return; }
+    if(t===0xB0){ if((d[1]===WHEEL_CC || d[1]===WHEEL_CC+1) && this.plate==="wheel") this._wheel(d[1]-WHEEL_CC, d[2], stamp); return; }
     if((t===0x90 || t===0x80) && this._plateDrum(d[1], t===0x90 ? d[2] : 0, stamp)) return;
     if(t===0xE0){ (this.harpBend||(this.harpBend=[]))[ch]=((d[2]<<7|d[1])-8192)/8192; return; }   // a string's bend, arriving before its note
     const bend=(this.mpe && this.harpBend && this.harpBend[ch]) || 0;
@@ -366,7 +381,7 @@ export class Minichord extends EventTarget {
     if(cc>=20 && cc<=22){ const k=cc-20; this.knobs[k]=val/127; this.lastKnob=k; this.dispatchEvent(new CustomEvent("knob",{detail:{knob:k, value:val/127}})); return; }
     if(cc>=JOY_CC && cc<=JOY_CC+4){ this._joy(cc-JOY_CC, val, stamp); return; }   // the joystick plate, on any channel
     // the arcade wheel, in single port mode, where the harp channel shares the chord port
-    if((cc===WHEEL_CC || cc===WHEEL_CC+1) && this.params[243]===9){ this._wheel(cc-WHEEL_CC, val, stamp); return; }
+    if((cc===WHEEL_CC || cc===WHEEL_CC+1) && this.plate==="wheel"){ this._wheel(cc-WHEEL_CC, val, stamp); return; }
     const c=this.chans[ch];
     if(cc===101) c.rpn[0]=val;
     else if(cc===100) c.rpn[1]=val;
