@@ -904,7 +904,12 @@ function setMode(m){
   settings.mode=m; save();
   document.querySelectorAll(".modes button[data-mode]").forEach(x=>x.setAttribute("aria-pressed",x.dataset.mode===m));
   $("sprint").disabled = MYSTERY.has(m) || m==="blaster" || m==="command" || m==="snake" || m==="asteroids" || m==="stack" || m==="breakout" || m==="fifths" || m==="chopper" || m==="fleet" || m==="sweeper" || m==="frets" || m==="sight" || m==="hunt" || m==="racer" || m==="chomp" || m==="burger" || m==="kong" || m==="bros" || m==="pilot" || m==="fours";
-  stats.streak=0; scoreboard(); nextQuestion();
+  stats.streak=0; scoreboard();
+  // What the old game wanted goes with it, before the new round sets (and so wants) its own: kept, any
+  // dump sent unasked after (the double tap, the key change combo, the page 1 read after either) would
+  // put the old game's values back on, borrowing nothing, and nothing would ever give them back.
+  if(switching) for(const a of Object.keys(wanted)) delete wanted[a];
+  nextQuestion();
   if(switching){
     const back=restoreExcept(new Set([...(q.needs||[]).map(n=>n.addr), ...(q.borrows||[]), ...roundBorrows, 31]));   // keep what the new game uses
     // The round was built in the old game's key signature (Seven chords, or a key set in Sight

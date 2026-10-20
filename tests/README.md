@@ -86,6 +86,7 @@ its own before it counts: the checks keep real time, and a busy machine can make
 | `fullscreen` | full screen builds the cabinet round the game, in CRT, its SOUND, RESET and connection status working; leaving puts it back |
 | `timers` | a game's timers belong to its run, so none from an old game reaches the next |
 | `practice-room` | the Practice Room around the arcade: every one of its games opens and deals a round |
+| `mode-switch` | an arcade game left for another mode: what it set (Time Pilot's harp drums, the harp in order, the arcade's preset) given back, and kept back through the key change combo, the double tap and the page 1 read after either, none of it borrowed again; what the next game wants, borrowed or already the player's, still set again over a preset loaded mid-game |
 | `joystick-core` | the joystick plate (firmware 90, harp plate 4): the stick and buttons read from their CCs with their timestamps, put to rest when the plate goes; the four-way and eight-way stick with hysteresis; the angle; the stick and A and B held for the walking games; the strip kept out of the d-pad |
 | `joystick-dpad` | the stick pushed and A and B pressed play the d-pad games as the harp's d-pad does, initials and title screens too; a game that reads the stick itself gets none of it |
 | `joystick-pause` | the click and P pause and go on: the game's clocks and timers wait and are moved on by the pause; the drum games keep the click as their hi-hat and count themselves back in |
