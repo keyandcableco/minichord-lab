@@ -115,6 +115,10 @@ const t=require("./harness").load("sight-line");
   check("firmware 60: ready, and nothing needed", ev("rhReady()") && ev("rhNeeds()")==="");
   sent.length=0; ev("rhDevice('studio')");
   check("set up again: the rhythm mode isn't sent again", !control(8));
+  // "Put my settings back" (the room's button) and then a device event or a page: not set up again till the next game
+  ev("userRestored=true"); w.restoreAll(); await sleep(10); writes.length=0; ev("rhDevice('studio')"); await sleep(60);
+  check("after Put my settings back: nothing set up again", drumWrites().length===0 && !ev("rhReady()"), JSON.stringify(drumWrites()));
+  ev("userRestored=false");
   r=await setup(60, "tabla");
   check("firmware 60: no recorded tabla yet, the world percussion stands in", wrote(337,7), JSON.stringify(drumWrites()));
   r=await setup(60, "cliqhop", {338:50});

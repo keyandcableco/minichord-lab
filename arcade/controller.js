@@ -35,14 +35,14 @@ const KM_LAYOUTS={
   drumpads:{byString:["A","B",null,"B","A",null,"down","down","right","up","up","left"], drawOrder:[11,10,9,8,7,6,5,4,3,2,1,0], cols:2, pads:true, side:110},
 };
 // The plates by what the arcade makes of them (mc.plate, core/minichord.js). "arcade": a game
-// controller, HARP set to it: drawn as it is (the keymaster, the wheel, the joystick), or, for the
-// drum pads and the xy pad, played as the strip until they have layouts of their own. "strip": twelve
-// zones in the stock strip's order (twin rows' zig-zag too), so its d-pad lands where it should: drawn
-// as the strip, HARP set to it. "play": a plate for playing, not games (strings, ribbons, corners):
+// controller, HARP set to it, drawn as it is (the keymaster, the wheel, the joystick, the drum pads).
+// "strip": twelve zones in the stock strip's order (twin rows' zig-zag too, the piano's keys, C at the
+// bottom, and piano glide's, the same keys), so its d-pad lands where it should: drawn as the strip,
+// HARP set to it. "play": a plate for playing, not games (strings, ribbons, the xy pad, corners):
 // played as the strip, and the title screen says so. The stock strip, and a plate the firmware doesn't
 // name, leave HARP to the player, who may have any of them fitted on a firmware too old to say.
-const PLATE_GAMES={keymaster:"arcade", wheel:"arcade", joystick:"arcade", drumpads:"arcade", xy:"arcade", piano:"strip", twinrows:"strip",
-  framed:"play", zipper24:"play", fretlesswrap:"play", fretless:"play", pianoglide:"play", torus:"play", tesseract:"play", split:"play", splitxy:"play", celtic:"play"};
+const PLATE_GAMES={keymaster:"arcade", wheel:"arcade", joystick:"arcade", drumpads:"arcade", piano:"strip", twinrows:"strip", pianoglide:"strip",
+  framed:"play", zipper24:"play", fretlesswrap:"play", fretless:"play", xy:"play", torus:"play", tesseract:"play", split:"play", splitxy:"play", celtic:"play"};
 const PLATE_NAMES={keymaster:"THE KEYMASTER", wheel:"THE ARCADE WHEEL", piano:"THE PIANO PLATE", twinrows:"TWIN ROWS", framed:"FRAMED STRINGS", zipper24:"ZIPPER 24",
   fretlesswrap:"THE FRETLESS WRAP", fretless:"THE FRETLESS", pianoglide:"PIANO GLIDE", drumpads:"THE DRUM PADS", xy:"THE XY PAD", torus:"THE TORUS",
   tesseract:"THE TESSERACT", split:"THE SPLIT PLATE", splitxy:"THE SPLIT XY PLATE", celtic:"THE CELTIC PLAIT"};
@@ -61,7 +61,7 @@ function harpChoices(){
   if(p==="wheel") return [HARP_ALL[3]];
   if(p==="keymaster") return [HARP_ALL[1], HARP_ALL[2]];
   if(p==="drumpads") return [HARP_ALL[4]];
-  if(p==="xy") return [["XY PAD","strip",`${PLATE_NAMES[p]}: PLAYED AS THE STANDARD STRIP FOR NOW`]];
+  if(p==="pianoglide") return [["STRIP","strip",`${PLATE_NAMES[p]}: ITS KEYS PLAY AS THE STANDARD STRIP. KEEP OFF THE GLIDE STRIP, WHICH RUNS THROUGH THEM ALL`]];
   if(g==="strip") return [["STRIP","strip",`${PLATE_NAMES[p]}: ITS TWELVE ZONES PLAY AS THE STANDARD STRIP`]];
   if(g==="play") return [["STRIP","strip",plateNote()]];
   return HARP_ALL;
@@ -173,8 +173,30 @@ function kmFlash(strip, pc){ if(!strip) return;
 // And from firmware 22 a string can sound as the finger lifts (pluck on lift, 216), its note can last
 // until the sound dies rather than the finger (215), and a few pads down at once can be a palm that
 // silences them (213): a game wants each string as it's touched, held until it's let go, every one.
-const HARP_AT_TOUCH={40:0, 216:0, 215:1, 213:0};
-const harpInOrder=()=>{ for(const [a,v] of Object.entries(HARP_AT_TOUCH)) if(hasSetting(+a)) ensure(+a,v); };
+// Each string its own note, too: the harp ribbon (245, firmware 25) slides a finger's note along the
+// strip, and its span (246) can spread the twelve zones over more notes, the top one C again and so
+// DOWN (as the fretless wrap's thirteenth place is); hammer-on (302, firmware 51) moves a held string
+// to the pad a second finger lands beside and back as it lifts, so the way held is let go and pressed
+// again; melodic pads (446, firmware 105) plays the drum pads' 28 places as 28 notes, two octaves and
+// more; and the harp fader (424, firmware 108; xy pad y before, the xy pad's alone) makes the whole
+// harp a fader that plays no notes at all. All of them go off while a game reads the harp. (The second
+// page reports all 256 of its settings on any firmware, so one there is written only from the firmware
+// that has it.)
+const HARP_AT_TOUCH={40:0, 216:0, 215:1, 213:0, 245:0, 302:0, 424:0, 446:0}, HARP_AT_TOUCH_FROM={302:51, 424:108, 446:105};
+/** HARP_AT_TOUCH's settings this minichord has, as [address, value] */
+const harpAtTouch=()=>{ const fw=mc.params[7]??0; return Object.entries(HARP_AT_TOUCH).filter(([a])=>hasSetting(+a) && fw>=(HARP_AT_TOUCH_FROM[a]||0)); };
+const harpInOrder=()=>{
+  if(typeof blast!=="undefined" && blast) blast.harpInOrder=true;          // set again when page 1 comes (below)
+  for(const [a,v] of harpAtTouch()) ensure(+a,v); };
+// Those on the second page (mc.page1) can come in after the game has set the harp up, and are read
+// again after a preset loads: set then, as the joystick's settings are (jsPreset, below). Not after
+// "Put my settings back"; nor when the room's own listener (room.js, which runs after this) sets them
+// again for a preset loaded mid-game and keeps the new preset's values to give back.
+mc.addEventListener("page1", ()=>{
+  if(!blast || !blast.harpInOrder || !canWrite() || (typeof userRestored!=="undefined" && userRestored)) return;
+  if(typeof page1Preset!=="undefined" && page1Preset && typeof wanted!=="undefined" && harpAtTouch().every(([a])=>+a<256 || a in wanted)) return;
+  harpInOrder();
+});
 function kmHarp(){
   if(!canWrite()) return;
   harpInOrder();

@@ -16,7 +16,9 @@
  *             (Port 2), or from the harp channels of the chord port in single port mode
  *   "harpoff" a harp string was let go: detail {note, ch}, from the same places
  *   "drum"    a harp pad struck while harp drums (address 343) is on: detail {note, vel, pad, t,
- *             source}, from the channel-10 note the minichord sends for it (see DRUM_GM); or, with
+ *             source}, from the channel-10 note the minichord sends for it (see DRUM_GM; a drum pads
+ *             seam's own sound counts as a pad, see DRUM_SEAM_PADS, and pad is -1 for a note no pad
+ *             plays); or, with
  *             drumFallback, a joystick plate's strip place or button (source "plate"; button true for A,
  *             B and the click, which also send "button")
  *   "page1"   settings 256 to 511 arrived (firmware 31 on); this.page1 is then true
@@ -50,6 +52,18 @@ export const LOCK_ADDRESS=385, LOCKS_VERSION=76;
 // which no pad plays. While 343 is on those notes are drums, not chords or harp strings: they arrive
 // as "drum" events, timed by the MIDI message itself, and nothing else hears them.
 export const DRUM_GM=[36,38,37,39,42,46,49,45,50,64,63,56,70];
+// The drum pads plate (harp plate 13, firmware 100 on) has sixteen seams between its twelve pads, and
+// with drum seams (419) on most of them sound one of their own, made from one of the kit's voices and
+// sent as its own General MIDI note: a floor tom (41) and a mid tom (47) from the low tom, a timbale (65)
+// from the high tom, a bongo (60) and a conga slap (62) from the high conga, claves (75) from the rim, a
+// ride (51) from the crash, a ride bell (53) from the bell, and the shaker (70), the voice no string
+// plays. (The others send notes of DRUM_GM: two pads together, a half open hat as the open hat, a low
+// bell as the bell, a snap as the clap.) Each counts as the pad whose voice it's made from (the
+// firmware's seam_sounds), and the shaker as the closed hat, so a drum game hears a seam as the pad
+// it's made from: a floor tom as the low tom, claves as the rim.
+export const DRUM_SEAM_PADS={41:7, 47:7, 65:8, 60:10, 62:10, 75:2, 51:6, 53:11, 70:4};
+/** the pad a channel-10 note counts as, 0-11, or -1 for a note no pad or seam plays */
+export const drumPad=note=>{ const i=DRUM_GM.indexOf(note); return i>=0 && i<12 ? i : DRUM_SEAM_PADS[note] ?? -1; };
 // The joystick plate (harp plate 243 = 4 on firmware 90-92; from 101 the joystick harp, 11): a thumbstick, its click, buttons A and B,
 // and a one-octave strip. With "knobs send MIDI" (238) on, the stick sends CC 112 (left 0, rest 64,
 // right 127) and CC 113 (down 0 … UP 127, the opposite of a screen's y), and A, B and the click CC 114,
@@ -329,7 +343,7 @@ export class Minichord extends EventTarget {
   get plate(){ return plateName(this.params[243], this.params[7]??0); }
   _drum(d, stamp){
     if(!this.harpDrums || (d[0]!==0x99 && d[0]!==0x89)) return false;
-    if(d[0]===0x99 && d[2]>0) this.dispatchEvent(new CustomEvent("drum",{detail:{note:d[1], vel:d[2], pad:DRUM_GM.indexOf(d[1]), t:stampOr(stamp), source:"minichord"}}));
+    if(d[0]===0x99 && d[2]>0) this.dispatchEvent(new CustomEvent("drum",{detail:{note:d[1], vel:d[2], pad:drumPad(d[1]), t:stampOr(stamp), source:"minichord"}}));
     return true;
   }
   _chordChannel(ch){

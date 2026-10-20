@@ -68,7 +68,12 @@ const t=require("./harness").load("harp-command"), {w, d, mc, sb, check, sleep}=
   ev.length=0;
   const t0=now(); port("in2", [0x99,70,60]); const t1=now(); await sleep(10);
   dr=take("drum");
-  check("the shaker is pad 12; a message with no timestamp is timed as it's read", dr.length===1 && dr[0].d.pad===12 && dr[0].d.t>=t0 && dr[0].d.t<=t1, JSON.stringify(dr));
+  check("the shaker (a drum pads seam) counts as the closed hat; a message with no timestamp is timed as it's read", dr.length===1 && dr[0].d.note===70 && dr[0].d.pad===4 && dr[0].d.t>=t0 && dr[0].d.t<=t1, JSON.stringify(dr));
+  // the drum pads plate's seams, with drum seams on: their own notes, each the pad whose voice it's made from
+  for(const n of [41,47,65,60,62,75,51,53,81]) port("in2", [0x99,n,100]);
+  await sleep(10); dr=take("drum");
+  check("a seam's own sound counts as its pad: floor and mid tom the low tom, timbale the high, bongo and slap the high conga, claves the rim, ride the crash, ride bell the bell; a note no pad plays -1",
+    dr.map(e=>e.d.pad).join()==="7,7,8,10,10,2,6,11,-1" && dr.map(e=>e.d.note).join()==="41,47,65,60,62,75,51,53,81", JSON.stringify(dr.map(e=>[e.d.note,e.d.pad])));
   port("in2", [0x90,62,100]); await sleep(10);
   check("the harp's other notes are still harp strings", JSON.stringify(take("harp").map(e=>e.d.note))==="[62]");
   w.eval("mc.handle([0x99,42,80], 777)"); await sleep(10);
@@ -138,6 +143,12 @@ const t=require("./harness").load("harp-command"), {w, d, mc, sb, check, sleep}=
   check("harp drums on: the harp's own channels still shoot", await shoot(1), `score ${a.score}`);
   const s0=a.score; port("in2", [0x99,40,100]); await sleep(250);
   check("and channel 10 is drums, not strings: a note no pad sends shoots nothing (pad -1)", a.score===s0 && take("drum").some(e=>e.d.pad===-1) && !ev.some(e=>e.k==="harp"));
+  // a drum pads seam's own sound counts as a pad for the drum games, but isn't a string here: the shaker's
+  // seam lies between two pads the drum pads' d-pad leaves blank, the timbale's beside one
+  w.eval("window.__an=[]; window.__an0=answerNote; answerNote=function(pc){ __an.push(pc); return __an0.apply(this, arguments); }");
+  port("in2", [0x99,70,100]); port("in2", [0x99,65,100]); port("in2", [0x99,38,100]); await sleep(30);
+  check("a seam's own sound is no string outside the drum games; a pad's own note still is", w.eval("__an.join()")==="1" && take("drum").map(e=>e.d.pad).join()==="4,8,1", w.eval("__an.join()"));
+  w.eval("answerNote=__an0");
   w.eval("mc.writeParam(343, 0)");
   ins.clear(); outs.clear(); mc.midi=null; mc.out=null; ev.length=0;
 

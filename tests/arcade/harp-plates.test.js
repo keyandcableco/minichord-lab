@@ -3,8 +3,8 @@
 // joystick harp is 11 (from 101), with 4 the joystick only on 90-92; the arcade wheel drawn beside the
 // field and on the beginner's minichord, its zones the strip's d-pad and a dot where the finger is;
 // HARP offering what the plate fitted allows, all five with none named; the drum pads a d-pad of
-// their own, drawn as their two columns of six; the xy pad played as the strip for now; a plate for playing (strings, ribbons) named on the title
-// screen.
+// their own, drawn as their two columns of six; piano glide's keys played as the strip, fine for games;
+// a plate for playing (strings, ribbons, the xy pad) named on the title screen.
 const t=require("./harness").load("chord-snake");
 (async()=>{
   const {w, mc, sleep, check}=t;
@@ -52,7 +52,7 @@ const t=require("./harness").load("chord-snake");
   w.eval(`ARCADE_OPTS.find(o=>o.id==="harp").set(3, "snake")`);
   check("WHEEL chosen by hand draws the wheel", w.eval("kmLayoutName()")==="wheel" && w.eval("blast.strip.classList.contains('whpic')"));
   w.eval(`ARCADE_OPTS.find(o=>o.id==="harp").set(0, "snake")`);
-  // the drum pads and the xy pad: controllers, played as the strip for now
+  // the drum pads: a controller of its own
   plate(13, 100); await sleep(20);
   check("the drum pads: a controller of its own, no note", w.eval("kmLayoutName()")==="drumpads" && harp()==="DRUM PADS" && w.eval("blast.overlay.querySelector('.cabplate')?.textContent||''")==="");
   check("drawn as two columns of six", w.eval("blast.strip.classList.contains('dppic')") && w.eval("blast.strip.querySelectorAll('.whz').length")===12);
@@ -61,8 +61,15 @@ const t=require("./harness").load("chord-snake");
     [2,3].every(t=>zone(t)==="up") && zone(1)==="left" && zone(4)==="right" && [6,5].every(t=>zone(t)==="down") && [7,10].every(t=>zone(t)==="null")
     && [8,12].every(t=>zone(t)==="A") && [9,11].every(t=>zone(t)==="B"));
   check("a pad played reads as its way", w.eval("kmControl(10)")==="up" && w.eval("kmControl(11)")==="left" && w.eval("kmControl(0)")==="A");
+  // piano glide: the piano's keys, so the strip, and fine for games
+  plate(12, 100); await sleep(20);
+  check("piano glide: the strip, named, and fine for games", w.eval("kmLayoutName()")==="strip" && harp()==="STRIP"
+    && /PIANO GLIDE: ITS KEYS PLAY AS THE STANDARD STRIP.*KEEP OFF THE GLIDE STRIP/.test(w.eval(`ARCADE_OPTS.find(o=>o.id==="harp").vals("snake")[0][2]`))
+    && w.eval("blast.overlay.querySelector('.cabplate')?.textContent||''")==="");
+  // the xy pad: for playing
   plate(14, 100); await sleep(20);
-  check("the xy pad likewise", harp()==="XY PAD");
+  check("the xy pad: played as the strip, and the title screen says it isn't for games", w.eval("kmLayoutName()")==="strip" && harp()==="STRIP"
+    && /THE XY PAD.*NOT GAMES/.test(w.eval("blast.overlay.querySelector('.cabplate')?.textContent||''")));
   // a plate for playing
   plate(8, 100); await sleep(20);
   check("zipper 24: played as the strip", w.eval("kmLayoutName()")==="strip" && harp()==="STRIP");

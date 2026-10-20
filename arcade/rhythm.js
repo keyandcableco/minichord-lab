@@ -351,6 +351,7 @@ function rhKitValue(kit, fw){
 function rhDevice(kit="studio"){
   rhKeysOn();
   if(typeof mc==="undefined" || typeof canWrite!=="function" || !canWrite()) return;
+  if(typeof userRestored!=="undefined" && userRestored) return;      // "Put my settings back": left so till the next game
   if(mc.virtual){ ensure(343,1); return; }
   const fw=mc.params[7]??0; if(fw<60) return;
   if(!mc.page1){ rhAwaitPage1(kit); return; }

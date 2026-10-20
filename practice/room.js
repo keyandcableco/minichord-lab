@@ -667,6 +667,9 @@ mc.addEventListener("drum", e=>{
   if(e.detail && e.detail.button) return;
   if(jsOn() && blast && blast.hsEntry) return;
   const pad=e.detail && e.detail.pad;
+  // a drum pads seam with a sound of its own counts as a pad in the drum games, but isn't a string: the
+  // shaker's seam lies between two pads the drum pads' d-pad leaves blank
+  if(e.detail && e.detail.source==="minichord" && e.detail.note!==DRUM_GM[pad]) return;
   if(Number.isInteger(pad) && pad>=0 && pad<=11) answerNote(pad);
 });
 // The minichord's second page of settings (256-511: the drums among them) arrives after the first:
