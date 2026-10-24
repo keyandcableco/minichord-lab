@@ -185,7 +185,7 @@ function tpPlan(T0, s0){
         low:E.beat==="backbeat" && beat%2===0, ang:(k*2.39996+spin)%(Math.PI*2), hit:null, missed:false, plan:null});
     }
   }
-  Object.assign(tp, {T0, unit, per, segs, totalBars:bar, targets, segI:-1, sched:0, stage:"ready", planI:0, cloudHits:[], revealDue:null});
+  Object.assign(tp, {T0, unit, per, segs, totalBars:bar, targets, segI:-1, sched:0, stage:"ready", planI:0, cloudHits:[], revealDue:null, live:!!rhLiveCtx()});
   if(typeof rhStart==="function") rhStart();
 }
 const tpBarLen=()=> 4*blast.tp.B;
@@ -215,6 +215,7 @@ function tpStep(h){
   const tp=blast && blast.tp; if(!tp || tp.held) return;
   if(tp.stage==="wait"){ if(!tpClockOk()) return; tpGo(); }
   if(!tp.segs || tp.over) return;
+  if(!rhClockOverride && tp.live!==!!rhLiveCtx()){ tpRecount(); return; }   // the audio clock came alive (or stopped) under the sortie: start again on it
   tpSchedule();
   const segs=tp.segs, i=tpSegIndexAt(h);
   while(tp.segI<i){ tpEnter(tp.segI+1, h); if(blast.tp!==tp || tp.segs!==segs) return; }
@@ -430,6 +431,18 @@ function tpResume(){
   tp.reveal=null; tp.lead=.6;
   if(seg && seg.stage==="warp") tpEraStart(blast.level+1, null, true);
   else { const s=seg ? seg.sortie : 0; tpWait(T0=>tpPlan(T0, s)); }
+  tpBar();
+}
+// A phone's sound can take more than the half second tpClockOk waits to start keeping time, so the
+// sortie was laid out on the page's clock; once the audio's runs, its time is another (a context just
+// made is near 0) and the count-in would be minutes off. The sortie that was flying counts in again on
+// it, nothing lost, as Trading Fours' bout does.
+function tpRecount(){
+  const tp=blast.tp, seg=tp.segs[Math.max(0, Math.min(tp.segs.length-1, tp.segI))];
+  if(typeof rhStop==="function") rhStop();
+  tp.reveal=null; tp.lead=.6;
+  if(seg && seg.stage==="warp") tpEraStart(blast.level+1, null, true);
+  else tpWait(T0=>tpPlan(T0, seg ? seg.sortie : 0));
   tpBar();
 }
 // the bank that was flying when the game stopped: lost, a plane with it, and nothing in it scored. True

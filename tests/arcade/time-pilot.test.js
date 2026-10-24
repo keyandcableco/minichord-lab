@@ -293,5 +293,15 @@ const t=require("./harness").load("time-pilot");
   for(let i=0;i<60 && !d.querySelector(".hsentry, .hssplash");i++) await sleep(50);
   check("played on the minichord: the high score board's offered", !!d.querySelector(".hsentry, .hssplash"));
   ev("rhClockOverride=null");
+
+  // ---------- a phone's sound slow to start ----------
+  // the audio clock still at 0 past tpClockOk's half second: the sortie laid out on the page's clock;
+  // then it starts, near 0, and the sortie counts in again on it, not minutes off waiting for its time
+  ev("piano.ctx.currentTime=0; beginPilot(0)"); await sleep(600); ev("tpStep(rhNow())");
+  check("the audio clock not yet moving: laid out on the page's", ev("blast.tp.stage")==="ready" && ev("blast.tp.live")===false, ev("blast.tp.stage"));
+  ev("piano.ctx.currentTime=2; tpStep(rhNow())");
+  check("the audio clock starts: the sortie counts in again on it", ev("blast.tp.live")===true && ev("blast.tp.T0")>2 && ev("blast.tp.T0")<3, ev("blast.tp.T0"));
+  ev("piano.ctx.currentTime=blast.tp.T0+.1; tpStep(rhNow())");
+  check("and the count-in begins on time", ev("blast.tp.stage")==="count" && ev("blast.tp.segI")===0);
   t.done();
 })();
