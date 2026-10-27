@@ -156,7 +156,7 @@ function startRacer(){
 // knobs sending MIDI, for steering with one
 function krDevice(){
   if(!blast || blast.kind!=="racer" || !canWrite()) return;
-  arcadeSetup(()=>{ kmHarp(); if(hasSetting(35) && mc.params[35]!==keyIndexOf(0)) borrow(35, keyIndexOf(0)); if(hasSetting(31)) borrow(31, mc.params[31]??0); if(knobsReady()) borrow(238,1); });
+  arcadeSetup(()=>{ kmHarp(); if(hasSetting(35) && mc.params[35]!==keyIndexOf(0)) borrow(35, keyIndexOf(0)); if(hasSetting(31)) borrow(31, mc.params[31]===1 ? 1 : 0); if(knobsReady()) borrow(238,1); });
 }
 function buildRacerField(box){
   const field=document.createElement("div"); field.className="field arcade racer"; field.setAttribute("aria-label","The road");

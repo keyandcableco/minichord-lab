@@ -143,10 +143,15 @@ function vmDoubleTap(){
   mc.dispatchEvent(new Event("device"));                       // the Lab reads the settings as a minichord reports them
 }
 const vmSharp=()=> vm.mod.size>0;
-// the names column c's button is spelled with: while the modifier's held, its way for that button
-// (flattened, A is A♭, whatever the key; sharpened, G♯; folded, the button's own way, modDir), and
-// otherwise the key signature's
-const vmNames=c=> vmSharp() ? (modDir(LETTERS.indexOf(VM_COLS[c]))<0 ? FLAT_NAMES : SHARP_NAMES) : (devFifths()<0 ? FLAT_NAMES : SHARP_NAMES);
+// the names the buttons are spelled with: while the modifier's held, its way (flattened, A is A♭,
+// whatever the key; sharpened, G♯), and otherwise the key signature's
+const vmNames=()=> vmSharp() ? (mc.params[31]===1 ? FLAT_NAMES : SHARP_NAMES) : (devFifths()<0 ? FLAT_NAMES : SHARP_NAMES);
+// column c's button sounding pitch class pc, named: as vmNames has it, but folding (31 at 2), by its
+// letter, since a fold sharpens some letters and flattens others (in E♭, F is F♭ and B is B𝄫)
+function vmName(c, pc){
+  if(!vmSharp() || mc.params[31]!==2) return vmNames()[pc];
+  const li=LETTERS.indexOf(VM_COLS[c]); return LETTERS[li]+ACC[keyAcc(li,devFifths())+modDir(li)];
+}
 // The harp's strings as the firmware tunes them (firmware/src/main.cpp, calculate_note_harp): twelve
 // semitones from middle C (the chromatic harp, address 98, and harp mode 0, which follows the chord
 // and isn't followed here, nor are the scales per chord, 8, 9 and 11); or a fixed scale on the key
@@ -269,7 +274,7 @@ function vmChordNow(){
 // the chord's name as the Lab spells it, for a front end to show
 function vmChordName(){
   const ch=vmChordNow(); if(!ch) return "";
-  return vmNames(vm.col)[ch.pc]+ch.q+(ch.bass!=null ? "/"+vmNames(vm.slash)[ch.bass] : "");
+  return vmName(vm.col, ch.pc)+ch.q+(ch.bass!=null ? "/"+vmName(vm.slash, ch.bass) : "");
 }
 // What the instrument would send: four voices, as the firmware voices them, a slash's bass in place
 // of the lowest (slash voice on the bass), and the Lab's own piano so it can be heard. The voices go

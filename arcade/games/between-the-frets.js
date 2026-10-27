@@ -212,7 +212,7 @@ function frTick(now){
 const frHeld=new Map();
 function frEcho(){
   if(!blast || blast.kind!=="frets" || blast.instrument || !settings.sounds || !piano.ctx || blast.phase==="menu") return frSilence();
-  const ctx=piano.ctx, sharpens=(mc.params[31]??0)!==1, want=new Map();
+  const ctx=piano.ctx, sharpens=(mc.params[31]??0)!==1, want=new Map();   // a fold (2) as sharp, as frDevice borrows it
   for(const v of mc.voices){ const n=v.note ?? Math.round(v.pitch), pc=((n%12)+12)%12, black=[1,3,6,8,10].includes(pc);
     want.set(`${v.ch}:${n}`, black ? n+(sharpens?-.5:.5) : n); }
   for(const [k,o] of frHeld) if(!want.has(k)){ try{ o.g.gain.setTargetAtTime(0,ctx.currentTime,.05); o.osc.stop(ctx.currentTime+.3); }catch(e){} frHeld.delete(k); }

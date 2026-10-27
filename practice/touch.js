@@ -754,7 +754,7 @@ function tdDraw(){
     const r=+b.dataset.r, c=+b.dataset.c;
     if(td.sharpLabels!==labels){ const li=LETTERS.indexOf(VM_COLS[c]); let pc=mod(NAT[li]+keyAcc(li,f),12);
       if(sharp) pc=mod(pc+modDir(li),12);
-      b.textContent = bare ? "" : vmNames(c)[pc]+vmQuality(String(r)); }
+      b.textContent = bare ? "" : vmName(c, pc)+vmQuality(String(r)); }
     b.classList.toggle("on", held.has(r+":"+c));
   });
   td.sharpLabels=labels;

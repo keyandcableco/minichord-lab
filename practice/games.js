@@ -170,18 +170,26 @@ const modWord=li=> modDir(li)>0 ? "sharp" : "flat";
 // the modifier's way, for a pill or a button: folding is a way of its own
 const modSign=()=> mc.params[31]===2 ? "♯♭" : mc.params[31]===1 ? "♭" : "♯";
 const modVerb=()=> mc.params[31]===2 ? "folds" : mc.params[31]===1 ? "flattens" : "sharpens";
-function pressRoot(rootName){
-  const f=devFifths(), {li,acc}=parse(rootName), m=modDir(li), target=pcOfName(rootName);
-  const ka=keyAcc(li,f), label=L=>`the ${L} column`;
-  if(acc===ka) return label(LETTERS[li]) + (ka ? ` (${LETTERS[li]}${ACC[ka]} in this key)` : "");
-  if(acc===ka+m) return `${label(LETTERS[li])} with the ${modWord(li)} modifier`;
-  // otherwise another letter reaches the same note
+// the button that plays a root: its own letter, plain or with the modifier the way it goes for that
+// letter, or else the nearest letter that reaches the same note ({L, mod}); null if none does
+function reachRoot(rootName){
+  const f=devFifths(), {li,acc}=parse(rootName), target=pcOfName(rootName), ka=keyAcc(li,f);
+  if(acc===ka) return {L:li, mod:false};
+  if(acc===ka+modDir(li)) return {L:li, mod:true};
   for(let d=1; d<7; d++) for(const s of [li+d, li-d]){
     const L=mod(s,7), base=mod(NAT[L]+keyAcc(L,f),12);
-    if(base===target) return `${label(LETTERS[L])}, the same note as ${rootName}`;
-    if(mod(base+modDir(L),12)===target) return `${label(LETTERS[L])} with the ${modWord(L)} modifier, the same note as ${rootName} (or switch the modifier to ${m>0?"flat":"sharp"} to use ${LETTERS[li]})`;
+    if(base===target) return {L, mod:false};
+    if(mod(base+modDir(L),12)===target) return {L, mod:true};
   }
-  return `the ${LETTERS[li]} button`;
+  return null;
+}
+function pressRoot(rootName){
+  const {li}=parse(rootName), ka=keyAcc(li,devFifths()), r=reachRoot(rootName), label=L=>`the ${LETTERS[L]} column`;
+  if(!r) return `the ${LETTERS[li]} button`;
+  if(r.L===li) return r.mod ? `${label(li)} with the ${modWord(li)} modifier` : label(li) + (ka ? ` (${LETTERS[li]}${ACC[ka]} in this key)` : "");
+  // otherwise another letter reaches the same note
+  return r.mod ? `${label(r.L)} with the ${modWord(r.L)} modifier, the same note as ${rootName} (or switch the modifier to ${modDir(li)>0?"flat":"sharp"} to use ${LETTERS[li]})`
+    : `${label(r.L)}, the same note as ${rootName}`;
 }
 const howTo=(root,q)=>`${pressRoot(root)}, ${BUTTONS[q]}`;
 

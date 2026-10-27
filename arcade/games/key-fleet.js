@@ -368,7 +368,8 @@ mc.addEventListener("button", e=>{
   if(e.detail.name==="a") kfCallKey(); else if(e.detail.name==="b" && kfWide()) kfFlip();
 });
 // A chord's root, spelled as the modifier made it: a plain button's letter, or, off the plain buttons,
-// sharpened or flattened as the modifier is set (address 31: 0 sharpens, 1 flattens)
+// sharpened or flattened as the modifier is set (address 31: 0 sharpens, 1 flattens; a fold, 2, reads as
+// sharp, as kfDevice borrows it)
 const kfSharp=()=> (mc.params[31]??0)!==1;
 function kfSpell(pc){ const n=SHARP_NAMES[mod(pc,12)]; return n.length===1 ? n : (kfSharp() ? SHARP_NAMES : FLAT_NAMES)[mod(pc,12)]; }
 // A call: opened by the harp, CALL IT or Space, the chords played then are the call. The moment they

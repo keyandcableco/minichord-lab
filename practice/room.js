@@ -987,11 +987,13 @@ mc.addEventListener("device", ()=>{
     const preset=mc.presetLoaded;
     // the modifier flipped by the double tap is the player's own choice: the game takes it up rather
     // than undoing it, and points the next double tap the other way (a preset load still resets it).
-    // Done first, so what follows sees the double tap as it now is. A double tap that puts back a fold
-    // (2) the player had before the game set sharp or flat is taken as a flip of the game's way, written
-    // over it: a game's modifier is only ever sharp or flat.
+    // Done first, so what follows sees the double tap as it now is. A fold (2) coming back over a
+    // modifier the game borrowed, sharp or flat, is the player's (a double tap putting back what it
+    // saved, or set on the instrument): it's what's given back after, and the game's way flips. One the
+    // game didn't borrow is the player's to keep, taken up like a flip.
     if(!preset && (31 in wanted) && mc.params[31]!==wanted[31]){
-      if(mc.params[31]===2){ wanted[31]=wanted[31]===1 ? 0 : 1; mc.writeParam(31, wanted[31]); } else wanted[31]=mc.params[31];
+      if(mc.params[31]===2 && (31 in borrowed)){ borrowed[31]=2; wanted[31]=wanted[31]===1 ? 0 : 1; mc.writeParam(31, wanted[31]); }
+      else wanted[31]=mc.params[31];
       if(blast) blast.modFor=null; modTap(); modPill(); }
     for(const [a,v] of Object.entries(wanted)){ if(mc.params[a]!==v){
       if(preset){ borrowed[a]=mc.params[a]; roundBorrows.add(+a); } mc.writeParam(+a, v); } } }
