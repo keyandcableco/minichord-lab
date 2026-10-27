@@ -57,7 +57,8 @@ function borrow(addr,value){
 // switch without reaching for the mouse. The firmware's double tap sets one setting (address 200)
 // to a value (201), and a second double tap puts it back: so the game points it at the modifier and
 // gives it the other direction from the one set now, again whenever it sets the modifier. The
-// player's own double tap goes back when they leave.
+// player's own double tap goes back when they leave. From fold (2, firmware 118) it goes to flat:
+// fold flattens five of the seven buttons already, so only IV and I change.
 function modTap(){
   if(settings.modTap==="off" || !canWrite() || !hasSetting(200) || !hasSetting(31)) return;
   if(mc.params[200]!==31) borrow(200,31);
@@ -276,9 +277,10 @@ function modPill(){
   const el=$("modpill");
   if(mc.params[31]===undefined || !canWrite()){ el.hidden=true; return; }
   el.hidden=false;
-  const sharp=mc.params[31]!==1, set=31 in borrowed;
-  el.innerHTML=`<b class="modsign">${sharp?"♯":"♭"}</b>Modifier ${sharp?"sharpens":"flattens"}${set?" · set for you":""}${q && q.usesMod && !solved?" · this one needs it":""}`;
+  const set=31 in borrowed;
+  el.innerHTML=`<b class="modsign">${modSign()}</b>Modifier ${modVerb()}${set?" · set for you":""}${q && q.usesMod && !solved?" · this one needs it":""}`;
   el.title = (set ? "The game switched the modifier this way so every answer is one button plus the modifier. It goes back when you leave." : "The modifier as your minichord has it.")
+    + (mc.params[31]===2 ? " Folding, it sharpens the key's IV and I and flattens the rest." : "")
     + (settings.modTap!=="off" ? " Double-tap the modifier to flip it between sharp and flat." : "");
   if(settings.modTap!=="off" && mc.params[200]===31) el.append(" · double-tap flips");   // appended, so the big sign stays
   if(lastMod!==null && lastMod!==mc.params[31]){ el.classList.remove("pulse"); void el.offsetWidth; el.classList.add("pulse"); }
@@ -959,7 +961,7 @@ function mine(){
   strip.hidden=false;
   const f=devFifths(), name=KEY_BY_FIFTHS[f] || mc.keyName || "?";
   $("myKey").textContent=`${name} major`;
-  const parts=[sigText(f), `modifier ${modWord()==="sharp"?"sharpens":"flattens"}`];
+  const parts=[sigText(f), `modifier ${modVerb()}`];
   // the alt layout's seven chords read as one item
   const altN=Object.keys(borrowed).filter(a=>a>=202 && a<=208).length;
   const b=[...new Set(Object.keys(borrowed).filter(a=>!(a>=202 && a<=208)).map(a=> (TONE_ADDRS.has(+a) ? "a plain tone" : ADDR_NAMES[a]||`address ${a}`) + (mc.locked(+a) ? " (locked: yours again after)" : "")))];
@@ -985,8 +987,12 @@ mc.addEventListener("device", ()=>{
     const preset=mc.presetLoaded;
     // the modifier flipped by the double tap is the player's own choice: the game takes it up rather
     // than undoing it, and points the next double tap the other way (a preset load still resets it).
-    // Done first, so what follows sees the double tap as it now is.
-    if(!preset && (31 in wanted) && mc.params[31]!==wanted[31]){ wanted[31]=mc.params[31]; if(blast) blast.modFor=null; modTap(); modPill(); }
+    // Done first, so what follows sees the double tap as it now is. A double tap that puts back a fold
+    // (2) the player had before the game set sharp or flat is taken as a flip of the game's way, written
+    // over it: a game's modifier is only ever sharp or flat.
+    if(!preset && (31 in wanted) && mc.params[31]!==wanted[31]){
+      if(mc.params[31]===2){ wanted[31]=wanted[31]===1 ? 0 : 1; mc.writeParam(31, wanted[31]); } else wanted[31]=mc.params[31];
+      if(blast) blast.modFor=null; modTap(); modPill(); }
     for(const [a,v] of Object.entries(wanted)){ if(mc.params[a]!==v){
       if(preset){ borrowed[a]=mc.params[a]; roundBorrows.add(+a); } mc.writeParam(+a, v); } } }
   if(q && !gaveBack && settings.modTap!=="off" && canWrite() && mc.params[200]!==31) modTap();   // set it up once connected

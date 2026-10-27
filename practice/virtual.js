@@ -143,9 +143,10 @@ function vmDoubleTap(){
   mc.dispatchEvent(new Event("device"));                       // the Lab reads the settings as a minichord reports them
 }
 const vmSharp=()=> vm.mod.size>0;
-// the names the buttons are spelled with: while the modifier's held, its way (flattened, A is A♭,
-// whatever the key; sharpened, G♯), and otherwise the key signature's
-const vmNames=()=> vmSharp() ? (mc.params[31]===1 ? FLAT_NAMES : SHARP_NAMES) : (devFifths()<0 ? FLAT_NAMES : SHARP_NAMES);
+// the names column c's button is spelled with: while the modifier's held, its way for that button
+// (flattened, A is A♭, whatever the key; sharpened, G♯; folded, the button's own way, modDir), and
+// otherwise the key signature's
+const vmNames=c=> vmSharp() ? (modDir(LETTERS.indexOf(VM_COLS[c]))<0 ? FLAT_NAMES : SHARP_NAMES) : (devFifths()<0 ? FLAT_NAMES : SHARP_NAMES);
 // The harp's strings as the firmware tunes them (firmware/src/main.cpp, calculate_note_harp): twelve
 // semitones from middle C (the chromatic harp, address 98, and harp mode 0, which follows the chord
 // and isn't followed here, nor are the scales per chord, 8, 9 and 11); or a fixed scale on the key
@@ -256,19 +257,19 @@ function vmUpdate(){
   vmTell();
 }
 // the chord the instrument believes it's playing: its root and quality, and a slash's bass, as pitch
-// classes, sharpened or flattened by the key signature and by the modifier, as on the instrument
+// classes, sharpened or flattened by the key signature and by the modifier, as on the instrument (a
+// folding modifier each button its own way, modDir)
 function vmChordNow(){
   if(vm.col<0) return null;
   const q=vmQuality(vm.rows); if(q==null) return null;
-  const f=devFifths(), sharp=vmSharp() ? (mc.params[31]===1 ? -1 : 1) : 0;
-  const pcOf=c=>{ const li=LETTERS.indexOf(VM_COLS[c]); return mod(NAT[li]+keyAcc(li,f)+sharp, 12); };
+  const f=devFifths(), sharp=vmSharp();
+  const pcOf=c=>{ const li=LETTERS.indexOf(VM_COLS[c]); return mod(NAT[li]+keyAcc(li,f)+(sharp ? modDir(li) : 0), 12); };
   return {pc:pcOf(vm.col), q, bass: vm.slash>=0 ? pcOf(vm.slash) : null};
 }
 // the chord's name as the Lab spells it, for a front end to show
 function vmChordName(){
   const ch=vmChordNow(); if(!ch) return "";
-  const names=vmNames();
-  return names[ch.pc]+ch.q+(ch.bass!=null ? "/"+names[ch.bass] : "");
+  return vmNames(vm.col)[ch.pc]+ch.q+(ch.bass!=null ? "/"+vmNames(vm.slash)[ch.bass] : "");
 }
 // What the instrument would send: four voices, as the firmware voices them, a slash's bass in place
 // of the lowest (slash voice on the bass), and the Lab's own piano so it can be heard. The voices go

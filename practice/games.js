@@ -160,21 +160,26 @@ function drawKeySig(f, tonic){
 
 // ---------- how to press a chord on this minichord ----------
 // The buttons carry letters and play them with the key signature's accidentals;
-// the modifier (address 31) raises or, if set to flat, lowers one semitone more.
+// the modifier (address 31) raises or, if set to flat, lowers one semitone more. Set to fold (2,
+// firmware 118) it goes by the button's degree in the key: IV and I sharpen, the other five flatten.
 const devFifths=()=> mc.keyIndex!=null ? mc.keyFifths : 0;
 const keyAcc=(li,f)=>{ const idx="FCGDAEB".indexOf(LETTERS[li]); return Math.floor((f+6-idx)/7); };
-const modDir=()=> mc.params[31]===1 ? -1 : 1;
-const modWord=()=> modDir()>0 ? "sharp" : "flat";
+const modDir=li=>{ const s=mc.params[31]; if(s!==2) return s===1 ? -1 : 1;
+  const d=mod(li-LETTERS.indexOf((mc.keyName||"C")[0]),7); return d===0 || d===3 ? 1 : -1; };
+const modWord=li=> modDir(li)>0 ? "sharp" : "flat";
+// the modifier's way, for a pill or a button: folding is a way of its own
+const modSign=()=> mc.params[31]===2 ? "♯♭" : mc.params[31]===1 ? "♭" : "♯";
+const modVerb=()=> mc.params[31]===2 ? "folds" : mc.params[31]===1 ? "flattens" : "sharpens";
 function pressRoot(rootName){
-  const f=devFifths(), {li,acc}=parse(rootName), m=modDir(), target=pcOfName(rootName);
+  const f=devFifths(), {li,acc}=parse(rootName), m=modDir(li), target=pcOfName(rootName);
   const ka=keyAcc(li,f), label=L=>`the ${L} column`;
   if(acc===ka) return label(LETTERS[li]) + (ka ? ` (${LETTERS[li]}${ACC[ka]} in this key)` : "");
-  if(acc===ka+m) return `${label(LETTERS[li])} with the ${modWord()} modifier`;
+  if(acc===ka+m) return `${label(LETTERS[li])} with the ${modWord(li)} modifier`;
   // otherwise another letter reaches the same note
   for(let d=1; d<7; d++) for(const s of [li+d, li-d]){
     const L=mod(s,7), base=mod(NAT[L]+keyAcc(L,f),12);
     if(base===target) return `${label(LETTERS[L])}, the same note as ${rootName}`;
-    if(mod(base+m,12)===target) return `${label(LETTERS[L])} with the ${modWord()} modifier, the same note as ${rootName} (or switch the modifier to ${m>0?"flat":"sharp"} to use ${LETTERS[li]})`;
+    if(mod(base+modDir(L),12)===target) return `${label(LETTERS[L])} with the ${modWord(L)} modifier, the same note as ${rootName} (or switch the modifier to ${m>0?"flat":"sharp"} to use ${LETTERS[li]})`;
   }
   return `the ${LETTERS[li]} button`;
 }

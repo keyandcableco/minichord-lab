@@ -51,8 +51,8 @@ function kbCard(){
   el.innerHTML=`<b>KEYBOARD MINICHORD</b>
     <div class="kbgrid">${KB_ROWS.map((row,r)=>row.map((code,c)=>{
       const li=LETTERS.indexOf(VM_COLS[c]); let pc=mod(NAT[li]+keyAcc(li,f),12);
-      if(sharp) pc=mod(pc+(mc.params[31]===1?-1:1),12);
-      const label=vmNames()[pc]+["", "m", "7"][r];
+      if(sharp) pc=mod(pc+modDir(li),12);
+      const label=vmNames(c)[pc]+["", "m", "7"][r];
       return `<span class="${held.has(code)?"on":""}"><i>${code.replace("Key","")}</i>${label}</span>`;
     }).join("")).join("")}</div>
     <p>HOLD TWO IN A COLUMN FOR maj7, m7 OR dim · ANOTHER COLUMN UNDER A CHORD FOR A SLASH · SHIFT ${sharp?"(ON)":""} IS THE MODIFIER · 1…= PLUCK THE HARP · F2 FOR FULL SCREEN</p>

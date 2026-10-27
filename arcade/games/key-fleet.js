@@ -177,7 +177,7 @@ function startFleet(){
 }
 function kfDevice(){
   if(!blast || blast.kind!=="fleet" || !canWrite()) return;
-  arcadeSetup(()=>{ asHarp(); if(hasSetting(30)) ensure(30,0); if(hasSetting(35)) borrow(35, keyIndexOf(0)); if(hasSetting(31)) borrow(31, mc.params[31]??0); });   // the chart is the plain buttons in C; the modifier's way is given back after   // the chart is the plain buttons in C
+  arcadeSetup(()=>{ asHarp(); if(hasSetting(30)) ensure(30,0); if(hasSetting(35)) borrow(35, keyIndexOf(0)); if(hasSetting(31)) borrow(31, mc.params[31]===1 ? 1 : 0); });   // the chart is the plain buttons in C; the modifier's way is given back after   // the chart is the plain buttons in C
   // the chart is the plain buttons in C: a key set on the instrument (the key change combo) goes back
   // (a preset loaded puts it back with the game's other settings)
   mc.unasked=false;

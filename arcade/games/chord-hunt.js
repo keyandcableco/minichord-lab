@@ -214,7 +214,7 @@ function startHunt(){
 // set by hand.
 function hdDevice(){
   if(!blast || blast.kind!=="hunt" || !canWrite()) return;
-  arcadeSetup(()=>{ asHarp(); if(hasSetting(30)) ensure(30,0); if(hasSetting(35) && blast.phase!=="play") borrow(35, keyIndexOf(0)); if(hasSetting(31)) borrow(31, mc.params[31]??0); });
+  arcadeSetup(()=>{ asHarp(); if(hasSetting(30)) ensure(30,0); if(hasSetting(35) && blast.phase!=="play") borrow(35, keyIndexOf(0)); if(hasSetting(31)) borrow(31, mc.params[31]===1 ? 1 : 0); });
   // the key change combo (or a chord button held on the screen's minichord), mid-game: a key set by hand
   // (only the combo: a preset loaded, or a double tap, reports unasked too, and isn't one). Heard once:
   // what's set in answer reports in too.

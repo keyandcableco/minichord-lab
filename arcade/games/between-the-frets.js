@@ -49,7 +49,7 @@ function frDevice(){
   if(!blast || blast.kind!=="frets" || !canWrite()) return;
   // the key held at C; then either the minichord in 24-EDO and MPE, playing the quarter-tones itself,
   // or its speaker silenced and the page making the sounds, retuned
-  arcadeSetup(()=>{ if(hasSetting(35)) borrow(35, keyIndexOf(0)); if(hasSetting(30)) ensure(30,0); if(hasSetting(31)) borrow(31, mc.params[31]??0);
+  arcadeSetup(()=>{ if(hasSetting(35)) borrow(35, keyIndexOf(0)); if(hasSetting(30)) ensure(30,0); if(hasSetting(31)) borrow(31, mc.params[31]===1 ? 1 : 0);
     if(frInstrument()){ blast.instrument=true; borrow(237, mc.temperamentValue(11)); borrow(110,1); asHarp(); }   // 24-EDO, the harp chromatic in quarter-tones
     else if(hasSetting(97)) borrow(97,0); });
 }
