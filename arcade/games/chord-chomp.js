@@ -19,7 +19,8 @@
 // The four ghosts each wear a chord of the maze's key, as a numeral (I, IV, V and vi at first). A
 // power pellet doesn't turn them all blue: only the ghost whose chord is held turns blue and runs,
 // and can be caught. The other three keep chasing. Let go of the chord, or change it, and that ghost
-// is dangerous again. Ghosts caught in a cadence's order score a bonus: V then I a perfect cadence,
+// is dangerous again. Or, with the key change combo, set the key the maze is already in: they all turn
+// blue, for the rest of the power. Ghosts caught in a cadence's order score a bonus: V then I a perfect cadence,
 // IV (or ii), V then I a full one, IV then I plagal, V then vi deceptive, anything then V a half.
 //
 // The fruit is a key. Twice a maze a key signature turns up below the ghosts' house for a while:
@@ -256,7 +257,7 @@ function ccBar(){
 // ---------- the title screen ----------
 const ccMenuSig=()=> `${ccComboOk()}|${knobsReady()}|${steerKnob()}`;
 const CCMENU_G={key:"chomp", title:"CHORD CHOMP",
-  rules:()=>`<p>EAT THE DOTS. PLAY A CHORD ON THE BUTTONS AND THEY SING IT, A NOTE A DOT. ${ccLatch() ? "IT STAYS ON TILL YOU PLAY ANOTHER, OR THE SAME AGAIN TO LET IT GO. OR CHOOSE HOLD, FOR A QUARTER MORE: THEN A CHORD ONLY COUNTS WHILE IT'S HELD." : "A CHORD ONLY COUNTS WHILE IT'S HELD (A QUARTER MORE POINTS); CHOOSE LATCH TO HAVE IT STAY ON."}</p><p>THE GHOSTS WEAR CHORDS OF THE KEY. EAT A POWER PELLET, THEN PLAY A GHOST'S CHORD: THAT GHOST TURNS BLUE AND YOU CAN CATCH IT. THE OTHERS STILL CHASE YOU.</p><p>CATCH THEM IN A CADENCE'S ORDER FOR A BONUS: V THEN I, OR IV, V THEN I FOR THE BIGGEST.</p><p>WHEN A KEY TURNS UP, ${ccComboOk() ? "SET IT WITH THE KEY CHANGE COMBO" : "PLAY ITS HOME CHORD"} BEFORE IT GOES, AND THE MAZE CHANGES KEY. FARTHER KEYS SCORE MORE. WHILE A KEY IS UP, A POWER PELLET TURNS THE GHOSTS ALL BLUE: THE TIME TO SET IT.</p><p>${ccJs() ? `STEER WITH THE STICK: PUSH EARLY AND YOU TURN AT THE NEXT TURNING THAT WAY.${ccLatch() ? " A LETS GO OF A LATCHED CHORD." : ""}` : playOnScreen() ? "STEER WITH THE ARROWS UNDER THE GAME." : knobsReady() ? `STEER ON THE HARP, THE ARROW KEYS, OR THE ${KNOB_NAMES[steerKnob()]} KNOB, LIKE A WHEEL: A LITTLE RIGHT TURNS RIGHT AT THE NEXT TURNING, A LITTLE LEFT LEFT, AND HARD EITHER WAY TURNS YOU ROUND. WHEREVER IT STOPS IS STRAIGHT AHEAD AGAIN, AND THE CORNERS TAKE THEMSELVES.` : "STEER ON THE HARP OR THE ARROW KEYS."}</p>`,
+  rules:()=>`<p>EAT THE DOTS. PLAY A CHORD ON THE BUTTONS AND THEY SING IT, A NOTE A DOT. ${ccLatch() ? "IT STAYS ON TILL YOU PLAY ANOTHER, OR THE SAME AGAIN TO LET IT GO. OR CHOOSE HOLD, FOR A QUARTER MORE: THEN A CHORD ONLY COUNTS WHILE IT'S HELD." : "A CHORD ONLY COUNTS WHILE IT'S HELD (A QUARTER MORE POINTS); CHOOSE LATCH TO HAVE IT STAY ON."}</p><p>THE GHOSTS WEAR CHORDS OF THE KEY. EAT A POWER PELLET, THEN PLAY A GHOST'S CHORD: THAT GHOST TURNS BLUE AND YOU CAN CATCH IT. THE OTHERS STILL CHASE YOU.${ccComboOk() ? " OR SET THE KEY THE MAZE IS IN WITH THE KEY CHANGE COMBO: THEY ALL TURN BLUE." : ""}</p><p>CATCH THEM IN A CADENCE'S ORDER FOR A BONUS: V THEN I, OR IV, V THEN I FOR THE BIGGEST.</p><p>WHEN A KEY TURNS UP, ${ccComboOk() ? "SET IT WITH THE KEY CHANGE COMBO" : "PLAY ITS HOME CHORD"} BEFORE IT GOES, AND THE MAZE CHANGES KEY. FARTHER KEYS SCORE MORE. WHILE A KEY IS UP, A POWER PELLET TURNS THE GHOSTS ALL BLUE: THE TIME TO SET IT.</p><p>${ccJs() ? `STEER WITH THE STICK: PUSH EARLY AND YOU TURN AT THE NEXT TURNING THAT WAY.${ccLatch() ? " A LETS GO OF A LATCHED CHORD." : ""}` : playOnScreen() ? "STEER WITH THE ARROWS UNDER THE GAME." : knobsReady() ? `STEER ON THE HARP, THE ARROW KEYS, OR THE ${KNOB_NAMES[steerKnob()]} KNOB, LIKE A WHEEL: A LITTLE RIGHT TURNS RIGHT AT THE NEXT TURNING, A LITTLE LEFT LEFT, AND HARD EITHER WAY TURNS YOU ROUND. WHEREVER IT STOPS IS STRAIGHT AHEAD AGAIN, AND THE CORNERS TAKE THEMSELVES.` : "STEER ON THE HARP OR THE ARROW KEYS."}</p>`,
   levels:CC_LEVELS, begin:i=>beginChomp(i), demo:()=>ccDemo(), modNote:"title"};
 function ccMenu(over){ blast.ccSig=ccMenuSig(); arcadeMenu(CCMENU_G, over); }
 function beginChomp(level){
@@ -427,7 +428,7 @@ function ccPowerStart(){
   if(blast.phase!=="play") return;
   sfx("power"); ccBar();
   if(fr) banner("ALL BLUE!", ccComboOk() ? `SET ${fr.key.name} WITH THE KEY CHANGE COMBO NOW` : `PLAY ${fr.key.name} NOW`);
-  else if(!blast.powerTold){ blast.powerTold=true; banner("POWER!", `${ccLatch() ? "PLAY" : "HOLD"} A GHOST'S CHORD: IT TURNS BLUE, AND YOU CAN CATCH IT`); }
+  else if(!blast.powerTold){ blast.powerTold=true; banner("POWER!", `${ccLatch() ? "PLAY" : "HOLD"} A GHOST'S CHORD: IT TURNS BLUE, AND YOU CAN CATCH IT${ccComboOk() ? `. OR SET ${blast.key.name} WITH THE COMBO: ALL BLUE` : ""}`); }
 }
 
 // ---------- the ghosts ----------
@@ -567,14 +568,24 @@ function ccKeyTo(fr){
   sfx("key", fr.key.home.pc); ccBar();
 }
 // the minichord's key, as it reports it: the key that's up taken, or any other put back
+// The maze's own key picked with the combo, during a power, turns every ghost blue. (Only the combo:
+// a double tap reports unasked too, and isn't one. Heard once: what's set in answer reports in too.)
 function ccKeyCheck(){
   if(!blast || blast.phase!=="play" || !blast.key || !hasSetting(35) || mc.params[35]==null || mc.presetLoaded) return;
-  const f=devFifths(); if(f===blast.key.f) return;
+  const pick=mc.comboPick; mc.unasked=false;
+  const f=devFifths(); if(f===blast.key.f){ if(pick) ccAllBlue(); return; }
   const fr=blast.fruit;
   if(fr && f===fr.f) return ccKeyTo(fr);
   heard(`KEY OF ${KEY_BY_FIFTHS[f]||mc.keyName||"?"}`, false, fr ? `THE KEY UP IS ${fr.key.name}` : "NO KEY HAS TURNED UP");
   sfx("wrong");
   borrow(35, keyIndexOf(blast.key.f));                                  // back to the maze's key
+}
+
+// every ghost blue for the rest of the power, as a key up makes them
+function ccAllBlue(){
+  if(!ccPowerOn() || blast.powerAll || blast.st==="jam") return;
+  blast.powerAll=true; blast.heldKey=null;
+  banner("ALL BLUE!", `${blast.key.name}: CATCH THEM ALL`); sfx("power"); ccBar();
 }
 
 // ---------- power-ups ----------
@@ -991,7 +1002,7 @@ function ccDemo(){
   blast.key=ccKey(0); blast.ghosts=[];
   ccNewMaze();
   const nums=["V","IV","I","vi"]; blast.ghosts.forEach((g,i)=>{ g.num=nums[i]; g.chord=ccChord(blast.key, nums[i]); });
-  ccPlace(); blast.capNext=1e9; blast.demoAuto=true; blast.demoHeld=null; blast.demoTarget=null;
+  ccPlace(); blast.capNext=1e9; blast.demoAuto=true; blast.demoHeld=null; blast.demoTarget=null; blast.autoAt=0;   // the clock starts again: the last demo's wait would hold the autopilot
   const zones=(...zs)=>{ if(blast.strip) blast.strip.querySelectorAll("[data-zone]").forEach(c=>c.classList.toggle("demo-on", zs.includes(c.dataset.zone))); };
   const hold=c=>{ const v=FORM[c.q].map(f=>48+c.pc+f[1]); blast.demoHeld=v; demoPlay(v); };
   sfx("attract");
@@ -1008,7 +1019,7 @@ function ccDemo(){
       say("THE DOTS SING",`PLAY A CHORD AND EACH DOT YOU EAT PLAYS ITS NEXT NOTE. HERE, C.${ccLatch() ? " IT STAYS ON TILL YOU PLAY ANOTHER." : ""}`); hold(ccChord(blast.key,"I")); await step(4200);
       say("CHANGE THE CHORD",`F NOW, AND THE DOTS SING F. ${ccLatch() ? (ccJs() ? "PRESS A, OR PLAY F AGAIN, TO LET IT GO" : "PLAY F AGAIN TO LET IT GO") : "LET GO"}, AND THEY GO WAKA-WAKA.`); hold(ccChord(blast.key,"IV")); await step(4200);
       blast.demoHeld=null; helpChord(null);
-      say("POWER PELLET","EAT ONE, THEN PLAY A GHOST'S CHORD. ONLY THAT GHOST TURNS BLUE: CATCH IT. THE OTHERS STILL CHASE YOU.");
+      say("POWER PELLET",`EAT ONE, THEN PLAY A GHOST'S CHORD. ONLY THAT GHOST TURNS BLUE: CATCH IT. THE OTHERS STILL CHASE YOU.${ccComboOk() ? " OR SET C, THE MAZE'S KEY, WITH THE KEY CHANGE COMBO: THEY ALL TURN BLUE." : ""}`);
       ccPowerStart(); blast.powerUntil=blast.clock+30;
       const v=blast.ghosts.find(g=>g.num==="V"); if(v.state!=="out"){ Object.assign(v,{state:"out", x:CC_OUT.x, y:CC_OUT.y, p:0, dir:"left"}); }
       await step(1400); hold(v.chord); blast.demoTarget=v;

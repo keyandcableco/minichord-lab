@@ -140,6 +140,19 @@ const t=require("./harness").load("chord-chomp");
   check("and the key stays up till the power's done", a.fruit && a.fruit.until>=w.eval("blast.powerUntil")+1.9);
   w.eval("blast.fruit=null; blast.powerUntil=0; blast.powerAll=false"); await sleep(60);
   check("the power over, they're dangerous again", a.ghosts.every(g=>!g.scared));
+  // no key up: the key change combo setting the key the maze is already in turns them all blue
+  const combo=()=>{ mc.unasked=true; mc.changed=new Set([35]); mc.dispatchEvent(new w.Event("device")); };
+  w.eval("blast.fermataUntil=blast.clock+60; ccPowerStart()"); a.ghosts.forEach((g,i)=>place(g,3+i,27)); await until(()=>a.st==="go"); await sleep(60);
+  check("a power with no key up and nothing held: none blue", a.ghosts.every(g=>!g.scared));
+  mc.unasked=false; mc.dispatchEvent(new w.Event("device")); await sleep(60);
+  check("a report that isn't the combo turns none blue", a.ghosts.every(g=>!g.scared));
+  combo(); await sleep(60);
+  check("the combo, the maze's own key set: every ghost out turns blue", a.ghosts.every(g=>g.scared) && a.key.name==="G" && t.mc.params[35]===w.eval("keyIndexOf(1)"), a.ghosts.map(g=>g.state+(g.scared?" blue":"")).join(", "));
+  w.eval("blast.powerUntil=0"); await sleep(60); combo(); await sleep(60);
+  check("without a power the combo turns none blue", a.ghosts.every(g=>!g.scared));
+  w.eval("ccPowerStart()"); await sleep(60);
+  check("and the next pellet is one ghost at a time again", !a.powerAll && a.ghosts.every(g=>!g.scared));
+  w.eval("blast.powerUntil=0");
   const pel=w.eval("(()=>{ blast.dots.forEach(r=>r.forEach((v,x)=>{ if(v===2) r[x]=0; })); const l=blast.left; ccFruitSpawn(); return {back:blast.dots.flat().filter(v=>v===2).length, more:blast.left-l}; })()");
   check("a key that turns up with every pellet eaten puts one back", pel.back===1 && pel.more===1, JSON.stringify(pel));
   w.eval("blast.fruit=null; blast.fermataUntil=0");
@@ -214,6 +227,12 @@ const t=require("./harness").load("chord-chomp");
     Object.assign(blast,{st:keep.st, demoAuto:keep.auto, dots:keep.dots, left:keep.left, want:keep.want}); Object.assign(blast.pac,keep.pac); blast.ghosts.forEach((g,i)=>Object.assign(g,keep.gh[i]));
     ccTick=tick; blast.last=performance.now(); blast.raf=requestAnimationFrame(ccTick); return out; })()`);
   check("the demo's autopilot, a dot just ahead and another behind, eats on at any frame rate", !stuck.length, stuck.slice(0,4).join(", "));
+  // a demo after another: the clock starts again, and the last one's wait doesn't hold the autopilot
+  // (it once did, the player run left along the bottom and stopped there, every demo but the first)
+  w.eval("blast.phase='menu'; blast.autoAt=500; ccDemo()"); await sleep(2500);
+  const ran=w.eval("[blast.pac.x, blast.pac.y, blast.autoAt<500]");
+  w.eval("endCcDemo(blast.demo)"); await sleep(60);
+  check("a second demo's autopilot steers", ran[2] && !(ran[1]===23 && ran[0]<=2), JSON.stringify(ran));
   // leaving gives the key back
   sb.restoreAll();
   check("leaving gives back the minichord's own key", t.mc.params[35]===2);
