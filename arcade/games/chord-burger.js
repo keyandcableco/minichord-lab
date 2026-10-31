@@ -334,9 +334,15 @@ function bkSourPool(){
   const pcs=[...Array(12).keys()].filter(pc=>blast.level>=4 || !inKey.has(pc));
   return pcs;
 }
+// A sour note's name, by its place in the key: the key's own notes as the key spells them, the five
+// between as they're most often met in it, [letters up, semitones up] from the key note: ♭3, ♯4 and
+// ♭7, and ♯1 or ♭2, ♯5 or ♭6, either. So a kitchen in C has E♭, A♭ and B♭ as well as F♯, never D♯ or A♯.
+// A sharp or flat on a white key (E♯, C♭) gives way to the other spelling.
+const BK_CHROMA={1:[[0,1],[1,1]], 3:[[2,3]], 6:[[3,6]], 8:[[4,8],[5,8]], 10:[[6,10]]};
 function bkSourNote(pool){
-  const pc=rnd(pool), names=blast.key.f<0 ? FLAT_NAMES : SHARP_NAMES;
-  return {pc, name:names[pc]};
+  const pc=rnd(pool), key=blast.key, deg=mod(pc-key.pc,12);
+  const names=(BK_CHROMA[deg] || [[MAJOR.indexOf(deg), deg]]).map(([st,se])=>above(key.name, st, se)).filter(n=>n && !/[𝄪𝄫]|[EB]♯|[CF]♭/.test(n));
+  return {pc, name:names.length ? rnd(names) : (key.f<0 ? FLAT_NAMES : SHARP_NAMES)[pc]};
 }
 
 // ---------- each frame ----------

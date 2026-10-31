@@ -38,6 +38,19 @@ const t=require("./harness").load("chord-burger");
     blast.level=was; return out; })()`);
   check("every level deals chords that spell, voiced as the minichord voices them", !dealt.length, dealt.slice(0,3).join("; "));
 
+  // the sour notes spelled as they're met in the key: in C, flats as well as sharps, never D♯ or A♯;
+  // the key's own notes as the key spells them; nothing on a white key's sharp or flat, in any key dealt
+  const worn=E(`(()=>{ const was=[blast.level, blast.key], out={bad:[], c:new Set(), keyed:[]};
+    for(const lv of [0,4]) for(let f=-3; f<=3; f++){ blast.level=lv; blast.key=bkKey(f); const pool=bkSourPool();
+      for(let i=0;i<300;i++){ const s=bkSourNote(pool);
+        if(pcOfName(s.name)!==s.pc || /[𝄪𝄫]|[EB]♯|[CF]♭/.test(s.name)) out.bad.push(blast.key.name+": "+s.name);
+        if(lv===0 && !f) out.c.add(s.name);
+        if(lv===4 && f===-1 && s.pc===10 || lv===4 && f===3 && s.pc===1) out.keyed.push(s.name); } }
+    [blast.level, blast.key]=was; return {bad:out.bad, c:[...out.c].sort(), keyed:[...new Set(out.keyed)].sort()}; })()`);
+  check("a sour note's name is its note, never a white key sharpened or flattened", !worn.bad.length, worn.bad.slice(0,3).join("; "));
+  check("in C the sour notes wear C♯ D♭ E♭ F♯ G♯ A♭ B♭", worn.c.join(" ")===["A♭","B♭","C♯","D♭","E♭","F♯","G♯"].join(" "), worn.c.join(" "));
+  check("the key's own notes as the key spells them: B♭ in F, C♯ in A", worn.keyed.join(" ")==="B♭ C♯", worn.keyed.join(" "));
+
   // the demo's cook walks to the squares it stops at and stands there, not rocking either side of them
   E(`bkDemo()`); const stood=new Set();
   for(let i=0; i<300 && stood.size<2; i++){ await sleep(50);
