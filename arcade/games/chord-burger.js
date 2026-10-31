@@ -13,10 +13,13 @@
 // A full plate is served by playing its chord on the minichord, voiced as stacked. The chord buttons
 // name it; a knob swings the chord's inversion (the minichord's address 37), so the right note is on
 // the bottom; a second knob sets its spacing (38: close, drop 2, drop 3, drop 2 and 4), for the open
-// voicings. In close position a triad's fourth voice is its bass again, so the two buns are the same
-// note: the buns are the bass. Up to the open kitchens a serve is judged on the chord and its bass, so
-// a slash chord does as well as the knob; from them on, on the whole stack, note for note. A wrong
-// serve costs nothing but time: a plate's hot for a few seconds, worth half as much again, then cools.
+// voicings. Or, with hold on, the chord pressed again climbs it an inversion (press again in hold, 324,
+// firmware 57), so the player can press it till the right note's on the bottom; the knob still sets
+// where the climb starts. In close position a triad's fourth voice is its bass again, so the two buns
+// are the same note: the buns are the bass. Up to the open kitchens a serve is judged on the chord and
+// its bass, so a slash chord does as well as the knob; from them on, on the whole stack, note for note.
+// A wrong serve costs nothing but time: a plate's hot for a few seconds, worth half as much again, then
+// cools.
 //
 // The sour notes (a hot dog, an egg, a pickle) chase the cook along the floors and up the ladders,
 // each wearing a note; one that touches the cook costs a life. An ingredient dropped on one squashes
@@ -26,7 +29,8 @@
 // left there to be walked across, onto the plate, to finish the burger. The pepper is a chord: play one, and every
 // sour note in the kitchen whose note is in it is harmonised, sweet and harmless for a few seconds. Five
 // shakes a kitchen, spent only on a chord that harmonises something (or one wasted on sour notes it
-// doesn't catch); a chord that serves a plate peppers for free.
+// doesn't catch); a chord that serves a plate peppers for free, and one only voiced again as it sounds
+// (pressed again in hold, a knob turned under it) is the same shake, not another.
 //
 // A kitchen's four plates, left to right, are a progression of its key; served in that order, it's a
 // COMBO MEAL. From the Orders kitchens a ticket hangs over each plate and its column is out of order:
@@ -156,6 +160,15 @@ const BK_INV=["ROOT","1ST INV","2ND INV","3RD INV"], BK_SP=["CLOSE","DROP 2","DR
 // levels the spacing too; the rest only a bass, which a slash chord gives
 const bkVoices=()=> canWrite() && hasSetting(37) && hasSetting(38);
 const bkLevelOk=i=>{ const L=BK_LEVELS[i]; return L.full ? bkVoices() : L.knob ? canWrite() && hasSetting(37) : true; };
+// Press again in hold (324, firmware 57): with hold on, the ringing chord pressed again climbs an
+// inversion, on to root position an octave up and round to where it began, so the right note's found
+// on the buttons alone. Hold is the player's to switch on: only its button can. On with MINE voicing,
+// off with SET FOR ME, where the game turns the inversion itself. The screen's minichord has no hold.
+// Gated on the version too: page 1 comes whole from firmware 31, 324 a plain 0 on firmware without it.
+const bkAgain=()=> canWrite() && !mc.virtual && hasSetting(324) && (mc.params[7]??0)>=57;
+function bkRepress(){ if(bkAgain()) ensure(324, bkAuto() ? 0 : 1); }
+// what the player's told to do for an inversion: press again, but on the joystick plate B, which needs no hold
+const bkSayAgain=()=> bkAgain() && !bkAuto() && !bkJs();
 function bkKey(f){
   const name=KEY_BY_FIFTHS[f]; return {f, name, label:`${name} MAJOR`, pc:pcOfName(name)};
 }
@@ -212,7 +225,8 @@ function bkDevice(){
     if(knobsReady()) borrow(238,1);
     blast.knobsInert=arcadeKnobsInert();
   });
-  if(blast.phase==="menu" && blast.overlay && blast.menuSig!==BK_LEVELS.map((_,i)=>bkLevelOk(i)).join()) menuRebuild(()=>bkMenu());
+  if(blast.phase==="play" && !(typeof userRestored!=="undefined" && userRestored)) bkRepress();   // page 1 in after the game began
+  if(blast.phase==="menu" && blast.overlay && blast.menuSig!==BK_LEVELS.map((_,i)=>bkLevelOk(i)).join()+BKMENU_G.sig()) menuRebuild(()=>bkMenu());
   bkKeyCheck();
   if(blast.phase==="play" && !pollT) poll(true);
 }
@@ -239,15 +253,16 @@ function bkBar(){
 // ---------- the title screen ----------
 const bkAuto=()=> !!saved.bkAuto;
 const BKMENU_G={key:"burger", title:"CHORD BURGER",
-  rules:()=>`<p>WALK ACROSS AN INGREDIENT TO DROP IT A FLOOR. WALK THEM ALL DOWN ONTO THE PLATES.</p><p>A FULL PLATE IS A CHORD, READ FROM THE PLATE UP: THE BOTTOM BUN IS THE BASS. SERVE IT BY PLAYING IT, ${bkAuto() ? "THE KNOBS TURNED FOR YOU" : bkJs() ? "VOICED AS STACKED: B (OR ONE KNOB) PUTS THE RIGHT NOTE ON THE BOTTOM, THE OTHER KNOB OPENS IT OUT" : "VOICED AS STACKED: ONE KNOB PUTS THE RIGHT NOTE ON THE BOTTOM, THE OTHER OPENS IT OUT"}.</p><p>THE SOUR NOTES WEAR NOTES. PEPPER THEM WITH A CHORD THAT HAS THEIR NOTE IN IT, OR DROP AN INGREDIENT ON THEM. DROP ONE WITH THEM ON IT AND IT KNOCKS ALL UNDER IT DOWN ONTO THE PLATE.</p><p>SERVE THE PLATES LEFT TO RIGHT FOR A COMBO MEAL.</p><p>${bkJs() && !pfKnob("burger") ? "WALK WITH THE STICK: HOLD THE WAY. UP-LEFT WALKS LEFT AND TAKES THE FIRST LADDER UP. A FLIPS" : bkJs() ? "THE KNOB IS WHERE YOU STAND: TURN IT AND YOU WALK THERE. THE STICK UP OR DOWN TAKES A LADDER; A FLIPS" : playOnScreen() ? "WALK WITH THE ARROWS UNDER THE GAME" : pfKnob("burger") ? pfSteerSay("FLIP") : "WALK ON THE HARP OR THE ARROW KEYS: HOLD THE WAY"}.</p>`,
-  levels:BK_LEVELS, ok:i=>bkLevelOk(i), needs:"NEEDS A MINICHORD THE GAME CAN VOICE", begin:i=>beginBurger(i), demo:()=>bkDemo(), modNote:"title"};
+  rules:()=>`<p>WALK ACROSS AN INGREDIENT TO DROP IT A FLOOR. WALK THEM ALL DOWN ONTO THE PLATES.</p><p>A FULL PLATE IS A CHORD, READ FROM THE PLATE UP: THE BOTTOM BUN IS THE BASS. SERVE IT BY PLAYING IT, ${bkAuto() ? "THE KNOBS TURNED FOR YOU" : `VOICED AS STACKED: ${bkSayAgain() ? "WITH HOLD ON, PRESS THE CHORD AGAIN TILL THE RIGHT NOTE'S ON THE BOTTOM (ONE KNOB DOES IT TOO)" : bkJs() ? "B (OR ONE KNOB) PUTS THE RIGHT NOTE ON THE BOTTOM" : "ONE KNOB PUTS THE RIGHT NOTE ON THE BOTTOM"}, THE OTHER KNOB OPENS IT OUT`}.</p><p>THE SOUR NOTES WEAR NOTES. PEPPER THEM WITH A CHORD THAT HAS THEIR NOTE IN IT, OR DROP AN INGREDIENT ON THEM. DROP ONE WITH THEM ON IT AND IT KNOCKS ALL UNDER IT DOWN ONTO THE PLATE.</p><p>SERVE THE PLATES LEFT TO RIGHT FOR A COMBO MEAL.</p><p>${bkJs() && !pfKnob("burger") ? "WALK WITH THE STICK: HOLD THE WAY. UP-LEFT WALKS LEFT AND TAKES THE FIRST LADDER UP. A FLIPS" : bkJs() ? "THE KNOB IS WHERE YOU STAND: TURN IT AND YOU WALK THERE. THE STICK UP OR DOWN TAKES A LADDER; A FLIPS" : playOnScreen() ? "WALK WITH THE ARROWS UNDER THE GAME" : pfKnob("burger") ? pfSteerSay("FLIP") : "WALK ON THE HARP OR THE ARROW KEYS: HOLD THE WAY"}.</p>`,
+  levels:BK_LEVELS, ok:i=>bkLevelOk(i), sig:()=>String(bkSayAgain()), needs:"NEEDS A MINICHORD THE GAME CAN VOICE", begin:i=>beginBurger(i), demo:()=>bkDemo(), modNote:"title"};
 function bkMenu(over){ arcadeMenu(BKMENU_G, over); }
 function beginBurger(level){
   newRun();
   piano.start(); stopDemo(); clearTimeout(blast.attract);
   if(blast.overlay){ blast.overlay.remove(); blast.overlay=null; }
-  Object.assign(blast,{score:0, lives:3, level, startLevel:level, kitchenN:0, phase:"play", over:false, clock:0, demoAuto:false, demoWays:null, keySet:false});
+  Object.assign(blast,{score:0, lives:3, level, startLevel:level, kitchenN:0, phase:"play", over:false, clock:0, demoAuto:false, demoWays:null, keySet:false, sounding:null});
   if(canWrite() && hasSetting(33)) ensure(33,0);                // no Barry Harris: the plain chords
+  bkRepress();
   saved.burgerStart=level; save();
   stats.streak=0; scoreboard();
   bkNewKitchen(); bkPlace();
@@ -491,7 +506,7 @@ function bkPlateFull(P){
   if(blast.phase!=="play") return;
   sfx("ready");
   if(!blast.keySet && bkComboOk()){ blast.keyByGame=true; borrow(35, keyIndexOf(blast.key.f)); }   // not set by the first plate: set for you
-  if(!blast.toldServe){ blast.toldServe=true; banner("ORDER UP!", bkAuto() ? "READ IT FROM THE PLATE UP AND PLAY THE CHORD" : "READ IT FROM THE PLATE UP: PLAY THE CHORD, THE KNOB PUTTING THE BOTTOM BUN IN THE BASS"); }
+  if(!blast.toldServe){ blast.toldServe=true; banner("ORDER UP!", bkAuto() ? "READ IT FROM THE PLATE UP AND PLAY THE CHORD" : bkSayAgain() ? "READ IT FROM THE PLATE UP: PLAY THE CHORD, AND WITH HOLD ON PRESS IT AGAIN TILL THE BOTTOM BUN'S IN THE BASS" : "READ IT FROM THE PLATE UP: PLAY THE CHORD, THE KNOB PUTTING THE BOTTOM BUN IN THE BASS"); }
 }
 // the stack played against a plate: served, or why not
 function bkJudge(P, pitches){
@@ -507,7 +522,7 @@ function bkJudge(P, pitches){
   }
   if(L.full) return sameStack(heard, landed) ? {ok:true} : {ok:false};
   if(!isChord(pitches, c.rootPc, c.q)) return {ok:false};
-  return heard[0]===c.bassPc ? {ok:true} : {ok:false, why:`${c.bass} IN THE BASS`};
+  return heard[0]===c.bassPc ? {ok:true} : {ok:false, why:`${c.bass} IN THE BASS${bkSayAgain() ? " · PRESS IT AGAIN IN HOLD" : ""}`};
 }
 function bkServe(P, res){
   const c=P.chord, hot=blast.clock-P.readyAt<bkHotSecs();
@@ -678,20 +693,35 @@ function bkKeyCheck(){
 
 // ---------- the minichord ----------
 // A chord from the buttons: a full plate served, if it's that plate's, and the pepper, whatever it is.
+// The chord sounding voiced again (pressed again in hold, a knob turned under it) is judged again for
+// the plates but isn't another shake: the climb to the right inversion costs no pepper.
 function burgerChord(voices){
   if(!blast || blast.kind!=="burger") return;
   if(blast.phase==="demo" && blast.demo){ endBkDemo(blast.demo); return; }
-  if(blast.phase!=="play" || blast.st!=="go") return;
-  const pitches=voices.map(v=>v.pitch); if(!chordId(pitches)) return;
-  const name=chordName(pitches, devFifths());
+  if(blast.phase!=="play") return;
+  const pitches=voices.map(v=>v.pitch);
+  const was=blast.sounding, pcs=[...new Set(pitches.map(p=>mod(Math.round(p),12)))].sort((x,y)=>x-y).join(), notes=pitches.map(p=>Math.round(p)).sort((x,y)=>x-y).join();
+  blast.sounding={pcs, notes};                                         // between kitchens too: it's what's ringing
+  if(blast.st!=="go" || !chordId(pitches)) return;
+  const name=chordName(pitches, devFifths()), again=!!was && was.pcs===pcs && was.notes!==notes;
   let served=null, why="";
   for(const P of bkReady()){ const r=bkJudge(P, pitches); if(r.ok){ served=P; bkServe(P, r); break; } if(r.why && !why) why=r.why; }
-  const peppered=bkPepper(pitches, !!served);
+  const peppered=(served || !again) && bkPepper(pitches, !!served);
   if(served || peppered) return;
   const P=bkReady()[0];
   if(P) heard(name, false, why ? `THAT'S ${name}: ${why}` : `READ IT FROM THE PLATE UP: ${P.stack.map(i=>i.name).join(" ")}`);
   else heard(name, false, "NO PLATE'S FULL YET");
 }
+// page 1 in (324 among it), usually just after the title's drawn: its rules say how, and a game on sets
+// it. Not after a preset loaded mid-game once 324's wanted: the room's own listener (room.js, which runs
+// after this) sets it again and keeps the new preset's value to give back, which a write here first would stop.
+mc.addEventListener("page1", ()=>{
+  if(!blast || blast.kind!=="burger") return;
+  if(typeof page1Preset!=="undefined" && page1Preset && typeof wanted!=="undefined" && 324 in wanted) return;
+  bkDevice();
+});
+// the chord let go: the next one played is a fresh shake, whatever it is
+mc.addEventListener("voices", ()=>{ if(blast && blast.kind==="burger" && !mc.voices.length) blast.sounding=null; });
 // The pepper: every sour note in the kitchen whose note is in the chord, harmonised, however far off
 // (a reach round the cook made a right chord miss with nothing to say why). A shake spent on one that
 // catches something, or wasted on sour notes about that it doesn't; free with a serve. True when
@@ -918,8 +948,8 @@ function bkPop(e, text, colour){
 
 // ---------- the demo ----------
 // It plays itself in the real kitchen: an ingredient walked down, a cascade, a plate read from the
-// plate up and served, an inversion turned to on the knob, a sour note peppered with a chord that has
-// its note, and two ridden down.
+// plate up and served, an inversion turned to on the knob (or pressed again in hold, bkAgain), a sour
+// note peppered with a chord that has its note, and two ridden down.
 function bkDemo(){
   if(!blast || blast.kind!=="burger") return;
   stopDemo(); clearTimeout(blast.attract); piano.start();
@@ -964,8 +994,15 @@ function bkDemo(){
       serve(P1); await step(2200);
       fill(P2); P2.chord=bkChord(blast.key, P2.chord.num, 1, 0);
       P2.stack.forEach((ing,k)=>Object.assign(ing, {name:P2.chord.names[k], pitch:P2.chord.pitches[k], pc:P2.chord.pcs[k]}));
-      say("AN INVERSION",`${P2.stack.map(i=>i.name).join(" ")}: ${P2.stack[0].name} IN THE BASS, THE CHORD'S 3RD. ${bkJs() ? "PRESS B" : "TURN THE KNOB"} TO 1ST INV, THEN PLAY ${P2.chord.root}.`);
-      await step(1800); bkVoice(1, 0); sfx("press"); await step(1600); serve(P2); await step(2200);
+      if(bkSayAgain()){                                                 // pressed again in hold: root position, then the climb
+        const R=bkChord(blast.key, P2.chord.num, 0, 0);
+        say("AN INVERSION",`${P2.stack.map(i=>i.name).join(" ")}: ${P2.stack[0].name} IN THE BASS, THE CHORD'S 3RD. WITH HOLD ON, PLAY ${P2.chord.root} AND PRESS IT AGAIN: ITS 1ST INVERSION.`);
+        await step(1800); demoPlay(R.pitches.map(p=>p-12)); heard(R.sym, false, `THAT'S ${R.sym}: ${P2.chord.bass} IN THE BASS · PRESS IT AGAIN IN HOLD`);
+        await step(1600); serve(P2); await step(2200);
+      } else {
+        say("AN INVERSION",`${P2.stack.map(i=>i.name).join(" ")}: ${P2.stack[0].name} IN THE BASS, THE CHORD'S 3RD. ${bkJs() ? "PRESS B" : "TURN THE KNOB"} TO 1ST INV, THEN PLAY ${P2.chord.root}.`);
+        await step(1800); bkVoice(1, 0); sfx("press"); await step(1600); serve(P2); await step(2200);
+      }
       const pc=mod(blast.key.pc+6,12), e={i:0, kind:"pickle", x:blast.cook.x+5, y:blast.cook.y, dir:"left", state:"walk", pc, name:SHARP_NAMES[pc]};
       blast.sour=[e];
       say("SOUR NOTES",`THEY WEAR NOTES, AND CATCH YOU. PEPPER ONE WITH A CHORD THAT HAS ITS NOTE IN IT: ${e.name} IS IN D.`); await step(2400);

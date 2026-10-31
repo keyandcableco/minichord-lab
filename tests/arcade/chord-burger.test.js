@@ -221,5 +221,41 @@ const t=require("./harness").load("chord-burger");
   hold(6); lift(6); await sleep(40);                                    // A on the strip
   check("A on the harp flips the ingredient underfoot with the next one down", top.name===names[1] && next.name===names[0] && o.flips===2, `${top.name} ${next.name}`);
   sb.restoreAll();
+
+  // Press again in hold (324, firmware 57): on with MINE voicing, off with SET FOR ME, given back, and
+  // never for the screen's minichord, which has no hold; the rules and a wrong bass say how. The chord
+  // climbed through its inversions as the minichord sends it (never let go) serves the plate on the
+  // right one for one shake of pepper, not one a press; let go and played again, it's a fresh shake.
+  t.connect({firmware:57, extra:{120:2, 111:0, 37:0, 38:0, 117:0}}); await sleep(100); E(`blast.setupDone=false`); title();
+  const titleSays=()=>t.overlay() ? t.overlay().textContent : "";
+  check("before page 1's in (324 among it), the title says the knob", /ONE KNOB PUTS THE RIGHT NOTE/.test(titleSays()));
+  mc.requestPage1(); await sleep(100);
+  check("once it's in, the title says to press the chord again, with hold on", /WITH HOLD ON, PRESS THE CHORD AGAIN/.test(titleSays()));
+  t.connect({firmware:57, extra:{120:2, 111:0, 37:0, 38:0, 117:0, 324:2}}); await sleep(100); E(`blast.setupDone=false`); title();
+  const g=await t.start(2); await sleep(2100); g.sour.forEach(s=>{ s.state="wait"; s.at=1e9; });
+  check("MINE voicing: the held chord pressed again climbs an inversion (324=1)", mc.params[324]===1, `${mc.params[324]}`);
+  const H=g.plates[0]; H.chord=E(`bkChord(blast.key, "I", 2, 0)`);
+  H.stack=g.ings.filter(i=>i.p===0).sort((x,y)=>y.f-x.f); H.stack.forEach((ing,k)=>Object.assign(ing,{state:"plate", k, name:H.chord.names[k], pitch:H.chord.pitches[k], pc:H.chord.pcs[k]}));
+  H.state="ready"; H.readyAt=g.clock;
+  Object.assign(g.sour[0], {state:"sweet", until:1e9, x:1, y:0, pc:(H.chord.rootPc+1)%12, name:"?"});   // about, standing still, in no chord here
+  const non=ns=>ns.forEach(n=>mc.handle([0x90, n, 100])), noff=ns=>ns.forEach(n=>mc.handle([0x80, n, 0]));
+  const voiced=inv=>E(`firmwareStack(${H.chord.rootPc}, VL_TONES["${H.chord.q}"], ${inv}, 0, 24).map(p=>p+24)`);
+  const [v0, v1, v2]=[0,1,2].map(voiced), pep3=g.pepper;
+  non(v0); await sleep(150);
+  check("root position under a second inversion's plate: not served, a shake spent, and told to press it again in hold", H.state==="ready" && g.pepper===pep3-1 && /PRESS IT AGAIN IN HOLD/.test(t.heard()), `${g.pepper} ${t.heard()}`);
+  noff(v0); non(v1); await sleep(150);
+  check("pressed again, the 1st inversion: not served, and no second shake", H.state==="ready" && g.pepper===pep3-1, `${g.pepper} ${t.heard()}`);
+  noff(v1); non(v2); await sleep(150);
+  check("and again, the 2nd: served, still the one shake", H.state==="served" && g.pepper===pep3-1, `${H.state} ${g.pepper}`);
+  noff(v2); await sleep(150); non(v2); await sleep(150);
+  check("let go and played again, it's a fresh shake", g.pepper===pep3-2, `${g.pepper}`);
+  noff(v2); await sleep(100);
+  E(`blast.phase="menu"`); sb.restoreAll(); await sleep(50);
+  check("leaving gives press again in hold back as it was", mc.params[324]===2, `${mc.params[324]}`);
+  E(`saved.bkAuto=true; bkRepress()`);
+  check("SET FOR ME has it off, the game turning the inversion itself", mc.params[324]===0, `${mc.params[324]}`);
+  E(`saved.bkAuto=false`); sb.restoreAll(); await sleep(50);
+  check("the screen's minichord, which has no hold, isn't told to press again", !E(`(()=>{ mc.virtual=true; const r=bkAgain(); mc.virtual=false; return r; })()`));
+  check("nor one on firmware 31 to 56, whose page 1 reads 324 as a plain 0", !E(`(()=>{ const fw=mc.params[7]; mc.params[7]=56; const r=bkAgain(); mc.params[7]=fw; return r; })()`) && E("hasSetting(324)"));
   t.done();
 })();
